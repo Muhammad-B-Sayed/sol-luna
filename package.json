@@ -1,0 +1,15 @@
+{
+  "name": "sol-and-luna",
+  "version": "1.0.0",
+  "description": "Sol & Luna: Temple of Twilight — a two-player co-op elemental puzzle platformer with online rooms and couch co-op.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "check-levels": "node tools/check-levels.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" },
+  "license": "MIT"
+}

@@ -1,0 +1,14 @@
+# Render Blueprint — one free web service that serves the game and hosts online rooms.
+services:
+  - type: web
+    name: sol-and-luna
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

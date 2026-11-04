@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sol &amp; Luna — Temple of Twilight</title>
+<meta name="description" content="A two-player co-op elemental puzzle platformer. Play on one keyboard or online with a private room code.">
+<meta name="theme-color" content="#1b1729">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body data-screen="menu">
+<div id="stage">
+  <canvas id="game" aria-label="Game view"></canvas>
+
+  <div id="hint"></div>
+
+  <!-- title -->
+  <section class="screen" id="menu">
+    <div class="card title-card">
+      <div class="logo" aria-hidden="true"><span class="sun"></span><span class="moon"></span></div>
+      <h1>Sol <i>&amp;</i> Luna</h1>
+      <p class="sub">Temple of Twilight</p>
+      <div class="stack">
+        <button id="btnLocal" class="primary">Play together · same keyboard</button>
+        <button id="btnHost">Host an online game</button>
+        <form id="joinForm" class="join">
+          <input id="joinCode" maxlength="5" placeholder="ROOM CODE" autocomplete="off" spellcheck="false" aria-label="Room code">
+          <button type="submit">Join</button>
+        </form>
+        <div class="row">
+          <button id="btnHow" class="ghost">How to play</button>
+          <button id="btnMute" class="ghost">Sound: on</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="how">
+    <div class="card">
+      <h2>How to play</h2>
+      <div class="how">
+        <div><b class="solc">Sol</b><kbd>←</kbd><kbd>→</kbd> move · <kbd>↑</kbd> jump</div>
+        <div><b class="lunac">Luna</b><kbd>A</kbd><kbd>D</kbd> move · <kbd>W</kbd> jump</div>
+        <p>Online, either set of keys controls your own character. Gamepads work too.</p>
+        <ul>
+          <li><span class="sw sun"></span> Sun pools are safe for Sol and deadly for Luna.</li>
+          <li><span class="sw moon"></span> Moon pools are safe for Luna and deadly for Sol.</li>
+          <li><span class="sw shade"></span> Shade pools swallow anyone.</li>
+          <li>Pressure plates work while someone (or a crate) stands on them. Levers stay where you push them.</li>
+          <li>Collect your gems, then both stand at your own doors to finish.</li>
+          <li><kbd>Esc</kbd> pause · <kbd>R</kbd> restart</li>
+        </ul>
+      </div>
+      <button data-back>Back</button>
+    </div>
+  </section>
+
+  <section class="screen" id="levels">
+    <div class="card wide">
+      <h2 id="levelsTitle">Choose a level</h2>
+      <div id="levelGrid"></div>
+      <button data-back>Back</button>
+    </div>
+  </section>
+
+  <section class="screen" id="connecting">
+    <div class="card"><h2>Connecting…</h2><p class="muted">Waking the temple server. The first connection after a quiet spell can take up to a minute.</p></div>
+  </section>
+
+  <section class="screen" id="lobby">
+    <div class="card">
+      <h2>Online room</h2>
+      <div class="code" id="lobbyCode">-----</div>
+      <button id="lobbyCopy" class="ghost">Copy invite link</button>
+      <div class="slots">
+        <div class="slot sol"><span class="who">Sol</span><span id="slotSol">Waiting…</span></div>
+        <div class="slot luna"><span class="who">Luna</span><span id="slotLuna">Waiting…</span></div>
+      </div>
+      <p id="lobbyStatus" class="muted"></p>
+      <div class="stack">
+        <button id="lobbyPick" class="primary">Choose level</button>
+        <div class="row">
+          <button id="lobbySwap" class="ghost">Swap characters</button>
+          <button id="lobbyLeave" class="ghost">Leave</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="pause">
+    <div class="card">
+      <h2>Paused</h2>
+      <p id="pauseOnline" class="muted" hidden>The world keeps moving online. Your character stands still while this menu is open.</p>
+      <div class="stack">
+        <button id="pResume" class="primary">Resume</button>
+        <button id="pRestart">Restart level</button>
+        <button id="pLevels">Level select</button>
+        <button id="pQuit" class="ghost">Quit to title</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="results">
+    <div class="card">
+      <h2 id="resName"></h2>
+      <div class="results">
+        <div><span>Time</span><b id="resTime"></b><small id="resPar"></small></div>
+        <div><span>Gems</span><b id="resGems"></b></div>
+        <div><span>Rank</span><b id="resRank" class="rank"></b></div>
+      </div>
+      <p id="resFinale" class="muted" hidden>The twilight temple is restored. Sun and moon share the sky once more.</p>
+      <p id="resWait" class="muted" hidden>Waiting for the host…</p>
+      <div class="stack">
+        <button id="resNext" class="primary">Next level</button>
+        <button id="resRetry">Play again</button>
+        <button id="resLevels" class="ghost">Level select</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="touch" aria-hidden="true">
+    <button id="tLeft">◀</button><button id="tRight">▶</button><button id="tJump">▲</button>
+  </div>
+  <div id="toast" role="status"></div>
+</div>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
