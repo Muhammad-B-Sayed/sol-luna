@@ -62,8 +62,13 @@ function newCode() {
   }
 }
 
+// Optional artificial one-way latency for testing netcode: LAG_MS=80 npm start
+const LAG = +(process.env.LAG_MS || 0);
+const raw = (ws, s) => { if (ws.readyState === 1) ws.send(s); };
+const out = LAG ? (ws, s) => setTimeout(() => raw(ws, s), LAG) : raw;
+
 function send(ws, msg) {
-  if (ws.readyState === 1) ws.send(JSON.stringify(msg));
+  out(ws, JSON.stringify(msg));
 }
 
 class Room {
@@ -84,7 +89,7 @@ class Room {
   }
   broadcast(msg) {
     const s = JSON.stringify(msg);
-    for (const c of this.clients) if (c.ws.readyState === 1) c.ws.send(s);
+    for (const c of this.clients) out(c.ws, s);
   }
   start(level) {
     this.level = level;
@@ -121,7 +126,12 @@ wss.on('connection', (ws) => {
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
 
-  ws.on('message', (data) => {
+  ws.on('message', (data) => (LAG ? setTimeout(() => onMessage(ws, data), LAG) : onMessage(ws, data)));
+  ws.on('close', () => leave(ws));
+});
+
+function onMessage(ws, data) {
+  {
     let m;
     try { m = JSON.parse(data); } catch { return; }
     const room = ws.room;
@@ -185,10 +195,8 @@ wss.on('connection', (ws) => {
       }
       case 'leave': leave(ws); return;
     }
-  });
-
-  ws.on('close', () => leave(ws));
-});
+  }
+}
 
 function leave(ws) {
   const r = ws.room;

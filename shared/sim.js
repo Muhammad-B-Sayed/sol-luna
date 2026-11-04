@@ -441,12 +441,18 @@ function updateMechanisms(W) {
   // levers (pushed by moving players or boxes)
   for (let i = 0; i < L.levers.length; i++) {
     const lv = L.levers[i];
+    let touched = false;
     for (const e of W.ents) {
       if (e.id >= 200 && !e.alive) continue;
-      if (!overlaps(e.x, e.y, e.w, e.h, lv.x + 4, lv.y + 2, TS - 8, TS - 2)) continue;
+      if (!overlaps(e.x, e.y, e.w, e.h, lv.x, lv.y + 2, TS, TS - 2)) continue;
       const vx = e.vx;
-      if (vx > 0.3) S.lv[i] = Math.min(1, S.lv[i] + 0.09);
-      else if (vx < -0.3) S.lv[i] = Math.max(-1, S.lv[i] - 0.09);
+      if (vx > 0.3) { S.lv[i] = Math.min(1, S.lv[i] + 0.22); touched = true; }
+      else if (vx < -0.3) { S.lv[i] = Math.max(-1, S.lv[i] - 0.22); touched = true; }
+    }
+    // once pushed past the middle the handle springs the rest of the way
+    if (!touched && Math.abs(S.lv[i]) < 1) {
+      const v = S.lv[i];
+      S.lv[i] = v >= 0 ? Math.min(1, v + 0.12) : Math.max(-1, v - 0.12);
     }
   }
   // buttons

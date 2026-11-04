@@ -24,7 +24,7 @@ export function run(levelNo, phases, { verbose = false } = {}) {
       if (done(S)) break;
     }
     if (verbose) console.log(`  ${name.padEnd(28)} t=${t}  sol(${cx(S.p[0]).toFixed(2)},${bot(S.p[0]).toFixed(2)}) luna(${cx(S.p[1]).toFixed(2)},${bot(S.p[1]).toFixed(2)}) boxes ${S.b.map(b => cx(b).toFixed(2)).join(',')}`);
-    if (t >= max) return { ok: false, msg: `${name}: timed out`, S };
+    if (t >= max) return { ok: false, msg: `${name}: timed out  lv=${JSON.stringify(S.lv)} act=${JSON.stringify(S.act)} btn=${JSON.stringify(S.btn)} pl=${JSON.stringify(S.pl.map(q => +q.t.toFixed(2)))}`, S };
     if (S.phase === PH_WON) break;
   }
   for (let i = 0; i < 120 && S.phase !== PH_WON; i++) step(L, S, [0, 0]);
@@ -32,9 +32,105 @@ export function run(levelNo, phases, { verbose = false } = {}) {
   return { ok: S.phase === PH_WON, msg: S.phase === PH_WON ? `won in ${(S.tick / 60).toFixed(1)}s, gems ${gems}/${L.gems.length}` : 'did not finish', S };
 }
 
-export { L_, R_, U_, toward, cx, bot };
+export { L_, R_, U_, toward, cx, bot, SCRIPTS };
+
+// ---- phase builders --------------------------------------------------------
+const settled = (p) => p.gr && Math.abs(p.vx) < 0.6;
+const ctl = (who, bits) => (who === 0 ? [bits, 0] : [0, bits]);
+// walk to x
+const mv = (who, x, tol = 0.2, max = 900) => [`${who ? 'luna' : 'sol'} -> ${x}`, (S) => ctl(who, toward(S.p[who], x, tol)), (S) => Math.abs(cx(S.p[who]) - x) <= tol + 0.05 && settled(S.p[who]), max];
+// push crate b until its centre reaches x
+const push = (who, b, x) => [`${who ? 'luna' : 'sol'} pushes crate ${b} -> ${x}`, (S) => ctl(who, cx(S.b[b]) < x ? R_ : L_), (S) => Math.abs(cx(S.b[b]) - x) < 0.25, 900];
+// run in direction with jump held until predicate
+const hop = (who, dir, until, max = 300) => [`${who ? 'luna' : 'sol'} hops ${dir === R_ ? 'right' : 'left'}`, (S) => ctl(who, dir | (S.p[who].gr ? U_ : 0)), until, max];
+const jumpWhen = (who, dir, at, until, max = 300) => [`${who ? 'luna' : 'sol'} jump ${dir === R_ ? 'right' : 'left'} at ${at}`, (S) => { const x = cx(S.p[who]); const past = dir === R_ ? x >= at : x <= at; return ctl(who, dir | (past && S.p[who].gr ? U_ : 0)); }, until, max];
+// hop onto a target spot (steers toward x while jumping when grounded and still far)
+const hopTo = (who, x, until, max = 300) => [`${who ? 'luna' : 'sol'} hops to ${x}`, (S) => { const p = S.p[who]; return ctl(who, toward(p, x, 0.1) | (p.gr && Math.abs(cx(p) - x) > 0.6 ? U_ : 0)); }, until, max];
+const wait = (name, cond, max = 600) => [name, () => [0, 0], cond, max];
+const both = (name, fa, fb, cond, max = 900) => [name, (S) => [fa(S), fb(S)], cond, max];
 
 const SCRIPTS = {
+  22: [
+    mv(1, 4.2, 0.1),
+    jumpWhen(1, R_, 4.2, (S) => S.p[1].gr && S.p[1].gref === 0),
+    mv(1, 8.6, 0.1),
+    mv(0, 6.3, 0.1), wait('ferry across', (S) => S.pl[0].t === 1, 700),
+    push(1, 0, 32.45), wait('gate open', (S) => S.pl[1].t === 1, 200),
+    mv(1, 30.3, 0.1),
+    mv(0, 4.0, 0.1), wait('ferry back', (S) => S.pl[0].t === 0, 700),
+    jumpWhen(0, R_, 4.0, (S) => S.p[0].gr && S.p[0].gref === 0),
+    mv(0, 9.5),
+    mv(1, 32.0, 0.1), wait('ferry across with sol', (S) => S.pl[0].t === 1, 700),
+    jumpWhen(1, R_, 31.2, (S) => cx(S.p[1]) > 33.8 && S.p[1].gr),
+    mv(1, 37.5, 0.1),
+    jumpWhen(0, R_, 31.2, (S) => cx(S.p[0]) > 33.8 && S.p[0].gr),
+    mv(0, 35.5, 0.1),
+    wait('both at doors', (S) => S.phase === 2, 200),
+  ],
+  28: [
+    jumpWhen(1, R_, 3.0, (S) => cx(S.p[1]) > 6 && S.p[1].gr),
+    mv(1, 13.5, 0.08),
+    push(0, 0, 10.9), mv(0, 9.9, 0.1),
+    mv(1, 15.6, 0.3), wait('lift up', (S) => S.pl[2].t === 1),
+    push(0, 0, 19.4),
+    mv(0, 1.45, 0.08),
+    mv(1, 13.5, 0.08), wait('lift down', (S) => S.pl[2].t === 0),
+    mv(1, 11.0),
+    mv(0, 3.4, 0.2), wait('lift up with luna', (S) => S.pl[2].t === 1),
+    mv(0, 17.9, 0.1), wait('ferry home', (S) => S.pl[1].t === 0, 300), mv(0, 17.9, 0.1),
+    mv(1, 5.5, 0.15), wait('ferry across', (S) => S.pl[1].t === 1, 700),
+    push(0, 0, 33.46), wait('gate open', (S) => S.pl[0].t === 1, 200),
+    mv(0, 31.6, 0.1),
+    mv(1, 7.5, 0.2), wait('ferry back', (S) => S.pl[1].t === 0, 700),
+    mv(1, 18.5),
+    mv(0, 30.5, 0.1), wait('ferry across with luna', (S) => S.pl[1].t === 1, 700),
+    jumpWhen(1, R_, 32.0, (S) => cx(S.p[1]) > 34.6 && S.p[1].gr),
+    mv(1, 37.5, 0.1),
+    jumpWhen(0, R_, 32.0, (S) => cx(S.p[0]) > 34.6 && S.p[0].gr),
+    mv(0, 35.5, 0.1),
+    wait('both at doors', (S) => S.phase === 2, 200),
+  ],
+  31: [
+    mv(1, 5.5, 0.15), wait('bridge down', (S) => S.pl[1].t === 1),
+    mv(0, 21.5, 0.15),
+    mv(1, 23.0, 0.2),
+    mv(0, 23.0, 0.2),
+    hopTo(0, 25.0, (S) => S.p[0].gr && S.p[0].gref === 2 && Math.abs(S.p[0].vx) < 0.5),
+    mv(0, 25.0, 0.2),
+    hopTo(1, 30.5, (S) => S.p[1].gr && Math.abs(cx(S.p[1]) - 30.5) < 0.4), mv(1, 30.5, 0.15), wait('lift A up', (S) => S.pl[2].t === 1),
+    mv(0, 29.5, 0.15),
+    mv(1, 32.0, 0.2),
+    hopTo(1, 34.0, (S) => S.p[1].gr && S.p[1].gref === 3 && Math.abs(S.p[1].vx) < 0.5),
+    mv(1, 34.0, 0.2),
+    mv(0, 27.6, 0.1), wait('lift B up', (S) => S.pl[3].t === 0),
+    jumpWhen(0, L_, 27.5, (S) => cx(S.p[0]) < 23 && S.p[0].gr),
+    push(0, 0, 6.54), wait('gate open', (S) => S.pl[0].t === 1, 200),
+    mv(1, 27.6, 0.1),
+    jumpWhen(1, L_, 27.5, (S) => cx(S.p[1]) < 23 && S.p[1].gr),
+    jumpWhen(0, L_, 8.2, (S) => cx(S.p[0]) < 5.5 && S.p[0].gr),
+    mv(0, 2.5, 0.1),
+    mv(1, 9.0, 0.2),
+    jumpWhen(1, L_, 8.2, (S) => cx(S.p[1]) < 5.5 && S.p[1].gr),
+    mv(1, 4.5, 0.1),
+    wait('both at doors', (S) => S.phase === 2, 200),
+  ],
+  17: [
+    push(0, 0, 17.8),
+    mv(0, 16.6, 0.15),
+    jumpWhen(1, R_, 15.6, (S) => cx(S.p[1]) > 19.6 && S.p[1].gr),
+    mv(1, 20.2),
+    mv(1, 22.3), wait('lift up with sol+crate', (S) => S.pl[1].t === 1),
+    push(0, 0, 22.5), wait('gate open', (S) => S.pl[0].t === 1, 200),
+    mv(1, 20.6, 0.1), wait('lift down', (S) => S.pl[1].t === 0),
+    mv(1, 17.8),
+    jumpWhen(0, L_, 20.3, (S) => cx(S.p[0]) < 15.5 && S.p[0].gr),
+    mv(0, 12), mv(0, 14.4), wait('lift up with luna', (S) => S.pl[1].t === 1),
+    jumpWhen(1, R_, 20.6, (S) => cx(S.p[1]) > 24 && S.p[1].gr),
+    mv(1, 35.5, 0.1),
+    jumpWhen(0, R_, 20.6, (S) => cx(S.p[0]) > 24 && S.p[0].gr),
+    mv(0, 31.5, 0.1),
+    wait('both at doors', (S) => S.phase === 2, 200),
+  ],
   13: [
     ['sol pushes crate into pool', (S) => [R_, 0], (S) => cx(S.b[0]) >= 14.6],
     ['sol hops over crate', (S) => [R_ | U_, 0], (S) => cx(S.p[0]) > cx(S.b[0]) + 1.2 && S.p[0].gr],

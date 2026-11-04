@@ -308,7 +308,11 @@ function drawAttract(time) {
     attract = { L: BUILT[0], S: createState(BUILT[0]) };
     R.setLevel(attract.L);
   }
-  if (Math.floor(time * 60) % 1 === 0) {
+  // fixed-rate demo regardless of display refresh rate
+  attract.acc = (attract.acc || 0) + Math.min(100, (time - (attract.last || time)) * 1000);
+  attract.last = time;
+  while (attract.acc >= DT) {
+    attract.acc -= DT;
     const t = attract.S.tick;
     const bits = [(t % 240 < 120 ? 2 : 1) | (t % 90 === 0 ? 4 : 0), (t % 200 < 100 ? 1 : 2) | (t % 70 === 0 ? 4 : 0)];
     step(attract.L, attract.S, bits);
