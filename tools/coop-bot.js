@@ -3,6 +3,8 @@
 // holds inputs for both players until a condition is met (or times out).
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, createState, step, PH_WON, PH_DEAD } from '../shared/sim.js';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const L_ = 1, R_ = 2, U_ = 4;
 const TS = 24;
@@ -153,7 +155,11 @@ const SCRIPTS = {
   ],
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Compare real file paths, not URL strings: import.meta.url percent-encodes
+// spaces and other characters, so a string match fails in paths like
+// "Application Support" and the bot would exit 0 without running anything.
+const isMain = !!process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1]);
+if (isMain) {
   const which = process.argv[2] ? process.argv[2].split(',').map(Number) : Object.keys(SCRIPTS).map(Number);
   let fail = 0;
   for (const n of which) {
