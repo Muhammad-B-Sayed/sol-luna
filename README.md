@@ -63,4 +63,5 @@ node tools/check-levels.js 5,6   # check specific levels
 ./tools/check-all.sh             # check all levels (parallel)
 node tools/coop-bot.js           # run scripted co-op playthroughs
 node tools/check-deps.js         # prove the co-op rooms need both players
+node tools/check-solo.js         # fail if any level can be finished by one player alone
 ```

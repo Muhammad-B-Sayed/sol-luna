@@ -1,6 +1,6 @@
-# Level design: audit and three co-op rooms
+# Level design: audit and co-op rooms
 
-This report covers the first pass of the level-design brief ("the current levels are much too simple"). It has four parts: an audit of the 32 levels, the measured movement limits, three new rooms that replace levels 14, 19 and 26, and what is still unverified.
+This report covers the level-design brief ("the current levels are much too simple"). The first pass audited the 32 levels, measured the movement limits and replaced levels 14, 19 and 26. The second pass (section 4) rebuilt the other 16 levels that one player could finish alone, because the game is co-op only: no level, tutorials included, may be finishable by one player.
 
 The brief's core rule is that each character should change what the other can do next. Every new room is built and tested against that rule.
 
@@ -14,7 +14,7 @@ The checker gained a mode where the partner can't help (`HELP=none`). Plates, le
 HELP=none node tools/check-levels.js 1,2,3
 ```
 
-**Result: in 19 of the 32 levels, each character can finish alone.** Those levels were 1-7, 9, 11, 14, 16, 18, 19, 22, 23, 25, 26, 30 and 31. Some of them are fine as movement or tutorial rooms (1-3, 9, 11, 16, 23). The rest are meant to be co-op and aren't.
+**Result: in 19 of the 32 levels, each character could finish alone.** Those levels were 1-7, 9, 11, 14, 16, 18, 19, 22, 23, 25, 26, 30 and 31. All 19 have since been rebuilt (sections 3 and 4).
 
 Two concrete examples:
 
@@ -190,14 +190,69 @@ Four moments from each bot run:
 ![Carry the Weight, solution steps](img/level-19-steps.jpg)
 ![Operator, solution steps](img/level-26-steps.jpg)
 
-## 4. Not verified
+## 4. Second pass: no level can be finished alone
+
+The game is co-op only, so the remaining 16 levels from the audit were rebuilt: 1-7, 9, 11, 16, 18, 22, 23, 25, 30 and 31. A deeper search then showed that level 17, Crate Lift, could also be finished alone (the first audit's 400k-state search stopped too early on it), so it was rebuilt too. Each keeps its name and its teaching idea (pools, levers, crates, ferries and so on) but now needs both players. `node tools/check-solo.js` runs the `HELP=none` search on every level and fails if either character reaches their door alone. It now passes for all 32 levels.
+
+### The building blocks
+
+Every room is built from a few patterns that can't be beaten alone. None of them relies on a tight race against a moving part.
+
+- **Pool barriers.** A pool 8 tiles wide can't be jumped (the limit is 6), so only its owner can cross. That makes a control "Luna-only" or "Sol-only".
+- **Cross help.** Sol's control opens Luna's way and Luna's control opens Sol's. The controls sit where only their owner can reach them.
+- **Hold and release.** One player holds a plate so the other can pass. On the far side the other sets a lever of the same colour, which frees the holder.
+- **Riders can't drive.** A lift or ferry moves only while someone stands on a plate that isn't on it. Lift floors are 7 tiles apart, so you can't hop onto a sinking lift and jump the rest.
+- **Flush bridges.** A bridge that rises 1 tile out of a pool hides again in 0.25 s, so stepping off its plate and running for it never works.
+
+### The 17 rooms
+
+| Level | What Sol does for Luna | What Luna does for Sol | Bot result |
+| --- | --- | --- | --- |
+| 1 First Light | Stands on his plate past the sun pool: opens her gate | Stands on her plate past the moon pool: opens his gate | Won, 6.6 s |
+| 2 Two Roads | Flips the lever on his road: opens her road's gate | Flips the lever on her road: opens his | Won, 9.4 s |
+| 3 Shade Moat | His lever raises a bridge over the sun moat | Her lever raises a bridge over the moon moat | Won, 9.5 s |
+| 4 Hold the Gate | Sets the lever past the gate so she can leave the plate | Holds the plate past her pool so he can pass the gate | Won, 9.9 s |
+| 5 Lever Lift | Works the lever upstairs to bring the lift down and up again | Holds the plate so he can ride the lift | Won, 15.3 s |
+| 6 First Crate | Climbs on the crate and sets the lever that keeps the pen open | Holds the plate that opens the crate pen | Won, 12.5 s |
+| 7 Crate on the Plate | Parks the crate on the inner plate so the gate stays open | Holds the outer plate so he can reach the crate | Won, 10.6 s |
+| 9 Stepping Stones | Holds the far plate so her green stones stay up | Holds the near plate so his purple stones stay up | Won, 15.6 s |
+| 11 Basins | Holds the plate on the island: bridge over the sun basin | Flips the lever past the moon basin: bridge for him | Won, 9.1 s |
+| 16 The Climb | Holds the plates for lifts B and D | Holds the plates for lifts A and C | Won, 22.7 s |
+| 17 Crate Lift | Parks the crate in the socket so the exit gate stays open; holds the plate for her lift | Holds the far plate that sends him and the crate up | Won, 15.8 s |
+| 18 Ferryman | Holds the far plate to bring her across | Holds the near plate to send him across | Won, 19.7 s |
+| 22 Crate Ferry | Ships the crate over to hold the exit gate, then holds the far plate | Holds the near plate to ferry him and the crate | Won, 19.8 s |
+| 23 Shade Garden | His lever raises the missing stone on her row | Her lever raises the missing stone on his row | Won, 15.0 s |
+| 25 Drawbridge | Holds the bridge plate once he is across; his lever upstairs raises her lift | Holds the bridge plate so he can cross; holds the plate that raises his lift | Won, 15.0 s |
+| 30 Twilight Spiral | Holds the far ferry plate and the plate for lift B; sets the corner lever | Holds the near ferry plate, the plate for lift A and the gate plate | Won, 35.2 s |
+| 31 Sanctum Approach | Sets the lever that keeps her bridge up; holds the upper plate so lift D comes down for her | Holds the bridge plate and the lift U plate; the crate then holds the final gate | Won, 21.2 s |
+
+The tutorials now teach one idea each, in order: plates (1), levers (2), shade and bridges (3), holding a gate and releasing the holder (4), working a lift for your partner (5), climbing a crate (6) and parking a crate on a plate (7). Level 25 starts the players on the wrong sides of the moat, so they swap over the bridge.
+
+Each room's start, rendered by `./tools/capture.sh`:
+
+| | | |
+| --- | --- | --- |
+| ![1](img/level-1.jpg) 1 | ![2](img/level-2.jpg) 2 | ![3](img/level-3.jpg) 3 |
+| ![4](img/level-4.jpg) 4 | ![5](img/level-5.jpg) 5 | ![6](img/level-6.jpg) 6 |
+| ![7](img/level-7.jpg) 7 | ![9](img/level-9.jpg) 9 | ![11](img/level-11.jpg) 11 |
+| ![16](img/level-16.jpg) 16 | ![17](img/level-17.jpg) 17 | ![18](img/level-18.jpg) 18 |
+| ![22](img/level-22.jpg) 22 | ![23](img/level-23.jpg) 23 | ![25](img/level-25.jpg) 25 |
+| ![30](img/level-30.jpg) 30 | ![31](img/level-31.jpg) 31 | |
+
+### How they were checked
+
+- `node tools/check-solo.js`: neither character reaches their door alone in any of the 32 levels. Crate levels are searched to 1.5M states, others to 400k. Levels 13 and 28 hit the 1.5M limit without finding a solo route; a solo route deeper than that can't be ruled out, but the bot shows their intended solutions need both players.
+- `node tools/coop-bot.js`: two scripted players win all 17 rooms (table above), plus 13, 14, 19, 26 and 28.
+- `node tools/check-levels.js`: with any help from the partner, both characters reach their doors and all of their own gems in every rebuilt room.
+
+## 5. Not verified
 
 - **No fresh player has tried these rooms.** Every result here comes from the checker and the scripted bot. That proves the rooms are solvable and that the dependencies hold. It doesn't prove that a first-time player can work out what to do, or which links read clearly. That is the most important next step.
 - **Links rely on colour.** Mechanisms match by group colour only. The brief suggests adding a symbol or a wire as well.
 - **Mobile touch controls on these rooms** haven't been tried.
-- **The other 16 solo-finishable levels** are unchanged. The audit list above is the work queue. Gate placement and plate pairs are the first things to fix.
+- **The second-pass rooms have no partial-help proofs.** `check-deps.js` proves exactly which help levels 14, 19 and 26 need. The 17 new rooms are covered by the solo check and the bot, which shows that the help described in the table is enough.
 
-## 5. Tools added
+## 6. Tools added
 
 | Command | What it does |
 | --- | --- |
@@ -206,4 +261,5 @@ Four moments from each bot run:
 | `node tools/check-deps.js` | The dependency table above, as a regression test |
 | `node tools/calibrate.js` | The movement-limits table |
 | `./tools/capture.sh` | Re-renders the images in `docs/img` with headless Chrome |
-| `./tools/check-all.sh` | Solo checker, co-op bot and dependency checks together |
+| `node tools/check-solo.js [N,...]` | Fails if either character can finish any level alone |
+| `./tools/check-all.sh` | Reachability checker, co-op bot, dependency checks and solo check together |

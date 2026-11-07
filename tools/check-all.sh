@@ -3,8 +3,9 @@
 #   1. the reachability checker on every level (crate levels with a co-op script
 #      are covered by the bot instead, because their search is slow),
 #   2. the scripted two-player playthroughs,
-#   3. the dependency checks for the co-op rooms (each player really needs the other).
-# JOBS=<n> caps parallel checker runs (default: CPU count).
+#   3. the dependency checks for the co-op rooms (each player really needs the other),
+#   4. the solo check: no level may be finished by either player alone.
+# JOBS=<n> caps parallel checker runs (default: CPU count); SOLO_JOBS (default 2) caps the solo step.
 cd "$(dirname "$0")/.."
 N=$(node -e "import('./shared/levels.js').then(m=>console.log(m.LEVELS.length))")
 SKIP=$(node --input-type=module -e "
@@ -26,4 +27,11 @@ echo "--- co-op bot ---"
 node tools/coop-bot.js || fail=1
 echo "--- dependency checks ---"
 node tools/check-deps.js || fail=1
+echo "--- solo check (every level must need both players) ---"
+T=$(mktemp -d)
+# Crate levels search 1.5M states (~800 MB each), so this step runs fewer jobs at once.
+seq 1 "$N" | xargs -P "${SOLO_JOBS:-2}" -I{} sh -c "node tools/check-solo.js {} > $T/{}.txt 2>&1"
+for i in $(seq 1 "$N"); do head -1 "$T/$i.txt"; done
+grep -l "ALONE" "$T"/*.txt >/dev/null 2>&1 && { echo "A level can be finished alone."; fail=1; } || echo "No level can be finished alone."
+rm -rf "$T"
 exit $fail

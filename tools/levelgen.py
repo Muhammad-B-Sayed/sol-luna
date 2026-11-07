@@ -132,100 +132,111 @@ def level(fn):
 
 @level
 def l01():
-    L = Lv('First Light', 25, 'Arrows move Sol, WASD moves Luna. Each can wade through their own pool.')
-    L.floor().pool(9, 28, 3, 'S').pool(15, 28, 3, 'M')
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.rampR(22, 27, 4).r(26, 24, 38, 27)
-    L.r(33, 21, 38, 23)
-    L.p(34, 20, 'A').p(37, 20, 'B')
-    L.p(10, 25, 's').p(16, 25, 'm').p(28, 22, 's').p(30, 22, 'm')
+    L = Lv('First Light', 30, "Arrows move Sol, WASD moves Luna. Wade your own pool, then stand on a plate to open your partner's gate.")
+    L.floor()
+    L.pool(8, 28, 8, 'M')                  # Luna's pool: only she reaches the left side
+    L.pool(24, 28, 8, 'S')                 # Sol's pool: only he reaches the right side
+    L.gate(6, 25, 27, '=', 0, 22)          # Luna's gate, opened by Sol's plate
+    L.p(3, 27, '2').p(1, 27, 'B')          # behind it: her plate for Sol's gate, and her door
+    L.p(33, 27, '1')                       # Sol's plate opens Luna's gate
+    L.gate(35, 25, 27, '-', 1, 22)         # Sol's gate, opened by Luna's plate
+    L.p(38, 27, 'A')
+    L.p(18, 27, 'a').p(21, 27, 'b')
+    L.p(11, 25, 'm').p(27, 25, 's').p(19, 24, 's').p(20, 24, 'm')
     return L
 
 
 @level
 def l02():
-    L = Lv('Two Roads', 30, 'Sun pools are safe for Sol, moon pools for Luna.')
-    L.floor().pool(10, 28, 6, 'M').pool(21, 28, 6, 'M')
-    L.r(1, 22, 33, 22).pool(9, 22, 6, 'S').pool(19, 22, 6, 'S')
-    L.r(35, 25, 38, 27)
-    L.r(34, 19, 38, 19)
-    L.p(2, 21, 'a').p(2, 27, 'b')
-    L.p(35, 18, 'A').p(37, 18, 'B')
-    L.p(11, 19, 's').p(21, 19, 's').p(12, 25, 'm').p(23, 25, 'm')
+    L = Lv('Two Roads', 30, "Each road has a lever for the other road's gate.")
+    L.floor()
+    L.r(1, 21, 38, 21)                     # Sol's road on top, Luna's road below
+    L.pool(7, 21, 8, 'S').pool(21, 21, 8, 'S')
+    L.pool(7, 28, 8, 'M').pool(21, 28, 8, 'M')
+    L.p(17, 20, '@')                       # Sol's lever opens Luna's gate
+    L.p(17, 27, '!')                       # Luna's lever opens Sol's gate
+    L.gate(31, 18, 20, '=', 0, 15)
+    L.gate(31, 25, 27, '-', 1, 22)
+    L.p(2, 20, 'a').p(2, 27, 'b')
+    L.p(36, 20, 'A').p(36, 27, 'B')
+    L.p(10, 18, 's').p(24, 18, 's').p(11, 25, 'm').p(25, 25, 'm')
     return L
 
 
 @level
 def l03():
-    L = Lv('Shade Moat', 30, 'Shade pools swallow everyone. Jump!')
-    L.floor().pool(8, 28, 3, 'X').pool(15, 28, 3, 'X').pool(22, 28, 3, 'S').pool(25, 28, 3, 'M')
-    L.rampR(31, 27, 3).r(34, 25, 38, 27)
-    L.r(12, 22, 34, 22).pool(24, 22, 3, 'X')
-    L.r(1, 19, 11, 19)
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(5, 18, 'A').p(8, 18, 'B')
-    L.p(9, 25, 's').p(16, 25, 'm').p(23, 26, 's').p(26, 26, 'm').p(25, 19, 's').p(20, 20, 'm')
+    L = Lv('Shade Moat', 30, "Shade pools swallow everyone, so jump them. A lever raises a bridge over your partner's pool.")
+    L.r(1, 27, 38, 28)
+    L.pool(6, 27, 3, 'X').pool(12, 27, 3, 'X')
+    L.pool(17, 27, 8, 'M').plat(17, 29, 8, 1, 0, -2, 0)   # Sol's bridge, raised by Luna's lever
+    L.p(26, 26, '!')
+    L.pool(28, 27, 8, 'S').plat(28, 29, 8, 1, 0, -2, 1)   # Luna's bridge, raised by Sol's lever
+    L.p(36, 26, '@')
+    L.p(2, 26, 'a').p(4, 26, 'b')
+    L.p(37, 26, 'A').p(38, 26, 'B')
+    L.p(7, 23, 's').p(13, 23, 'm').p(20, 25, 'm').p(31, 25, 's')
     return L
 
 
 @level
 def l04():
-    L = Lv('Hold the Gate', 35, 'Pressure plates work only while something stands on them.')
+    L = Lv('Hold the Gate', 35, 'A plate works only while someone stands on it. A lever stays where you leave it.')
     L.floor()
-    L.r(1, 21, 31, 21)
-    L.r(1, 15, 10, 20)
-    L.gate(12, 22, 27, '=', 0, 16)
-    L.set(12, 21, '.')
-    L.p(6, 27, '1').p(17, 27, '1')
-    L.pool(21, 28, 3, 'S').pool(25, 28, 3, 'M')
-    L.rampR(30, 27, 4).r(34, 24, 38, 27)
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(18, 20, 'A').p(21, 20, 'B')
-    L.p(22, 25, 's').p(26, 25, 'm').p(25, 19, 's').p(27, 19, 'm')
+    L.p(2, 27, '1')                        # the plate, past Luna's pool
+    L.pool(3, 28, 8, 'M')
+    L.gate(20, 25, 27, '=', 0, 22)
+    L.p(24, 27, '!')                       # past the gate: keeps it open for good
+    L.pool(28, 28, 3, 'S')
+    L.p(13, 27, 'a').p(15, 27, 'b')
+    L.p(35, 27, 'A').p(37, 27, 'B')
+    L.p(6, 25, 'm').p(18, 24, 's').p(29, 25, 's').p(33, 24, 'm')
     return L
 
 
 @level
 def l05():
-    L = Lv('Lever Lift', 30, 'Walk into a lever to flip it. Levers stay where you leave them.')
+    L = Lv('Lever Lift', 35, 'Ride up while your partner holds the plate. Then work the lever to fetch them.')
     L.floor()
     L.r(1, 21, 16, 21).r(21, 21, 38, 21)
-    L.r(17, 27, 20, 27, '=').mv(0, 0, -6)
-    L.p(13, 27, '!')
-    L.pool(26, 21, 3, 'S').pool(30, 21, 3, 'M')
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(3, 20, 'A').p(6, 20, 'B')
-    L.p(27, 18, 's').p(31, 18, 'm').p(9, 25, 's').p(10, 25, 'm')
+    L.clear(17, 28, 20, 28).r(17, 28, 20, 28, '=').mv(0, 0, -7)
+    L.p(2, 27, '1')
+    L.pool(3, 28, 8, 'M')
+    L.p(24, 20, '!')
+    L.pool(27, 21, 3, 'S').pool(31, 21, 3, 'M')
+    L.p(12, 27, 'a').p(14, 27, 'b')
+    L.p(35, 20, 'A').p(37, 20, 'B')
+    L.p(6, 25, 'm').p(13, 24, 's').p(28, 18, 's').p(32, 18, 'm')
     return L
 
 
 @level
 def l06():
-    L = Lv('First Crate', 25, 'Push the crate against the wall to climb.')
+    L = Lv('First Crate', 30, 'Push the crate against the wall to climb.')
     L.floor()
-    L.r(16, 24, 38, 27)
-    L.p(8, 27, 'k')
-    L.pool(22, 24, 3, 'S').pool(25, 24, 3, 'M')
-    L.r(32, 21, 38, 23)
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(34, 20, 'A').p(37, 20, 'B')
-    L.p(10, 24, 's').p(11, 24, 'm').p(23, 21, 's').p(26, 21, 'm')
+    L.p(2, 27, '1')
+    L.pool(3, 28, 8, 'M')
+    L.gate(17, 25, 27, '=', 0, 22)         # the crate pen
+    L.p(20, 27, 'k')
+    L.r(22, 24, 38, 27)                    # 4 tiles: too tall without the crate
+    L.p(25, 23, '!')
+    L.pool(28, 24, 3, 'S').pool(32, 24, 3, 'M')
+    L.p(12, 27, 'a').p(14, 27, 'b')
+    L.p(36, 23, 'A').p(38, 23, 'B')
+    L.p(6, 25, 'm').p(13, 24, 's').p(29, 21, 's').p(33, 21, 'm')
     return L
 
 
 @level
 def l07():
-    L = Lv('Crate on the Plate', 30, 'A crate can hold a plate down for you.')
+    L = Lv('Crate on the Plate', 30, 'A crate can hold a plate down in your place.')
     L.floor()
-    L.r(1, 22, 33, 22)
-    L.gate(20, 23, 27, '=', 0, 18)
-    L.set(20, 22, '.')
-    L.p(9, 27, 'k').p(19, 27, '1')
-    L.pool(24, 28, 3, 'M').pool(28, 28, 3, 'S')
-    L.r(34, 25, 38, 27)
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(24, 21, 'A').p(27, 21, 'B')
-    L.p(6, 24, 's').p(12, 24, 'm').p(29, 19, 's').p(31, 19, 'm')
+    L.p(2, 27, '1')
+    L.pool(3, 28, 8, 'M')
+    L.gate(17, 25, 27, '=', 0, 22)
+    L.p(21, 27, 'k').p(28, 27, '1')        # push the crate onto the second plate
+    L.p(12, 27, 'a').p(14, 27, 'b')
+    L.p(35, 27, 'A').p(37, 27, 'B')
+    L.p(6, 25, 'm').p(13, 24, 's').p(32, 24, 's').p(24, 24, 'm')
     return L
 
 
@@ -246,15 +257,17 @@ def l08():
 
 @level
 def l09():
-    L = Lv('Stepping Stones', 40, 'Hold the jump key to keep hopping.')
-    L.floor().pool(6, 28, 27, 'X')
-    L.r(9, 26, 10, 27).r(14, 25, 15, 27).r(19, 26, 20, 27).r(24, 24, 25, 27).r(29, 25, 30, 27)
-    L.r(36, 25, 38, 27).r(37, 22, 38, 24)
-    L.r(8, 19, 35, 19).pool(28, 19, 3, 'S').pool(24, 19, 3, 'M').pool(17, 19, 3, 'X')
-    L.r(1, 16, 7, 16)
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(3, 15, 'A').p(6, 15, 'B')
-    L.p(12, 24, 's').p(17, 23, 'm').p(22, 23, 's').p(27, 23, 'm').p(25, 16, 's').p(29, 16, 'm')
+    L = Lv('Stepping Stones', 40, "Hold the plate and your partner's stones stay up. Then swap.")
+    L.r(1, 26, 38, 28)
+    L.pool(6, 26, 27, 'X')
+    for x in (8, 13, 18, 23, 28):          # purple stones, raised by the plate on the near bank
+        L.plat(x, 27, 2, 1, 0, -2, 0)
+    for x in (10, 15, 20, 25, 30):         # green stones, raised by the plate on the far bank
+        L.plat(x, 27, 2, 1, 0, -2, 1)
+    L.p(2, 25, '1').p(34, 25, '2')
+    L.p(1, 25, 'a').p(4, 25, 'b')
+    L.p(36, 25, 'A').p(38, 25, 'B')
+    L.p(14, 23, 's').p(24, 23, 's').p(16, 23, 'm').p(26, 23, 'm')
     return L
 
 
@@ -277,18 +290,16 @@ def l10():
 
 @level
 def l11():
-    L = Lv('Basins', 40, 'Ramps lead down into sunken pools.')
+    L = Lv('Basins', 40, "Ramps lead down into sunken pools. Your plate and lever raise bridges over your partner's basin.")
     L.r(1, 27, 38, 28)
-    L.basin(6, 28, 3, 'S').basin(13, 28, 3, 'M').basin(20, 28, 4, 'X')
-    L.rampR(30, 26, 3).r(33, 24, 38, 26)
-    L.r(36, 21, 38, 23)
-    L.r(6, 19, 34, 20)
-    L.basin(26, 20, 3, 'M').basin(18, 20, 3, 'S').basin(11, 20, 2, 'X')
-    L.r(1, 16, 5, 16)
-    L.p(2, 26, 'a').p(4, 26, 'b')
-    L.p(2, 15, 'A').p(4, 15, 'B')
-    L.p(15, 23, 's').p(8, 23, 'm').p(22, 23, 's').p(23, 23, 'm')
-    L.p(28, 16, 's').p(20, 16, 'm')
+    L.basin(5, 28, 8, 'S').plat(6, 29, 8, 1, 0, -1, 0)    # bridge for Luna, raised by Sol's plate
+    L.p(16, 26, '1')                                       # on the island between the basins
+    L.basin(19, 28, 8, 'M').plat(20, 29, 8, 1, 0, -1, 1)  # bridge for Sol, raised by Luna's lever
+    L.p(30, 26, '@')
+    L.rampR(31, 26, 3).r(34, 24, 38, 26)
+    L.p(2, 26, 'a').p(3, 26, 'b')
+    L.p(35, 23, 'A').p(37, 23, 'B')
+    L.p(9, 27, 's').p(23, 27, 'm').p(32, 22, 's').p(36, 20, 'm')
     return L
 
 
@@ -372,53 +383,54 @@ def l15():
 
 @level
 def l16():
-    L = Lv('The Climb', 50, 'Up, up, up.')
-    L.floor().pool(10, 28, 3, 'S').pool(16, 28, 3, 'M')
-    L.r(30, 25, 38, 25)
-    L.r(19, 22, 27, 22).pool(21, 22, 3, 'S')
-    L.r(8, 19, 16, 19).pool(11, 19, 3, 'M')
-    L.r(1, 16, 5, 16)
-    L.r(8, 13, 16, 13).pool(11, 13, 2, 'X')
-    L.r(19, 10, 27, 10).pool(21, 10, 2, 'S').pool(24, 10, 2, 'M')
-    L.r(30, 7, 38, 7)
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(33, 6, 'A').p(36, 6, 'B')
-    L.p(11, 25, 's').p(17, 25, 'm').p(22, 19, 's').p(12, 16, 'm').p(11, 10, 's').p(12, 10, 'm')
-    L.p(22, 7, 's').p(25, 7, 'm')
+    L = Lv('The Climb', 55, 'Every lift needs someone else on its plate. Take turns going up.')
+    L.floor()
+    L.r(1, 21, 38, 21)                     # middle floor, 7 tiles up
+    L.r(1, 14, 38, 14)                     # top floor, 7 more
+    # ground -> middle: lift A (purple plate on the ground), lift B (green plate upstairs)
+    L.clear(4, 28, 6, 28).r(4, 28, 6, 28, '=').mv(0, 0, -7).clear(4, 21, 6, 21)
+    L.clear(33, 28, 35, 28).r(33, 28, 35, 28, '-').mv(1, 0, -7).clear(33, 21, 35, 21)
+    L.p(12, 27, '1').p(27, 20, '2')
+    # middle -> top: lift C (orange plate on the middle floor), lift D (white plate on top)
+    L.r(18, 21, 20, 21, '_').mv(2, 0, -7).clear(18, 14, 20, 14)
+    L.r(8, 21, 10, 21, '+').mv(3, 0, -7).clear(8, 14, 10, 14)
+    L.p(13, 20, '3').p(26, 13, '4')
+    L.pool(22, 28, 3, 'S').pool(14, 21, 2, 'M')
+    L.p(8, 27, 'a').p(10, 27, 'b')
+    L.p(2, 13, 'A').p(4, 13, 'B')
+    L.p(23, 25, 's').p(15, 18, 'm').p(24, 18, 's').p(30, 11, 'm')
     return L
 
 
 @level
 def l17():
-    L = Lv('Crate Lift', 50, 'The plate upstairs needs something heavy.')
-    L.floor().clear(16, 28, 19, 28)
-    L.r(16, 28, 19, 28, '=').mv(0, 0, -8)
-    L.r(1, 20, 38, 20).clear(16, 20, 19, 20)
-    L.r(1, 14, 38, 14)
-    L.r(1, 1, 38, 13)
-    L.gate(26, 15, 19, '-', 1, 10)
-    L.p(21, 27, '!').p(13, 19, '!')
-    L.p(7, 27, 'k')
-    L.p(22, 19, '2')
-    L.pool(24, 28, 3, 'S').pool(29, 28, 3, 'M')
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(31, 19, 'A').p(35, 19, 'B')
-    L.p(25, 25, 's').p(30, 25, 'm').p(9, 17, 's').p(11, 17, 'm')
+    L = Lv('Crate Lift', 55, 'The plate upstairs needs something heavy. Each lift needs a partner on its plate.')
+    L.floor()
+    L.r(1, 20, 38, 21)                     # upper floor, 8 tiles up (2 thick for the crate socket)
+    L.r(1, 1, 38, 14)                      # rock above the upper hall
+    L.clear(16, 28, 19, 28).r(16, 28, 19, 28, '=').mv(0, 0, -8).clear(16, 20, 19, 21)   # lift E
+    L.clear(31, 28, 33, 28).r(31, 28, 33, 28, '_').mv(2, 0, -8).clear(31, 20, 33, 21)   # lift F
+    L.p(2, 27, '1')                        # E's plate, far from E
+    L.p(28, 19, '3')                       # F's plate, upstairs
+    L.clear(22, 20, 23, 20).p(22, 20, '2') # crate socket: holds the exit gate open
+    L.gate(36, 18, 19, '-', 1, 16)
+    L.p(8, 27, 'k')
+    L.p(5, 27, 'a').p(3, 27, 'b')
+    L.p(37, 19, 'A').p(38, 19, 'B')
+    L.p(10, 24, 's').p(13, 24, 'm').p(26, 16, 's').p(29, 16, 'm')
     return L
 
 
 @level
 def l18():
-    L = Lv('Ferryman', 50, 'Levers on either shore call the ferry.')
+    L = Lv('Ferryman', 50, 'The ferry runs only while someone stands on a plate.')
     L.floor().pool(8, 28, 24, 'X')
     L.r(1, 25, 7, 27).r(32, 25, 38, 27)
-    L.r(18, 27, 21, 27)
     L.r(8, 25, 11, 25, '=').mv(0, 20, 0)
-    L.p(3, 24, '!').p(32, 24, '!')
-    L.r(33, 22, 38, 24)
-    L.p(2, 24, 'a').p(5, 24, 'b')
-    L.p(34, 21, 'A').p(37, 21, 'B')
-    L.p(19, 26, 's').p(20, 26, 'm').p(14, 21, 's').p(24, 21, 'm')
+    L.p(2, 24, '1').p(33, 24, '1')
+    L.p(4, 24, 'a').p(6, 24, 'b')
+    L.p(35, 24, 'A').p(37, 24, 'B')
+    L.p(9, 21, 's').p(10, 21, 'm').p(29, 21, 's').p(30, 21, 'm')
     return L
 
 
@@ -488,38 +500,45 @@ def l21():
 
 @level
 def l22():
-    L = Lv('Crate Ferry', 60, 'Ship the crate across to hold the far plate.')
+    L = Lv('Crate Ferry', 60, 'The ferry runs only while someone stands on a plate. Ship the crate across to hold the gate.')
     L.floor().pool(8, 28, 22, 'X')
     L.r(1, 25, 7, 27).r(30, 25, 38, 27)
-    L.r(18, 27, 19, 27)
     L.r(8, 25, 11, 25, '=').mv(0, 18, 0)
-    L.p(5, 24, '!').p(31, 24, '!')
-    L.p(10, 24, 'k')
-    L.r(32, 20, 38, 21)
-    L.floorgate(33, 22, 3, 1)
-    L.p(32, 24, '2')
-    L.p(2, 24, 'a').p(3, 24, 'b')
-    L.p(35, 24, 'A').p(37, 24, 'B')
-    L.p(18, 25, 's').p(19, 25, 'm').p(13, 21, 's').p(24, 21, 'm')
+    L.p(1, 24, '1')                        # near ferry plate, in the corner
+    L.p(6, 24, 'k')
+    L.p(30, 24, '2')                       # gate plate at the far dock: the crate's job
+    L.p(32, 24, '1')                       # far ferry plate
+    L.r(34, 20, 38, 21)                    # roof over the exits
+    L.floorgate(36, 22, 3, 1)              # sinks while the gate plate is held
+    L.p(2, 24, 'b').p(4, 24, 'a')
+    L.p(37, 24, 'A').p(38, 24, 'B')
+    L.p(9, 21, 's').p(10, 21, 'm').p(28, 21, 's').p(29, 21, 'm')
     return L
 
 
 @level
 def l23():
-    L = Lv('Shade Garden', 55, 'Stepping stones over shade. Some stones belong to one of you.')
+    L = Lv('Shade Garden', 55, "Sun stones carry Sol, moon stones carry Luna. Your lever raises the missing stone on your partner's row.")
     L.floor().pool(5, 28, 30, 'X')
-    L.r(1, 25, 4, 27)
-    L.r(7, 24, 8, 24)
-    L.r(11, 22, 12, 22)
-    L.r(14, 19, 15, 19).pool(16, 24, 2, 'S')
-    L.r(20, 22, 21, 22)
-    L.pool(24, 24, 2, 'M').r(23, 19, 24, 19)
-    L.r(27, 22, 28, 22)
-    L.r(31, 20, 32, 20)
-    L.r(35, 22, 38, 27)
-    L.p(2, 24, 'a').p(3, 24, 'b')
-    L.p(35, 21, 'A').p(37, 21, 'B')
-    L.p(16, 21, 's').p(24, 21, 'm').p(10, 19, 's').p(19, 17, 'm').p(28, 17, 's').p(30, 17, 'm')
+    # a shade-topped band splits the garden: Sol hops below it, Luna above it
+    L.r(3, 19, 34, 20).pool(5, 19, 30, 'X')
+    L.r(1, 17, 2, 27)                      # Luna's start ledge (top) over solid rock
+    L.r(3, 25, 4, 27)                      # Sol's start pocket under the band
+    # Sol's row: sun stones, his lever stone, the purple stone Luna raises, his bank
+    for x in (7, 19, 24):
+        L.r(x, 26, x + 1, 27).pool(x, 25, 2, 'S')
+    L.r(13, 25, 15, 27).p(15, 24, '@')
+    L.plat(29, 29, 2, 1, 0, -4, 0)
+    L.r(34, 25, 38, 27)
+    # Luna's row: moon stones, her lever stone, the green stone Sol raises, her bank
+    for x in (6, 17, 22, 32):
+        L.r(x, 18, x + 1, 18).pool(x, 17, 2, 'M')
+    L.r(11, 17, 13, 18).p(13, 16, '!')
+    L.plat(27, 20, 2, 1, 0, -3, 1)
+    L.r(35, 17, 38, 18)
+    L.p(3, 24, 'a').p(1, 16, 'b')
+    L.p(37, 24, 'A').p(37, 16, 'B')
+    L.p(10, 22, 's').p(21, 22, 's').p(9, 14, 'm').p(25, 14, 'm')
     return L
 
 
@@ -540,18 +559,19 @@ def l24():
 
 @level
 def l25():
-    L = Lv('Drawbridge', 60, 'Hold the plate and the bridge comes down.')
-    L.floor().pool(13, 28, 12, 'X')
-    L.r(13, 22, 24, 22, '=').mv(0, 0, 6)
-    L.p(9, 27, '1').p(28, 27, '1')
-    L.clear(31, 28, 34, 28).r(31, 28, 34, 28, '-').mv(1, 0, -8)
-    L.r(1, 20, 30, 20).r(35, 20, 38, 20)
-    L.p(36, 27, '@').p(29, 19, '@')
-    L.pool(22, 20, 3, 'S').pool(17, 20, 3, 'M').pool(10, 20, 3, 'X')
-    L.r(1, 17, 5, 17)
-    L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(2, 16, 'A').p(4, 16, 'B')
-    L.p(16, 24, 's').p(21, 24, 'm').p(18, 17, 's').p(23, 17, 'm')
+    L = Lv('Drawbridge', 60, 'You start on the wrong sides. Hold the plate and the bridge comes up for your partner.')
+    L.r(1, 27, 38, 28)
+    L.pool(13, 27, 12, 'X').plat(13, 28, 12, 1, 0, -1, 0)   # the bridge, flush when up
+    L.p(2, 26, '1').p(36, 26, '1')
+    # Luna's door is up on the left, Sol's up on the right
+    L.r(1, 19, 6, 19).r(32, 19, 38, 19)
+    L.r(7, 27, 9, 27, '_').mv(2, 0, -8)    # Luna's lift, raised by Sol's lever upstairs
+    L.r(29, 27, 31, 27, '-').mv(1, 0, -8)  # Sol's lift, raised by the green plate on the left
+    L.p(10, 26, '2')
+    L.p(34, 18, '$')
+    L.p(5, 26, 'a').p(33, 26, 'b')
+    L.p(37, 18, 'A').p(2, 18, 'B')
+    L.p(16, 24, 's').p(21, 24, 'm').p(35, 15, 's').p(4, 15, 'm')
     return L
 
 
@@ -642,40 +662,47 @@ def l29():
 
 @level
 def l30():
-    L = Lv('Twilight Spiral', 80, 'Stones, a ferry, then the long climb.')
-    L.floor().pool(6, 28, 26, 'X')
-    L.r(1, 25, 5, 27)
-    L.r(8, 24, 9, 24).r(12, 23, 13, 23).r(16, 24, 17, 24).r(20, 22, 21, 22).r(24, 24, 25, 24).r(28, 23, 29, 23)
-    L.r(32, 24, 38, 27)
-    L.r(36, 21, 38, 23)
-    L.r(1, 18, 34, 18).pool(12, 18, 19, 'X')
-    L.r(27, 18, 30, 18, '=').mv(0, -15, 0)
-    L.p(32, 17, '!').p(9, 17, '!')
-    L.r(6, 15, 9, 15).r(1, 12, 3, 12).r(6, 9, 9, 9)
-    L.r(12, 6, 38, 6).pool(18, 6, 3, 'S').pool(23, 6, 3, 'M')
-    L.p(2, 24, 'a').p(4, 24, 'b')
-    L.p(31, 5, 'A').p(35, 5, 'B')
-    L.p(14, 20, 's').p(26, 20, 'm').p(18, 15, 's').p(22, 15, 'm').p(19, 3, 's').p(24, 3, 'm')
+    L = Lv('Twilight Spiral', 80, 'A ferry, two lifts, then stones to a gate one of you must hold.')
+    L.floor().pool(8, 28, 22, 'X')
+    L.r(1, 25, 7, 27).r(30, 25, 38, 27)
+    L.r(8, 25, 11, 25, '=').mv(0, 18, 0)    # ferry (purple plates on both shores)
+    L.p(1, 24, '1').p(30, 24, '1')
+    # lifts from the far shore to the upper floor: A (green plate on the shore), B (orange plate upstairs)
+    L.r(1, 18, 38, 18)
+    L.r(37, 25, 38, 25, '-').mv(1, 0, -7).clear(37, 18, 38, 18)
+    L.r(32, 25, 34, 25, '_').mv(2, 0, -7).clear(32, 18, 34, 18)
+    L.p(35, 24, '2').p(28, 17, '3')
+    # upper floor: white plate, stones over shade, the gate, doors, and a lever in the corner
+    L.p(30, 17, '4')
+    L.pool(17, 18, 10, 'X').r(19, 17, 20, 17).r(23, 17, 24, 17)
+    L.gate(14, 15, 17, '+', 3, 12)
+    L.p(1, 17, '%')
+    L.p(3, 24, 'a').p(5, 24, 'b')
+    L.p(4, 17, 'A').p(6, 17, 'B')
+    L.p(9, 21, 's').p(10, 21, 'm').p(20, 14, 's').p(24, 14, 'm')
     return L
 
 
 @level
 def l31():
     L = Lv('Sanctum Approach', 85, 'Bridge, balance, and a crate for the final gate.')
-    L.floor().pool(9, 28, 10, 'X')
-    L.r(9, 22, 18, 22, '=').mv(0, 0, 6)
-    L.p(5, 27, '1').p(21, 27, '1')
-    L.plat(24, 27, 3, 1, 0, -10, 1)
-    L.plat(33, 17, 3, 1, 0, 10, 1)
-    L.r(1, 17, 23, 17).r(27, 17, 32, 17).r(36, 17, 38, 17)
-    L.p(30, 27, '2').p(29, 16, '2')
-    L.gate(5, 13, 16, '_', 2, 9)
-    L.p(6, 16, '3')
-    L.p(20, 16, 'k')
-    L.pool(36, 28, 1, 'S').pool(37, 28, 1, 'M')
-    L.p(2, 27, 'a').p(3, 27, 'b')
-    L.p(2, 16, 'A').p(4, 16, 'B')
-    L.p(13, 24, 's').p(15, 24, 'm').p(13, 14, 's').p(16, 14, 'm').p(37, 15, 's').p(28, 14, 'm')
+    L.r(1, 27, 38, 28)
+    # bridge: Luna holds the plate past her pool, Sol sets the lever on the far side
+    L.p(1, 26, '1').pool(2, 27, 8, 'M')
+    L.pool(14, 27, 8, 'X').plat(14, 28, 8, 1, 0, -1, 0)
+    L.p(22, 26, '!')
+    # balance: one green group drives lift U up and lift D down
+    L.r(1, 19, 38, 20)
+    L.r(24, 27, 26, 27, '-').mv(1, 0, -8).clear(24, 19, 26, 20)
+    L.plat(36, 27, 3, 1, 0, -8, 1, inv=True).clear(36, 19, 38, 20)
+    L.p(29, 26, '2').p(31, 18, '2')
+    # crate: into the socket so the final gate stays open for both
+    L.p(20, 18, 'k')
+    L.clear(12, 19, 13, 19).p(12, 19, '3')
+    L.gate(6, 16, 18, '_', 2, 13)
+    L.p(11, 26, 'a').p(12, 26, 'b')
+    L.p(2, 18, 'A').p(4, 18, 'B')
+    L.p(5, 24, 'm').p(18, 24, 's').p(33, 16, 's').p(17, 15, 'm')
     return L
 
 

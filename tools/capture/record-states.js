@@ -10,6 +10,8 @@ const SHOTS = {
   19: ['E0 up', 'G1 open', 'crate settles', 'E0 up with luna'],
   26: ['bridge 1 out', 'bridge 2 out', 'E up', 'GX open'],
 };
+// Rooms pictured at the start only (no solution grid).
+for (const n of [1, 2, 3, 4, 5, 6, 7, 9, 11, 16, 17, 18, 22, 23, 25, 30, 31]) SHOTS[n] = [];
 
 const out = {};
 for (const n of Object.keys(SHOTS)) {

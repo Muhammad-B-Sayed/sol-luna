@@ -176,7 +176,7 @@ export class Renderer {
   draw(L, S, view, time) {
     const g = this.ctx, sc = this.scale;
     g.setTransform(1, 0, 0, 1, 0, 0);
-    if (this.bg) g.drawImage(this.bg, 0, 0);
+    if (this.bg && this.bg.width && this.bg.height) g.drawImage(this.bg, 0, 0);   // a 0x0 window (hidden tab) leaves bg empty
     let shx = 0, shy = 0;
     if (this.shake > 0) { shx = (Math.random() - 0.5) * this.shake; shy = (Math.random() - 0.5) * this.shake; this.shake *= 0.86; if (this.shake < 0.3) this.shake = 0; }
     g.setTransform(sc, 0, 0, sc, shx * sc, shy * sc);

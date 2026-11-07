@@ -65,7 +65,8 @@ tools/levelgen.py    Level authoring DSL (Python). Source of truth for levels.
 tools/check-levels.js  Solo reachability checker (real physics, BFS over macro-actions).
                      HELP=none / HELP=0,2 limit what the absent partner may do (dependency checks).
 tools/check-deps.js  Asserts each co-op room needs exactly the help its solution describes.
-tools/coop-bot.js    Scripted two-player playthroughs (13,14,17,19,22,26,28,31).
+tools/check-solo.js  Fails if either character can finish any level alone (the game is co-op only).
+tools/coop-bot.js    Scripted two-player playthroughs (1-7,9,11,13,14,16-19,22,23,25,26,28,30,31).
 tools/calibrate.js   Measures the movement envelope (jump, gaps, climbs) with the real sim.
 tools/capture.sh     Renders docs/img room pictures with the real renderer in headless Chrome.
 tools/check-all.sh   Checker on every level except bot-covered crate levels, then bot, then deps.
@@ -230,9 +231,11 @@ in row-major scan order of their top-left cell, then explicit `plat()` / `floorg
 
 **Level design review (Nov 2026).** The user said the levels were "much too simple". An audit
 with `HELP=none` found that in 19 of 32 levels each character can finish without the partner.
-Levels 14, 19 and 26 were replaced by three rooms that need real cooperation. Read
-`docs/level-design.md` for the audit, measured movement limits, room maps, solutions and
-dependency proofs. The 16 other solo-finishable levels are listed there as the work queue.
+Levels 14, 19 and 26 were replaced by three rooms that need real cooperation. The user then
+made the rule explicit: **the game is co-op only, so no level may be finishable by one player,
+tutorials included.** The other 16 levels (1-7, 9, 11, 16, 18, 22, 23, 25, 30, 31) were rebuilt
+to match, plus level 17 after a deeper search found a solo route, and `tools/check-solo.js` now enforces the rule for all 32. Read `docs/level-design.md`
+for the audit, measured movement limits, room maps, solutions and proofs.
 
 **Design rules for co-op rooms (learned in that pass):**
 - Write the solution as a dependency chain first, then prove it with `tools/check-deps.js`
@@ -247,6 +250,17 @@ dependency proofs. The 16 other solo-finishable levels are listed there as the w
   jump limit and fail if a ledge is overhead.
 - Character-only routes: a pool under a 2-tile-high ceiling (no one can jump it).
 - Crate sockets: a 2-wide, 1-deep dip with the plate at the bottom keeps a crate on the plate.
+  The crate leaves a gap in the dip; players must jump it.
+- An 8-tile pool can't be jumped (the limit is 6). It is the simplest way to make a control
+  reachable by one character only.
+- Riders can't drive: a lift or ferry that moves only while a plate off it is held can't be used
+  alone. Keep lift floors 7 tiles apart so a sinking lift can't serve as a step.
+- Flush bridges (rise 1 tile out of a pool) hide again in 0.25 s, so nobody can outrun them.
+- Plates are 8 px wider than a tile. Leave a free tile between a plate and any spot where a
+  player waits, or the waiting player presses it.
+- Lifts that fill a hole in a floor should be 3 tiles wide. On a 2-wide lift a player standing off
+  centre hits the hole's edge with their head and the lift stops.
+- On a short stone, put a lever on the far cell so the run-up for the next jump walks through it.
 
 **Design rules that keep levels solvable with the current `PHYS`:**
 - Vertical steps of 3 tiles or less.
@@ -269,9 +283,10 @@ dependency proofs. The 16 other solo-finishable levels are listed there as the w
 
 ```bash
 python3 tools/levelgen.py            # regenerate levels
-./tools/check-all.sh                 # ~20-25 min: checker on 26 levels + co-op bot + check-deps (level 19 alone ~13 min)
+./tools/check-all.sh                 # ~1 h: checker + co-op bot + check-deps + solo check (SOLO_JOBS=2)
 node tools/check-deps.js 14,26       # dependency proofs for the co-op rooms (14,26 ~1.5 min; 19 ~13 min)
-HELP=none node tools/check-levels.js 4   # can one character finish level 4 alone?
+node tools/check-solo.js 1,2,3       # can either character finish these levels alone? (must say "needs partner")
+HELP=none node tools/check-levels.js 4   # same search, with gem counts
 node tools/calibrate.js              # movement envelope
 node tools/check-levels.js 12,15     # specific levels; TRACE=1 prints a path to the door
 LIMIT=1500000 node tools/check-levels.js 7   # crate levels need a higher state limit
@@ -282,8 +297,15 @@ V=1 node tools/coop-bot.js 28        # verbose scripted co-op run
   jumps with air control). The absent partner may flip any mechanism group at any time.
   - Results at handoff: every non-bot level reports `door Y` and all of its own gems for both characters.
   - A pass is necessary but not sufficient: it doesn't model who must stand where.
-- **`coop-bot.js`** plays levels 13, 14, 17, 19, 22, 26, 28 and 31 with two scripted players, all winning.
-  - Phase builders: `mv`, `push`, `hop`, `hopTo`, `jumpWhen`, `wait`.
+- **`check-solo.js`** runs the `HELP=none` search (partner absent, mechanisms real) for each level
+  and stops at the first door. Every level reports "needs partner" for both characters. Crate
+  levels are searched to 1.5M states (400k missed a solo route in the old level 17); 13 and 28
+  still hit that limit without finding one.
+- **`coop-bot.js`** plays 22 levels with two scripted players, all winning: 1-7, 9, 11, 13, 14,
+  16-19, 22, 23, 25, 26, 28, 30 and 31.
+  - Phase builders: `mv`, `push`, `hop`, `hopTo`, `jumpWhen`, `leap`, `wait`.
+  - `leap(who, from, at, to)` walks to `from`, runs, jumps once past `at` and steers onto `to`.
+    Use it for short stones, where a standing jump falls short.
   - Gotchas: when walking through a lever, the target must be past the lever tile, or the bot
     overshoots, walks back and reverts the lever. Also keep players out from under descending lifts.
 - **Online:** tested with two Playwright contexts: host, join by code, play, compare positions.
@@ -335,10 +357,11 @@ V=1 node tools/coop-bot.js 28        # verbose scripted co-op run
 ## 8. Open ideas / next steps
 
 - **Level redesign, continued** (the user's current priority; see `docs/level-design.md`):
-  - Playtest levels 14, 19 and 26 with a fresh pair of players. Record where they stop and why.
-  - Rework the 16 other solo-finishable levels (list in the doc), easiest wins first: remove the
-    second plate from paired-plate gates, move controls away from what they move.
+  - Playtest with a fresh pair of players, starting with tutorials 1-7 (all rebuilt as co-op) and
+    rooms 14, 19, 26. Record where they stop and why.
   - Add a symbol or wire to mechanisms so links don't rely on colour alone.
+  - Levels 8, 10, 12, 13, 15, 20, 21, 24, 27-29 and 32 already needed both players and were
+    not changed. Some need the partner only once; they could be deepened later.
 - **Human playtest** and tuning of `PHYS` to taste. The user's top priority was the original
   game's physics feel. Ask them for feedback on jump height, speed and air control.
 - **Level select:** a nicer level map (currently an 8x4 grid). Per-level gem and time stats are
