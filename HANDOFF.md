@@ -269,7 +269,7 @@ dependency proofs. The 16 other solo-finishable levels are listed there as the w
 
 ```bash
 python3 tools/levelgen.py            # regenerate levels
-./tools/check-all.sh                 # ~20-25 min: checker on 29 levels + co-op bot + check-deps (level 19 alone ~13 min)
+./tools/check-all.sh                 # ~20-25 min: checker on 26 levels + co-op bot + check-deps (level 19 alone ~13 min)
 node tools/check-deps.js 14,26       # dependency proofs for the co-op rooms (14,26 ~1.5 min; 19 ~13 min)
 HELP=none node tools/check-levels.js 4   # can one character finish level 4 alone?
 node tools/calibrate.js              # movement envelope
