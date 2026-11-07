@@ -286,7 +286,7 @@ for the audit, measured movement limits, room maps, solutions and proofs.
 
 ```bash
 python3 tools/levelgen.py            # regenerate levels
-./tools/check-all.sh                 # ~1 h: checker + co-op bot + check-deps + solo check (SOLO_JOBS=2)
+./tools/check-all.sh                 # ~40 min (JOBS=3): checker + co-op bot + check-deps + solo check (SOLO_JOBS=2)
 node tools/check-deps.js 14,26       # dependency proofs for the co-op rooms (14,26 ~1.5 min; 19 ~13 min)
 node tools/check-solo.js 1,2,3       # can either character finish these levels alone? (must say "needs partner")
 HELP=none node tools/check-levels.js 4   # same search, with gem counts
