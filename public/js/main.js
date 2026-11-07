@@ -353,7 +353,8 @@ function pause(on) {
   if (on) {
     $('#pauseOnline').hidden = app.mode !== 'online';
     $('#pRestart').hidden = false;
-    $('#pLevels').hidden = app.mode === 'online' && !app.host;
+    $('#pLevels').hidden = false;
+    $('#pSwap').hidden = app.mode !== 'online';
     show('pause');
     $('#pResume').focus();
   } else show(null);
@@ -371,6 +372,7 @@ function quitToMenu() {
 // online
 
 net.on('room', (m) => {
+  if (app.room && app.me !== m.you) toast(m.you === SOL ? 'You are Sol now.' : 'You are Luna now.');
   app.room = m; app.me = m.you; app.host = m.host;
   history.replaceState(null, '', '/' + m.code);
   if (!app.inGame) renderLobby();
@@ -407,9 +409,9 @@ function renderLobby() {
   $('#slotSol').parentElement.classList.toggle('me', app.me === SOL);
   $('#slotLuna').parentElement.classList.toggle('me', app.me === LUNA);
   $('#lobbyStatus').textContent = two
-    ? (app.host ? 'Both here! Pick a level to begin.' : 'Both here! Waiting for the host to pick a level…')
+    ? 'Both here! Pick a level to begin. Click a character to play as them.'
     : 'Share the code (or link) with a friend so they can join.';
-  $('#lobbyPick').hidden = !app.host;
+  $('#lobbyPick').hidden = false;
   $('#lobbyPick').disabled = !two;
 }
 
@@ -444,6 +446,9 @@ $('#btnMute').onclick = () => { const m = sfx.toggle(); $('#btnMute').textConten
 $('#btnMute').textContent = sfx.muted ? 'Sound: off' : 'Sound: on';
 
 $('#lobbySwap').onclick = () => { sfx.ui(); net.send({ t: 'swap' }); };
+$('#slotSol').parentElement.onclick = () => { if (app.me !== SOL) { sfx.ui(); net.send({ t: 'swap', char: SOL }); } };
+$('#slotLuna').parentElement.onclick = () => { if (app.me !== LUNA) { sfx.ui(); net.send({ t: 'swap', char: LUNA }); } };
+$('#pSwap').onclick = () => { sfx.ui(); net.send({ t: 'swap' }); pause(false); };
 $('#lobbyPick').onclick = () => { sfx.ui(); openLevels(); };
 $('#lobbyLeave').onclick = () => { sfx.ui(); quitToMenu(); };
 $('#lobbyCopy').onclick = async () => {

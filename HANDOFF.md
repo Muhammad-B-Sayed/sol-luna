@@ -142,9 +142,12 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
 
   | Direction | Messages |
   | --- | --- |
-  | Client → server | `create`, `join{code}`, `swap`, `start{level}` (host only), `restart`, `menu` (host only), `leave`, `ping` |
+  | Client → server | `create`, `join{code}`, `swap{char?}`, `start{level}`, `restart`, `menu`, `leave`, `ping` (either player may send any of them) |
   | Server → client | `room`, `start{level, st}`, `s`, `menu`, `peer-left`, `err`, `pong` |
-- **Characters:** the host starts as Sol, and "Swap characters" in the lobby swaps them.
+- **Characters:** the host starts as Sol and a guest gets the free character. Either player can
+  click a character in the lobby, press "Swap characters", or swap from the pause menu (that
+  restarts the level with the new roles). Fixed Nov 2026: with one player in the room, swap used
+  to flip the character twice and do nothing, and it was ignored once a level had started.
 - **Testing aids:**
   - `LAG_MS=80 npm start` adds artificial one-way latency on the server.
   - `window.__app` is exposed in the browser for Playwright tests (harmless; keep or remove).
@@ -309,6 +312,8 @@ V=1 node tools/coop-bot.js 28        # verbose scripted co-op run
   - Gotchas: when walking through a lever, the target must be past the lever tile, or the bot
     overshoots, walks back and reverts the lever. Also keep players out from under descending lifts.
 - **Online:** tested with two Playwright contexts: host, join by code, play, compare positions.
+  Nov 2026: two `ws` clients swapped characters (alone, in the lobby and mid-level) and won
+  level 1 online through the server; the lobby UI was checked in two browser tabs.
   - Prediction tested at 160 ms round-trip with `LAG_MS=80`: no backward snaps on the local player.
 - **Playwright:** pre-installed in the sandbox (`require('playwright')`, `chromium.launch()`).
   Start a server on any port, e.g. `PORT=3123 node server/index.js`.
@@ -370,7 +375,6 @@ V=1 node tools/coop-bot.js 28        # verbose scripted co-op run
 - **Render:** set the health check path to `/healthz` in the dashboard; the MCP tool lacked the field.
 - **Polish:**
   - Remove `window.__app` if you don't want it exposed.
-  - Add a `LICENSE` file (`package.json` says MIT, but no file exists).
 - **Online robustness:**
   - Reconnect after a socket drop. Currently it returns to the title screen.
   - Spectators or rooms with more than 2 people (not requested).

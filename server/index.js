@@ -168,14 +168,19 @@ function onMessage(ws, data) {
         return;
       }
       case 'swap': {
-        if (!room || room.S) return;
-        room.clients.forEach(c => { c.char = 1 - c.char; });
-        if (room.clients.length === 1) room.clients[0].char = 1 - room.clients[0].char;
+        // Either player may swap at any time. { char } picks a character; without it, swap.
+        if (!room) return;
+        const me = room.clients.find(c => c.ws === ws);
+        if (!me) return;
+        const want = m.char === 0 || m.char === 1 ? m.char : 1 - me.char;
+        if (want === me.char) return;
+        for (const c of room.clients) c.char = 1 - c.char;
         room.broadcastRoom();
+        if (room.S) room.start(room.level);   // mid-level: restart with the new roles
         return;
       }
       case 'start': {
-        if (!room || room.host?.ws !== ws) return;
+        if (!room) return;
         const lv = m.level | 0;
         if (lv < 0 || lv >= BUILT.length) return;
         if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
@@ -188,7 +193,7 @@ function onMessage(ws, data) {
         return;
       }
       case 'menu': {
-        if (!room || room.host?.ws !== ws) return;
+        if (!room) return;
         room.stop();
         room.broadcastRoom();
         return;
