@@ -320,23 +320,36 @@ def l13():
 
 @level
 def l14():
-    L = Lv('Lift Relay', 75, 'Every lift has a lever at the bottom and one at the top.')
-    L.floor()
-    L.r(1, 21, 38, 21).clear(30, 21, 33, 21)
-    L.r(1, 14, 38, 14).clear(4, 14, 7, 14)
-    L.r(1, 7, 38, 7).clear(30, 7, 33, 7)
-    L.r(30, 27, 33, 27, '=').mv(0, 0, -6)
-    L.r(4, 20, 7, 20, '-').mv(1, 0, -6)
-    L.r(30, 13, 33, 13, '_').mv(2, 0, -6)
-    L.p(25, 27, '!').p(36, 20, '!')
-    L.p(10, 20, '@').p(2, 13, '@')
-    L.p(25, 13, '$').p(36, 6, '$')
-    L.pool(14, 21, 3, 'S').pool(20, 21, 3, 'M')
-    L.pool(14, 14, 3, 'X')
-    L.pool(24, 7, 3, 'S').pool(18, 7, 3, 'M')
+    L = Lv("Helper's Way Out", 90, 'Whoever holds the plate needs a way out. Leave each other a lever.')
+    # Bands: bottom floor row 28, middle floor row 18, top floor row 10. Every climb is 2 tiles.
+    L.floor(28)
+    L.r(1, 18, 34, 18)                     # middle floor (sun corridor + hub)
+    L.r(1, 10, 25, 10)                     # top floor (exits, moon alcove, landing)
+    L.r(38, 11, 38, 27)                    # right wall of Luna's lift shaft
+    # bottom band: start, Sol's lift E1, Luna's low moon channel, plate P1, Luna's lift S1
+    L.r(7, 28, 9, 28, '=').mv(0, 0, -10)   # E1 rises flush into the middle floor while P1 is held
+    L.clear(7, 18, 9, 18)
+    L.r(11, 19, 22, 25)                    # low ceiling: Sol cannot jump the channel
+    L.pool(12, 28, 10, 'M')
+    L.p(26, 27, '1')                       # P1, only Luna can reach it
+    L.r(35, 28, 37, 28, '-').mv(1, 0, -14) # S1 carries Luna up to the hub steps; set by L1
+    # middle band: sun corridor with plate P2 on an islet, then the hub stair
+    L.r(11, 11, 22, 15)                    # low ceiling over the sun corridor
+    L.pool(12, 18, 3, 'S').pool(18, 18, 4, 'S')
+    L.p(16, 17, '3')                       # P2, only Sol can reach it
+    L.r(24, 16, 29, 17).p(25, 15, '@')     # step T1 with lever L1 (push right: S1 rises)
+    L.r(30, 14, 34, 17)                    # step T2, level with S1's top stop
+    L.r(26, 12, 27, 12)                    # step T3, then up to the landing
+    # top band: landing, gate G2, low-ceiling moon pool with a bridge, exits, lever L2
+    L.gate(21, 7, 9, '_', 2, 3)            # G2 opens while group 2 is on
+    L.r(20, 1, 22, 1)
+    L.r(10, 1, 19, 7)                      # low ceiling over the moon pool
+    L.pool(11, 10, 8, 'M')
+    L.plat(11, 11, 8, 1, 0, -1, 2)         # bridge rises flush over the moon pool (group 2)
+    L.p(3, 9, '$')                         # L2 in the far corner, past both exits
     L.p(2, 27, 'a').p(4, 27, 'b')
-    L.p(8, 6, 'A').p(12, 6, 'B')
-    L.p(12, 25, 's').p(16, 25, 'm').p(15, 18, 's').p(21, 18, 'm').p(20, 11, 's').p(22, 11, 'm')
+    L.p(6, 9, 'A').p(8, 9, 'B')
+    L.p(16, 16, 's').p(3, 16, 's').p(17, 27, 'm').p(14, 9, 'm')
     return L
 
 
@@ -411,17 +424,31 @@ def l18():
 
 @level
 def l19():
-    L = Lv('Gatekeepers', 55, 'Plates on both sides of every gate.')
-    L.r(1, 24, 38, 28)
-    L.r(1, 19, 35, 19)
-    L.floorgate(10, 20, 4, 0).floorgate(20, 20, 4, 1).floorgate(29, 20, 4, 2)
-    L.p(7, 23, '1').p(13, 23, '1').p(17, 23, '2').p(23, 23, '2').p(27, 23, '3').p(32, 23, '3')
-    L.pool(14, 24, 2, 'S').pool(25, 24, 2, 'M')
-    L.r(36, 22, 38, 23)
-    L.pool(20, 19, 3, 'X').pool(27, 19, 2, 'S').pool(13, 19, 2, 'M')
-    L.p(2, 23, 'a').p(4, 23, 'b')
-    L.p(4, 18, 'A').p(7, 18, 'B')
-    L.p(15, 21, 's').p(25, 21, 'm').p(21, 15, 's').p(22, 15, 'm')
+    L = Lv('Carry the Weight', 80, 'The crate can stand where neither of you can stay.')
+    # Bands: bottom floor row 28, upper floor row 18 (rows 1-10 are solid rock).
+    L.floor(28)
+    L.r(1, 1, 38, 10)                      # rock above the upper band
+    L.r(1, 18, 38, 18)                     # upper floor
+    L.r(1, 19, 2, 27)                      # E0 stands against this wall
+    L.r(31, 19, 38, 27)                    # rock under the gate room
+    # bottom band: start with the crate, lift E0, Luna's moon tunnel, plates P0 and P1
+    L.r(3, 28, 6, 28, '=').mv(0, 0, -10)   # E0, wide enough for Sol and the crate
+    L.clear(3, 18, 6, 18)
+    L.r(13, 19, 22, 25)                    # low ceiling over the moon tunnel
+    L.pool(14, 28, 8, 'M')
+    L.p(25, 27, '1')                       # P0 (Luna) raises E0
+    L.p(28, 27, '2')                       # P1 (Luna) opens both gates
+    L.r(23, 19, 26, 19)                    # socket floor (seen from below)
+    # upper band: plate P0b, mastery ledge, gate G1, socket plate P2, gate G2, exits
+    L.p(7, 17, '1')                        # P0b beside the shaft: whoever is up top raises E0
+    L.r(10, 14, 12, 14)                    # ledge only reachable from the crate (gem)
+    L.gate(18, 15, 17, '-', 1, 11)         # G1
+    L.clear(24, 18, 25, 18).p(24, 18, '2') # P2 at the bottom of a socket: a crate stays put
+    L.gate(31, 15, 17, '-', 1, 11)         # G2, in front of the exits
+    L.p(9, 27, 'k')
+    L.p(11, 27, 'a').p(12, 27, 'b')
+    L.p(34, 17, 'A').p(36, 17, 'B')
+    L.p(11, 13, 's').p(15, 16, 's').p(18, 27, 'm').p(27, 25, 'm')
     return L
 
 
@@ -530,19 +557,34 @@ def l25():
 
 @level
 def l26():
-    L = Lv('Pressure Points', 65, 'Gates, then a balance of lifts.')
-    L.r(1, 24, 38, 28)
-    L.r(1, 19, 26, 19)
-    L.floorgate(12, 20, 4, 0).floorgate(22, 20, 4, 1)
-    L.p(9, 23, '1').p(15, 23, '1').p(19, 23, '2').p(25, 23, '2')
-    L.pool(17, 24, 1, 'M').pool(5, 24, 2, 'S')
-    L.plat(28, 23, 3, 1, 0, -12, 2)
-    L.plat(34, 11, 3, 1, 0, 12, 2)
-    L.r(31, 11, 33, 11).r(19, 11, 27, 11)
-    L.p(37, 23, '3').p(22, 10, '3')
-    L.p(2, 23, 'a').p(3, 23, 'b')
-    L.p(31, 10, 'A').p(33, 10, 'B')
-    L.p(6, 21, 's').p(17, 21, 'm').p(20, 8, 's').p(25, 8, 'm')
+    L = Lv('Operator', 85, 'One of you runs, the other changes the room. Lever A swaps the bridges.')
+    # Sol runs along row 22 (bottom); Luna operates from the deck on row 9 (top).
+    L.floor(28)
+    # runner route: start block, pit 1, refuge, pit 2, lower landing, lift E, exit block
+    L.r(1, 22, 8, 27).r(16, 22, 19, 27).r(27, 22, 30, 27)
+    L.r(31, 23, 33, 27)                    # under lift E: no well to fall into
+    L.r(34, 15, 38, 27)                    # exit block
+    L.r(9, 24, 9, 27).r(10, 26, 11, 27)    # stair out of pit 1, back to the start
+    L.r(20, 24, 20, 27).r(21, 26, 22, 27)  # stair out of pit 2, back to the refuge
+    # lever A (group 0): bridge 1 out and bridge 2 in, or the reverse. Halves slide into the blocks.
+    L.plat(5, 22, 4, 1, 4, 0, 0).plat(16, 22, 3, 1, -3, 0, 0)               # bridge 1 (out when A is on)
+    L.plat(16, 22, 4, 1, 4, 0, 0, inv=True).plat(27, 22, 3, 1, -3, 0, 0, inv=True)  # bridge 2 (out when A is off)
+    # lever B (group 1): lift E from the lower landing up to the plate landing
+    L.r(31, 22, 33, 22, '-').mv(1, 0, -7)
+    L.r(25, 15, 30, 15)                    # plate landing
+    L.p(27, 14, '3')                       # PF (group 2) opens GW for Luna
+    L.gate(34, 13, 14, '+', 3, 11)         # GX (group 3) in front of the exits, opened by LR
+    # Luna's deck, gate GW, moon gallery, rescue lever LR, drop to the exits
+    L.r(1, 1, 8, 8)
+    L.r(1, 9, 36, 9)                       # deck + gallery floor (hole over the exits at 37-38)
+    L.p(11, 8, '@').p(17, 8, '!')          # B (group 1) and A (group 0)
+    L.gate(21, 6, 8, '_', 2, 2)            # GW
+    L.r(23, 1, 30, 6)                      # low ceiling over the gallery pool
+    L.pool(24, 9, 6, 'M')
+    L.p(33, 8, '%')                        # LR (group 3): push right, then drop to the exits
+    L.p(3, 21, 'a').p(14, 8, 'b')
+    L.p(36, 14, 'A').p(38, 14, 'B')
+    L.p(18, 20, 's').p(29, 13, 's').p(10, 6, 'm').p(27, 8, 'm')
     return L
 
 

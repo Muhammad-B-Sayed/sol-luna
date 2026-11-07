@@ -63,8 +63,12 @@ shared/sim.js        Deterministic 60 Hz simulation (physics, collisions, mechan
 shared/levels.js     GENERATED. 32 levels as 40x30 ASCII maps + metadata. Do not hand-edit.
 tools/levelgen.py    Level authoring DSL (Python). Source of truth for levels.
 tools/check-levels.js  Solo reachability checker (real physics, BFS over macro-actions).
-tools/coop-bot.js    Scripted two-player playthroughs for crate levels (13,17,22,28,31).
-tools/check-all.sh   Runs the checker on all non-bot levels in parallel, then the co-op bot.
+                     HELP=none / HELP=0,2 limit what the absent partner may do (dependency checks).
+tools/check-deps.js  Asserts each co-op room needs exactly the help its solution describes.
+tools/coop-bot.js    Scripted two-player playthroughs (13,14,17,19,22,26,28,31).
+tools/calibrate.js   Measures the movement envelope (jump, gaps, climbs) with the real sim.
+tools/capture.sh     Renders docs/img room pictures with the real renderer in headless Chrome.
+tools/check-all.sh   Checker on every level except bot-covered crate levels, then bot, then deps.
 server/index.js      Node http static server + `ws` WebSocket rooms, authoritative sim per room.
 public/index.html    Menus (DOM overlays) + canvas.
 public/style.css
@@ -204,25 +208,45 @@ in row-major scan order of their top-left cell, then explicit `plat()` / `floorg
 11. Basins
 12. Counterweight
 13. Crate Bridge
-14. Lift Relay
+14. Helper's Way Out (new, co-op rescue room)
 15. Separate Ways
 16. The Climb
 17. Crate Lift
 18. Ferryman
-19. Gatekeepers
+19. Carry the Weight (new, crate as the final weight)
 20. Galleries
 21. Moonrise
 22. Crate Ferry
 23. Shade Garden
 24. Clockwork
 25. Drawbridge
-26. Pressure Points
+26. Operator (new, one operates levers while the other runs)
 27. Eclipse
 28. Crate Relay
 29. Sunken Halls
 30. Twilight Spiral
 31. Sanctum Approach
 32. Heart of Twilight
+
+**Level design review (Nov 2026).** The user said the levels were "much too simple". An audit
+with `HELP=none` found that in 19 of 32 levels each character can finish without the partner.
+Levels 14, 19 and 26 were replaced by three rooms that need real cooperation. Read
+`docs/level-design.md` for the audit, measured movement limits, room maps, solutions and
+dependency proofs. The 16 other solo-finishable levels are listed there as the work queue.
+
+**Design rules for co-op rooms (learned in that pass):**
+- Write the solution as a dependency chain first, then prove it with `tools/check-deps.js`
+  (both characters "door n" with `HELP=none`, and "Y" only with the intended help).
+- Don't put a control on both sides of an obstacle. Each player then serves themselves.
+- Mechanisms move at 0.25 s per tile, but players run 8 tiles/s. A player can step off a plate and
+  outrun a closing gate or a retracting bridge. Use gates (block within 0.4 s) and put the plate far
+  away, or make the plate's partner hold it for the whole crossing.
+- Levers flip by walking through them. Put a lever where the route crosses it once in the "on"
+  direction: a dead end on the LEFT (arrive moving left, leave moving right) or a pass-through.
+- Climbs of 2 tiles with nothing overhead at the take-off point. 3-tile climbs work but are at the
+  jump limit and fail if a ledge is overhead.
+- Character-only routes: a pool under a 2-tile-high ceiling (no one can jump it).
+- Crate sockets: a 2-wide, 1-deep dip with the plate at the bottom keeps a crate on the plate.
 
 **Design rules that keep levels solvable with the current `PHYS`:**
 - Vertical steps of 3 tiles or less.
@@ -245,7 +269,10 @@ in row-major scan order of their top-left cell, then explicit `plat()` / `floorg
 
 ```bash
 python3 tools/levelgen.py            # regenerate levels
-./tools/check-all.sh                 # ~5-10 min on 4 cores: checker on 27 levels + co-op bot on 5
+./tools/check-all.sh                 # ~20-25 min: checker on 29 levels + co-op bot + check-deps (level 19 alone ~13 min)
+node tools/check-deps.js 14,26       # dependency proofs for the co-op rooms (14,26 ~1.5 min; 19 ~13 min)
+HELP=none node tools/check-levels.js 4   # can one character finish level 4 alone?
+node tools/calibrate.js              # movement envelope
 node tools/check-levels.js 12,15     # specific levels; TRACE=1 prints a path to the door
 LIMIT=1500000 node tools/check-levels.js 7   # crate levels need a higher state limit
 V=1 node tools/coop-bot.js 28        # verbose scripted co-op run
@@ -255,7 +282,7 @@ V=1 node tools/coop-bot.js 28        # verbose scripted co-op run
   jumps with air control). The absent partner may flip any mechanism group at any time.
   - Results at handoff: every non-bot level reports `door Y` and all of its own gems for both characters.
   - A pass is necessary but not sufficient: it doesn't model who must stand where.
-- **`coop-bot.js`** plays levels 13, 17, 22, 28 and 31 with two scripted players, all winning.
+- **`coop-bot.js`** plays levels 13, 14, 17, 19, 22, 26, 28 and 31 with two scripted players, all winning.
   - Phase builders: `mv`, `push`, `hop`, `hopTo`, `jumpWhen`, `wait`.
   - Gotchas: when walking through a lever, the target must be past the lever tile, or the bot
     overshoots, walks back and reverts the lever. Also keep players out from under descending lifts.
@@ -305,8 +332,13 @@ V=1 node tools/coop-bot.js 28        # verbose scripted co-op run
 
 ---
 
-## 8. Open ideas / next steps (none started)
+## 8. Open ideas / next steps
 
+- **Level redesign, continued** (the user's current priority; see `docs/level-design.md`):
+  - Playtest levels 14, 19 and 26 with a fresh pair of players. Record where they stop and why.
+  - Rework the 16 other solo-finishable levels (list in the doc), easiest wins first: remove the
+    second plate from paired-plate gates, move controls away from what they move.
+  - Add a symbol or wire to mechanisms so links don't rely on colour alone.
 - **Human playtest** and tuning of `PHYS` to taste. The user's top priority was the original
   game's physics feel. Ask them for feedback on jump height, speed and air control.
 - **Level select:** a nicer level map (currently an 8x4 grid). Per-level gem and time stats are

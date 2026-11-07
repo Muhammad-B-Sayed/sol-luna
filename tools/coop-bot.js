@@ -14,7 +14,7 @@ const bot = (e) => (e.y + e.h) / TS;
 // steer: hold left/right towards a target tile x (stops within tol)
 const toward = (e, x, tol = 0.15) => (cx(e) < x - tol ? R_ : cx(e) > x + tol ? L_ : 0);
 
-export function run(levelNo, phases, { verbose = false } = {}) {
+export function run(levelNo, phases, { verbose = false, onPhase = null } = {}) {
   const L = buildLevel(LEVELS[levelNo - 1], levelNo - 1);
   const S = createState(L);
   for (const [name, ctl, done, max = 900] of phases) {
@@ -25,6 +25,7 @@ export function run(levelNo, phases, { verbose = false } = {}) {
       if (S.phase === PH_DEAD) return { ok: false, msg: `${name}: ${S.deadWho ? 'Luna' : 'Sol'} died at tick ${S.tick}`, S };
       if (done(S)) break;
     }
+    if (onPhase) onPhase(name, S);
     if (verbose) console.log(`  ${name.padEnd(28)} t=${t}  sol(${cx(S.p[0]).toFixed(2)},${bot(S.p[0]).toFixed(2)}) luna(${cx(S.p[1]).toFixed(2)},${bot(S.p[1]).toFixed(2)}) boxes ${S.b.map(b => cx(b).toFixed(2)).join(',')}`);
     if (t >= max) return { ok: false, msg: `${name}: timed out  lv=${JSON.stringify(S.lv)} act=${JSON.stringify(S.act)} btn=${JSON.stringify(S.btn)} pl=${JSON.stringify(S.pl.map(q => +q.t.toFixed(2)))}`, S };
     if (S.phase === PH_WON) break;
@@ -52,6 +53,81 @@ const wait = (name, cond, max = 600) => [name, () => [0, 0], cond, max];
 const both = (name, fa, fb, cond, max = 900) => [name, (S) => [fa(S), fb(S)], cond, max];
 
 const SCRIPTS = {
+  // Helper's Way Out: Luna holds P1 so Sol can ride E1; Sol's lever L1 lifts Luna out.
+  // Then Sol holds P2 so Luna can pass G2; Luna's lever L2 frees Sol for good.
+  14: [
+    mv(0, 8.5, 0.1),                                                     // sol boards E1
+    mv(1, 26.5, 0.1),                                                    // luna wades the channel to P1
+    wait('E1 up', (S) => S.pl[1].t === 1, 400),
+    mv(0, 3.5, 0.2),                                                     // sol: gem above the start
+    mv(0, 22.6, 0.15),                                                   // sol wades the sun corridor (over P2)
+    mv(1, 36.5, 0.1),                                                    // luna leaves P1, boards S1
+    jumpWhen(0, R_, 23.2, (S) => S.p[0].gr && bot(S.p[0]) < 16.1),       // sol up onto step T1
+    mv(0, 27.5, 0.15),                                                   // ... pushing L1 to the right
+    wait('S1 up', (S) => S.pl[2].t === 1, 400),
+    mv(1, 32.0, 0.15),                                                   // luna steps off S1 onto T2
+    mv(0, 16.5, 0.1),                                                    // sol goes back and holds P2
+    wait('G2 open', (S) => S.pl[0].t === 1, 200),
+    jumpWhen(1, L_, 30.6, (S) => S.p[1].gr && bot(S.p[1]) < 12.1),       // luna T2 -> T3
+    jumpWhen(1, L_, 26.6, (S) => S.p[1].gr && bot(S.p[1]) < 10.1 && cx(S.p[1]) < 25.8), // T3 -> landing
+    mv(1, 1.6, 0.15),                                                    // through G2, over the bridge, to the corner
+    mv(1, 8.5, 0.1),                                                     // push L2 right, stop at her door
+    wait('L2 set', (S) => S.lv[0] > 0, 120),
+    mv(0, 22.6, 0.15),                                                   // sol leaves P2
+    jumpWhen(0, R_, 23.2, (S) => S.p[0].gr && bot(S.p[0]) < 16.1),
+    mv(0, 29.5, 0.1),
+    jumpWhen(0, R_, 29.4, (S) => S.p[0].gr && bot(S.p[0]) < 14.1),       // T1 -> T2
+    mv(0, 31.0, 0.15),
+    jumpWhen(0, L_, 30.6, (S) => S.p[0].gr && bot(S.p[0]) < 12.1),       // T2 -> T3
+    jumpWhen(0, L_, 26.6, (S) => S.p[0].gr && bot(S.p[0]) < 10.1 && cx(S.p[0]) < 25.8),
+    mv(0, 6.5, 0.1),                                                     // over the bridge to his door
+    wait('both at doors', (S) => S.phase === 2, 200),
+  ],
+  // Carry the Weight: Luna lifts Sol and the crate, opens the gates while Sol delivers
+  // the crate to the socket plate, then Sol lifts Luna. The crate holds the gates open.
+  19: [
+    push(0, 0, 3.6),                                                     // crate onto E0
+    mv(0, 5.0, 0.15),
+    mv(1, 25.5, 0.1),                                                    // luna holds P0
+    wait('E0 up', (S) => S.pl[2].t === 1, 400),
+    hopTo(0, 1.6, (S) => S.p[0].gr && cx(S.p[0]) < 2.3 && bot(S.p[0]) < 18.1), // hop over the crate
+    push(0, 0, 9.0),                                                     // crate off the lift
+    hopTo(0, 9.0, (S) => S.p[0].gr && S.p[0].gref === 100),              // stand on the crate ...
+    jumpWhen(0, R_, 8.9, (S) => S.p[0].gr && bot(S.p[0]) < 14.1),        // ... to reach the ledge gem
+    mv(0, 11.5, 0.2), mv(0, 7.6, 0.1),                                  // back over the crate to its left side
+    mv(1, 28.5, 0.1),                                                    // luna leaves P0, holds P1
+    wait('G1 open', (S) => S.pl[0].t === 1, 200),
+    push(0, 0, 25.0),                                                    // crate into the socket
+    wait('crate settles', (S) => S.b[0].gr && S.btn[1] === 1, 200),
+    mv(1, 4.5, 0.1),                                                     // luna back to E0 (it is down)
+    hopTo(0, 22.0, (S) => S.p[0].gr && cx(S.p[0]) < 22.5 && bot(S.p[0]) < 18.1),
+    mv(0, 7.5, 0.1),                                                     // sol holds P0b
+    wait('E0 up with luna', (S) => S.pl[2].t === 1, 400),
+    jumpWhen(1, R_, 23.0, (S) => S.p[1].gr && cx(S.p[1]) > 26.5),        // luna hops the socket
+    mv(1, 36.5, 0.1),                                                    // ... to her door
+    jumpWhen(0, R_, 23.0, (S) => S.p[0].gr && cx(S.p[0]) > 26.5),
+    mv(0, 34.5, 0.1),                                                    // sol to his
+    wait('both at doors', (S) => S.phase === 2, 200),
+  ],
+  // Operator: Luna works levers A and B so Sol can cross two pits via the refuge and ride E,
+  // Sol holds PF so Luna can pass GW, and Luna's rescue lever LR opens Sol's exit gate.
+  26: [
+    mv(1, 19.0, 0.15),                                                   // A on: bridge 1 out, bridge 2 in
+    wait('bridge 1 out', (S) => S.pl[3].t === 1 && S.pl[4].t === 1, 300),
+    mv(0, 17.5, 0.15),                                                   // sol to the refuge
+    mv(1, 15.5, 0.15),                                                   // A off: bridge 2 out
+    wait('bridge 2 out', (S) => S.pl[5].t === 1 && S.pl[6].t === 1, 300),
+    mv(0, 32.0, 0.15),                                                   // sol onto lift E
+    mv(1, 9.6, 0.15), mv(1, 13.0, 0.15),                                 // B on: E rises
+    wait('E up', (S) => S.pl[2].t === 1, 400),
+    mv(0, 27.5, 0.1),                                                    // sol holds PF
+    wait('GW open', (S) => S.pl[0].t === 1, 200),
+    mv(1, 36.3, 0.15),                                                   // luna: GW, gallery, LR
+    wait('GX open', (S) => S.pl[1].t === 1, 200),
+    mv(1, 38.4, 0.12),                                                   // drop to her door
+    mv(0, 36.5, 0.1),                                                    // sol through GX
+    wait('both at doors', (S) => S.phase === 2, 200),
+  ],
   22: [
     mv(1, 4.2, 0.1),
     jumpWhen(1, R_, 4.2, (S) => S.p[1].gr && S.p[1].gref === 0),

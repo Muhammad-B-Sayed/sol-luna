@@ -3,10 +3,26 @@
 // (absent) partner flip any mechanism group at any time. It reports whether the
 // character can reach its door and its gems. Co-op constraints (who is standing
 // where) are NOT modelled, so a pass is necessary-but-not-sufficient.
+//
+// HELP controls what the absent partner may do (dependency checks):
+//   HELP=all   (default) the partner may flip any group at any time.
+//   HELP=none  the character is alone. Plates, levers and crates work for real,
+//              but only this character can operate them. Use it to prove that a
+//              room needs the partner: a co-op room should report "door n".
+//   HELP=0,2   the partner may flip only groups 0 and 2; the rest are real.
+// WHO=sol or WHO=luna checks one character only.
+// tools/check-deps.js imports explore() to assert each co-op room's dependencies.
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { LEVELS } from '../shared/levels.js';
-import { buildLevel, createState, stepSoloForced } from '../shared/sim.js';
+import { buildLevel, createState, stepSoloForced, stepSoloMixed } from '../shared/sim.js';
 
 const LIMIT = +(process.env.LIMIT || 400000);
+const HELP = (process.env.HELP || 'all').trim();
+const LEGACY = HELP === 'all';
+const helpMask = (help, groups) => help === 'all' ? (1 << groups) - 1
+  : help === 'none' ? 0 : help.split(',').reduce((m, g) => m | (1 << +g), 0) & ((1 << groups) - 1);
+const WHO = process.env.WHO ? [process.env.WHO.toLowerCase().startsWith('l') ? 1 : 0] : [0, 1];
 
 function snap(S, who) {
   const p = S.p[who];
@@ -14,18 +30,21 @@ function snap(S, who) {
     p: { ...p },
     b: S.b.map(b => ({ ...b })),
     pl: S.pl.map(q => ({ ...q })),
+    lv: S.lv.slice(),
   };
 }
 function load(S, who, st) {
   S.p[who] = { ...st.p };
   S.b = st.b.map(b => ({ ...b }));
   S.pl = st.pl.map(q => ({ ...q }));
+  S.lv = st.lv.slice();
 }
-function key(st, act) {
+function key(st, act, legacy) {
   const p = st.p;
   let k = `${Math.round(p.x / 3)},${Math.round(p.y / 3)},${Math.round(p.vx)}|${act}`;
   for (const b of st.b) k += `|${Math.round(b.x / 4)},${Math.round(b.y / 8)}`;
   for (const q of st.pl) k += `|${Math.round(q.t * 8)}`;
+  if (!legacy) for (const v of st.lv) k += v > 0 ? '+' : '-';
   return k;
 }
 
@@ -44,16 +63,21 @@ for (const d of [L_, R_]) {
 }
 
 let curNode = null, curMacro = null;
-function explore(L, who) {
+// help: 'all' | 'none' | '0,2' (see the header). stopAtDoor ends the search once the door is reached.
+export function explore(L, who, { help = HELP, limit = LIMIT, stopAtDoor = false } = {}) {
+  const legacy = help === 'all';
   const S = createState(L);
   const groups = L.groups;
-  const hasMech = L.plats.length > 0;
+  const mask = helpMask(help, groups);
+  const hasMech = L.plats.length > 0 && mask !== 0;
+  const stepOne = legacy ? (inp, act) => stepSoloForced(L, S, who, inp, act)
+    : (inp, act) => stepSoloMixed(L, S, who, inp, mask, act);
   const d = L.doors[who];
   const reach = { door: false, gems: new Set() };
   // settle
-  for (let i = 0; i < 5; i++) stepSoloForced(L, S, who, 0, 0);
+  for (let i = 0; i < 5; i++) stepOne(0, 0);
   const q = [[snap(S, who), 0, null]];
-  const seen = new Set([key(q[0][0], 0)]);
+  const seen = new Set([key(q[0][0], 0, legacy)]);
   let head = 0;
   const probe = (p) => {
     const cx = p.x + p.w / 2, bot = p.y + p.h;
@@ -64,16 +88,19 @@ function explore(L, who) {
       if ((nx - g.x) ** 2 + (ny - g.y) ** 2 < 121) reach.gems.add(i);
     });
   };
-  const settled = (nact) => S.pl.every((pl, i) => pl.t === ((((nact >> L.plats[i].g) & 1) ^ (L.plats[i].inv ? 1 : 0)) ? 1 : 0));
-  while (head < q.length && seen.size < LIMIT) {
+  const settled = (nact) => {
+    const a = legacy ? nact : S.act.reduce((m, v, g) => m | (v << g), 0);
+    return S.pl.every((pl, i) => pl.t === (((a >> L.plats[i].g) & 1) ^ (L.plats[i].inv ? 1 : 0)));
+  };
+  while (head < q.length && seen.size < limit && !(stopAtDoor && reach.door)) {
     const node = q[head++]; const [st, act] = node;
     const options = MACROS.map(m => [m, act]);
-    if (hasMech) for (let g = 0; g < groups; g++) options.push([null, act ^ (1 << g)]);
+    if (hasMech) for (let g = 0; g < groups; g++) if ((mask >> g) & 1) options.push([null, act ^ (1 << g)]);
     for (const [m, nact] of options) {
       curNode = node; curMacro = m ? JSON.stringify(m) : 'toggle->' + nact;
       load(S, who, st);
       let dead = false, ticks = 0;
-      const tick = (inp) => { dead = stepSoloForced(L, S, who, inp, nact); ticks++; if (!dead) probe(S.p[who]); };
+      const tick = (inp) => { dead = stepOne(inp, nact); ticks++; if (!dead) probe(S.p[who]); };
       if (!m) {
         for (let k = 0; k < 400 && !dead; k++) { tick(0); if (k > 4 && settled(nact) && S.p[who].gr) break; }
       } else {
@@ -87,22 +114,26 @@ function explore(L, who) {
       }
       if (dead || !S.p[who].gr) continue;
       const ns = snap(S, who);
-      const k = key(ns, nact);
+      const k = key(ns, nact, legacy);
       if (seen.has(k)) continue;
       seen.add(k);
       q.push([ns, nact, node, curMacro]);
     }
   }
-  return { ...reach, states: seen.size, truncated: seen.size >= LIMIT };
+  return { ...reach, states: seen.size, truncated: seen.size >= limit };
 }
 
+const isMain = !!process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1]);
+if (isMain) main();
+
+function main() {
 const only = process.argv[2] ? process.argv[2].split(',').map(Number) : null;
 let problems = 0;
 LEVELS.forEach((raw, idx) => {
   if (only && !only.includes(idx + 1)) return;
   const L = buildLevel(raw, idx);
   const out = [];
-  for (const who of [0, 1]) {
+  for (const who of WHO) {
     const myGems = L.gems.filter(g => g.kind === who).length;
     const r = explore(L, who);
     const bad = !r.door || r.gems.size < myGems;
@@ -111,10 +142,12 @@ LEVELS.forEach((raw, idx) => {
       while (n) { path.unshift(`${n[3] || 'start'} -> (${Math.round(n[0].p.x/24*10)/10},${Math.round((n[0].p.y+34)/24*10)/10}) boxes ${n[0].b.map(b=>`(${(b.x/24).toFixed(1)},${((b.y+26)/24).toFixed(1)})`).join(' ')}`); n = n[2]; }
       console.log((who ? 'Luna' : 'Sol') + ' path:\n  ' + path.join('\n  ') + '\n  ' + r.doorMacro);
     }
-    if (bad) problems++;
-    out.push(`  ${who ? 'Luna' : 'Sol '} door ${r.door ? 'Y' : 'n'}  gems ${r.gems.size}/${myGems}  (${r.states} states${r.truncated ? ', TRUNCATED' : ''})${bad ? '   <-- CHECK' : ''}`);
+    if (bad && LEGACY) problems++;
+    out.push(`  ${who ? 'Luna' : 'Sol '} door ${r.door ? 'Y' : 'n'}  gems ${r.gems.size}/${myGems}  (${r.states} states${r.truncated ? ', TRUNCATED' : ''})${LEGACY ? (bad ? '   <-- CHECK' : '') : (HELP === 'none' ? (r.door ? '   <-- finishes ALONE' : '   needs partner') : (r.door ? '   reaches door with this help' : '   needs more help'))}`);
   }
   console.log(`${String(idx + 1).padStart(2)} ${L.name}  [boxes ${L.boxes.length}, plats ${L.plats.length}, groups ${L.groups}]\n${out.join('\n')}`);
 });
+if (!LEGACY) console.log(`\n(HELP=${HELP}: "door n" is expected for rooms that need the partner.)`);
 console.log(problems ? `\n${problems} problem(s).` : '\nAll levels pass.');
 process.exit(problems ? 1 : 0);
+}

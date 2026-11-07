@@ -542,3 +542,20 @@ export function stepSoloForced(L, S, who, bits, act) {
   stepPlayer(W, S.p[who], bits);
   return checkHazards(W, S.p[who], who);
 }
+
+// Tooling hook (level checker, dependency mode): advance one player with the
+// REAL mechanisms (their own plates, levers and crates count), except that the
+// groups in `forceMask` are overridden by the matching bits of `forceAct`,
+// standing in for a partner who may only help with those groups.
+// forceMask = 0 means the character is completely alone. Returns true on death.
+export function stepSoloMixed(L, S, who, bits, forceMask, forceAct) {
+  const other = S.p[1 - who];
+  other.alive = false; other.x = -1000; other.y = -1000;
+  const W = makeWorld(L, S);
+  updateMechanisms(W);
+  for (let g = 0; g < S.act.length; g++) if ((forceMask >> g) & 1) S.act[g] = (forceAct >> g) & 1;
+  stepPlats(W);
+  stepBoxes(W);
+  stepPlayer(W, S.p[who], bits);
+  return checkHazards(W, S.p[who], who);
+}

@@ -19,6 +19,8 @@ Plates, levers, lifts, ferries, drawbridges and crates join the mix as you go.
 | `tools/levelgen.py` | Level authoring DSL. Edit levels here, then run `python3 tools/levelgen.py`. |
 | `tools/check-levels.js` | Brute-force reachability checker that uses the real physics. |
 | `tools/coop-bot.js` | Scripted two-player playthroughs for levels that need real cooperation. |
+| `tools/check-deps.js` | Proves each co-op room needs exactly the help its solution describes. |
+| `tools/calibrate.js` | Measures jump height, gap and climb limits with the real physics. |
 | `server/index.js` | Static file server plus WebSocket rooms with an authoritative simulation. |
 | `public/` | Client: renderer, input, audio, menus. |
 
@@ -60,4 +62,5 @@ python3 tools/levelgen.py        # regenerate shared/levels.js
 node tools/check-levels.js 5,6   # check specific levels
 ./tools/check-all.sh             # check all levels (parallel)
 node tools/coop-bot.js           # run scripted co-op playthroughs
+node tools/check-deps.js         # prove the co-op rooms need both players
 ```
