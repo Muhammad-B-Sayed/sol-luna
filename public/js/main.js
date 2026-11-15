@@ -363,6 +363,7 @@ function pause(on) {
 function quitToMenu() {
   if (app.mode === 'online') { net.send({ t: 'leave' }); net.close(); }
   app.mode = 'menu'; app.L = null; app.S = null; app.inGame = false; app.room = null;
+  chatShow(false);
   attract = null;
   show('menu');
   history.replaceState(null, '', '/');
@@ -372,6 +373,7 @@ function quitToMenu() {
 // online
 
 net.on('room', (m) => {
+  chatRoom(m);
   if (app.room && app.me !== m.you) toast(m.you === SOL ? 'You are Sol now.' : 'You are Luna now.');
   app.room = m; app.me = m.you; app.host = m.host;
   history.replaceState(null, '', '/' + m.code);
@@ -389,12 +391,85 @@ net.on('menu', () => {
 });
 net.on('peer-left', () => {
   toast('Your partner left the room.');
+  chatLine('sys', '', 'Your partner left.');
   app.inGame = false; app.L = null; attract = null;
   renderLobby();
 });
 net.on('err', (m) => { toast(m.msg); if (!app.room) show('menu'); });
 net.on('close', () => {
   if (app.mode === 'online') { toast('Disconnected from server.'); quitToMenu(); }
+});
+
+// ---------------------------------------------------------------------------
+// room chat: a button on the right edge opens a small panel. Enter opens it during play,
+// Enter sends and hands the keys back to the game, Esc closes it.
+
+const chat = { open: false, unread: 0, players: 0 };
+const charName = (c) => (c === SOL ? 'Sol' : 'Luna');
+
+function chatRoom(m) {
+  if ($('#chat').hidden) chatShow(true);
+  const n = m.players.length;
+  if (chat.players && n > chat.players) chatLine('sys', '', 'Your partner joined.');
+  chat.players = n;
+}
+function chatShow(on) {
+  $('#chat').hidden = !on;
+  if (!on) { chatOpen(false); $('#chatLog').replaceChildren(); chat.unread = 0; chat.players = 0; chatBadge(); }
+  else if (!$('#chatLog').children.length) chatLine('empty', '', 'Messages here go to your partner.');
+}
+function chatBadge() {
+  const b = $('#chatBadge');
+  b.hidden = !chat.unread;
+  b.textContent = chat.unread > 9 ? '9+' : String(chat.unread);
+}
+function chatOpen(on) {
+  chat.open = on;
+  $('#chatPanel').hidden = !on;
+  const t = $('#chatToggle');
+  t.setAttribute('aria-expanded', String(on));
+  t.setAttribute('aria-label', on ? 'Close chat' : 'Open chat');
+  if (on) {
+    chat.unread = 0; chatBadge();
+    const log = $('#chatLog'); log.scrollTop = log.scrollHeight;
+    $('#chatInput').focus();
+  } else if (document.activeElement && $('#chat').contains(document.activeElement)) {
+    document.activeElement.blur();   // hand the keyboard back to the game
+  }
+}
+function chatLine(cls, who, text) {
+  const log = $('#chatLog');
+  log.querySelector('.empty')?.remove();
+  const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 8;
+  const li = document.createElement('li');
+  li.className = cls;
+  if (who) { const b = document.createElement('b'); b.textContent = who; li.append(b); }
+  li.append(document.createTextNode(text));
+  log.append(li);
+  while (log.children.length > 100) log.firstChild.remove();
+  if (atEnd) log.scrollTop = log.scrollHeight;
+}
+net.on('chat', (m) => {
+  const mine = m.char === app.me;
+  chatLine('c' + m.char, charName(m.char) + (mine ? ' (you)' : ''), m.text);
+  if (!chat.open && !mine) {
+    chat.unread++; chatBadge();
+    toast(`${charName(m.char)}: ${m.text}`, 3500);
+    sfx.ui();
+  }
+});
+$('#chatToggle').onclick = () => chatOpen(!chat.open);
+$('#chatClose').onclick = () => chatOpen(false);
+$('#chatForm').onsubmit = (e) => {
+  e.preventDefault();
+  const box = $('#chatInput');
+  const text = box.value.trim();
+  if (text) { net.send({ t: 'chat', text }); box.value = ''; }
+  if (app.inGame || !text) box.blur();   // mid-level, go straight back to playing
+};
+$('#chatInput').addEventListener('focus', () => input.down.clear());
+$('#chatInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); chatOpen(false); }
 });
 
 function renderLobby() {
@@ -480,6 +555,10 @@ $('#resLevels').onclick = () => {
 };
 
 window.addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea')) return;   // typing, not playing
+  if (e.key === 'Enter' && !$('#chat').hidden && (e.target === document.body || e.target === cv)) {
+    e.preventDefault(); chatOpen(true); return;
+  }
   if (e.code === 'Escape' || e.code === 'KeyP') {
     if (app.L && !app.results) { pause(!app.paused); e.preventDefault(); }
   }

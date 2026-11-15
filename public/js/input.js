@@ -6,6 +6,8 @@ export class Input {
   constructor() {
     this.down = new Set();
     window.addEventListener('keydown', (e) => {
+      // typing in a text field (room code, chat) never moves a character
+      if (e.target.closest && e.target.closest('input, textarea')) return;
       if (e.code in SOL_KEYS || e.code in LUNA_KEYS || e.code === 'Space') {
         if (!e.target.closest || !e.target.closest('input')) e.preventDefault();
       }

@@ -198,6 +198,20 @@ function onMessage(ws, data) {
         room.broadcastRoom();
         return;
       }
+      case 'chat': {
+        if (!room) return;
+        const me = room.clients.find(c => c.ws === ws);
+        if (!me) return;
+        // at most 5 messages in any 4 seconds per player
+        const now = Date.now();
+        ws.chatTimes = (ws.chatTimes || []).filter(t => now - t < 4000);
+        if (ws.chatTimes.length >= 5) { send(ws, { t: 'err', msg: 'Slow down a little.' }); return; }
+        const text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200);
+        if (!text) return;
+        ws.chatTimes.push(now);
+        room.broadcast({ t: 'chat', char: me.char, text });
+        return;
+      }
       case 'leave': leave(ws); return;
     }
   }

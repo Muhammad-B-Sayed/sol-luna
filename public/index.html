@@ -45,7 +45,7 @@
       <div class="how">
         <div><b class="solc">Sol</b><kbd>←</kbd><kbd>→</kbd> move · <kbd>↑</kbd> jump</div>
         <div><b class="lunac">Luna</b><kbd>A</kbd><kbd>D</kbd> move · <kbd>W</kbd> jump</div>
-        <p>Online, either set of keys controls your own character. Gamepads work too. In an online room, click Sol or Luna to play as them, or swap from the pause menu.</p>
+        <p>Online, either set of keys controls your own character. Gamepads work too. In an online room, click Sol or Luna to play as them, or swap from the pause menu. Press <kbd>Enter</kbd> or the chat button at the top right to talk to your partner.</p>
         <ul>
           <li>Every level needs both of you. What one of you does opens the way for the other.</li>
           <li><span class="sw sun"></span> Sun pools are safe for Sol and deadly for Luna.</li>
@@ -126,6 +126,17 @@
 
   <div id="touch" aria-hidden="true">
     <button id="tLeft">◀</button><button id="tRight">▶</button><button id="tJump">▲</button>
+  </div>
+  <div id="chat" hidden>
+    <button id="chatToggle" type="button" aria-label="Open chat" aria-expanded="false" title="Chat (Enter)">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      <span id="chatBadge" hidden></span>
+    </button>
+    <div id="chatPanel" hidden>
+      <div class="chat-head"><span>Room chat</span><button id="chatClose" type="button" aria-label="Close chat">&times;</button></div>
+      <ol id="chatLog" aria-live="polite"></ol>
+      <form id="chatForm"><input id="chatInput" maxlength="200" placeholder="Say something, Enter to send" autocomplete="off" spellcheck="true" aria-label="Chat message"></form>
+    </div>
   </div>
   <div id="toast" role="status"></div>
 </div>

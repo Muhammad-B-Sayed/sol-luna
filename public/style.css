@@ -92,6 +92,27 @@ body.touch[data-screen="game"] #touch { display: flex; }
 #touch #tJump { margin-left: auto; }
 #tRight { margin-left: 12px; }
 
+/* room chat: a small button on the right edge that opens a compact panel */
+#chat { position: absolute; top: 12px; right: 12px; z-index: 20; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+#chat[hidden] { display: none; }
+#chatToggle { position: relative; width: 42px; height: 42px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--card); border: 1px solid var(--edge); color: var(--ink); }
+#chatToggle[aria-expanded="true"] { border-color: var(--accent); }
+#chatBadge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #1b1729; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; }
+#chatPanel { width: min(280px, calc(100vw - 24px)); max-height: min(320px, 55vh); display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--edge); border-radius: 12px; backdrop-filter: blur(6px); overflow: hidden; }
+#chatPanel[hidden] { display: none; }
+.chat-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 6px 12px; font-size: 13px; font-weight: 800; color: var(--muted); border-bottom: 1px solid var(--edge); }
+.chat-head button { width: 26px; height: 26px; padding: 0; border-radius: 6px; font-size: 18px; line-height: 1; background: transparent; border: 0; color: var(--muted); }
+#chatLog { list-style: none; margin: 0; padding: 8px 12px; overflow-y: auto; flex: 1; min-height: 60px; font-size: 14px; line-height: 1.35; display: flex; flex-direction: column; gap: 4px; }
+#chatLog li { overflow-wrap: anywhere; }
+#chatLog b { margin-right: 6px; }
+#chatLog .c0 b { color: var(--sun); }
+#chatLog .c1 b { color: var(--moon); }
+#chatLog .sys { color: var(--muted); font-style: italic; font-size: 13px; }
+#chatLog .empty { color: var(--muted); font-size: 13px; }
+#chatForm { margin: 0; padding: 8px; border-top: 1px solid var(--edge); }
+#chatInput { width: 100%; box-sizing: border-box; font: 600 14px Nunito, system-ui, sans-serif; padding: 7px 10px; color: var(--ink); background: rgba(0,0,0,0.3); border: 1px solid var(--edge); border-radius: 8px; outline: none; }
+#chatInput:focus { border-color: var(--accent); }
+
 @media (max-width: 760px) {
   #levelGrid { grid-template-columns: repeat(4, 1fr); }
   .card { padding: 22px 18px; }
