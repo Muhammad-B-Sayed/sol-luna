@@ -154,7 +154,11 @@ Things that bite:
 - **Crates** are 26 px, fall, and can be pushed (not pulled) by either player. They press
   plates, work as a 1-tile step, sit in pools as stepping stones, ride lifts and ferries,
   and can be pushed off ledges. They cannot climb anything, even 1 px, and **must never
-  touch a ramp** (they fall through it). A crate against a wall is stuck there for good.
+  touch a ramp** (they fall through it). A crate pushed against a stone wall can be
+  freed with a corner kick: lean on it for a third of a second, then jump into its upper
+  corner, and it slides 28 px clear of the wall. A quick hop or running jump climbs it as
+  before, and a crate resting on a plate is never kicked, so sockets still hold. Lifts and
+  other crates don't count as walls.
   A 2-wide, 1-deep socket with the plate at the bottom keeps a crate on its plate.
 - **Six groups** (0-5), colours purple, green, orange, white, pink, yellow. Players match
   controls to effects by colour, so do not reuse one group for unrelated things.
@@ -329,7 +333,8 @@ Known follow-ups:
   leftover. Trim them toward 60-70 s with real cuts, not by stretching their neighbours.
 - **Thin margins.** 11, 16, 17, 27, 30 and 32 clear their time floor by 2 s or less. A fresh
   `NOCACHE` bot run could dip under.
-- **Unrecoverable mistakes left in on purpose.** Crate B into 28's empty east shaft; falling
+- **Unrecoverable mistakes left in on purpose.** (A crate pinned on a floor against a wall
+  can now be kicked free.) Crate B into 28's empty east shaft; falling
   down a crate chute in 27 and 32; dropping out of 26's control room while the runner is shut
   in a basin; dropping in 29 before the hall above is done.
 

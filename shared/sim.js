@@ -34,6 +34,9 @@ export const PHYS = {
   pushSpeed: 1.85,
   boxSize: 26,
   platSpeed: 1.6,
+  kickDist: 28,     // a crate kicked off a wall slides this far: enough room for a player behind it
+  kickSpeed: 2,
+  kickStrain: 20,   // ticks of leaning on a stuck crate before a jump can kick it
 };
 
 export const DEATH_TICKS = 80;
@@ -139,14 +142,14 @@ export function buildLevel(raw, index = 0) {
 
 function mkPlayer(sp, i) {
   return { id: 200 + i, x: sp.x, y: sp.y, w: PHYS.w, h: PHYS.h, vx: 0, vy: 0, gr: false, gref: -1,
-    coy: 0, face: i === SOL ? 1 : -1, jumpN: 0, push: 0, atDoor: false, alive: true };
+    coy: 0, face: i === SOL ? 1 : -1, jumpN: 0, push: 0, strain: 0, atDoor: false, alive: true };
 }
 
 export function createState(L) {
   return {
     tick: 0, phase: PH_PLAY, phaseT: 0, deadWho: -1, tries: 0,
     p: [mkPlayer(L.spawns[0], 0), mkPlayer(L.spawns[1], 1)],
-    b: L.boxes.map((b, i) => ({ id: 100 + i, x: b.x, y: b.y, w: PHYS.boxSize, h: PHYS.boxSize, vx: 0, vy: 0, gr: false, gref: -1 })),
+    b: L.boxes.map((b, i) => ({ id: 100 + i, x: b.x, y: b.y, w: PHYS.boxSize, h: PHYS.boxSize, vx: 0, vy: 0, gr: false, gref: -1, kd: 0, kl: 0, kt: 0 })),
     pl: L.plats.map(p => {
       // start at rest: account for inverted platforms and levers that begin switched on
       const act = L.levers.some(l => l.on0 && l.g === p.g) ? 1 : 0;
@@ -244,8 +247,9 @@ function moveX(W, e, dx, ignore, depth) {
     if (overlaps(ox, e.y, e.w, e.h, so.x, so.y, s.w, s.h)) continue; // already inside: don't fight it
     if (s.box && depth < 3) {
       const want = dx > 0 ? e.x + e.w - so.x : e.x - (so.x + s.w);
+      const bx0 = so.x;
       moveEnt(W, so, want, 0, e.id, depth + 1);
-      if (e.id >= 200) e.push = 2;
+      if (e.id >= 200) { e.push = 2; if (Math.abs(so.x - bx0) < EPS) { W.pinned = true; tryKick(W, e, so, dx); } }
       if (!overlaps(e.x, e.y, e.w, e.h, so.x, so.y, s.w, s.h)) continue;
     } else if (!s.box && canStep) {
       const need = e.y + e.h - so.y;
@@ -255,6 +259,33 @@ function moveX(W, e, dx, ignore, depth) {
     e.x = dx > 0 ? so.x - e.w : so.x + s.w;
     e.vx = 0;
   }
+}
+
+// Corner kick. A crate pinned against a stone wall can't be pushed, and crates can't be pulled,
+// so it would be stuck for good. Jumping into its upper corner from the open side knocks it
+// away from the wall by a little more than a player's width, so someone can drop in behind it
+// and push it back out. Rules that keep it from firing by accident:
+//   - the player leaned on the stuck crate for a moment before jumping (strain), so a quick
+//     hop onto a crate that is being used as a step against a ledge never kicks it
+//   - the player is rising in a jump and the feet are level with the crate's upper half
+//   - the crate is on the ground and its far side is against stone, not a lift or another crate
+//   - a crate sitting on a plate is never kicked, so sockets and held plates stay put
+function onPlate(W, b) {
+  const bot = b.y + b.h;
+  return W.L.buttons.some(bt => bot >= bt.floor - 5 && bot <= bt.floor + 1 && b.x < bt.x + bt.w - 6 && b.x + b.w > bt.x + 6);
+}
+function tryKick(W, p, b, dx) {
+  if (p.gr || p.vy >= 0 || !b.gr || b.kl > 0 || p.strain < PHYS.kickStrain) return;
+  const feet = p.y + p.h;
+  if (feet <= b.y || feet > b.y + b.h / 2) return;
+  const tx = dx > 0 ? Math.floor((b.x + b.w + 1) / TS) : Math.floor((b.x - 1) / TS);
+  let wall = false;
+  for (let ty = Math.floor((b.y + EPS) / TS); ty <= Math.floor((b.y + b.h - EPS) / TS); ty++) {
+    const t = tileAt(W.L, tx, ty);
+    if (isBlock(t) && b.y + b.h > blockTop(t, ty) + EPS) wall = true;
+  }
+  if (!wall || onPlate(W, b)) return;
+  b.kd = dx > 0 ? -1 : 1; b.kl = PHYS.kickDist; b.kt = 40; p.strain = 0;
 }
 
 // Vertical move. Returns true if landed on something (sets e.gref).
@@ -379,6 +410,17 @@ function stepBoxes(W) {
     if (landed) b.gr = true; else b.gref = -1;
     if (!landed && ref !== -1) b.gref = -1;
     carryRiders(W, b.id, 0, b.y - oy, 1);
+    if (b.kl > 0) {
+      // slide away from the wall; wait while a player is in the way, give up if blocked
+      const v = Math.min(PHYS.kickSpeed, b.kl), nx = b.x + b.kd * v;
+      const inWay = W.S.p.some(p => p.alive && overlaps(nx, b.y, b.w, b.h, p.x, p.y, p.w, p.h));
+      if (!inWay) {
+        const x0 = b.x;
+        moveEnt(W, b, b.kd * v, 0, -999, 1);
+        if (Math.abs(b.x - x0) < v - EPS) b.kl = 0; else b.kl -= v;
+      }
+      if (--b.kt <= 0) b.kl = 0;
+    }
     b.vx = b.x - (b._px ?? ox);
     b._px = b.x;
   }
@@ -402,7 +444,10 @@ function stepPlayer(W, p, bits) {
   }
   if (p.push > 0) p.push--;
   const wasGr = p.gr;
+  W.pinned = false;
   moveX(W, p, p.vx, -999, 0);
+  // strain builds while standing and pushing a crate that won't move; it is kept through a jump
+  if (wasGr) p.strain = W.pinned ? p.strain + 1 : 0;
 
   let jumped = false;
   if ((bits & IN_UP) && (p.gr || p.coy > 0) && p.vy >= 0) {

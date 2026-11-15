@@ -190,7 +190,7 @@ export const LEVELS = [
   },
   {
     name: "Crate Cellar", par: 60,
-    hint: "Push the crate off ledges to bring it down. It is wider than a one-tile hole, and it makes a good step.",
+    hint: "Push the crate off ledges to bring it down. Stuck against a wall? Lean on it, then jump into its corner.",
     moves: [[0, -2], [0, -2], [0, -16], [0, -2]],
     map: [
       "########################################",

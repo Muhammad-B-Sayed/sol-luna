@@ -60,6 +60,7 @@ for (const d of [L_, R_]) {
   for (const k of [4, 10, 18]) MACROS.push([[d | U_, 1], [d, k], [0, -1]]);
   for (const k of [6, 14]) MACROS.push([[d | U_, 1], [d, k], [o, -1]]);
   MACROS.push([[d, 2], [d, -1]]);
+  MACROS.push([[d, 24], [d | U_, 1], [d, -1]]);   // lean on a stuck crate, then corner-kick it
 }
 
 let curNode = null, curMacro = null;

@@ -104,6 +104,8 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
   - Players and crates are AABBs.
   - The X pass resolves the leading tile column with step-up, then slopes under the entity's
     centre, then dynamic solids. Crates get pushed, recursively up to depth 3.
+    A crate pinned against stone is kicked 28 px clear when a player who leaned on it for 20
+    ticks jumps into its upper corner (`tryKick` in `shared/sim.js`); never off a plate.
   - The Y pass is crossing-based: it only collides when the previous bottom was above the
     surface, so an entity that is already overlapping is ignored.
   - Slopes are sampled at the entity's centre column with a 6px tolerance.

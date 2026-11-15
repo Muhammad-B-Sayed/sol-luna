@@ -314,7 +314,7 @@ def crate_cellar():
        P3 opens the gate in front of the doors for good, and the crate is the step up into the chimney.
     5. Luna steps onto the chimney lift (orange) and Sol stands on P4 beside it: she rides to the top.
     6. Luna stands on the second orange plate at the top: the empty lift comes down for Sol and brings him up."""
-    L = Lv('Crate Cellar', 60, 'Push the crate off ledges to bring it down. It is wider than a one-tile hole, and it makes a good step.')
+    L = Lv('Crate Cellar', 60, 'Push the crate off ledges to bring it down. Stuck against a wall? Lean on it, then jump into its corner.')
     L.r(1, 1, 38, 28)
     L.clear(1, 3, 21, 8).r(2, 6, 8, 6)                                 # top ledge: a thin shelf (row 6) over the second ledge (row 9)
     L.r(17, 4, 19, 6).clear(18, 5, 18, 6).cells(18, 7, 18, 8, 0)        # gate G1 on the second ledge
