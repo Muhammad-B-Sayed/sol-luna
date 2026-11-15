@@ -57,6 +57,8 @@ function slopeY(t, tx, ty, cx) {
 // ---------------------------------------------------------------------------
 // Level parsing
 
+export const PLATE_CH = '123456', LEVER_CH = '!@$%^&', PLAT_CH = '=-_+~:';
+
 const CH = {
   '#': T_SOLID, '/': T_SLOPE_R, '\\': T_SLOPE_L,
   'S': T_SUN, 'M': T_MOON, 'X': T_SHADE,
@@ -86,15 +88,15 @@ export function buildLevel(raw, index = 0) {
         case 's': L.gems.push({ x: cx, y: (y + 0.5) * TS, kind: SOL }); break;
         case 'm': L.gems.push({ x: cx, y: (y + 0.5) * TS, kind: LUNA }); break;
         case 'k': L.boxes.push({ x: cx - PHYS.boxSize / 2, y: floor - PHYS.boxSize }); break;
-        case '1': case '2': case '3': case '4':
-          L.buttons.push({ x: x * TS - 4, w: TS + 8, floor, g: c.charCodeAt(0) - 49 }); break;
-        case '!': case '@': case '$': case '%': {
-          const g = '!@$%'.indexOf(c);
-          L.levers.push({ x: x * TS, y: y * TS, floor, g, on0: !!(raw.leverOn && raw.leverOn.includes(g)) }); break;
-        }
-        case '=': case '-': case '_': case '+': platCells.push([x, y, '=-_+'.indexOf(c)]); break;
         case '.': case ' ': break;
-        default: throw new Error(`Level ${index + 1}: unknown char '${c}' at ${x},${y}`);
+        default: {
+          // six mechanism groups: plates 1-6, levers ! @ $ % ^ &, platform cells = - _ + ~ :
+          let g;
+          if ((g = PLATE_CH.indexOf(c)) >= 0) L.buttons.push({ x: x * TS - 4, w: TS + 8, floor, g });
+          else if ((g = LEVER_CH.indexOf(c)) >= 0) L.levers.push({ x: x * TS, y: y * TS, floor, g, on0: !!(raw.leverOn && raw.leverOn.includes(g)) });
+          else if ((g = PLAT_CH.indexOf(c)) >= 0) platCells.push([x, y, g]);
+          else throw new Error(`Level ${index + 1}: unknown char '${c}' at ${x},${y}`);
+        }
       }
     }
   }

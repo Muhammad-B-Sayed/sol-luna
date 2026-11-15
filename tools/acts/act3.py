@@ -1,0 +1,600 @@
+"""Act 3: levels 23-32. See docs/level-plan.md for the brief of each level.
+
+Run `python3 tools/levelgen.py` after every edit, then `node tools/gate.js <n>`.
+"""
+from lvdsl import Lv, level, W, H
+
+# ---------------------------------------------------------------------------
+# Helpers for this act only.
+#
+# art(L, rows, plats): paint a 38x28 map from strings. Besides the DSL legend,
+# upper-case letters other than A B S M X are moving platforms: each letter is
+# one rectangle, and plats[letter] = (group, dx, dy) or (group, dx, dy, inv).
+# Lower-case letters c d e f g h i j l n o p q r t u v w x y z are free for
+# notes and are painted as air.
+
+FREE = set('cdefghijlnopqrtuvwxyz')
+
+
+def art(L, rows, plats=None):
+    plats = plats or {}
+    rows = [r for r in rows if r is not None]
+    assert len(rows) == H, (L.name, len(rows))
+    cells = {}
+    for y, row in enumerate(rows, 1):
+        assert len(row) == W, (L.name, y, len(row), row)
+        for x, c in enumerate(row, 1):
+            if c in plats:
+                cells.setdefault(c, []).append((x, y))
+                L.set(x, y, '.')
+            elif c in FREE:
+                L.set(x, y, '.')
+            else:
+                L.set(x, y, c)
+    for c, spec in plats.items():
+        pts = cells.get(c)
+        assert pts, (L.name, 'platform letter not drawn', c)
+        xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
+        x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+        assert len(pts) == (x1 - x0 + 1) * (y1 - y0 + 1), (L.name, 'platform not a rectangle', c)
+        g, dx, dy = spec[0], spec[1], spec[2]
+        inv = len(spec) > 3 and spec[3]
+        L.plat(x0, y0, x1 - x0 + 1, y1 - y0 + 1, dx, dy, g, inv)
+    return L
+
+
+MIRROR = {'/': '\\', '\\': '/', 'S': 'M', 'M': 'S', 's': 'm', 'm': 's'}
+
+
+def mirror_half(right, swap=None):
+    """right: 28 strings for x=20..38 (19 chars). Returns 28 full rows, left half mirrored."""
+    swap = dict(MIRROR, **(swap or {}))
+    out = []
+    for r in right:
+        assert len(r) == 19, (len(r), r)
+        left = ''.join(swap.get(c, c) for c in reversed(r))
+        out.append(left + r)
+    return out
+
+
+def patch(rows, x, y, s):
+    """Overwrite text s into the full rows at (x, y) (1-based)."""
+    r = rows[y - 1]
+    rows[y - 1] = r[:x - 1] + s + r[x - 1 + len(s):]
+    assert len(rows[y - 1]) == W
+
+
+@level(23)
+def eclipse():
+    """Eclipse. A butterfly: the left wing (sun pools) is Sol's and mirrors Luna's right wing
+    (moon pools). A body splits them, with a locked tunnel through its middle. Each wing has a
+    wing-tip shaft with a yellow lift; the two lifts are a counterweight pair. Both start at the
+    top of their own wing and finish at the top of the other's, where the mirror breaks.
+
+    0. Each drops down their own wing (through the open shaft doorway) to the bottom floor.
+    1. Sol stands on the purple plate: Luna's purple gate (right floor 2) opens.
+    2. Luna passes it and walks right through the green lever: Sol's green gate and the green
+       tunnel lock open for good. (Mirrored order works too: green plate, then purple lever.)
+       Green on shuts Sol's shaft doorway and Luna's door lock. Purple on shuts Luna's doorway
+       and opens Sol's door lock (it shuts again whenever purple goes off).
+    3. Sol climbs his wing and walks right through the purple lever: the purple lock opens.
+    4. Both cross through the tunnel into the other's wing.
+    5. Sol walks down Luna's floors to her lift. Luna walks down Sol's floors and turns purple
+       off on the way (Luna's shaft doorway opens again).
+    6. Luna holds the yellow plate by her pit: Sol's lift rises, hers sinks. Sol pushes the crate
+       into the white socket (the white bridge on the left rises for good) and climbs out.
+    7. Sol holds the yellow plate in his top corridor, Luna steps onto her sunken lift, Sol lets
+       go: she rides up. Pump one.
+    8. Luna wades her moon pocket and sets the orange lever: Sol's orange bridge rises.
+    9. Sol crosses it, drops into the low corridor and walks left through the green lever,
+       switching it off: Luna's door lock opens, and he is stranded at the bottom.
+    10. Luna walks back down; Sol takes the shaft down to the lift. Pump two: she sends him up,
+        he sends her up.
+    11. Luna walks right through the purple lever again: Sol's door lock opens.
+    12. Sol stands on the pink plate; Luna passes the pink gate onto the white bridge (pink and
+        white are needed at once, which is why the crate holds white).
+    13. Both walk over the roofs of the top corridors to their doors."""
+    L = Lv('Eclipse', 125, 'Each wing mirrors the other. What you do on your side changes theirs. The two yellow lifts balance each other.')
+    right = [
+        "#..................",  # 1
+        "#........###.......",  # 2
+        "#........#.#.......",  # 3
+        "#........#.#.......",  # 4
+        "#.........E........",  # 5
+        "####......E........",  # 6
+        "####...########....",  # 7
+        "#....#.............",  # 8
+        "#....#.............",  # 9
+        "#...###MMM##SSS#...",  # 10
+        "#...###OOO######...",  # 11
+        "#........#........#",  # 12
+        "#........#........#",  # 13
+        "#####...##..###...#",  # 14
+        "#.........##..#...#",  # 15
+        "#..................#"[:19],  # 16
+        "#......#...........",  # 17
+        "###########...#...#",  # 18
+        "#......#.#...##...#",  # 19
+        "#......#.#...##...#",  # 20
+        "#.......G...###...#",  # 21
+        "#.......G...###...#",  # 22
+        "#....##########...#",  # 23
+        "###................",  # 24
+        "###................",  # 25
+        "#####..............",  # 26
+        "#####..............",  # 27
+        "########MMM####YYY#",  # 28
+    ]
+    rows = mirror_half(right, {'O': 'W', 'G': 'H', 'Y': 'Z', 'E': 'F'})
+    # tunnel through the body (rows 16-17) with two locks rising into slots (rows 14-15)
+    for y in (14, 15):
+        patch(rows, 18, y, '#..#')
+    for y in (16, 17):
+        patch(rows, 19, y, 'QP')
+    # the left wing breaks the mirror: Luna climbs from floor 3 to her low corridor on a step
+    # (Sol needs the lift), there is no socket, and a pink gate guards the white bridge
+    patch(rows, 12, 14, '......'); patch(rows, 10, 12, '.'); patch(rows, 10, 13, '.')
+    patch(rows, 14, 16, '##'); patch(rows, 14, 17, '##')
+    patch(rows, 8, 14, '##')
+    # Sol's floor-3 doorway into his shaft has a floor gate: open until green is set, shut after
+    patch(rows, 5, 16, 'J'); patch(rows, 5, 17, 'J'); patch(rows, 5, 18, '.'); patch(rows, 5, 19, '.')
+    # and Luna's doorway on the right is open until purple is set, shut after, open again once purple is off
+    patch(rows, 34, 16, 'N'); patch(rows, 34, 17, 'N'); patch(rows, 34, 18, '.'); patch(rows, 34, 19, '.')
+    for y in range(2, 7):
+        patch(rows, 8, y, '.....')
+    patch(rows, 10, 2, '###'); patch(rows, 10, 3, '#.#'); patch(rows, 10, 4, '#.#')
+    patch(rows, 11, 5, 'F'); patch(rows, 11, 6, 'F')
+    patch(rows, 8, 6, '#.#'); patch(rows, 9, 7, '.')
+    patch(rows, 9, 8, 'K'); patch(rows, 9, 9, 'K')
+    art(L, rows, {
+        'G': (0, 0, -2), 'P': (0, 0, -2),      # purple: Luna's floor-2 gate, tunnel lock
+        'H': (1, 0, -2), 'Q': (1, 0, -2),      # green: Sol's floor-2 gate, tunnel lock
+        'O': (2, 0, -1),                       # orange: bridge out of the moon pool (right top)
+        'W': (3, 0, -1),                       # white: bridge out of the sun pool (left top)
+        'K': (4, 0, -2),                       # pink: gate before the white bridge
+        'Y': (5, 0, -14),                      # yellow: right wing-tip lift, bottom to low corridor
+        'Z': (5, 0, -14, True),                # yellow, counterweight: left lift rests up
+        'E': (0, 0, -2),                       # Sol's door lock: open while purple is on
+        'F': (1, 0, -2, True),                 # Luna's door lock: shut while green is on
+        'J': (1, 0, 2, True),                  # Sol's shaft doorway: shut while green is on
+        'N': (0, 0, 2, True),                  # Luna's shaft doorway: shut while purple is on
+    })
+    L.p(17, 5, 'a').p(21, 5, 'b')
+    L.p(33, 6, 'A').p(6, 6, 'B')
+    L.plate(12, 27, 0).plate(27, 27, 1)        # purple plate (Sol's), green plate (Luna's)
+    L.lever(30, 22, 1)                         # green lever, Luna's floor 2
+    L.lever(10, 17, 0)                         # purple lever, Sol's floor 3
+    L.lever(8, 9, 2)                           # orange lever, behind Luna's moon pocket (left top)
+    L.p(33, 13, 'k').plate(30, 14, 3)          # crate and the white socket (right low corridor)
+    L.plate(23, 5, 4)                          # pink plate on Sol's ledge
+    # each wing's far-wall notch, the pillar pockets of Sol's floor 2, the corners past each door
+    for x, y in ((2, 13), (38, 16), (8, 20), (1, 24), (21, 19), (35, 4)):
+        L.p(x, y, 's')
+    for x, y in ((3, 7), (38, 24), (10, 20), (16, 23), (27, 12), (4, 4)):
+        L.p(x, y, 'm')
+    L.plate(1, 27, 5).plate(35, 9, 5)         # yellow plates: beside Luna's lift (left bottom), Sol's top corridor (right)
+    return L
+
+
+# ---------------------------------------------------------------------------
+# Carving helpers (rooms cut out of solid rock).
+
+def rock(L):
+    return L.r(1, 1, W, H)
+
+
+def pgate(L, x, y0, y1, g, inv=False):
+    """A one-wide gate at column x, rows y0..y1, that rises into an empty slot of the same
+    height right above it while group g is active (inv: rises while g is NOT active).
+    The caller leaves stone on both sides of the slot."""
+    h = y1 - y0 + 1
+    L.clear(x, y0 - h, x, y1)
+    return L.plat(x, y0, 1, h, 0, -h, g, inv)
+
+
+def bridge(L, x, y, w, g, inv=False, kind='X'):
+    """A pool of `kind` w wide in row y, with a bridge under it (row y+1) that rises into the
+    pool while g is active (inv: while g is NOT active)."""
+    L.pool(x, y, w, kind)
+    L.clear(x, y + 1, x + w - 1, y + 1)
+    return L.plat(x, y + 1, w, 1, 0, -1, g, inv)
+
+
+def ladder(L, x, rows):
+    """Two-wide ledges alternating between columns x..x+1 and x+3..x+4, one per floor row."""
+    for i, y in enumerate(rows):
+        xx = x if i % 2 == 0 else x + 3
+        L.r(xx, y, xx + 1, y)
+    return L
+
+
+@level(24)
+def dusk_gate():
+    """Dusk Gate. Chapter exam. A spiral: the outer ring (left shaft, bottom band, right shaft,
+    top band) winds round an inner ring (a C of corridors) that wraps the door chamber in the
+    centre. Both start on a deck in the top-left corner where the spiral begins. Sol takes the
+    outer ring the long way, Luna the short way along the top; they meet at the lift on the
+    right and wind inward together.
+
+    1. Sol climbs down the left shaft. Luna stays on the deck: she is the operator.
+    2. Purple lever P starts on and keeps gate GA on the bottom band shut. Luna walks left
+       through it: GA opens and Sol passes.
+    3. Inverted pair, green: two shade pits under low ceilings on the bottom band. Lever G
+       raises the first pit's bridge and sinks the second's. Luna walks right through G: Sol
+       crosses pit one. She walks left through G again: Sol crosses pit two to the booth at the
+       bottom of the lift.
+    4. Operator swap. Gate GB bars the top band just outside the deck. Sol stands in the orange
+       socket in the booth, far below: GB opens and Luna leaves the deck. (Orange also opens
+       the entry gate into the inner ring, but nobody can reach it yet.)
+    5. Inverted pair, white: the top band has two more pits. Sol walks right through white
+       lever W: the first bridge rises and Luna crosses. He walks left through W: the second
+       bridge rises, the first sinks, and Luna crosses.
+    6. Handover: Luna pushes the crate off the end of the top band down the lift shaft. It
+       lands on the lift in the booth, and Sol pushes it into the socket he stood in. The crate
+       replaces him: the entry gate is open for good.
+    7. The lift pump. Sol stands on the booth's yellow plate: the lift rises, and Luna (who
+       drops onto it, or rode it up from the booth if she followed the crate down) steps onto
+       the landing. Sol steps off; the lift sinks. Sol steps on; Luna stands on the landing's
+       yellow plate and sends him up.
+    8. Both walk through the entry gate, west along the inner top band and down the ladder.
+    9. Airlock on the inner bottom band (pink): a plate before the first gate opens it and
+       shuts the second. Luna holds hers, Sol steps in, she lets go and he walks out to the
+       far plate; he holds it, she steps in, he lets go and she walks out.
+    10. The chamber door is pink too. Luna stands on the far airlock plate again: the door
+        opens and Sol climbs the inner right shaft into the chamber. He walks to its west end
+        and back through the pink lever, which keeps the door open (and the airlock's second
+        gate shut, which no longer matters), and Luna climbs in."""
+    L = Lv('Dusk Gate', 80, 'The spiral winds in to the doors. One of you works the levers while the other runs; then swap.')
+    rock(L)
+    # deck (top left): x 1-5 on floor 6 with the shaft hole, x 6-11 on floor 5
+    L.clear(1, 1, 11, 4).clear(1, 5, 5, 5).clear(1, 6, 3, 6)
+    L.clear(12, 3, 12, 4)                                  # doorway to the top band
+    L.p(5, 5, 'a').p(11, 4, 'b')
+    L.lever(7, 4, 1)                                       # G (green): OB bridges
+    L.lever(9, 4, 0, on=True)                              # P (purple): GA / GB
+    # outer left shaft: a ladder of ledges
+    # outer bottom band (rows 23-27) and the booth (x 27-38, floor 28)
+    L.clear(1, 7, 5, 22)
+    L.clear(1, 23, 26, 26).clear(6, 27, 11, 27).clear(18, 27, 19, 27)
+    ladder(L, 1, [24, 22, 20, 18, 16, 14, 12, 10, 8])
+    L.r(8, 23, 10, 25)
+    pgate(L, 9, 26, 27, 0, inv=True)                       # GA: open while purple is off
+    L.r(13, 23, 17, 24)                                    # low ceiling over pit one
+    bridge(L, 14, 27, 3, 1)                                # pit one: bridge while green is on
+    L.r(21, 23, 25, 24)                                    # low ceiling over pit two
+    bridge(L, 22, 27, 3, 1, inv=True)                      # pit two: bridge while green is off
+    L.clear(27, 23, 38, 27)
+    L.plate(27, 27, 5)                                     # booth yellow plate
+    L.clear(30, 28, 31, 28).plate(30, 28, 2).plate(31, 28, 2)   # orange socket
+    L.lever(33, 27, 3)                                     # W (white): the top band's pits
+    # right shaft: lift (x 36-38) from the booth to the landing (x 33-35, floor 12)
+    L.clear(36, 6, 38, 28)
+    L.plat(36, 28, 3, 1, 0, -16, 5)
+    L.clear(33, 10, 35, 11).clear(34, 7, 35, 9)
+    L.plate(35, 11, 5)                                     # landing yellow plate
+    pgate(L, 32, 10, 11, 2)                                # entry gate: open while orange is on
+    # outer top band (rows 1-5)
+    L.clear(13, 1, 38, 5)
+    L.r(14, 1, 16, 3)
+    pgate(L, 15, 4, 5, 2)                                  # GB: open while orange is on
+    L.r(19, 5, 24, 5).r(19, 1, 23, 2)                      # raised floor, low ceiling
+    bridge(L, 20, 5, 3, 3)                                 # pit one: bridge while white is on
+    L.r(26, 1, 30, 3)
+    bridge(L, 27, 6, 3, 3, inv=True)                       # pit two: bridge while white is off
+    L.p(31, 5, 'k')
+    # inner top band (rows 8-11) from the entry gate west to the inner left shaft
+    L.clear(13, 8, 31, 11).r(31, 8, 31, 9).r(19, 11, 21, 11)
+    L.clear(12, 8, 12, 11)
+    # inner left shaft (x 7-11), a ladder down to the inner bottom band
+    L.clear(7, 7, 11, 21)
+    ladder(L, 7, [20, 18, 16, 14])
+    # inner bottom band (rows 18-21) with the pink airlock; raised east end
+    L.clear(12, 18, 31, 21).r(24, 21, 31, 21)
+    L.r(14, 17, 16, 19).r(20, 17, 22, 19)
+    pgate(L, 15, 20, 21, 4)                                # airlock gate one: open while pink is on
+    pgate(L, 21, 20, 21, 4, inv=True)                      # gate two: open while pink is off
+    L.plate(12, 21, 4).plate(25, 20, 4)
+    # inner right shaft (x 27-31) up to the door chamber
+    L.clear(27, 14, 31, 20).r(30, 19, 31, 19).r(27, 17, 28, 17)
+    L.clear(26, 14, 26, 16)
+    # the door chamber (x 13-25, rows 13-16)
+    L.clear(13, 13, 25, 16)
+    L.r(25, 13, 25, 14).r(27, 14, 27, 14)
+    pgate(L, 26, 15, 16, 4)                                # chamber door: open while pink is on
+    L.lever(14, 16, 4)                                     # pink lever at the chamber's west end
+    L.p(18, 16, 'A').p(20, 16, 'B')
+    L.r(37, 1, 38, 2)                                      # hanging block over the shaft
+    # gems: ledges off the ladders, nooks and corners
+    for x, y in ((2, 2), (1, 11), (1, 26), (29, 24), (13, 9), (31, 15)):
+        L.p(x, y, 's')
+    for x, y in ((4, 13), (17, 2), (34, 7), (8, 15), (7, 19), (24, 13)):
+        L.p(x, y, 'm')
+    return L
+
+
+@level(25)
+def two_keys():
+    """Two Keys. A stepped tower over a basement that runs the full width: the ground hall
+    (rows 14-20), the narrower upper hall (rows 8-12) with galleries at both ends, and the
+    crown on top with the two doors, each behind its own gate. The keys are the two crates:
+    orange keyhole KA opens Sol's gate, white keyhole KB opens Luna's. Both keyholes are in the
+    basement, under two green hatches in the ground hall's floor. Crates can't climb, so they
+    go up on the lift and come down through the hatches. Four places want a crate: the two
+    hatches, the foot of the high ledge (a step), and the two yellow plates (a weight that
+    would strand the lift).
+
+    1. Both start in the basement beside the lift with one crate; the other is on the raised
+       floor. Luna stands on the basement yellow plate: Sol rides up with the first crate.
+    2. Pump: Luna steps off and the lift sinks; she rolls the second crate on and rides it; Sol
+       stands on the hall's yellow plate and brings her up. She pushes her crate west off the
+       lift into the socket over hatch B (the key for her own gate).
+    3. The pink airlock: Luna holds the near plate (gate one opens, gate two shuts), Sol pushes
+       the first crate in, she lets go (gate two opens) and he pushes it on against the face of
+       the high ledge, onto hatch A.
+    4. Sol holds the far plate; Luna walks into the airlock; he lets go and she walks out.
+    5. The ledge is four tiles high: the crate is the step. Both climb it, then the upper step,
+       into the upper hall.
+    6. Sol walks out to the dead end of the west gallery and back through the green lever: both
+       hatches sink 6 rows and set the keys down on KA and KB. Both gates open. The order is the
+       puzzle: the crate on hatch A has to be the step before it is a key, and the lever is only
+       reachable once it has been.
+    7. The crown climb: ledge B only rises while purple is on. Luna holds the purple plate out
+       on the east gallery, past the hole in the upper hall's floor; Sol climbs into the crown,
+       walks to its west dead end and back through the purple lever, which keeps B up. Luna
+       climbs after him.
+    8. Each walks out to their door."""
+    L = Lv('Two Keys', 90, 'The crates are your keys, and a crate never climbs. One of them has to be a step before it is a key.')
+    rock(L)
+    # basement (rows 22-27): floor 28 in the west, raised in the middle and east
+    L.clear(1, 22, 38, 27)
+    L.r(15, 27, 30, 27).r(31, 26, 38, 27)
+    L.r(9, 22, 12, 23).r(18, 22, 20, 24).r(26, 22, 27, 23).r(33, 22, 35, 22)  # hanging blocks
+    L.clear(4, 28, 7, 28).plat(4, 28, 4, 1, 0, -7, 5)      # the lift, basement to the ground hall
+    L.plate(16, 26, 5)                                     # basement yellow plate
+    L.clear(28, 27, 29, 27).plate(28, 26, 2).plate(29, 26, 2)   # KA (orange keyhole): the hatch lands here
+    L.plate(1, 26, 3).plate(2, 26, 3)                      # KB (white keyhole): hatch B lands here
+    L.r(3, 27, 3, 27)                                      # a kerb: crates can't slide past the lift
+    L.p(9, 27, 'k').p(17, 26, 'k')
+    L.p(12, 27, 'a').p(13, 27, 'b')
+    # ground hall (rows 14-20, floor 21)
+    L.clear(1, 14, 33, 20).clear(4, 21, 7, 21)
+    L.clear(1, 21, 2, 21).plat(1, 22, 2, 1, 0, 5, 1)       # socket over hatch B at the west end: sinks while green is on
+    L.plate(9, 20, 5)                                      # hall yellow plate
+    L.r(10, 14, 12, 15)                                    # hanging block
+    L.clear(12, 21, 12, 21)                                # a one-wide dip: crates roll over it
+    L.plate(13, 20, 4)                                     # airlock, near plate
+    L.r(14, 14, 16, 18)
+    pgate(L, 15, 19, 20, 4)                                # gate one: open while pink is on
+    L.r(21, 14, 23, 18)
+    pgate(L, 22, 19, 20, 4, inv=True)                      # gate two: open while pink is off
+    L.plate(27, 20, 4)                                     # airlock, far plate
+    L.clear(28, 21, 29, 21).plat(28, 21, 2, 1, 0, 6, 1)    # hatch A over KA: sinks while green is on
+    L.r(30, 17, 33, 20).r(32, 15, 33, 16)                  # the high ledge and its upper step
+    # upper hall (rows 8-12, floor 13) with galleries at both ends
+    L.clear(7, 8, 33, 12).clear(30, 13, 33, 13)
+    L.clear(2, 9, 6, 11).clear(34, 9, 37, 10)
+    L.r(26, 8, 27, 9)                                      # hanging block in the upper hall
+    L.r(18, 11, 19, 12)                                    # climb to the crown: a block, then
+    L.plat(21, 11, 2, 1, 0, -2, 0)                         # ledge B, which rises while purple is on
+    L.plate(35, 10, 0)                                     # purple plate, out on the east gallery past the hole
+    L.clear(34, 13, 37, 15)                                # a pocket off the high ledge's top
+    L.clear(34, 6, 37, 8).r(37, 8, 37, 8)                  # and a perch above the east gallery
+    L.lever(2, 11, 1)                                      # green lever at the west gallery's dead end: the hatches
+    # crown (rows 2-6, floor 7) with the doors at its ends
+    L.clear(5, 3, 27, 6).clear(12, 2, 27, 2).clear(18, 7, 22, 7)
+    L.r(15, 2, 17, 4)
+    pgate(L, 16, 5, 6, 2)                                  # Sol's gate (orange)
+    L.r(22, 2, 24, 4)
+    pgate(L, 23, 5, 6, 3)                                  # Luna's gate (white)
+    L.p(7, 6, 'A').p(26, 6, 'B')
+    L.lever(5, 6, 0)                                       # purple lever at the crown's west dead end: B stays up
+    # gems: the galleries, the basement's far end, the crown's corners, high in the halls
+    for x, y in ((6, 9), (1, 24), (27, 3), (3, 17), (14, 9), (37, 15)):
+        L.p(x, y, 's')
+    for x, y in ((37, 9), (36, 23), (5, 4), (18, 16), (8, 9), (37, 6)):
+        L.p(x, y, 'm')
+    return L
+
+
+# ---------------------------------------------------------------------------
+# Painting helpers (rooms painted onto solid rock with exact coordinates).
+
+def canvas():
+    return [['#'] * (W + 1) for _ in range(H + 1)]      # C[y][x], 1-based
+
+
+def paint(C, x0, y0, x1, y1, ch='.'):
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            C[y][x] = ch
+
+
+def put(C, x, y, s):
+    for i, ch in enumerate(s):
+        C[y][x + i] = ch
+
+
+def flush(L, C):
+    for y in range(1, H + 1):
+        for x in range(1, W + 1):
+            L.set(x, y, C[y][x])
+    return L
+
+
+def gate_plat(L, x, y0, y1, g, inv=False):
+    """Gate cells at column x rows y0..y1 that rise into an already-painted slot above."""
+    h = y1 - y0 + 1
+    return L.plat(x, y0, 1, h, 0, -h, g, inv)
+
+
+def lock_bridge(L, x, y, code):
+    """A lock over a six-wide shade pit drawn in row y at cols x..x+5: a purple half then a green
+    half, each rising out of the row below. code = (purple on?, green on?) that raises it."""
+    L.plat(x, y + 1, 3, 1, 0, -1, 0, not code[0])
+    L.plat(x + 3, y + 1, 3, 1, 0, -1, 1, not code[1])
+
+
+def lock_gates(L, x, y0, code):
+    """A lock of two two-high gates, purple at col x and green at x+1, rows y0..y0+1."""
+    gate_plat(L, x, y0, y0 + 1, 0, not code[0])
+    gate_plat(L, x + 1, y0, y0 + 1, 1, not code[1])
+
+
+# lock codes (purple lever on?, green lever on?)
+TL_S, TL_W, TL_N, TL_E = (0, 0), (1, 1), (0, 1), (1, 0)
+
+
+@level(26)
+def tidelock():
+    """Tidelock. Four quadrant basins ring a cross-shaped control room. The purple lever (west
+    arm) and green lever (east arm) give four states, and each state opens one crossing: S (both
+    off) lets you from the start into the SW basin and from the SE basin into the latch hall,
+    W (both on) from SW to NW, N (purple off, green on) the bridge over the top from NW to NE,
+    E (purple on, green off) from NE to SE. Every basin has two locks with different codes, so
+    a runner inside one is shut in until the operator changes the state. The doors are in the
+    two arms of the control room, behind gates that only the latch hall opens.
+
+    1. Sol stands on the orange plate in the start area; Luna rides the lift up into the control
+       room. She is the operator.
+    2. Sol walks west into the SW basin (S is open). Luna sets both levers on (W): the SW lock
+       behind him shuts, the W lock opens, and he climbs to the tide lift at the west wall.
+    3. Luna holds a yellow tide plate: the lift raises Sol into the NW basin. He climbs to the top
+       corridor.
+    4. Luna turns purple off (N): the bridge over the top rises; Sol crosses into the NE basin
+       and drops down the east wall.
+    5. Luna turns purple on and green off (E): Sol passes the east lock into the SE basin.
+    6. Luna turns purple off (S): Sol crosses the bridge into the latch hall, wades his sun lane
+       to the white latch (Luna's door gate opens for good) and drops down the chute into the
+       start area.
+    7. Luna holds the orange plate in the hub: the lift brings Sol up. Roles swap: Luna drops
+       down the shaft and runs the same ring while Sol works the levers and the tide.
+    8. In the latch hall Luna wades her moon lane to the pink latch (Sol's door gate opens) and
+       drops down the chute. Sol lifts her up with the orange plate, and both walk to their
+       doors at the ends of the two arms."""
+    L = Lv('Tidelock', 115, 'Purple and green make four codes; each code opens one crossing. '
+           'Walk right through a lever to turn it on, left to turn it off, and jump over it to leave it.')
+    C = canvas()
+    # top band: NW room, corridor, the N bridge, NE corridor, NE room
+    paint(C, 1, 1, 6, 11); paint(C, 7, 1, 14, 3); paint(C, 15, 2, 24, 3)
+    paint(C, 25, 1, 32, 3); paint(C, 33, 1, 38, 11)
+    put(C, 17, 4, 'XXXXXX'); put(C, 17, 5, '......')
+    paint(C, 10, 3, 13, 3, '#'); paint(C, 26, 3, 29, 3, '#')     # steps in the top corridors
+    paint(C, 9, 10, 12, 11); paint(C, 27, 10, 30, 11)              # gem alcoves off the two columns
+    paint(C, 7, 6, 8, 17)                     # NW tide lift column
+    paint(C, 31, 6, 32, 16)                   # NE drop column
+    for x, y in ((1, 10), (5, 8), (1, 6), (5, 4)):      # NW climb; the NE mirrors it
+        paint(C, x, y, x + 1, y, '#'); paint(C, 38 - x, y, 39 - x, y, '#')
+    # W lock (gates x4-5) between the SW exit and the tide lift; E lock (x34-35) mirrored
+    paint(C, 1, 15, 3, 16); paint(C, 4, 13, 5, 16); paint(C, 6, 15, 6, 16); paint(C, 1, 17, 2, 17)
+    paint(C, 36, 15, 38, 16); paint(C, 34, 13, 35, 16); paint(C, 33, 15, 33, 16); paint(C, 37, 17, 38, 17)
+    # the cross: hub, N arm, W arm (Sol's door), E arm (Luna's door)
+    paint(C, 15, 12, 24, 17); paint(C, 18, 7, 21, 11)
+    paint(C, 13, 13, 14, 17); paint(C, 10, 16, 12, 17); paint(C, 11, 14, 11, 15)
+    paint(C, 25, 13, 26, 17); paint(C, 27, 16, 29, 17); paint(C, 28, 14, 28, 15)
+    put(C, 10, 17, 'A'); put(C, 14, 17, '!6'); put(C, 24, 17, '6@'); put(C, 29, 17, 'B')
+    put(C, 22, 17, '3')                       # hub orange plate
+    paint(C, 21, 15, 23, 15, '#'); paint(C, 18, 13, 19, 13, '#')   # perch climb
+    # S arm lift shaft and the start area
+    paint(C, 16, 18, 18, 28)
+    paint(C, 15, 26, 27, 27); paint(C, 16, 25, 27, 25)
+    paint(C, 13, 24, 14, 27)                  # S lock gates (x13-14) and their slots
+    put(C, 25, 27, '3')                       # start orange plate
+    put(C, 20, 27, 'a'); put(C, 22, 27, 'b')
+    # latch hall: Sol's lane above (sun), Luna's below (moon), chute at x27
+    paint(C, 20, 19, 27, 20); put(C, 23, 21, 'SSS'); put(C, 26, 21, '.')
+    paint(C, 20, 22, 27, 23); put(C, 23, 24, 'MMM'); put(C, 27, 24, '.')
+    put(C, 21, 20, '%'); put(C, 21, 23, '^')
+    paint(C, 28, 19, 34, 20); put(C, 28, 21, 'XXXXXX'); put(C, 28, 22, '......')
+    # SW basin
+    paint(C, 1, 20, 11, 27); paint(C, 1, 18, 6, 19); paint(C, 10, 19, 11, 19); paint(C, 12, 26, 12, 27)
+    paint(C, 1, 27, 4, 27, '#')
+    paint(C, 9, 26, 10, 26, '#'); paint(C, 6, 24, 7, 24, '#'); paint(C, 4, 22, 5, 22, '#'); paint(C, 1, 20, 2, 20, '#')
+    # SE basin
+    paint(C, 35, 18, 38, 26); paint(C, 29, 24, 34, 26)
+    paint(C, 34, 23, 34, 23); paint(C, 35, 25, 36, 25, '#'); paint(C, 37, 23, 38, 23, '#'); paint(C, 35, 21, 35, 21, '#')
+    for x, y in ((18, 9), (11, 11), (1, 2), (11, 20), (32, 26)):
+        put(C, x, y, 's')
+    for x, y in ((21, 9), (28, 11), (38, 2), (3, 26), (30, 26)):
+        put(C, x, y, 'm')
+    flush(L, C)
+    L.plat(7, 17, 2, 1, 0, -5, 5)            # NW tide lift (yellow)
+    L.plat(16, 28, 3, 1, 0, -10, 2)          # start lift (orange)
+    lock_gates(L, 4, 15, TL_W); lock_gates(L, 34, 15, TL_E); lock_gates(L, 13, 26, TL_S)
+    lock_bridge(L, 17, 4, TL_N); lock_bridge(L, 28, 21, TL_S)
+    gate_plat(L, 11, 16, 17, 4)              # Sol's door gate (pink: Luna's latch)
+    gate_plat(L, 28, 16, 17, 3)              # Luna's door gate (white: Sol's latch)
+    return L
+
+
+@level(27)
+def leapfrog_spire():
+    """Leapfrog Spire. A spire: a hollow central column with a stack of landings on each side,
+    Sol's west landings four rows apart, Luna's east landings offset by two rows, so the two
+    climbs interleave like a helix up the full height of the screen. Every lift climbs one
+    landing, and its plate is on the other side, on the landing between its two stops, so whoever
+    is lower holds the plate while the other rides, then they swap. Sol's lifts are purple and
+    green, Luna's white and pink, alternating; Sol's plates sit in one-wide dips on Luna's side
+    so the crate rolls over them. Then both go back down inside the column to the doors.
+
+    1. Luna, in the purple dip on her bottom landing, sends Sol up one west landing.
+    2. Sol on the white plate sends Luna and the crate up one east landing. Luna pushes the crate
+       across to her next lift, jumping over it on the lift when it has to go the other way.
+    3. Repeat five times each way: Luna green, Sol pink, Luna purple, Sol white, ... The shared
+       colours mean a player who falls back down a hole can be lifted again from a higher dip.
+    4. Sol stands on his last lift, whose green plate is in a socket two landings below Luna.
+       Luna rides to the top, pushes the crate along the top and down the chute: it lands in the
+       socket and holds the plate, and Sol rides up. Nobody else could hold it.
+    5. Sol's lift ends in a niche behind a sun pool, with the yellow lever that drops the top
+       hatch of the shaft. Luna's niche at the top right, behind a moon pool, has the orange lever
+       for the lower hatch. Both levers are needed before anyone can drop down the shaft.
+    6. Both drop down the column, steering onto ledges for gems, to the doors at its foot."""
+    L = Lv('Leapfrog Spire', 90, 'Each lift is worked from the other side. The crate never climbs: it rides.')
+    C = canvas()
+    SOLLIFT = ((13, 28, 24, 0), (1, 24, 20, 1), (13, 20, 16, 0), (1, 16, 12, 1), (13, 12, 8, 0), (1, 8, 4, 1))
+    LUNLIFT = ((24, 26, 22, 3), (35, 22, 18, 4), (25, 18, 14, 3), (31, 14, 10, 4), (24, 10, 6, 3))
+    # west landings (Sol): floors 28, 24, 20, 16, 12, 8; east landings (Luna): 26, 22, 18, 14, 10, 6
+    for f in (28, 24, 20, 16, 12, 8):
+        paint(C, 1, f - 3, 15, f - 1)
+        put(C, 7, f - 1, '#'); put(C, 10, f - 3, '#')       # a step to hop and a hanging stone
+    for f in (26, 22, 18, 14, 10):
+        paint(C, 24, f - 3, 38, f - 1)
+        put(C, 30, f - 3, '#')                               # a hanging stone: the crate still passes
+    paint(C, 24, 1, 38, 5)
+    # Luna's niche at the top right: a moon channel, then the orange lever that opens the lower hatch
+    put(C, 31, 3, '##MMM###'); put(C, 37, 2, '$')
+    for (x0, f0, f1, g) in SOLLIFT:
+        paint(C, x0, f1, x0 + 2, f0)
+    for (x0, f0, f1, g) in LUNLIFT:
+        paint(C, x0, f1, x0 + 3, f0)
+    # the crate socket for Sol's last lift, at Luna's R10 level, fed by a chute from the top
+    paint(C, 37, 6, 38, 10); put(C, 36, 7, '#'); put(C, 37, 10, '2'); put(C, 37, 11, '##')
+    # the top: Sol's niche with the hatch lever, a sun channel only he can wade, the crossing
+    paint(C, 1, 1, 3, 3); put(C, 2, 3, '&')
+    paint(C, 4, 2, 6, 3); put(C, 4, 4, 'SSS')
+    paint(C, 7, 2, 15, 3); paint(C, 16, 2, 23, 4)
+    # the column: descent shaft with ledges, the door chamber at its foot
+    paint(C, 17, 6, 22, 27); paint(C, 19, 5, 20, 5); paint(C, 19, 28, 20, 28)
+    for x, y in ((17, 12), (22, 15), (17, 19), (22, 22), (18, 9), (21, 18), (18, 23), (21, 10)):
+        put(C, x, y, '#')
+    paint(C, 17, 16, 18, 16, '#'); paint(C, 21, 16, 22, 16, '#')     # the lower hatch's frame
+    put(C, 17, 27, 'A'); put(C, 22, 27, 'B')
+    # plates: Luna's lifts are worked from Sol's landings, Sol's from Luna's (in one-wide dips
+    # the crate rolls over)
+    for (x, f, g) in ((8, 24, 3), (8, 20, 4), (8, 16, 3), (8, 12, 4), (8, 8, 3)):
+        put(C, x, f - 1, '123456'[g])
+    for (x, f, g) in ((30, 26, 0), (31, 22, 1), (31, 18, 0), (29, 14, 1), (29, 10, 0)):
+        put(C, x, f, '123456'[g]); put(C, x, f + 1, '#')
+    for x, y in ((12, 21), (4, 13), (5, 5), (35, 4), (22, 14), (1, 25)):
+        put(C, x, y, 's')
+    for x, y in ((26, 19), (38, 12), (11, 2), (18, 8), (18, 22), (38, 24)):
+        put(C, x, y, 'm')
+    put(C, 3, 27, 'a'); put(C, 36, 25, 'b'); put(C, 31, 25, 'k')
+    put(C, 1, 17, '#'); put(C, 38, 20, '#')                   # break the lift columns
+    flush(L, C)
+    for (x0, f0, f1, g) in SOLLIFT:
+        L.plat(x0, f0, 3, 1, 0, f1 - f0, g)
+    for (x0, f0, f1, g) in LUNLIFT:
+        L.plat(x0, f0, 4, 1, 0, f1 - f0, g)
+    L.plat(19, 5, 2, 1, 0, 23, 5)                       # the hatch over the shaft (Sol's yellow lever)
+    L.plat(19, 16, 2, 1, 0, 12, 2)                      # the lower hatch (Luna's orange lever)
+    return L

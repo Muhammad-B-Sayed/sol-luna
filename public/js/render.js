@@ -6,7 +6,7 @@ import {
   tileAt, PH_DEAD, PH_WON, SOL, LUNA, PHYS,
 } from '/shared/sim.js';
 
-export const GROUP_COLORS = ['#b98cff', '#5fd39a', '#ff9f5a', '#e8eef7'];
+export const GROUP_COLORS = ['#b98cff', '#5fd39a', '#ff9f5a', '#e8eef7', '#ff6fb1', '#d7e84a'];
 
 const LIQ = {
   [T_SUN]: { top: '#fff1a8', a: '#ffb02e', b: '#e2531c', glow: 'rgba(255,170,40,0.55)' },
@@ -400,7 +400,7 @@ export class Renderer {
 
   drawButtons(g, L, S) {
     L.buttons.forEach((b, i) => {
-      const c = GROUP_COLORS[b.g % 4];
+      const c = GROUP_COLORS[b.g % GROUP_COLORS.length];
       const down = S.btn[i];
       const h = down ? 2 : 5;
       g.fillStyle = '#2b2440';
@@ -422,7 +422,7 @@ export class Renderer {
 
   drawLevers(g, L, S) {
     L.levers.forEach((lv, i) => {
-      const c = GROUP_COLORS[lv.g % 4];
+      const c = GROUP_COLORS[lv.g % GROUP_COLORS.length];
       const px = lv.x + TS / 2, py = lv.floor - 3;
       const ang = S.lv[i] * 0.7;
       g.strokeStyle = '#d7d0e6'; g.lineWidth = 3; g.lineCap = 'round';
@@ -442,7 +442,7 @@ export class Renderer {
       const st = S.pl[i];
       const o = view?.pl?.[i];
       const x = o ? o.x : st.x, y = o ? o.y : st.y;
-      const c = GROUP_COLORS[P.g % 4];
+      const c = GROUP_COLORS[P.g % GROUP_COLORS.length];
       const grd = g.createLinearGradient(0, y, 0, y + P.h);
       grd.addColorStop(0, '#8d84ad'); grd.addColorStop(1, '#5d5480');
       g.fillStyle = grd;

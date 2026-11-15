@@ -1,2 +1,5 @@
 node_modules
 .DS_Store
+tools/acts/.botcache/
+tools/acts/.last/
+__pycache__/
