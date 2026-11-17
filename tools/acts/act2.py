@@ -231,67 +231,62 @@ def carry_the_weight():
     8. Pink gate G6 bars the corridor. Sol climbs to the shelf and holds pink plate P6a; Luna
        passes G6 and holds P6b; Sol passes. Both cross B5 to the doors.
     """
-    L = Lv('Carry the Weight', 100, 'A crate cannot climb, and a lift needs someone on its plate. Take the crate all the way up.')
+    L = Lv('Carry the Weight', 85, 'A crate cannot climb, and a lift needs someone on its plate. Take the crate all the way up.')
     solid(L)
-    # stage A, bottom left (rows 23-27), with purple lift L1 in a floor hole at x 10-12
-    L.clear(1, 23, 12, 27)
-    L.clear(10, 17, 12, 27).cells(10, 28, 12, 28, 0).mv(0, 0, -11)
-    # tower, top left (x 1-9): floors every five rows, stairs under a hole, alternating ends
-    L.r(3, 26, 4, 27).r(1, 24, 2, 27)                      # stairs, hole in floor 22 at x 1-4
-    L.clear(1, 3, 9, 22)
-    L.r(5, 22, 9, 22)                                      # floor 22
-    L.r(6, 20, 7, 21).r(8, 18, 9, 21)                      # stairs, hole in floor 17 at x 6-9
-    L.r(1, 17, 4, 17)                                      # floor 17
-    L.r(3, 15, 4, 16).r(1, 13, 2, 16)                      # stairs, hole in floor 12 at x 1-4
-    L.r(5, 12, 9, 12)                                      # floor 12
-    L.r(6, 10, 7, 11).r(8, 8, 9, 11)                       # stairs, hole in floor 7 at x 6-9
-    L.r(1, 7, 4, 7)                                        # floor 7, the tower top
-    L.p(5, 27, 'a').p(8, 27, 'k')
-    L.plate(1, 6, 1)                                       # P2, top of the tower
-    L.plate(3, 6, 3)                                       # P3, top of the tower
-    L.clear(13, 25, 24, 27).r(15, 25, 18, 25)              # bottom tunnel to the gallery
-    L.r(21, 24, 23, 25).clear(22, 24, 22, 25)
-    vgate(L, 22, 26, 27, 4, 24)                            # G7 (pink) shuts the tunnel
-    # stage B, the middle floor (x 13-24, rows 13-16), reached from the tower over the L1 shaft
-    L.clear(10, 13, 24, 16)
-    L.r(18, 13, 20, 14).clear(19, 13, 19, 14)
-    vgate(L, 19, 15, 16, 1, 13)                            # G2
-    L.lever(17, 16, 1)                                     # L2, just before G2
-    L.plate(15, 16, 4)                                     # P7: a weight here opens the tunnel
-    L.clear(22, 7, 24, 12).cells(22, 17, 24, 17, 3).mv(3, 0, -7)
-    # top corridor (x 24-38, rows 2-5, floor 6): doors at the west end, B5 gap, climb at the east
-    L.clear(24, 2, 38, 5)
-    L.r(28, 2, 35, 3).clear(29, 1, 32, 3)
-    L.clear(29, 6, 32, 6).cells(29, 1, 32, 1, 5).mv(5, 0, 5)  # B5 comes down into the gap
-    L.p(25, 5, 'A').p(27, 5, 'B').p(35, 5, 'b')
-    L.clear(34, 2, 34, 3).r(34, 1, 34, 1)
-    vgate(L, 34, 4, 5, 4, 2)                               # G6 (pink) in the corridor
-    L.plate(24, 5, 4)                                      # P6b, past G6 and the gap
-    # stage C, the high shelf (x 25-38, rows 7-9, floor 10): ferry, gap, socket, climbs
-    L.clear(25, 7, 38, 9)
-    L.cells(29, 10, 31, 10, 2).mv(2, 3, 0)                 # the ferry
-    L.clear(32, 10, 34, 10)
-    L.floorgate(28, 8, 2, 0)                               # G8 (purple): sinks while P1 is held
-    L.clear(35, 10, 36, 10).plate(35, 10, 5)              # the socket: P5
-    L.clear(36, 6, 38, 6).r(38, 8, 38, 9)                  # climb from the shelf to the corridor
-    # bottom-right gallery (x 25-38, rows 11-27): floors 28, 23, 18 with stairs under holes
-    L.clear(25, 11, 38, 27).clear(37, 10, 38, 10)
-    L.r(35, 26, 36, 27).r(37, 24, 38, 27)                  # stairs (right), hole in floor 23
-    L.r(25, 23, 34, 23)                                    # floor 23
-    L.r(27, 21, 28, 22).r(25, 19, 26, 22)                  # stairs (left), hole in floor 18
-    L.r(29, 18, 38, 18)                                    # floor 18
-    L.r(33, 16, 34, 17).r(35, 14, 36, 17).r(37, 13, 38, 17)    # stairs up into the shelf
-    L.r(35, 11, 36, 11)                                    # socket floor
-    L.plate(33, 27, 0)                                     # P1 drives L1, far away
-
-    L.plate(38, 7, 4)                                      # P6a on the step up to the corridor
+    # Four bands seven rows apart: stage A and the gallery foot on floor 28, the middle floor on
+    # 21, the shelf on 14, the corridor and the tower top on 7. Each lift climbs one band.
+    # ---- the tower (x 1-10): floors 28, 21, 14, 7 with a hole in each and stairs under it
+    L.clear(1, 1, 10, 6).clear(1, 8, 6, 13).clear(7, 8, 10, 13)
+    L.clear(1, 15, 10, 20).clear(1, 22, 13, 27)
+    L.clear(1, 7, 4, 7)                                    # hole into the tower top
+    L.clear(7, 14, 10, 14)                                 # hole into band 2
+    L.clear(1, 21, 4, 21)                                  # hole into band 3
+    L.r(4, 26, 4, 27).r(1, 24, 3, 27)                      # stairs in stage A
+    L.r(7, 19, 7, 20).r(8, 17, 10, 20)                     # stairs on floor 21
+    L.r(4, 12, 4, 13).r(1, 10, 3, 13)                      # stairs on floor 14
+    L.plate(6, 6, 1)                                       # P2 (green), top of the tower
+    L.plate(9, 6, 3)                                       # P3 (white), top of the tower
+    # the pocket off the tower top, with P4 at its far end
+    L.clear(11, 1, 19, 6)
+    L.plate(19, 6, 2)                                      # P4 drives the ferry
+    # ---- stage A (bottom left) and purple lift L1 in the floor at x 11-13
+    L.p(6, 27, 'a').p(9, 27, 'k')
+    L.clear(11, 21, 13, 27).cells(11, 28, 13, 28, 0).mv(0, 0, -7)
+    # ---- the bottom tunnel under the middle floor, to the gallery foot; G7 (pink) shuts it
+    L.clear(14, 22, 24, 27)
+    L.r(21, 22, 23, 25)
+    vgate(L, 22, 26, 27, 4, 24)
+    # ---- stage B, the middle floor (rows 15-20): P7, lever L2 and gate G2, then white lift L3
+    L.clear(11, 15, 24, 20)
+    L.plate(16, 20, 4)                                     # P7: a weight here opens the tunnel
+    L.lever(18, 20, 1)                                     # L2, just before G2
+    L.r(19, 15, 21, 18)
+    vgate(L, 20, 19, 20, 1, 17)                            # G2 (green)
+    L.clear(22, 14, 24, 20).cells(22, 21, 24, 21, 3).mv(3, 0, -7)   # L3 (white)
+    # ---- the gallery (x 25-38): its middle band joins stage B; a hole by L3 leads down
+    L.clear(25, 15, 34, 20).clear(25, 22, 38, 27)
+    L.r(31, 18, 33, 20)                                    # a block under the ferry gap: the way up to the shelf
+    L.clear(26, 21, 29, 21)
+    L.r(26, 24, 27, 27).r(28, 26, 29, 27)                  # stairs under the hole
+    L.plate(34, 27, 0)                                     # P1 drives L1 and G8, far from both
+    # ---- the shelf (rows 8-13, floor 14): G8, the ferry over a gap, the socket, a step up
+    L.clear(22, 8, 38, 13)
+    L.floorgate(28, 12, 2, 0)                              # G8 (purple): sinks while P1 is held
+    L.cells(29, 14, 31, 14, 2).mv(2, 3, 0)                 # the ferry
+    L.clear(32, 14, 34, 14)
+    L.clear(35, 14, 36, 14).plate(36, 14, 5)              # the socket: P5
+    L.r(37, 10, 38, 13).plate(38, 9, 4)                    # the step to the corridor, P6a on it
+    # ---- the corridor (rows 1-6, floor 7): doors at the west end, B5 under a low ceiling, G6
+    L.clear(24, 1, 38, 6)
+    L.clear(36, 7, 38, 7)                                  # the way down to the shelf
+    L.r(27, 1, 33, 4)
+    L.clear(29, 7, 32, 7).cells(29, 4, 32, 4, 5).mv(5, 0, 3)   # B5 comes down into the gap
+    vgate(L, 28, 5, 6, 4, 3)                               # G6 (pink) at the tunnel's west end
+    L.plate(24, 6, 4)                                      # P6b, past G6 and the gap
+    L.p(26, 6, 'A').p(25, 6, 'B').p(35, 6, 'b')
     # gems
-    L.p(1, 11, 'm').p(5, 18, 's')
-    L.p(36, 24, 'm').p(27, 19, 'm').p(31, 15, 's').p(38, 11, 'm')
-    # pockets carved into the rock for gems
-    L.clear(10, 3, 19, 5).r(15, 3, 16, 3).p(14, 4, 's')    # a pocket off the tower top
-    L.plate(19, 5, 2)                                      # P4 drives the ferry
-    L.p(1, 3, 's').p(38, 21, 's').p(38, 2, 'm')
+    L.p(15, 2, 's').p(9, 2, 's').p(6, 9, 's').p(36, 23, 's').p(26, 17, 's')
+    L.p(37, 2, 'm').p(19, 24, 'm').p(5, 17, 'm').p(26, 10, 'm').p(33, 9, 'm')
     return L
 
 

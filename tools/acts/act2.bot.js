@@ -71,31 +71,31 @@ export const SCRIPTS = {
 
   // Carry the Weight
   14: () => [
-    pushTo(SOL, 0, 11, { y: 27 }), goto(SOL, 10, 27),   // crate and Sol onto purple lift L1
-    grab(LUNA, 38, 2), grab(LUNA, 36, 24),
-    press(LUNA, 33, 27), waitPlat(11, 28),           // Luna drops to the gallery floor and holds P1
-    pushTo(SOL, 0, 15, { y: 16, tol: 0.2 }),         // onto P7: the tunnel opens
-    grab(LUNA, 1, 11),
-    press(LUNA, 1, 6),                               // Luna runs west and up the tower to P2: G2 opens
-    seek(SOL, 'crate through G2 onto the east half of L3', (S) => S.b[0].gr && cx(S.b[0]) >= 23.95 && cx(S.b[0]) <= 24.3 && Math.abs(bot(S.b[0]) - 17) < 0.3,
-      { h: (S, p) => Math.abs(cx(S.b[0]) - 24.1) * 13 + Math.abs(cx(p) - cx(S.b[0])) * 3 }),
-    seek(LUNA, 'Luna on L3 beside the crate', (S, p) => p.gr && Math.abs(p.vx) < 0.3 && cx(p) >= 22.45 && cx(p) <= 23.1 && Math.abs(bot(p) - 17) < 0.3 && cx(S.b[0]) >= 23.95,
-      { h: (S, p) => Math.abs(cx(p) - 22.7) * 8 + Math.abs(bot(p) - 17) * 4 }),
-    grab(SOL, 5, 18), grab(SOL, 14, 4), grab(SOL, 1, 3),
-    press(SOL, 3, 6), waitPlat(23, 17),              // Sol runs up the tower to P3: up to the shelf
-    seek(LUNA, 'crate and Luna off L3 onto the shelf', (S, p) => p.gr && Math.abs(p.vx) < 0.3 && cx(p) >= 25.45 && Math.abs(bot(p) - 10) < 0.3 && cx(S.b[0]) <= 27.4 && cx(S.b[0]) >= 26.4 && Math.abs(bot(S.b[0]) - 10) < 0.3,
+    pushTo(SOL, 0, 12, { y: 27 }), goto(SOL, 11, 27),   // crate and Sol onto purple lift L1
+    grab(LUNA, 37, 2), grab(LUNA, 33, 9), grab(LUNA, 26, 10),
+    press(LUNA, 34, 27), waitPlat(12, 28),           // Luna drops to the gallery foot and holds P1
+    pushTo(SOL, 0, 16, { y: 20, tol: 0.2 }),         // onto P7: the tunnel opens
+    grab(LUNA, 19, 24), grab(LUNA, 5, 17),
+    press(LUNA, 6, 6),                               // Luna runs west and up the tower to P2: G2 opens
+    seek(SOL, 'crate through G2 onto the east half of L3', (S) => S.b[0].gr && cx(S.b[0]) >= 23.6 && cx(S.b[0]) <= 24.3 && Math.abs(bot(S.b[0]) - 21) < 0.3,
+      { h: (S, p) => Math.abs(cx(S.b[0]) - 24) * 13 + Math.abs(cx(p) - cx(S.b[0])) * 3 }),
+    seek(LUNA, 'Luna on L3 beside the crate', (S, p) => p.gr && Math.abs(p.vx) < 0.3 && cx(p) >= 22.45 && cx(p) <= 23.0 && Math.abs(bot(p) - 21) < 0.3 && cx(S.b[0]) >= 23.6,
+      { h: (S, p) => Math.abs(cx(p) - 22.7) * 8 + Math.abs(bot(p) - 21) * 4 }),
+    grab(SOL, 6, 9), grab(SOL, 9, 2), grab(SOL, 15, 2),
+    press(SOL, 9, 6), waitPlat(23, 21),              // Sol runs up the tower to P3: up to the shelf
+    seek(LUNA, 'crate and Luna off L3 onto the shelf', (S, p) => p.gr && Math.abs(p.vx) < 0.3 && cx(p) >= 25.0 && Math.abs(bot(p) - 14) < 0.3 && cx(S.b[0]) <= 27.4 && cx(S.b[0]) >= 26.4 && Math.abs(bot(S.b[0]) - 14) < 0.3,
       { h: (S, p) => Math.abs(cx(S.b[0]) - 26.9) * 13 + Math.abs(cx(p) - 25.7) * 4 }),
-    grab(SOL, 31, 15),
-    press(SOL, 33, 27),                              // Sol runs down to P1: G8 sinks
-    seek(LUNA, 'crate and Luna on the ferry', (S, p) => p.gr && Math.abs(p.vx) < 0.3 && Math.abs(bot(p) - 10) < 0.3 && cx(p) >= 29.45 && cx(p) <= 30.2 && S.b[0].gr && cx(S.b[0]) >= 30.6 && cx(S.b[0]) <= 31.4 && Math.abs(bot(S.b[0]) - 10) < 0.3,
+    grab(SOL, 26, 17), goto(SOL, 31, 27), grab(SOL, 36, 23),
+    press(SOL, 34, 27),                              // Sol runs down to P1: G8 sinks
+    seek(LUNA, 'crate and Luna on the ferry', (S, p) => p.gr && Math.abs(p.vx) < 0.3 && Math.abs(bot(p) - 14) < 0.3 && cx(p) >= 29.45 && cx(p) <= 30.2 && S.b[0].gr && cx(S.b[0]) >= 30.6 && cx(S.b[0]) <= 31.4 && Math.abs(bot(S.b[0]) - 14) < 0.3,
       { h: (S, p) => Math.abs(cx(S.b[0]) - 31) * 13 + Math.abs(cx(p) - 29.8) * 4 }),
-    goto(SOL, 5, 27), goto(SOL, 9, 7), press(SOL, 19, 5), waitPlat(30, 10),             // Sol runs back up to P4: across the gap
-    pushTo(LUNA, 0, 35, { y: 10, tol: 0.6 }),        // into the socket: B5 comes down
-    grab(LUNA, 27, 19), grab(LUNA, 38, 11),
-    grab(SOL, 38, 21),
-    press(SOL, 38, 7),                               // Sol climbs to the shelf and holds P6a: G6 opens
-    press(LUNA, 24, 5),                              // Luna passes G6, crosses B5, holds P6b
-    door(SOL),                     // Sol passes G6 and crosses B5
+    goto(SOL, 21, 20), goto(SOL, 6, 20), goto(SOL, 6, 13),
+    press(SOL, 19, 6), waitPlat(30, 14),             // Sol runs back up to P4: across the gap
+    pushTo(LUNA, 0, 36, { y: 14, tol: 0.6 }),        // into the socket: B5 comes down
+    press(SOL, 38, 9),                               // Sol climbs to the shelf and holds P6a: G6 opens
+    goto(LUNA, 36, 9), goto(LUNA, 34, 6),
+    press(LUNA, 24, 6),                              // Luna passes G6, crosses B5, holds P6b
+    door(SOL),                                       // Sol passes G6 and crosses B5
     door(LUNA), win(),
   ],
 
