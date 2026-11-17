@@ -1,6 +1,6 @@
-// Keyboard + gamepad input. Bits: 1 = left, 2 = right, 4 = jump.
-const SOL_KEYS = { ArrowLeft: 1, ArrowRight: 2, ArrowUp: 4 };
-const LUNA_KEYS = { KeyA: 1, KeyD: 2, KeyW: 4 };
+// Keyboard + gamepad input. Bits: 1 = left, 2 = right, 4 = jump, 8 = action (throw in Dodgeball).
+const SOL_KEYS = { ArrowLeft: 1, ArrowRight: 2, ArrowUp: 4, ArrowDown: 8 };
+const LUNA_KEYS = { KeyA: 1, KeyD: 2, KeyW: 4, KeyS: 8 };
 
 export class Input {
   constructor() {
@@ -32,6 +32,7 @@ export class Input {
     if (ax < -0.35 || p.buttons[14]?.pressed) b |= 1;
     if (ax > 0.35 || p.buttons[15]?.pressed) b |= 2;
     if (p.buttons[0]?.pressed || p.buttons[12]?.pressed || (p.axes[1] || 0) < -0.6) b |= 4;
+    if (p.buttons[2]?.pressed || p.buttons[1]?.pressed || p.buttons[7]?.pressed) b |= 8;   // X / B / right trigger
     return b;
   }
   // Local co-op: arrows (or pad 0) drive Sol, WASD (or pad 1) drive Luna.

@@ -1,0 +1,320 @@
+// Sol & Luna — Dodgeball, a two-player versus mode.
+// Deterministic like shared/sim.js and shared by the browser (local play, online prediction)
+// and the server (authoritative rooms). Player movement is the normal sim physics; this file
+// adds the court, the ball and the rules. Only + - * / and sqrt are used on the ball, so every
+// JS engine gets bit-identical results.
+//
+// Rules
+//   - The court is split at the middle by a veil that players can't cross. Sol plays left.
+//   - A random player (seeded RNG) serves first. The ball can only be thrown by the player
+//     holding it, and only toward the other side.
+//   - Hold the action button to aim: the throw starts flat, and after a short moment the aim
+//     arrow swings up and down. Release to throw. A quick tap is a flat throw.
+//   - A thrown ball is live until it bounces off the floor or the top of a platform, or
+//     touches a wall or ceiling for the second time. One bank shot off a wall or ceiling
+//     still counts. A live ball that touches the other player scores a point for the thrower.
+//   - A dead ball bounces, rolls and stops. Whoever's side it is on may pick it up by touching
+//     it (even mid-bounce). It always settles within REST_MAX ticks.
+//   - Shot clock: whoever owns the ball (holding it, or it's loose on their side) has
+//     SHOT_CLOCK ticks to throw it. If time runs out the ball goes to the other player.
+//     A throw that stays on your own side does not reset your clock.
+//   - After a hit, everyone resets to their spawns and the player who was hit serves.
+//   - First to TO_WIN hits wins the match.
+
+import { buildLevel, createState, stepPlayersOnly, tileAt, IN_ACT, SOL, LUNA, TS, WORLD_W, T_SOLID } from './sim.js';
+
+export const DODGE = {
+  toWin: 5,
+  r: 10,              // ball radius (px); also its hit radius
+  speed: 24,          // throw speed (px/tick). See tools/check-dodge.js for why.
+  liveGrav: 0.015,    // a live ball flies almost straight (drops 10 px over the whole court)
+  deadGrav: 0.35,     // a dead ball drops like a ball
+  floorBounce: 0.45,  // vertical speed kept on a floor bounce
+  wallBounce: 0.6,
+  bounceFric: 0.8,    // horizontal speed kept on each floor bounce
+  roll: 0.9,          // horizontal speed kept per tick while rolling
+  aimDwell: 10,       // ticks the aim stays flat before it starts swinging (so a tap is flat)
+  aimPeriod: 90,      // one full swing up, down and back (ticks)
+  aimMax: 0.75,       // steepest aim, as a slope (about 37 degrees)
+  shotClock: 360,     // 6 s
+  ready: 50,          // freeze on throwing at the start of a point
+  pointTicks: 100,    // pause after a hit
+  liveMax: 75,        // a live ball that somehow never bounces dies after this
+  restMax: 150,       // a dead ball is forced to settle after this
+};
+
+export const NET = WORLD_W / 2;
+export const DP_READY = 0, DP_PLAY = 1, DP_POINT = 2, DP_OVER = 3;
+export const B_HELD = 0, B_LIVE = 1, B_DEAD = 2, B_REST = 3;
+
+// ---------------------------------------------------------------------------
+// Court: one screen, mirrored halves. Thin platforms 3 tiles apart (the jump is 4.1 tiles),
+// so height matters without boxing anyone in. Five tiers climb to a perch at mid-height; the
+// top of the court is open air for lobs and ceiling banks.
+
+const HALF = [ // [row, firstCol, lastCol] on Sol's half (cols 1..19); Luna's is mirrored
+  [25, 7, 10],
+  [22, 2, 5], [22, 13, 16],
+  [19, 8, 11],
+  [16, 2, 4], [16, 15, 17],
+  [13, 8, 11],     // the high perch: throw down from the top of the court
+];
+
+function courtMap() {
+  const g = [];
+  for (let y = 0; y < 30; y++) g.push(new Array(40).fill(y === 0 || y >= 28 ? '#' : '.'));
+  for (let y = 0; y < 30; y++) { g[y][0] = '#'; g[y][39] = '#'; }
+  for (const [row, a, b] of HALF) for (let x = a; x <= b; x++) { g[row][x] = '#'; g[row][39 - x] = '#'; }
+  g[27][12] = 'a'; g[27][27] = 'b';
+  g[27][1] = 'A'; g[27][38] = 'B';   // the level format needs doors; the court hides them
+  return g.map(r => r.join(''));
+}
+
+function buildCourt() {
+  const L = buildLevel({ name: 'Dodgeball', par: 0, map: courtMap(),
+    hint: 'Sol: hold ↓ to aim, release to throw · Luna: hold S · Don\'t get hit!' }, -1);
+  L.dodge = true;
+  L.doors = [];       // nothing to exit through
+  return L;
+}
+
+export const COURT = buildCourt();
+
+// ---------------------------------------------------------------------------
+// helpers
+
+// Deterministic 32-bit RNG (mulberry32). The state lives in S.d.rng so it is part of the
+// snapshot and replays identically.
+function rand(D) {
+  D.rng = (D.rng + 0x6D2B79F5) | 0;
+  let t = D.rng;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+export const sideOf = (x) => (x < NET ? SOL : LUNA);
+export const towardNet = (who) => (who === SOL ? 1 : -1);
+
+// Aim slope (positive = upward) after holding the button for t ticks.
+export function aimSlope(t) {
+  const k = t - DODGE.aimDwell;
+  if (k <= 0) return 0;
+  const P = DODGE.aimPeriod, q = P / 4, A = DODGE.aimMax, ph = k % P;
+  if (ph < q) return A * ph / q;
+  if (ph < 3 * q) return A * (2 * q - ph) / q;
+  return A * (ph - 4 * q) / q;
+}
+
+// Where a held ball sits (and where a throw starts): in front of the chest, toward the net.
+export function handPos(p, who) {
+  return { x: p.x + p.w / 2 + towardNet(who) * 13, y: p.y + 12 };
+}
+
+function solidTile(tx, ty) {
+  const t = tileAt(COURT, tx, ty);
+  return t === T_SOLID || t >= 4;
+}
+function boxHits(x, y, r) {
+  const x0 = Math.floor((x - r) / TS), x1 = Math.floor((x + r - 0.001) / TS);
+  const y0 = Math.floor((y - r) / TS), y1 = Math.floor((y + r - 0.001) / TS);
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (solidTile(tx, ty)) return true;
+  return false;
+}
+function circleHitsBox(cx, cy, r, x, y, w, h) {
+  const nx = cx < x ? x : cx > x + w ? x + w : cx;
+  const ny = cy < y ? y : cy > y + h ? y + h : cy;
+  const dx = cx - nx, dy = cy - ny;
+  return dx * dx + dy * dy < r * r;
+}
+
+// ---------------------------------------------------------------------------
+// state
+
+function freshBall() { return { x: 0, y: 0, vx: 0, vy: 0, st: B_HELD, by: -1, t: 0, bank: 0 }; }
+
+export function createDodge(seed = 1) {
+  const S = createState(COURT);
+  const D = {
+    phase: DP_READY, t: 0, score: [0, 0], rng: seed | 0, winner: -1,
+    holder: -1, ball: freshBall(), aim: [-1, -1],
+    clockOwner: -1, clock: DODGE.shotClock,
+    serve: -1, lastHit: null,
+    throwN: 0, hitN: 0, pickN: 0, turnN: 0, point: 0,
+  };
+  S.d = D;
+  D.serve = rand(D) < 0.5 ? SOL : LUNA;
+  givePoint(S, D.serve);
+  return S;
+}
+
+// Start a point: players at their spawns, `who` holding the ball, a short freeze on throws.
+function givePoint(S, who) {
+  const D = S.d;
+  const fresh = createState(COURT);
+  fresh.p.forEach((p, i) => { p.jumpN = S.p[i].jumpN; });   // keeps jump sounds counting forward
+  S.p = fresh.p;
+  D.phase = DP_READY; D.t = 0;
+  D.aim = [-1, -1];
+  D.serve = who;
+  hold(S, who);
+  D.clockOwner = who; D.clock = DODGE.shotClock;
+}
+
+function hold(S, who) {
+  const D = S.d, b = D.ball;
+  D.holder = who;
+  b.st = B_HELD; b.by = who; b.vx = 0; b.vy = 0; b.t = 0;
+  const h = handPos(S.p[who], who);
+  b.x = h.x; b.y = h.y;
+}
+
+export function ownerOf(D) {
+  if (D.holder >= 0) return D.holder;
+  if (D.ball.st === B_LIVE) return -1;
+  return sideOf(D.ball.x);
+}
+
+// ---------------------------------------------------------------------------
+// step
+
+export function stepDodge(L, S, inputs) {
+  S.tick++;
+  const D = S.d;
+  D.t++;
+  const play = D.phase === DP_PLAY || D.phase === DP_READY;
+  const inp = play ? inputs : [0, 0];
+  stepPlayersOnly(L, S, inp);
+  keepToHalves(S);
+
+  if (D.phase === DP_READY && D.t >= DODGE.ready) { D.phase = DP_PLAY; D.t = 0; }
+
+  // aiming and throwing
+  for (const who of [SOL, LUNA]) {
+    const down = (inp[who] & IN_ACT) !== 0;
+    if (D.holder !== who || D.phase !== DP_PLAY) { if (D.holder !== who) D.aim[who] = -1; continue; }
+    if (down) D.aim[who] = D.aim[who] < 0 ? 0 : D.aim[who] + 1;
+    else if (D.aim[who] >= 0) { throwBall(S, who, aimSlope(D.aim[who])); D.aim[who] = -1; }
+  }
+
+  stepBall(S);
+  if (D.phase === DP_PLAY) { pickUp(S); shotClock(S); }
+
+  if (D.phase === DP_POINT && D.t >= DODGE.pointTicks) {
+    if (D.winner >= 0) { D.phase = DP_OVER; D.t = 0; }
+    else givePoint(S, 1 - D.lastHit.by);
+  }
+  return S;
+}
+
+function keepToHalves(S) {
+  const a = S.p[SOL], b = S.p[LUNA];
+  if (a.x + a.w > NET - 1) { a.x = NET - 1 - a.w; if (a.vx > 0) a.vx = 0; }
+  if (b.x < NET + 1) { b.x = NET + 1; if (b.vx < 0) b.vx = 0; }
+}
+
+function throwBall(S, who, slope) {
+  const D = S.d, b = D.ball, p = S.p[who];
+  const k = DODGE.speed / Math.sqrt(1 + slope * slope);
+  const h = handPos(p, who);
+  b.x = h.x; b.y = h.y;
+  b.vx = towardNet(who) * k; b.vy = -slope * k;
+  b.st = B_LIVE; b.by = who; b.t = 0; b.bank = 0;
+  D.holder = -1;
+  D.throwN++;
+}
+
+function stepBall(S) {
+  const D = S.d, b = D.ball, r = DODGE.r;
+  if (b.st === B_HELD) {
+    const h = handPos(S.p[D.holder], D.holder);
+    b.x = h.x; b.y = h.y;
+    return;
+  }
+  if (b.st === B_REST) return;
+  b.t++;
+  if (b.st === B_LIVE && b.t > DODGE.liveMax) die(b);
+  const forced = b.st === B_DEAD && b.t > DODGE.restMax;
+  if (forced) b.vx = 0;
+  b.vy += b.st === B_LIVE ? DODGE.liveGrav : DODGE.deadGrav;
+  const n = Math.max(1, Math.ceil(Math.max(Math.abs(b.vx), Math.abs(b.vy)) / 5));
+  for (let i = 0; i < n; i++) {
+    // x
+    const dx = b.vx / n;
+    if (dx) {
+      b.x += dx;
+      if (boxHits(b.x, b.y, r)) {
+        b.x = dx > 0 ? Math.floor((b.x + r) / TS) * TS - r - 0.01 : (Math.floor((b.x - r) / TS) + 1) * TS + r + 0.01;
+        b.vx = -b.vx * DODGE.wallBounce;
+        bank(b);
+      }
+    }
+    // y
+    const dy = b.vy / n;
+    if (dy) {
+      b.y += dy;
+      if (boxHits(b.x, b.y, r)) {
+        if (dy > 0) {
+          b.y = Math.floor((b.y + r) / TS) * TS - r - 0.01;
+          if (b.st === B_LIVE) die(b);
+          b.vy = forced || b.vy < 1.2 ? 0 : -b.vy * DODGE.floorBounce;
+          b.vx *= DODGE.bounceFric;
+        } else {
+          b.y = (Math.floor((b.y - r) / TS) + 1) * TS + r + 0.01;
+          b.vy = -b.vy * DODGE.wallBounce;
+          bank(b);
+        }
+        break;   // the rest of this tick's motion was spent in the bounce
+      }
+    }
+    if (b.st === B_LIVE && D.phase === DP_PLAY) {
+      const vi = 1 - b.by, v = S.p[vi];
+      if (circleHitsBox(b.x, b.y, r - 1, v.x, v.y, v.w, v.h)) { scoreHit(S, vi); return; }
+    }
+  }
+  if (b.st === B_DEAD) {
+    const grounded = b.vy === 0 && boxHits(b.x, b.y + 1, r);
+    if (grounded) {
+      b.vx *= DODGE.roll;
+      if (Math.abs(b.vx) < 0.25 || forced) { b.vx = 0; b.st = B_REST; }
+    }
+  }
+}
+
+function die(b) { b.st = B_DEAD; b.t = 0; }
+function bank(b) { if (b.st === B_LIVE && ++b.bank > 1) die(b); }
+
+function scoreHit(S, victim) {
+  const D = S.d, b = D.ball, by = b.by, v = S.p[victim];
+  D.score[by]++;
+  D.hitN++;
+  D.point++;
+  D.lastHit = { by, x: b.x, y: b.y };
+  if (D.score[by] >= DODGE.toWin) D.winner = by;
+  D.phase = DP_POINT; D.t = 0;
+  // the victim is knocked back and the ball rebounds off them
+  const dir = b.vx > 0 ? 1 : -1;
+  v.vx = dir * 3; v.vy = -4.5; v.gr = false;
+  b.vx = -b.vx * 0.25; b.vy = -4; die(b);
+}
+
+function pickUp(S) {
+  const D = S.d, b = D.ball;
+  if (b.st !== B_DEAD && b.st !== B_REST) return;
+  const who = sideOf(b.x), p = S.p[who];
+  if (circleHitsBox(b.x, b.y, DODGE.r + 3, p.x, p.y, p.w, p.h)) { hold(S, who); D.pickN++; }
+}
+
+function shotClock(S) {
+  const D = S.d;
+  const own = ownerOf(D);
+  if (own < 0) return;
+  if (own !== D.clockOwner) { D.clockOwner = own; D.clock = DODGE.shotClock; return; }
+  if (--D.clock > 0) return;
+  // too slow: the ball jumps the veil to the other player
+  const other = 1 - own;
+  hold(S, other);
+  D.aim[own] = -1;
+  D.turnN++;
+  D.clockOwner = other; D.clock = DODGE.shotClock;
+}

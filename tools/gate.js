@@ -10,9 +10,10 @@
 //   ROUTE   the winning route takes both players over most of the screen
 //   DEPTH   the level is as long and as busy as its place in the campaign needs
 //   CO-OP   the bot wins with every gem, and neither player can finish alone
+//   ROOF    no climb or crossing on the bot's route hits the roof (the jump gets its full arc)
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, PLAT_CH } from '../shared/sim.js';
-import { runScript } from './botlib.js';
+import { runScript, roofWatcher } from './botlib.js';
 import { loadScripts } from './coop-bot.js';
 import { explore } from './check-levels.js';
 
@@ -90,7 +91,7 @@ export function gate(n, SCRIPTS, { fast = false } = {}) {
   const lay = layout(raw);
 
   line(lay.solidPct >= 25 && lay.solidPct <= 65, 'LAYOUT', `stone fills ${lay.solidPct}% of the screen (need 25-65%)`);
-  line(lay.maxRect <= 80, 'LAYOUT', `largest empty block is ${lay.maxRect} cells, ${lay.rectAt} (max 80)`);
+  line(lay.maxRect <= 120, 'LAYOUT', `largest empty block is ${lay.maxRect} cells, ${lay.rectAt} (max 120: floors 7 rows apart leave 6-high spaces)`);
   line(lay.rows.length >= need(n, 'minFloorRows') && lay.span >= 20, 'LAYOUT', `${lay.rows.length} floor heights spanning ${lay.span} rows (need ${need(n, 'minFloorRows')}+ heights, 20+ rows): rows ${lay.rows.join(',')}`);
   line(lay.longest <= 18, 'LAYOUT', `longest unbroken flat stone floor is ${lay.longest} cells${lay.longestAt ? ` at (${lay.longestAt})` : ''} (max 18)`);
   line(lay.wide.length <= 1, 'LAYOUT', `${lay.wide.length} floor(s) run nearly the full width${lay.wide.length ? ' (rows ' + lay.wide.join(',') + ')' : ''} (max 1: stacked full-width slabs are what this redesign removes)`);
@@ -101,8 +102,11 @@ export function gate(n, SCRIPTS, { fast = false } = {}) {
 
   if (!SCRIPTS[n]) line(false, 'CO-OP', 'no bot script for this level');
   else {
-    const r = runScript(n, SCRIPTS[n]);
+    const roof = roofWatcher();
+    const r = runScript(n, SCRIPTS[n], { onTick: roof.onTick });
     line(r.ok, 'CO-OP', `bot: ${r.msg}`);
+    { const h = [...roof.hits.keys()];
+      line(!r.ok || h.length === 0, 'ROOF', `${h.length} climb(s) or crossing(s) on the route hit the roof (need 0; a full jump needs 6 free rows)${h.length ? '\n' + h.slice(0, 6).map(k => '         ' + k).join('\n') + (h.length > 6 ? `\n         ... ${h.length - 6} more (node tools/check-headroom.js ${n})` : '') : ''}`); }
     const st = r.stats;
     if (r.ok && st) {
       line(st.gems === st.gemsTotal, 'CO-OP', `bot collects ${st.gems}/${st.gemsTotal} gems (need all)`);

@@ -119,10 +119,18 @@ body.touch[data-screen="game"] #touch { display: flex; }
   .code { font-size: 36px; }
 }
 
-/* versus modes: a row of mode buttons under the main actions (title card and lobby) */
-.modes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--edge); border-radius: 12px; }
-.modes-label { flex: 1 1 100%; font: 700 11px Nunito, system-ui, sans-serif; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); text-align: left; }
+/* Versus modes (title menu and lobby): one row each mode's button can join */
+.modes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.modes-label { flex: 1 0 100%; font: 600 11px Cinzel, Georgia, serif; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
 .modes button { flex: 1 1 0; min-width: 0; }
+
+/* Dodgeball */
+.dg-score { display: flex; justify-content: center; align-items: baseline; gap: 18px; margin: 4px 0 18px; font: 700 54px Cinzel, Georgia, serif; }
+.dg-score i { font-style: normal; color: var(--muted); font-size: 36px; }
+#touch #tAct { display: none; margin-left: auto; }
+body.dodge #touch #tAct { display: block; }
+body.dodge #touch #tJump { margin-left: 12px; }
+body.dodge #hint { bottom: auto; top: 20%; }   /* keep the floor, where the action is, clear */
 
 /* runner results */
 .rr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 16px; }

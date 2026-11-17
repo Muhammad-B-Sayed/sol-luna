@@ -607,3 +607,17 @@ export function stepSoloMixed(L, S, who, bits, forceMask, forceAct) {
   stepPlayer(W, S.p[who], bits);
   return checkHazards(W, S.p[who], who);
 }
+
+// ---------------------------------------------------------------------------
+// Versus-mode hooks (shared/dodge.js). Additive: nothing above uses them.
+
+// Input bit for a mode's action button (throw in Dodgeball). Co-op levels ignore it.
+export const IN_ACT = 8;
+
+// Advance only the two players with the normal movement physics: no mechanisms, crates,
+// hazards or doors. Used by modes that bring their own rules.
+export function stepPlayersOnly(L, S, inputs) {
+  const W = makeWorld(L, S);
+  stepPlayer(W, S.p[0], inputs[0] | 0);
+  stepPlayer(W, S.p[1], inputs[1] | 0);
+}

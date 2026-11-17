@@ -5,6 +5,7 @@ import {
   TS, COLS, ROWS, WORLD_W, WORLD_H, POOL_DEPTH, T_SOLID, T_SLOPE_R, T_SLOPE_L, T_SUN, T_MOON, T_SHADE,
   tileAt, PH_DEAD, PH_WON, SOL, LUNA, PHYS,
 } from '/shared/sim.js';
+import { drawDodgeCourt, drawDodge } from './dodge-draw.js';
 
 export const GROUP_COLORS = ['#b98cff', '#5fd39a', '#ff9f5a', '#e8eef7', '#ff6fb1', '#d7e84a'];
 
@@ -183,6 +184,7 @@ export class Renderer {
 
     this.observe(L, S, time);
 
+    if (L.dodge) drawDodgeCourt(this, g, S, time);   // Dodgeball court veil
     this.drawDoors(g, L, S, time);
     this.drawLevers(g, L, S);
     this.drawButtons(g, L, S);
@@ -190,6 +192,7 @@ export class Renderer {
     this.drawBoxes(g, S, view);
     this.drawGems(g, L, S, time);
     for (const i of [LUNA, SOL]) this.drawPlayer(g, S, i, view, time);
+    if (L.dodge) drawDodge(this, g, S, view, time);   // Dodgeball ball, trail and effects
     this.drawLiquids(g, L, time);
     this.drawParticles(g);
 

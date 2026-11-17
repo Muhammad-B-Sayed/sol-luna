@@ -5,9 +5,16 @@ import { Renderer } from './render.js';
 import { Input } from './input.js';
 import { Net } from './net.js';
 import { sfx } from './audio.js';
+// Dodgeball (versus mode)
+import { COURT, createDodge, stepDodge, DP_OVER } from '/shared/dodge.js';
+import { drawDodgeHud, dodgeListen, dodgeHearReset, dodgeHint } from './dodge-ui.js';
 import { RunnerMode } from './runner-app.js';
 
 const BUILT = LEVELS.map((raw, i) => buildLevel(raw, i));
+// A level is a co-op index or a versus mode name; each kind brings its own create and step.
+const levelOf = (level) => (level === 'dodge' ? COURT : BUILT[level]);
+const newState = (L) => (L.dodge ? createDodge((Math.random() * 2 ** 31) | 0) : createState(L));
+const stepAny = (L, S, inp) => (L.dodge ? stepDodge(L, S, inp) : step(L, S, inp));
 const DT = 1000 / TICK_RATE;
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -107,16 +114,19 @@ function openLevels() {
 // game setup
 
 function capture(S) {
-  return { p: S.p.map(p => ({ x: p.x, y: p.y })), b: S.b.map(b => ({ x: b.x, y: b.y })), pl: S.pl.map(q => ({ x: q.x, y: q.y })) };
+  return { p: S.p.map(p => ({ x: p.x, y: p.y })), b: S.b.map(b => ({ x: b.x, y: b.y })), pl: S.pl.map(q => ({ x: q.x, y: q.y })),
+    ball: S.d ? { x: S.d.ball.x, y: S.d.ball.y } : null };
 }
 function zeroOff(S) {
-  return { p: S.p.map(() => ({ x: 0, y: 0 })), b: S.b.map(() => ({ x: 0, y: 0 })), pl: S.pl.map(() => ({ x: 0, y: 0 })) };
+  return { p: S.p.map(() => ({ x: 0, y: 0 })), b: S.b.map(() => ({ x: 0, y: 0 })), pl: S.pl.map(() => ({ x: 0, y: 0 })), ball: { x: 0, y: 0 } };
 }
 
 function beginLevel(level, st) {
   app.level = level;
-  app.L = BUILT[level];
-  app.S = st ? cloneState(st) : createState(app.L);
+  app.L = levelOf(level);
+  app.S = st ? cloneState(st) : newState(app.L);
+  document.body.classList.toggle('dodge', !!app.L.dodge);
+  if (app.L.dodge) { dodgeHearReset(app.S); R.dodgeFx = null; app.L.hint = dodgeHint(app.mode === 'online'); }
   app.prev = capture(app.S);
   app.off = zeroOff(app.S);
   app.paused = false;
@@ -154,6 +164,7 @@ function listen(S) {
   h.dead = S.phase === PH_DEAD;
   if (S.phase === PH_WON && !h.won) sfx.win();
   h.won = S.phase === PH_WON;
+  if (S.d) dodgeListen(S, sfx);
 }
 
 // ---------------------------------------------------------------------------
@@ -163,9 +174,10 @@ function tickLocal() {
   if (app.paused || app.results) return;
   const inp = input.local();
   app.prev = capture(app.S);
-  step(app.L, app.S, inp);
+  stepAny(app.L, app.S, inp);
   listen(app.S);
   if (app.S.phase === PH_WON && app.S.phaseT >= 45) showResults();
+  if (app.S.d && app.S.d.phase === DP_OVER && app.S.d.t >= 40) showDodgeOver();
 }
 
 function tickOnline() {
@@ -179,7 +191,7 @@ function tickOnline() {
   const inp = [0, 0];
   inp[app.me] = bits; inp[1 - app.me] = app.remoteBits;
   app.prev = capture(app.S);
-  step(app.L, app.S, inp);
+  stepAny(app.L, app.S, inp);
   listen(app.S);
   decayOff();
 }
@@ -187,6 +199,7 @@ function tickOnline() {
 function decayOff() {
   const o = app.off;
   for (const arr of [o.p, o.b, o.pl]) for (const v of arr) { v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; }
+  const v = o.ball; v.x *= 0.75; v.y *= 0.75; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0;
 }
 
 function onSnapshot(m) {
@@ -199,7 +212,7 @@ function onSnapshot(m) {
   const inp = [0, 0];
   for (const [, b] of app.pending) {
     inp[app.me] = b; inp[1 - app.me] = app.remoteBits;
-    step(app.L, ns, inp);
+    stepAny(app.L, ns, inp);
   }
   const after = capture(ns);
   // keep visuals continuous: carry the correction as a decaying offset
@@ -208,6 +221,12 @@ function onSnapshot(m) {
     before.p.forEach((v, i) => add(app.off.p[i], v, after.p[i]));
     before.b.forEach((v, i) => add(app.off.b[i], v, after.b[i]));
     before.pl.forEach((v, i) => add(app.off.pl[i], v, after.pl[i]));
+    if (before.ball) {
+      // a remote throw shows up a few ticks late: let the ball catch up instead of jumping ahead
+      const o = app.off.ball; o.x += before.ball.x - after.ball.x; o.y += before.ball.y - after.ball.y;
+      if (Math.hypot(o.x, o.y) > 400) { o.x = 0; o.y = 0; }
+      app.prev.ball.x += after.ball.x - before.ball.x; app.prev.ball.y += after.ball.y - before.ball.y;
+    }
     // prev positions shift with the state so interpolation doesn't double-count
     app.prev.p.forEach((v, i) => { v.x += after.p[i].x - before.p[i].x; v.y += after.p[i].y - before.p[i].y; });
     app.prev.b.forEach((v, i) => { v.x += after.b[i].x - before.b[i].x; v.y += after.b[i].y - before.b[i].y; });
@@ -218,6 +237,7 @@ function onSnapshot(m) {
   }
   app.S = ns;
   if (m.st.phase === PH_WON && m.st.phaseT >= 45 && !app.results) showResults();
+  if (ns.d && ns.d.phase === DP_OVER && ns.d.t >= 40 && !app.results) showDodgeOver();
 }
 
 function view(alpha) {
@@ -231,6 +251,7 @@ function view(alpha) {
     p: S.p.map((p, i) => tp(P.p[i], p) ? { x: p.x, y: p.y } : lerp(P.p[i], p, O?.p[i])),
     b: S.b.map((b, i) => tp(P.b[i], b) ? { x: b.x, y: b.y } : lerp(P.b[i], b, O?.b[i])),
     pl: S.pl.map((q, i) => lerp(P.pl[i], q, O?.pl[i])),
+    ball: S.d && P.ball ? (Math.abs(P.ball.x - S.d.ball.x) + Math.abs(P.ball.y - S.d.ball.y) > 70 ? { x: S.d.ball.x, y: S.d.ball.y } : lerp(P.ball, S.d.ball, O?.ball)) : null,
   };
 }
 
@@ -264,6 +285,7 @@ function frame(now) {
 function drawHud(time) {
   const g = R.ctx, S = app.S, L = app.L;
   g.setTransform(R.scale, 0, 0, R.scale, 0, 0);
+  if (L.dodge) { drawDodgeHud(g, S, { online: app.mode === 'online', me: app.me, rtt: net.rtt }); return; }
   const secs = S.tick / TICK_RATE;
   const w = 150, x = WORLD_W / 2 - w / 2, y = 4;
   g.fillStyle = 'rgba(18,12,30,0.72)';
@@ -351,6 +373,20 @@ function showResults() {
   $('#resNext').hidden ? $('#resRetry').focus() : $('#resNext').focus();
 }
 
+// Dodgeball winner screen with rematch
+function showDodgeOver() {
+  app.results = true;
+  const D = app.S.d, w = D.winner;
+  const name = (c) => (c === SOL ? 'Sol' : 'Luna');
+  $('#dgWinner').textContent = app.mode === 'online' ? (w === app.me ? 'You win!' : `${name(w)} wins`) : `${name(w)} wins!`;
+  $('#dgWinner').className = w === SOL ? 'solc' : 'lunac';
+  $('#dgSol').textContent = D.score[SOL];
+  $('#dgLuna').textContent = D.score[LUNA];
+  $('#dgBack').textContent = app.mode === 'online' ? 'Back to lobby' : 'Back to title';
+  show('dodgeOver');
+  $('#dgRematch').focus();
+}
+
 function pause(on) {
   if (!app.L || app.results) return;
   app.paused = on;
@@ -358,6 +394,10 @@ function pause(on) {
     $('#pauseOnline').hidden = app.mode !== 'online';
     $('#pRestart').hidden = false;
     $('#pLevels').hidden = false;
+    const dodge = !!app.L.dodge;
+    $('#pRestart').textContent = dodge ? 'Restart match' : 'Restart level';
+    $('#pLevels').textContent = dodge ? 'Back to lobby' : 'Level select';
+    if (dodge && app.mode === 'local') $('#pLevels').hidden = true;
     $('#pSwap').hidden = app.mode !== 'online';
     show('pause');
     $('#pResume').focus();
@@ -388,7 +428,7 @@ net.on('start', (m) => {
   if (m.mode === 'runner') { runner.onStart(m); return; }
   app.inGame = true;
   app.seq = 0;
-  beginLevel(m.level, m.st);
+  beginLevel(m.mode === 'dodge' ? 'dodge' : m.level, m.st);
 });
 net.on('s', onSnapshot);
 net.on('menu', () => {
@@ -494,6 +534,7 @@ function renderLobby() {
     : 'Share the code (or link) with a friend so they can join.';
   $('#lobbyPick').hidden = false;
   $('#lobbyPick').disabled = !two;
+  $$('#lobbyModes button').forEach(b => { b.disabled = !two; });
 }
 
 async function hostOnline() {
@@ -518,6 +559,11 @@ $('#btnLocal').onclick = () => { sfx.unlock(); sfx.ui(); app.mode = 'local'; ope
 $('#btnHost').onclick = () => { sfx.unlock(); sfx.ui(); hostOnline(); };
 $('#joinForm').onsubmit = (e) => { e.preventDefault(); sfx.unlock(); sfx.ui(); joinOnline($('#joinCode').value); };
 $('#btnHow').onclick = () => { sfx.ui(); show('how'); };
+// versus modes
+$('#btnDodge').onclick = () => { sfx.unlock(); sfx.ui(); app.mode = 'local'; beginLevel('dodge'); };
+$('#lobbyDodge').onclick = () => { sfx.ui(); net.send({ t: 'start', mode: 'dodge' }); };
+$('#dgRematch').onclick = () => { sfx.ui(); if (app.mode === 'online') net.send({ t: 'start', mode: 'dodge' }); else beginLevel('dodge'); };
+$('#dgBack').onclick = () => { sfx.ui(); if (app.mode === 'online') net.send({ t: 'menu' }); else quitToMenu(); };
 $$('[data-back]').forEach(b => b.onclick = () => {
   sfx.ui();
   if (app.mode === 'online' && app.room) renderLobby();
@@ -582,7 +628,7 @@ function bindTouch(id, bit) {
   el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off);
   el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
 }
-bindTouch('#tLeft', 1); bindTouch('#tRight', 2); bindTouch('#tJump', 4);
+bindTouch('#tLeft', 1); bindTouch('#tRight', 2); bindTouch('#tJump', 4); bindTouch('#tAct', 8);
 if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
 
 // boot

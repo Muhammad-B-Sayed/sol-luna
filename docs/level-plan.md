@@ -116,18 +116,19 @@ Movement, with the current physics. Do not change physics.
 
 | Move | Limit |
 | --- | --- |
-| Jump height | 3.2 tiles. Design climbs of 2. A 3-tile climb only with nothing overhead. |
-| Gap at the same height | 6 tiles at most. Design 1 to 3. |
-| Gap landing 2 higher | 5 at most. Design 1 to 2. |
-| Gap landing 2+ lower | 7 at most. |
-| Headroom | At least 2 free cells to walk. A jump needs free cells above the take-off too. |
+| Jump height | 4.1 tiles (gravity 0.33, Nov 2026). Design climbs of 2 to 3. A 4-tile climb only with nothing overhead. A climb of 5+ blocks. |
+| Gap at the same height | 7 tiles at most. Design 1 to 4. 9+ blocks. |
+| Gap landing 2 higher | 6 at most. Design 1 to 3. |
+| Gap landing 2+ lower | 8 (2 lower) or 9 (3+ lower) at most. |
+| Headroom | At least 2 free cells to walk. **A full jump needs 6 free rows above the take-off and along the arc**; with 5 it hits the roof after 3.6 tiles, with 4 after 2.6. `node tools/check-headroom.js` lists route jumps that hit a roof, and the gate fails any level that has them. |
 | Step-up without jumping | 14 px, so only pool rims and ramp tops. A 1-tile step needs a jump. |
 | Run speed | 8 tiles per second. Platforms move 4 tiles per second. |
 
 Things that bite:
 
 - **A ceiling over the take-off kills the jump.** Standing on a floor with only 3 free rows
-  above, you cannot climb 2. Open the ceiling above the take-off cell as well as above the
+  above, you cannot climb 2. Every climb and crossing on the route needs 6 free rows above it, so
+  floors that are stacked straight on top of each other must be 7 rows apart. Open the ceiling above the take-off cell as well as above the
   landing. Level 1 hit this.
 - **Levers work by walking through them.** Walking right through a lever turns it on.
   Walking left turns it off. Place levers where the route passes them once, to the right,
@@ -139,8 +140,8 @@ Things that bite:
   it permanent with a lever in the same group.
 - **Pools.** Sun kills Luna, moon kills Sol, shade kills both. A pool is a floor tile sunk
   10 px. To make a route for one character only, put a pool 3+ wide under a ceiling with
-  exactly 2 free rows: nobody can jump it. In the open a pool must be 8+ wide to stop a
-  jump. Plates must sit on stone, not on a pool.
+  exactly 2 free rows: nobody can jump it. In the open a pool must be 9+ wide to stop a
+  jump (10+ if the far side is lower). Plates must sit on stone, not on a pool.
 - **Gates.** `L.gate(x, y0, y1, ch, g, slot_top)` builds a gate that rises into a pillar.
   The slot needs as many cells as the gate is tall. In a 4-high corridor, build a wall with
   a 2-high doorway and put a 2-high gate in it. A closing gate takes 0.25 s per tile and
