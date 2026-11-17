@@ -583,3 +583,6 @@ function hexA(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
 }
+
+// shared with the runner renderer (public/js/runner-render.js)
+export { LIQ, hash, rrect, roundTop, crescent, star, hexA };
