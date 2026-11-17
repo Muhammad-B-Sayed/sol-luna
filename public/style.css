@@ -118,3 +118,18 @@ body.touch[data-screen="game"] #touch { display: flex; }
   .card { padding: 22px 18px; }
   .code { font-size: 36px; }
 }
+
+/* versus modes: a row of mode buttons under the main actions (title card and lobby) */
+.modes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--edge); border-radius: 12px; }
+.modes-label { flex: 1 1 100%; font: 700 11px Nunito, system-ui, sans-serif; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); text-align: left; }
+.modes button { flex: 1 1 0; min-width: 0; }
+
+/* runner results */
+.rr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 16px; }
+.rr-card { display: grid; gap: 3px; padding: 12px 8px; border-radius: 12px; background: rgba(0,0,0,0.25); border: 1px solid transparent; }
+.rr-card .who { font: 700 18px Cinzel, Georgia, serif; }
+.rr-card.sol .who { color: var(--sun); } .rr-card.luna .who { color: var(--moon); }
+.rr-card b { font: 700 26px Cinzel, Georgia, serif; }
+.rr-card small { color: var(--muted); font-size: 12px; }
+.rr-card.won { border-color: rgba(214,196,255,0.6); background: rgba(255,255,255,0.08); }
+#rrTitle.solc { color: var(--sun); } #rrTitle.lunac { color: var(--moon); }
