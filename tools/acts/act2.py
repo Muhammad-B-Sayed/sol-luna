@@ -732,80 +732,86 @@ def wall_room(L, x0, x1, f, inner):
 @level(21)
 def pendulum():
     """Pendulum. The one open room: a tall atrium with a shade pool for a floor, between two side
-    walls of stacked rooms. Three ferries hang across the atrium at three heights and swing
-    from wall to wall: hold the plate and the ferry swings over, let go and it swings back. The
-    stairs inside each wall end in hatches that are opened from the other wall, so nobody
-    climbs a wall alone, and each wall's stairs only go up one storey before the way on is on
-    the other side. Both players zigzag to the top, trading sides on every ferry: the doors are
-    at the top, Sol's on the right and Luna's on the left.
+    walls of stacked rooms seven rows apart (floors 28, 21, 14, 7), so every climb gets its full
+    jump. Three ferries hang across the atrium at three heights and swing from wall to wall:
+    hold the plate and the ferry swings over, let go and it swings back. Each ferry hangs on the
+    far side from whoever rides it first, so it has to be called over before anyone can board.
+    Each wall's stairs (a ledge, then a full jump up through a hatch) only go up one storey, and
+    every hatch is opened from the other wall. Over each top room is a door loft, reached
+    through one more hatch. Both players zigzag to the top, trading sides on every ferry: Sol's
+    door is in the right loft, Luna's in the left.
 
     Chain (white plates open Sol's hatches, pink plates Luna's):
     1. Luna holds white in her start room: Sol climbs the left wall to the first dock.
     2. Sol holds pink there: Luna climbs the right wall to her first dock.
-    3. Sol steps onto the purple ferry. Luna holds purple: it swings him across.
-    4. He takes over the plate (his own purple plate beside hers), she steps onto the ferry, and
-       when he lets go it swings her back to the left.
+    3. The purple ferry hangs on Luna's side. She holds purple: it swings over to Sol. He steps
+       on, she lets go, and it swings him back across.
+    4. She steps on where it hangs, he holds his own purple plate beside hers, and it swings her
+       to the left.
     5. Now on the wrong sides, each needs the other's hatch: Luna holds white, Sol climbs the
        right wall; Sol holds pink, Luna climbs the left wall.
-    6. The green ferry hangs on the right: Sol rides it left on Luna's plate and sends her back
-       right on his.
-    7. White and pink again, up one more storey.
-    8. The orange ferry: Sol across to the right, Luna back to the left.
-    9. White and pink a last time, up to the doors.
+    6. The green ferry hangs on Luna's side: she calls it over, it brings Sol left when she lets
+       go, and he sends her right on his plate.
+    7. White and pink again, up to the top rooms.
+    8. The orange ferry: called left by Luna, Sol rides it right, she rides it back left.
+    9. White and pink a last time, up into the door lofts: Luna holds white for Sol's loft, and
+       Sol holds pink inside his loft for hers.
     """
-    L = Lv('Pendulum', 90, "Hold a ferry's plate and it swings across; let go and it swings back. You cannot ride the ferry you are holding.")
+    L = Lv('Pendulum', 95, "Hold a ferry's plate and it swings across; let go and it swings back. You cannot ride the ferry you are holding.")
     solid(L)
-    # the atrium
-    L.clear(9, 2, 30, 27).pool(9, 28, 22, 'X')
-    # wall rooms: floors at rows 28, 22, 16, 10 and a top room with floor 4
-    for x0, x1 in ((1, 8), (31, 38)):
-        for f in (28, 22, 16, 10):
-            L.clear(x0, f - 5, x1, f - 1)
-            ox = x0 if x0 == 1 else x1 - 1               # thicken the outer top corner
-            L.r(ox, f - 4, ox + 1, f - 4)
-        L.clear(x0, 2, x1, 3)
-    # stairs inside each wall: a ledge three cells up from the room floor, the hatch three cells
-    # above that. Left wall: pit x1-2, hole and ledge x3-4, floor x5-8 (dock x7-8). Right mirrors.
-    # Sol climbs left, right, left, right (his hatches are white); Luna the other way (pink).
-    for k, f in enumerate((22, 16, 10, 4)):
+    # wall rooms (x3-7 and x32-36): floors at rows 28, 21, 14, 7, each room six rows high
+    for x0, x1 in ((3, 7), (32, 36)):
+        for f in (28, 21, 14, 7):
+            L.clear(x0, f - 6, x1, f - 1)
+    # the atrium (x10-29) behind inner walls two thick; each storey opens on it through a dock
+    # tunnel two rows high, and the start rooms open on it fully
+    L.clear(10, 5, 29, 27).pool(10, 28, 20, 'X')
+    for x in (8, 30):
+        L.clear(x, 22, x + 1, 27)
+        for f in (21, 14, 7):
+            L.clear(x, f - 2, x + 1, f - 1)
+    # the door lofts over the top rooms (rows 1-3, floor 4)
+    L.clear(3, 1, 7, 3).clear(32, 1, 36, 3).r(5, 4, 7, 4).r(32, 4, 34, 4)
+    # stairs in each wall: a ledge 3 up under the hatch, then a full jump up through the hatch,
+    # which slides into a slot in the outer wall. Left wall: slot x1-2, hatch and ledge x3-4,
+    # floor x5-7 (dock x7). The right wall mirrors it.
+    # Sol climbs left, right, left, then his right loft (white); Luna the other way (pink).
+    for k, n in enumerate((21, 14, 7, 4)):
         gl, gr = (3, 4) if k % 2 == 0 else (4, 3)
-        hatch(L, 3, f, 2, -2, gl)
-        L.r(1, f + 1, 2, f + 1).r(3, f + 3, 4, f + 3)
-        hatch(L, 35, f, 2, 2, gr)
-        L.r(37, f + 1, 38, f + 1).r(35, f + 3, 36, f + 3)
-    L.p(7, 27, 'a').p(33, 27, 'b')
-    # ferries: purple at row 22 rests left, green at row 16 rests right, orange at row 10 rests left
-    L.cells(9, 22, 12, 22, 0).mv(0, 18, 0)
-    L.cells(27, 16, 30, 16, 1).mv(1, -18, 0)
-    L.cells(9, 10, 12, 10, 2).mv(2, 18, 0)
-    # plates. Storey 1: white (Luna) bottom right, pink (Sol) left dock 1
-    L.plate(31, 27, 3).plate(8, 21, 4)
+        hatch(L, 3, n, 2, -2, gl)
+        hatch(L, 35, n, 2, 2, gr)
+        if n != 4:
+            L.r(3, n + 4, 4, n + 4).r(35, n + 4, 36, n + 4)
+    L.p(6, 27, 'a').p(33, 27, 'b')
+    # ferries, each hanging on the far side from its first rider: purple (row 21) and orange
+    # (row 7) hang right, green (row 14) hangs left
+    L.cells(26, 21, 29, 21, 0).mv(0, -16, 0)
+    L.cells(10, 14, 13, 14, 1).mv(1, 16, 0)
+    L.cells(26, 7, 29, 7, 2).mv(2, -16, 0)
+    # plates. Storey 1: white (Luna) in her start room, pink (Sol) at left dock 1
+    L.plate(32, 27, 3).plate(7, 20, 4)
     # crossing 1: purple, hers at the right dock, his further in
-    L.plate(31, 21, 0).plate(34, 21, 0)
+    L.plate(32, 20, 0).plate(34, 20, 0)
     # storey 2: white (Luna) left room 1, pink (Sol) right dock 2
-    L.plate(5, 21, 3).plate(31, 15, 4)
+    L.plate(5, 20, 3).plate(32, 13, 4)
     # crossing 2: green, hers at the left dock, his further in
-    L.plate(8, 15, 1).plate(5, 15, 1)
-    # storey 3: white (Luna) right room 2, pink (Sol) left dock 3
-    L.plate(34, 15, 3).plate(8, 9, 4)
+    L.plate(7, 13, 1).plate(5, 13, 1)
+    # storey 3: white (Luna) right room 2, pink (Sol) left top room
+    L.plate(34, 13, 3).plate(7, 6, 4)
     # crossing 3: orange, hers at the right dock, his further in
-    L.plate(31, 9, 2).plate(34, 9, 2)
-    # storey 4: white (Luna) left room 3, pink (Sol) in the top right room
-    L.plate(5, 9, 3).plate(31, 3, 4)
-    L.p(7, 3, 'B').p(33, 3, 'A')
-    # islands in the atrium, clear of the ferries and the space their riders need
-    L.r(13, 26, 15, 27).r(24, 26, 26, 27)                 # low islands, a jump from the bottom rooms
-    L.r(18, 24, 21, 27).r(16, 26, 17, 27).r(22, 26, 23, 27)   # a stump between them
-    L.r(11, 27, 12, 27).r(27, 27, 28, 27)                 # stepping stones in the shade
-    L.r(18, 18, 21, 19).r(17, 12, 23, 13)                 # catch ledges between the ferries
-    L.r(13, 19, 15, 19).r(24, 19, 26, 19)
-    L.r(18, 2, 21, 3)                                     # the ceiling hangs down over the middle island
-    L.r(11, 6, 13, 7).r(18, 6, 21, 7).r(26, 6, 28, 7)     # a broken bridge across the top
-    L.r(9, 26, 10, 27).r(29, 26, 30, 27)                  # the atrium's foot (stand 25)
-    # gems: the low islands, the top bridge, and the far corners of the wall rooms
-    L.p(14, 25, 's').p(25, 25, 'm')
-    L.p(12, 5, 'm').p(19, 4, 'm').p(20, 4, 's').p(27, 5, 's')
-    L.p(38, 19, 'm').p(1, 13, 's').p(38, 7, 's').p(38, 25, 'm')   # the rooms' far corners
+    L.plate(32, 6, 2).plate(34, 6, 2)
+    # the lofts: white (Luna) in the left top room, pink (Sol) inside his loft
+    L.plate(5, 6, 3).plate(32, 3, 4)
+    L.p(6, 3, 'B').p(33, 3, 'A')
+    # the atrium: a shade-topped pillar splits it down the middle, broken where the ferries
+    # swing through, and flush islands stand in the shade pool
+    for y0, y1 in ((8, 11), (15, 18), (22, 27)):
+        L.r(19, y0, 20, y1).pool(19, y0, 2, 'X')
+    L.r(14, 28, 15, 28).r(24, 28, 25, 28)
+    # gems: the islands, the nooks under the ledges, the lofts
+    L.p(14, 27, 's').p(25, 27, 'm')
+    L.p(3, 27, 's').p(36, 27, 'm').p(3, 20, 'm').p(36, 20, 'm').p(3, 13, 's').p(36, 13, 's')
+    L.p(34, 3, 's').p(7, 3, 'm')
     return L
 
 
