@@ -113,112 +113,98 @@ def stone_pool(L, x, y, w, sx, g):
     return L.plat(sx, y + 1, 1, 1, 0, -1, g)
 
 
+def mound(L, x, f, g, east=True):
+    """A shade tunnel on a low mound in a band whose floor is row f, x..x+5: a 4-wide shade pool
+    (x+1..x+4) in row f-1 under a roof with exactly 2 free rows. A 2-wide stone rises out of the floor
+    into the pool's middle while group g is active. Nobody can jump four shade cells under a 2-row
+    roof; with the stone up it is two short hops. The side you enter from is a ramp and the side you
+    leave by is a flat step, so the hop out lands level (east=True: crossed from west to east)."""
+    L.set(x, f - 1, '/' if east else '#')
+    L.set(x + 5, f - 1, '#' if east else '\\')
+    L.pool(x + 1, f - 1, 4, 'X')
+    L.r(x + 1, f - 6, x + 4, f - 4)
+    L.clear(x + 2, f, x + 3, f)
+    return L.plat(x + 2, f, 2, 1, 0, -1, g)
+
+
+def channel(L, x, f, w, kind):
+    """A character-only channel: a pool w wide in the band floor (row f) under a roof with 2 free rows."""
+    L.pool(x, f, w, kind)
+    return L.r(x, f - 6, x + w - 1, f - 3)
+
+
 @level(17)
 def shade_garden():
-    """Shade Garden. A braid: two strands that cross twice in a central column (crossing C1 low, C2
-    high) and bulge out into lobes on alternate sides, then weave once more at the end. Sol's strand
-    runs bottom left, right lobe, top left; Luna's runs bottom right, left lobe, top right. Every run
-    is a low terrace over shade pools, and each pool has one stepping stone that only the partner can
-    raise, so the two leapfrog up the braid, one hopping while the other works the stones. Low roofs
-    cap every jump: a five-wide pool can't be jumped, a stone in its middle makes two tight hops, and
-    most plates sit on one-tile perches between pools. Each colour raises stones in two places far
-    apart: a plate low down, and a lever or plate high up. Riders can't drive any of the four lifts.
-    1. Bottom. Luna holds P0 by her start: stone S1 rises. Sol hops S1 and holds P1: L1 rises.
-       Luna hops L1 and holds P2: S2 rises. Sol hops S2 and holds P3 at C1: L2 rises, Luna hops it.
-    2. C1, the first crossing. Luna stands on its lift; Sol holds its floor plate and she rides up.
-       She holds the plate on the left ledge and he rides up. Sol leaves right through a sun channel,
-       Luna left through a moon channel.
-    3. Middle, lower runs. Sol holds P4 at the start of his lower run: L3 rises. Luna hops L3 and holds
-       P5: S3 rises. Sol hops S3 onto the east lift.
-    4. Luna holds Q1 at the foot of her shaft: the east lift carries Sol up. Luna stands on the west
-       lift; Sol holds Q2 up on his side: it carries her up.
-    5. Middle, upper runs. Sol holds P6: L4 rises. Luna hops L4 and walks through lever K7 (green):
-       S4 rises for good. Sol hops S4.
-    6. C2, the second crossing, like C1: Luna rides up while Sol holds the floor plate, then holds the
-       ledge plate for him. Sol leaves left, Luna right.
-    7. Top. Luna walks through lever K8 (orange): S5 rises. Sol hops S5 and holds P9: L5 rises. Luna
-       hops L5 and walks through lever K10 (pink): S6 rises. Sol hops S6 and holds P11: L6 rises.
-    8. The last weave. Luna hops L6 and drops down Sol's shaft onto the east lift; Sol drops down
-       hers and holds Q1: she rides up to her door. He stands on the west lift and she holds Q2: he
-       rides up to his door."""
-    L = Lv('Shade Garden', 75, 'Your partner raises your stepping stones. Low roofs: no big jumps here.')
+    """Shade Garden. A braid in four bands 7 rows apart (floors 28, 21, 14, 7). Sol's strand runs
+    bottom left, lower right, upper right, top left; Luna's bottom right, lower left, upper left, top
+    right. The strands cross at two lifts in the centre (C1 bottom to lower, C2 upper to top), and each
+    crossing sends Sol out through a sun channel and Luna through a moon channel. Every run is
+    broken by shade tunnels on low mounds: four shade cells under a roof two rows high, which no
+    jump can clear. Each tunnel has a stepping stone that only the partner can raise, so the two
+    leapfrog up the braid. Outside the tunnels every band has full headroom for the climbs and the
+    high gems. Each colour raises stones in places far apart, and riders can't drive any lift.
+    1. Bottom. Luna holds P0 by her start: S1 rises. Sol hops S1 and holds P1: L1 rises. Luna hops
+       L1 and holds P2: S2 rises. Sol hops S2 and holds P3 by C1: L2 rises (and C1 with it).
+    2. C1. Sol steps off; Luna boards C1 and Sol holds P3 again: she rides up and leaves west
+       through the moon channel. Sol steps off, the lift comes down, he boards, and Luna holds P5
+       (yellow, like C1): he rides up and leaves east through the sun channel.
+    3. Lower runs. P5 also raises S3: Sol hops S3 and holds P4 by the east lift: L3 rises. Luna hops
+       L3. Sol boards the east lift and Luna holds Q1: it carries him up.
+    4. Luna boards the west lift and Sol holds Q2 on his upper run: it carries her up.
+    5. Upper runs. Sol holds P6: L4 rises. Luna hops L4 and walks through lever K7: S4 rises for
+       good. Sol hops S4 into the C2 room.
+    6. C2. Luna rides up while Sol holds the floor plate, then holds the top plate for him. Sol
+       leaves west through a sun channel, Luna east through a moon channel.
+    7. Top. Luna walks through lever K8: S5 rises for good. Sol hops S5 and holds P9: L5 rises.
+       Luna hops L5 to her door; Sol walks back to his."""
+    L = Lv('Shade Garden', 72, 'Your partner raises your stepping stones. The tunnels are too low to jump: wait for the stone.')
     solid(L)
-    # ---- bottom: Sol's run on the left (floor 27), Luna's on the right (floor 26)
-    L.clear(1, 23, 15, 26)
-    L.p(2, 26, 'a')
-    stone_pool(L, 3, 27, 5, 5, 0)                          # S1 (purple): P0
-    L.r(8, 26, 8, 26).plate(8, 25, 1)                      # P1 (green) raises L1, on a perch
-    stone_pool(L, 10, 27, 5, 12, 2)                        # S2 (orange): P2
-    L.plate(15, 26, 3)                                     # P3 (white) raises L2
-    L.clear(24, 22, 38, 25)
-    L.p(38, 25, 'b').r(36, 25, 36, 25).plate(36, 24, 0)    # P0 (purple) raises S1, on a perch
-    stone_pool(L, 31, 26, 5, 33, 1)                        # L1 (green): P1
-    L.r(30, 25, 30, 25).plate(30, 24, 2)                   # P2 (orange) raises S2, on a perch
-    stone_pool(L, 24, 26, 5, 26, 3)                        # L2 (white): P3
-    # ---- C1, the low crossing (x 16-23, rows 17-25, floor 26)
-    L.clear(16, 17, 23, 25)
-    L.r(16, 21, 17, 23).r(22, 21, 23, 21)                  # side ledges at the two exits
-    L.clear(19, 26, 21, 26).plat(19, 26, 3, 1, 0, -5, 0)   # lift C1 (purple) up to the ledges
-    L.plate(17, 25, 0)                                     # its plate on the floor
-    L.plate(16, 20, 0)                                     # and on the left ledge
-    # ---- middle, left lobe (Luna): lower run floor 21 going west, stair, upper run floor 15 going east
-    L.clear(1, 17, 15, 20)
-    L.r(13, 17, 15, 18).pool(14, 21, 2, 'M')               # moon channel under a low roof: Luna only
-    stone_pool(L, 8, 21, 5, 10, 4)                         # L3 (pink): P4
-    L.r(7, 20, 7, 20).plate(7, 19, 5)                      # P5 (yellow) raises S3, on a perch
-    L.clear(1, 11, 6, 16)                                  # the lift shaft at the west wall
-    L.clear(4, 21, 6, 21).plat(4, 21, 3, 1, 0, -6, 3)      # west lift (white): Luna rides, Sol drives
-    L.plate(2, 20, 3)                                      # Q1 (white): Luna drives Sol's lift from here
-    L.clear(7, 11, 15, 14)
-    stone_pool(L, 9, 15, 5, 11, 0)                         # L4 (purple): P6
-    L.lever(14, 14, 1)                                     # K7 (green) raises S4 for good
-    # ---- middle, right lobe (Sol): lower run floor 20 going east, stair, upper run floor 14 going west
-    L.clear(24, 16, 38, 19)
-    L.r(24, 16, 25, 17).pool(24, 20, 2, 'S')               # sun channel under a low roof: Sol only
-    L.plate(26, 19, 4)                                     # P4 (pink) raises L3
-    stone_pool(L, 27, 20, 5, 29, 5)                        # S3 (yellow): P5
-    L.clear(31, 10, 38, 15)                                # the lift shaft at the east wall
-    L.clear(33, 20, 35, 20).plat(33, 20, 3, 1, 0, -6, 3)   # east lift (white): Sol rides, Luna drives
-    L.r(36, 14, 37, 14).plate(36, 13, 3)                   # Q2 (white): Sol drives Luna's lift from here
-    L.clear(24, 10, 30, 13)
-    L.r(30, 14, 32, 14)                                    # the top of the stair
-    L.r(31, 13, 31, 13).plate(31, 12, 0)                   # P6 (purple) raises L4, on a perch
-    stone_pool(L, 25, 14, 5, 27, 1)                        # S4 (green): K7
-    # ---- C2, the high crossing (x 16-23, rows 2-14)
-    L.clear(16, 2, 23, 14)
-    L.r(20, 14, 23, 14)                                    # the right half of its floor is a step higher
-    L.clear(16, 15, 18, 15).plat(16, 15, 3, 1, 0, -8, 5)   # lift C2 (yellow) up to the top runs
-    L.plate(22, 13, 5)                                     # its plate on the floor
-    L.r(20, 6, 23, 6).plate(21, 5, 5)                      # a ledge to Luna's exit, with its plate
-    L.r(20, 9, 21, 9).r(19, 10, 20, 11)                    # a hanging rock
-    # ---- top: Sol's run on the left (floor 7) going west, Luna's on the right (floor 6) going east
-    L.clear(1, 3, 15, 6)
-    L.r(15, 3, 15, 4).pool(15, 7, 1, 'S')                  # sun channel under a low roof
-    stone_pool(L, 9, 7, 5, 11, 2)                          # S5 (orange): K8
-    L.r(8, 6, 8, 6).plate(8, 5, 3)                         # P9 (white) raises L5, on a perch
-    stone_pool(L, 3, 7, 5, 5, 4)                           # S6 (pink): K10
-    L.r(2, 6, 2, 6).plate(2, 5, 5)                         # P11 (yellow) raises L6, on a perch
-    L.clear(1, 7, 1, 10)                                   # a drop into Luna's shaft
-    L.clear(24, 2, 38, 5)
-    L.r(24, 2, 24, 3).pool(24, 6, 1, 'M')                  # moon channel under a low roof
-    L.lever(25, 5, 2)                                      # K8 (orange) raises S5
-    stone_pool(L, 26, 6, 5, 28, 3)                         # L5 (white): P9
-    L.lever(32, 5, 4)                                      # K10 (pink) raises S6
-    stone_pool(L, 33, 6, 5, 35, 5)                         # L6 (yellow): P11
-    L.clear(38, 6, 38, 9)                                  # a drop into Sol's shaft
-    L.p(7, 14, 'A')                                        # Sol's door, at the top of Luna's lift
-    L.p(37, 13, 'B')                                       # Luna's door, at the top of Sol's lift
-    # ---- gems, in pockets off the runs
-    L.clear(5, 22, 5, 22).p(5, 22, 's')                    # over S1: jump from its stone
-    L.p(20, 18, 's')                                       # high in C1, off the lift
-    L.p(37, 10, 's')                                       # over the high ledge in the east shaft
-    L.p(23, 4, 's')                                        # C2's high ledge
-    L.clear(4, 2, 4, 2).p(4, 2, 's')                       # over S6
-    L.clear(33, 21, 33, 21).p(33, 21, 'm')                 # over L1
-    L.p(5, 11, 'm')                                        # over the west lift's top stop
-    L.p(23, 17, 'm')                                       # high in C1
-    L.p(23, 12, 'm')                                       # C2's raised floor
-    L.clear(35, 1, 35, 1).p(35, 1, 'm')                    # over L6
+    for f in (7, 14, 21, 28):
+        L.clear(1, f - 6, 38, f - 1)
+    # lifts: C1 (bottom to lower) and C2 (upper to top) in the centre, W and E at the walls
+    L.clear(18, 28, 20, 28).clear(18, 21, 20, 21).plat(18, 28, 3, 1, 0, -7, 5)    # C1 (yellow)
+    L.clear(18, 14, 20, 14).clear(18, 7, 20, 7).plat(18, 14, 3, 1, 0, -7, 2)      # C2 (orange)
+    L.clear(1, 21, 3, 21).clear(1, 14, 3, 14).plat(1, 21, 3, 1, 0, -7, 3)         # W (white): Luna rides
+    L.clear(36, 21, 38, 21).clear(36, 14, 38, 14).plat(36, 21, 3, 1, 0, -7, 3)    # E (white): Sol rides
+    # ---- bottom (floor 28): Sol from the west, Luna from the east, C1 between them
+    L.p(1, 27, 'a').p(37, 27, 'b')
+    mound(L, 3, 28, 0)                                     # S1 (purple)
+    L.plate(9, 27, 1)                                      # P1 (green) raises L1
+    mound(L, 10, 28, 2)                                    # S2 (orange)
+    L.plate(16, 27, 5)                                     # P3 (yellow) raises L2 and works C1
+    mound(L, 22, 28, 5, east=False)                                    # L2 (yellow)
+    L.plate(28, 27, 2)                                     # P2 (orange) raises S2
+    mound(L, 29, 28, 1, east=False)                                    # L1 (green)
+    L.plate(38, 27, 0)                                     # P0 (purple) raises S1
+    # ---- lower (floor 21): Luna west to the W lift, Sol east to the E lift
+    L.plate(5, 20, 3)                                      # Q1 (white): Luna sends Sol up
+    mound(L, 7, 21, 4, east=False)                                     # L3 (pink)
+    L.plate(13, 20, 5)                                     # P5 (yellow): works C1 from the top, raises S3
+    channel(L, 14, 21, 4, 'M')                             # moon channel: Luna only
+    channel(L, 22, 21, 4, 'S')                             # sun channel: Sol only
+    mound(L, 27, 21, 5)                                    # S3 (yellow)
+    L.plate(33, 20, 4)                                     # P4 (pink) raises L3
+    # ---- upper (floor 14): Luna east from the W lift, Sol west from the E lift, C2 between
+    mound(L, 5, 14, 0)                                     # L4 (purple)
+    L.lever(12, 13, 1)                                     # K7 (green) raises S4 for good
+    L.plate(22, 13, 2)                                     # C2's floor plate (orange)
+    mound(L, 24, 14, 1, east=False)                                    # S4 (green)
+    L.plate(31, 13, 0)                                     # P6 (purple) raises L4
+    L.plate(33, 13, 3)                                     # Q2 (white): Sol sends Luna up
+    # ---- top (floor 7): Sol west to his door, Luna east to hers
+    L.p(2, 6, 'A').p(37, 6, 'B')
+    L.plate(4, 6, 4)                                       # P9 (pink) raises L5
+    mound(L, 6, 7, 0, east=False)                                      # S5 (purple)
+    channel(L, 13, 7, 4, 'S')                              # sun channel
+    L.plate(22, 6, 2)                                      # C2's top plate (orange)
+    channel(L, 23, 7, 4, 'M')                              # moon channel
+    L.lever(28, 6, 0)                                      # K8 (purple) raises S5 for good
+    mound(L, 30, 7, 4)                                     # L5 (pink)
+    # ---- gems: high in the bands, a full jump up from the floor
+    for x, y in ((2, 22), (21, 22), (38, 15), (32, 8), (21, 2)):
+        L.p(x, y, 's')
+    for x, y in ((36, 22), (1, 15), (20, 16), (14, 8), (38, 1)):
+        L.p(x, y, 'm')
     return L
 
 

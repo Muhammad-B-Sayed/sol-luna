@@ -36,45 +36,46 @@ export const SCRIPTS = {
     grab(SOL, 11, 1), door(SOL),
     grab(LUNA, 33, 1), door(LUNA), win(),
   ],
-  // Shade Garden: leapfrog up the braid, one hopping while the other raises the stones.
+  // Shade Garden: leapfrog up the braid, one hopping a tunnel while the other raises its stone.
   17: () => [
-    press(LUNA, 36, 24),                            // P0: S1 rises
-    grab(SOL, 5, 22), press(SOL, 8, 25),            // Sol hops S1, holds P1: L1 rises
-    grab(LUNA, 33, 21), press(LUNA, 30, 24),        // Luna hops L1, holds P2: S2 rises
-    press(SOL, 15, 26),                             // Sol hops S2, holds P3: L2 rises
-    goto(LUNA, 20, 25),                             // Luna hops L2 into C1, onto its lift
-    press(SOL, 17, 25), waitPlat(19, 26),           // Sol holds the C1 plate: the lift carries Luna up
-    grab(LUNA, 23, 17), goto(LUNA, 17, 20, { tol: 0.1 }),
-    goto(SOL, 16, 25, { tol: 0.1 }), waitPlat(19, 26, false),     // Sol steps off: the lift comes back down
-    goto(SOL, 20, 25), press(LUNA, 16, 20), waitPlat(19, 26),   // Sol onto the lift, Luna holds the top plate: up
-    grab(SOL, 20, 18),
-    press(SOL, 26, 19),                             // out right through the sun channel; P4: L3 rises
-    press(LUNA, 7, 19),                             // out left through the moon channel, hop L3; P5: S3 rises
-    goto(SOL, 34, 19),                              // Sol hops S3 onto the east lift
-    press(LUNA, 2, 20), waitPlat(33, 20),           // Luna holds Q1: it carries him up
-    goto(SOL, 37, 13, { tol: 0.1 }),                // he steps off onto the high ledge; the lift goes back down
-    goto(LUNA, 1, 20, { tol: 0.2 }), waitPlat(4, 21, false), waitPlat(33, 20, false),   // Luna steps off Q1: both lifts come down
-    goto(LUNA, 5, 20),                              // Luna onto the west lift
-    grab(SOL, 37, 10),
-    press(SOL, 36, 13), waitPlat(4, 21),            // Sol holds Q2: it carries her up
-    grab(LUNA, 5, 11), goto(LUNA, 8, 14),
-    press(SOL, 31, 12),                             // P6: L4 rises
-    flip(LUNA, 14, 14),                             // Luna hops L4, K7: S4 rises for good
-    grab(LUNA, 23, 12), goto(LUNA, 17, 14),         // onto C2's lift
-    press(SOL, 22, 13), waitPlat(16, 15),           // Sol hops S4 into C2 and holds its plate: Luna rides up
-    goto(LUNA, 22, 5),
-    goto(SOL, 17, 14), press(LUNA, 21, 5), waitPlat(16, 15),    // Sol onto the lift, Luna holds the top plate: up
-    grab(SOL, 23, 4), goto(SOL, 15, 6),             // a hop to the high ledge for a gem, then out left into the sun channel
-    flip(LUNA, 25, 5),                              // out right through the moon channel; K8: S5 rises
-    press(SOL, 8, 5),                               // hop S5, P9: L5 rises
-    flip(LUNA, 32, 5),                              // hop L5, K10: S6 rises
-    grab(SOL, 4, 2), press(SOL, 2, 5),              // hop S6, P11: L6 rises
-    grab(LUNA, 35, 1), goto(LUNA, 34, 19),          // Luna hops L6 and drops down Sol's shaft onto the east lift
-    press(SOL, 2, 20), waitPlat(33, 20),            // Sol drops down Luna's shaft and holds Q1: she rides up
-    goto(LUNA, 37, 13, { tol: 0.6 }),               // to her door on the high ledge
-    goto(SOL, 5, 20), waitPlat(33, 20, false),      // Sol onto the west lift
-    press(LUNA, 36, 13), waitPlat(4, 21),           // Luna holds Q2: he rides up
-    door(SOL), door(LUNA), win(),
+    grab(SOL, 2, 22), grab(LUNA, 36, 22),
+    press(LUNA, 38, 27),                            // P0: S1 rises
+    press(SOL, 9, 27),                              // Sol hops S1 and holds P1: L1 rises
+    press(LUNA, 28, 27),                            // Luna hops L1 and holds P2: S2 rises
+    goto(SOL, 16, 27),                              // Sol hops S2
+    goto(SOL, 17, 27, { tol: 0.08 }),
+    press(SOL, 16, 27),                             // and holds P3: L2 rises
+    goto(LUNA, 21, 27),                             // Luna hops L2
+    goto(SOL, 17, 27, { tol: 0.08 }), waitPlat(18, 28, false),   // Sol steps off: C1 is down
+    goto(LUNA, 19, 27),                             // Luna boards C1
+    press(SOL, 16, 27), waitPlat(18, 28),           // Sol holds P3: she rides up
+    grab(LUNA, 20, 16), goto(LUNA, 15, 20),         // into the moon channel
+    goto(SOL, 17, 27, { tol: 0.08 }), waitPlat(18, 28, false),   // Sol steps off, C1 comes down
+    grab(SOL, 21, 22), goto(SOL, 21, 27), goto(SOL, 19, 27),
+    press(LUNA, 13, 20), waitPlat(18, 28),          // Luna holds P5: Sol rides up; S3 rises too
+    press(SOL, 33, 20),                             // Sol hops S3 and holds P4: L3 rises
+    goto(LUNA, 6, 20), grab(LUNA, 1, 15),           // Luna hops L3
+    grab(SOL, 38, 15), goto(SOL, 37, 20),           // Sol boards the E lift
+    press(LUNA, 5, 20), waitPlat(36, 21),           // Luna holds Q1: he rides up
+    goto(SOL, 34, 13),
+    goto(LUNA, 2, 20), waitPlat(36, 21, false),     // Luna boards the W lift
+    press(SOL, 33, 13), waitPlat(1, 21),            // Sol holds Q2: she rides up
+    goto(LUNA, 4, 13),
+    grab(SOL, 32, 8), press(SOL, 31, 13),           // P6: L4 rises
+    goto(LUNA, 11, 13), flip(LUNA, 12, 13),         // Luna hops L4 and walks through K7: S4 up for good
+    grab(LUNA, 14, 8),
+    goto(SOL, 23, 13), goto(SOL, 21, 13),           // Sol hops S4 into the C2 room
+    goto(LUNA, 19, 13),                             // Luna boards C2
+    press(SOL, 22, 13), waitPlat(18, 14),           // Sol holds the floor plate: she rides up
+    goto(LUNA, 21, 6),
+    goto(SOL, 23, 13), waitPlat(18, 14, false),     // Sol steps off, C2 comes down
+    goto(SOL, 19, 13),
+    press(LUNA, 22, 6), waitPlat(18, 14),           // Luna holds the top plate: he rides up
+    goto(SOL, 21, 6), grab(SOL, 21, 2), goto(SOL, 17, 6),
+    flip(LUNA, 28, 6),                              // K8: S5 rises for good
+    press(SOL, 4, 6),                               // Sol hops S5 and holds P9: L5 rises
+    goto(LUNA, 36, 6), grab(LUNA, 38, 1), door(LUNA),   // Luna hops L5 to her door
+    door(SOL), win(),
   ],
   // The Vault: three corner rooms each open one hatch over the vault; each crate has two jobs.
   28: () => [
