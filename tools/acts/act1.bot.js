@@ -38,16 +38,19 @@ export const SCRIPTS = {
   ],
   // The Lift: riders can't drive; the partner's plate moves the lift.
   4: () => [
-    grab(SOL, 35, 24), press(SOL, 37, 25),          // Sol holds P0: lift 1 carries Luna up to rib 1
-    goto(LUNA, 16, 21), press(LUNA, 11, 21),        // Luna holds P0b: G0b opens at the foot of the west stair
-    goto(SOL, 6, 26), grab(SOL, 2, 19), goto(SOL, 21, 21),   // Sol climbs to rib 1 and steps onto lift 2
-    press(LUNA, 13, 21),                            // Luna holds P1: lift 2 carries Sol up to rib 2
-    goto(SOL, 23, 14), grab(SOL, 32, 11), press(SOL, 28, 14),   // Sol holds P1b: G1b opens
-    goto(LUNA, 21, 21), grab(LUNA, 31, 17), goto(LUNA, 30, 20), goto(LUNA, 32, 14), goto(LUNA, 18, 14),   // Luna climbs to rib 2, steps onto lift 3
-    press(SOL, 24, 14),                             // Sol holds P2: lift 3 carries Luna up to rib 3
-    goto(LUNA, 16, 7), flip(LUNA, 4, 7),            // Luna latches lift 3 up with L2
-    grab(LUNA, 37, 4), door(LUNA),
-    door(SOL), win(),
+    grab(SOL, 35, 25), press(SOL, 37, 28),          // Sol holds P0: lift 1 carries Luna up to rib 1
+    waitPlat(18, 28),
+    goto(LUNA, 16, 20), press(LUNA, 8, 21),         // Luna holds P0b: G0b opens at the foot of the west stair
+    grab(SOL, 2, 20), grab(SOL, 10, 18), goto(SOL, 21, 20),   // Sol climbs to rib 1 and leaps onto lift 2
+    grab(LUNA, 14, 17), press(LUNA, 15, 20),        // Luna holds P1: lift 2 carries Sol up to rib 2
+    waitPlat(21, 21),
+    goto(SOL, 23, 13), grab(SOL, 29, 10), press(SOL, 29, 13),   // Sol holds P1b: G1b opens
+    goto(LUNA, 21, 20), grab(LUNA, 32, 19), goto(LUNA, 34, 13), goto(LUNA, 18, 13),   // Luna climbs to rib 2, onto lift 3
+    press(SOL, 26, 13),                             // Sol holds P2: lift 3 carries Luna up to rib 3
+    waitPlat(18, 14),
+    grab(LUNA, 10, 3), flip(LUNA, 12, 7),           // Luna latches lift 3 up with L2
+    door(SOL),                                      // so Sol can let go
+    grab(LUNA, 33, 5), door(LUNA), win(),           // from the top of lift 3 she leaps to the gallery and back
   ],
   // The Long Way Round: a ring; Sol clockwise, Luna anticlockwise; bridges rise out of pools.
   5: () => [

@@ -195,51 +195,50 @@ def shade_well():
 
 @level(4)
 def the_lift():
-    """A spine and ribs: a lift shaft up the middle, landings sticking out left and right. Three lifts take
-    turns in the two halves of the shaft. Nobody can drive the lift they ride: its plate is somewhere else.
-    1. Luna steps on lift 1 (purple). Sol runs to the far end of the ground floor and stands on P0: lift 1
-       carries Luna up to rib 1.
-    2. Luna stands on P0b (white) on rib 1: gate G0b at the foot of the west stair opens, and Sol runs all the
-       way back and climbs to rib 1.
-    3. Sol jumps onto lift 2 (green); Luna stands on P1 beside him on rib 1 and he rides up to rib 2.
-    4. Sol stands on P1b (pink) on rib 2: gate G1b in the low corridor on the right opens. Luna crosses the
-       shaft on lift 2's empty seat, goes through G1b and climbs the east stair to rib 2.
-    5. Luna steps on lift 3 (orange); Sol stands on P2 and she rides up to rib 3.
-    6. At rib 3's dead end Luna turns lever L2 (orange): lift 3 stays up, so Sol can let go. She fetches the
-       gem from the gallery across the shaft and walks back to her door; Sol walks to his on rib 2."""
+    """A spine and ribs: a lift shaft up the middle (x 17-22), ribs sticking out left and right. Three lifts
+    take turns in the two halves of the shaft, each rising six to eight rows so the ribs have full
+    headroom. Nobody can drive the lift they ride: its plate is somewhere else.
+    1. Luna starts on lift 1 (purple). Sol runs to the far end of the ground floor and stands on P0:
+       lift 1 carries Luna up to rib 1.
+    2. Luna stands on P0b (white) on rib 1: gate G0b at the foot of the west stair opens, and Sol runs all
+       the way back and climbs to rib 1.
+    3. Sol leaps over lift 1's lane onto lift 2 (green); Luna stands on P1 beside the shaft and he rides
+       up to rib 2.
+    4. Sol stands on P1b (pink) on rib 2: gate G1b in the corridor under it opens. Luna crosses the shaft
+       on lift 2's empty seat, goes through G1b and climbs the east stair to rib 2.
+    5. Luna leaps back over lift 2's lane onto lift 3 (orange); Sol stands on P2 and she rides up to rib 3.
+    6. At rib 3's dead end Luna turns lever L2 (orange): lift 3 stays up, so Sol can let go, and from its
+       top she can leap to the gallery across the shaft for its gem. She walks back to her door; Sol walks
+       to his on rib 2."""
     L = Lv('The Lift', 45, "You cannot drive the lift you stand on. Your partner's plate moves it.")
-    T = (
-        ('################', '######', '################'),   # 1
-        ('################', '######', '################'),   # 2
-        ('.......#####....', '......', '.....####.......'),   # 3
-        ('.......#####....', '......', '.....####.....m.'),   # 4
-        ('................', '......', '................'),   # 5
-        ('................', '......', '................'),   # 6
-        ('.B.$............', '......', '################'),   # 7
-        ('################', '......', '################'),   # 8
-        ('################', '......', '################'),   # 9
-        ('################', '......', '################'),   # 10
-        ('################', '......', '....####.s......'),   # 11
-        ('################', '......', '....####........'),   # 12
-        ('################', '......', '................'),   # 13
-        ('################', '......', '.3...5.........A'),   # 14
-        ('################', '___...', '##########...###'),   # 15
-        ('################', '......', '##########...###'),   # 16
-        ('################', '......', '...#.#..m..#####'),   # 17
-        ('........####....', '......', '...#.#.....#####'),   # 18
-        ('.s......####....', '......', '....~.....######'),   # 19
-        ('................', '......', '....~.....######'),   # 20
-        ('..........4.2...', '......', '################'),   # 21
-        ('.....###########', '...---', '...##...........'),   # 22
-        ('###...#.#.......', '......', '...##...........'),   # 23
-        ('###...#.#.......', '......', '...##.......s...'),   # 24
-        ('#####..+........', '......', '..............1.'),   # 25
-        ('#####..+...a....', '.b....', '........########'),   # 26
-        ('################', '===###', '........########'),   # 27
-        ('################', '######', '################'),   # 28
-    )
-    art(L, T)
-    L.mv(0, 0, -5).mv(1, 0, -7).mv(2, 0, -7).mv(3, 0, -2).mv(4, 0, -2)
+    # ---- west: ground (bottom wall, then row 28 by the shaft), rib 1 (rows 22/21), a solid mass, rib 3 (row 8)
+    L.r(1, 23, 2, 28).r(3, 26, 4, 28)                      # the west stair
+    L.gate(7, 27, 28, '+', 3, 25).r(6, 23, 8, 23)          # G0b (white) at its foot
+    L.set(11, 28, '/'); L.r(12, 28, 16, 28)
+    L.p(14, 27, 'a')
+    L.r(5, 22, 10, 22).r(12, 21, 16, 21); step(L, 11, 21, '/')   # rib 1
+    L.plate(8, 21, 3).plate(15, 20, 1)                     # P0b, P1
+    L.r(1, 1, 8, 8).r(1, 9, 16, 14).r(1, 15, 4, 16)        # the mass between rib 1 and rib 3
+    L.r(9, 8, 16, 8)                                       # rib 3
+    L.lever(12, 7, 2).p(10, 7, 'B')                        # L2 at the dead end, Luna's door
+    # ---- the shaft: lift 1 and lift 3 in the west half, lift 2 in the east half
+    L.cells(17, 28, 19, 28, 0).mv(0, 0, -7)                # lift 1: ground -> rib 1
+    L.p(18, 27, 'b')
+    L.r(20, 28, 22, 28).set(23, 28, '\\')
+    L.cells(20, 21, 22, 21, 1).mv(1, 0, -7)                # lift 2: rib 1 -> rib 2
+    L.cells(17, 14, 19, 14, 2).mv(2, 0, -6)                # lift 3: rib 2 -> rib 3
+    # ---- east: ground (bottom wall), the corridor (row 22), rib 2 (row 14), the gallery (row 7)
+    L.plate(37, 28, 0)                                     # P0, at the far end of the ground floor
+    L.r(23, 22, 38, 22).r(29, 23, 30, 26)                  # the corridor floor, a pillar under it
+    L.gate(26, 20, 21, '~', 4, 18).r(25, 15, 27, 17)       # G1b (pink)
+    L.r(35, 19, 36, 21).r(37, 16, 38, 21)                  # the east stair up to rib 2
+    L.r(23, 14, 34, 14)                                    # rib 2
+    L.plate(26, 13, 2).plate(29, 13, 4).p(33, 13, 'A')     # P2, P1b, Sol's door
+    L.r(25, 7, 34, 7).r(31, 8, 31, 11)                     # the gallery, out of reach without lift 3
+    L.r(28, 1, 30, 2)                                      # a rock hangs over it
+    L.mv(3, 0, -2).mv(4, 0, -2)
+    L.p(35, 25, 's').p(10, 18, 's').p(29, 10, 's').p(2, 20, 's')
+    L.p(33, 5, 'm').p(32, 19, 'm').p(10, 3, 'm').p(14, 17, 'm')
     return L
 
 
