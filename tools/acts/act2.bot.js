@@ -174,37 +174,37 @@ export const SCRIPTS = {
   // Undertow
   20: () => [
     press(LUNA, 37, 3),                              // PW0: Sol's gate opens
-    grab(SOL, 1, 20), press(SOL, 9, 27),             // Sol out, holds PG0: Luna's gate opens
-    press(LUNA, 19, 6),                              // PK1 in the top crossing: Sol's bottom gate opens
+    grab(SOL, 4, 22), press(SOL, 9, 27),             // Sol out, holds PG0: Luna's gate opens
+    press(LUNA, 23, 3),                              // PK1 in the top crossing: Sol's bottom gate opens
     press(SOL, 25, 27),                              // Sol through it, holds PY1: Luna's top gate opens
-    grab(LUNA, 1, 3), goto(LUNA, 7, 9),              // Luna on to the NW chamber
+    mv(LUNA, 21.5), grab(LUNA, 1, 3), goto(LUNA, 5, 9),              // Luna on to the NW chamber, waits on the hatch
     press(SOL, 37, 27),                              // PG: NW hatch opens
     grab(LUNA, 5, 12), goto(LUNA, 7, 17),            // Luna drops to W-mid
     grab(SOL, 38, 25), goto(SOL, 34, 27),            // Sol onto the purple lift
-    press(LUNA, 1, 15), waitPlat(34, 28),            // PP: it carries him up
-    goto(SOL, 36, 17),
-    press(LUNA, 3, 15), waitPlat(37, 10),            // PO1: the orange lift comes down
-    goto(SOL, 37, 16),
+    press(LUNA, 1, 17), waitPlat(34, 28),            // PP: it carries him up
+    goto(SOL, 36, 17, { tol: 0.1 }),                 // off the purple lift, clear of the orange one
+    press(LUNA, 3, 17), waitPlat(37, 10),            // PO1: the orange lift comes down
+    goto(SOL, 37, 17),
     goto(LUNA, 7, 17), waitPlat(37, 10, false),      // she steps off: it carries him to NE
-    grab(SOL, 36, 6), press(SOL, 35, 9),             // PW1: W-mid hatch opens
-    goto(LUNA, 6, 22),                               // Luna drops to SW
+    mv(SOL, 36.5), within(grab(SOL, 36, 6), 36, 9, 36, 9), mv(SOL, 35.5), press(SOL, 35, 9),             // PW1: W-mid hatch opens
+    goto(LUNA, 6, 23),                               // Luna drops to SW
     press(LUNA, 1, 27),                              // PG1: Sol's gate into the upper sun tunnel opens
-    goto(SOL, 29, 8),
+    mv(SOL, 33.5), goto(SOL, 29, 9),
     grab(SOL, 21, 3), goto(SOL, 18, 9),              // Sol west through the upper sun tunnel to JT
-    grab(LUNA, 21, 19), press(LUNA, 17, 22),         // Luna east to JB, holds PK2: Sol's top gate opens
+    grab(LUNA, 21, 19), press(LUNA, 17, 23),         // Luna east to JB, holds PK2: Sol's top gate opens
     press(SOL, 9, 9),                                // Sol through it, holds PY2: Luna's bottom gate opens
-    grab(LUNA, 38, 22), press(LUNA, 37, 27),         // Luna on to SE, holds PG: NW hatch opens
+    goto(LUNA, 31, 24), mv(LUNA, 33.5), grab(LUNA, 38, 22), press(LUNA, 37, 27),         // Luna on to SE, holds PG: NW hatch opens
     goto(SOL, 7, 17),                                // Sol drops to W-mid
     goto(LUNA, 34, 27),                              // Luna onto the purple lift
-    press(SOL, 1, 15), waitPlat(34, 28),             // PP: it carries her up
+    press(SOL, 1, 17), waitPlat(34, 28),             // PP: it carries her up
     grab(LUNA, 38, 13), goto(LUNA, 36, 17),
-    press(SOL, 3, 15), waitPlat(37, 10),             // PO1 again: the orange lift comes down for Luna
-    goto(LUNA, 37, 16),
+    press(SOL, 3, 17), waitPlat(37, 10),             // PO1 again: the orange lift comes down for Luna
+    goto(LUNA, 37, 17),
     goto(SOL, 7, 17), waitPlat(37, 10, false),       // he steps off: it takes her up
     press(LUNA, 35, 9),                              // PW1: Sol's gate into the centre opens
     goto(SOL, 17, 17),                               // Sol into the centre
     goto(LUNA, 37, 9),                               // Luna onto the lift
-    press(SOL, 19, 15), waitPlat(37, 10),            // PO2: the lift brings her down, and her gate opens
+    press(SOL, 19, 16), waitPlat(37, 10),            // PO2: the lift brings her down, and her gate opens
     goto(LUNA, 24, 14),                              // Luna in onto the east ledge
     grab(SOL, 16, 12), goto(SOL, 22, 17),            // Sol up for a gem, then east
     press(LUNA, 14, 13),                             // Luna crosses to PK3: Sol's door gate sinks

@@ -644,7 +644,7 @@ def undertow():
     L = Lv('Undertow', 90, 'Sun water is safe for Sol and moon water for Luna. Every gate you meet is opened by your partner, far away.')
     solid(L)
     # ---- top band: NW chamber, M1W/S2W tunnels, top crossing JT, M1E/S2E tunnels, NE alcove and chamber
-    L.clear(1, 2, 7, 9)                                   # NW
+    L.clear(1, 1, 7, 9)                                   # NW (seven rows: full headroom off the tunnel ledge)
     L.r(6, 7, 7, 7)                                       # ledge where the moon tunnel comes in (stand 6)
     hatch(L, 4, 10, 3, -3, 1)                             # hatch (green): NW down to the west middle
     L.r(1, 11, 3, 11)
@@ -652,40 +652,38 @@ def undertow():
     L.clear(11, 4, 11, 6).clear(8, 5, 10, 6)              # M1W, lower part (a step down going west)
     L.clear(8, 8, 15, 9).pool(10, 10, 3, 'S')             # S2W
     L.plate(9, 9, 5)                                      # PY2
-    L.clear(16, 2, 23, 9)                                 # JT
-    L.r(16, 2, 17, 3).r(14, 2, 14, 3)
-    vdoor(L, 15, 4, 5)                                    # Luna's gate out of JT (yellow)
-    L.r(16, 6, 17, 7)                                     # west ledge (stand 5)
-    L.r(19, 7, 20, 7).plate(19, 6, 4)                     # PK1 on a step (stand 6)
-    L.r(22, 4, 23, 4)                                     # where the moon tunnel comes in (stand 3)
+    L.clear(16, 1, 23, 9)                                 # JT
+    L.r(20, 9, 21, 9)                                     # a low step in its floor
+    L.floorgate(15, 4, 2, 5)                              # Luna's gate out of JT (yellow), sinks into the floor
+    L.r(16, 6, 17, 7)                                     # west ledge (stand 5), open to the roof
+    L.r(22, 4, 23, 4).plate(23, 3, 4)                     # PK1 where the moon tunnel comes in (stand 3), out of Sol's reach
     L.r(22, 7, 23, 7)                                     # where the sun tunnel comes in (stand 6)
     L.floorgate(14, 8, 2, 4)                              # Sol's gate out of JT (pink), sinks into the floor
     L.clear(24, 2, 32, 3).pool(26, 4, 4, 'M')             # M1E
     L.floorgate(31, 2, 2, 1)                              # Luna's gate out of her alcove (green)
-    L.clear(29, 7, 32, 8).pool(29, 9, 3, 'S')             # S2E, east part
-    vdoor(L, 32, 7, 1)                                    # Sol's gate into it (green)
-    L.clear(28, 5, 28, 8)                                 # a chimney
-    L.clear(24, 5, 27, 6)                                 # S2E, west part (a step up going west)
+    L.clear(29, 8, 32, 9).pool(29, 10, 3, 'S')            # S2E, east part, level with NE's floor
+    L.floorgate(32, 8, 2, 1)                              # Sol's gate into it (green), sinks into the floor
+    L.clear(26, 5, 28, 8).clear(24, 5, 25, 6)             # S2E, west part: a ramp up going west
+    L.set(28, 9, '\\'); L.set(27, 8, '\\'); L.set(26, 7, '\\')
     L.clear(33, 2, 38, 3).p(34, 3, 'b')                   # Luna's alcove
     L.plate(37, 3, 3)                                     # PW0
     L.clear(33, 5, 38, 9)                                 # NE
-    L.r(33, 9, 33, 9)
     L.plate(35, 9, 3)                                     # PW1
-    L.clear(37, 11, 38, 11).cells(37, 10, 38, 10, 2).mv(2, 0, 7)   # lift (orange): hangs in NE's floor, comes down to E-mid
+    L.clear(37, 11, 38, 11).clear(37, 18, 38, 18).cells(37, 10, 38, 10, 2).mv(2, 0, 8)   # lift (orange): hangs in NE's floor, comes down into E-mid's
     # ---- middle band: W-mid, T_S3, centre C, T_M3, E-mid
     L.clear(1, 12, 7, 17)                                 # W-mid
-    L.r(1, 16, 4, 17).plate(1, 15, 0).plate(3, 15, 2)     # a block with PP and PO1 (stand 15)
+    L.plate(1, 17, 0).plate(3, 17, 2)                     # PP and PO1 in the far corner
     hatch(L, 5, 18, 2, -2, 3)                             # hatch (white): W-mid down to SW
     L.r(3, 19, 4, 19)
     L.clear(8, 16, 13, 17).pool(9, 18, 3, 'S')            # T_S3
     L.r(12, 14, 14, 15)
     vdoor(L, 13, 16, 3)                                   # Sol's gate into the centre (white)
     L.clear(14, 11, 25, 17)                               # C
-    L.r(18, 16, 21, 17)                                   # a dais (stand 15)
-    L.plate(19, 15, 2)                                    # PO2, on the dais
+    L.r(18, 17, 21, 17)                                   # a low dais (stand 16)
+    L.plate(19, 16, 2)                                    # PO2, on the dais
     L.r(23, 15, 25, 15).p(24, 14, 'B')                    # east ledge with Luna's door (stand 14)
     L.floorgate(23, 16, 2, 4).p(25, 17, 'A')              # Sol's door in an alcove under the ledge, behind a pink gate
-    L.r(14, 11, 15, 11).r(24, 11, 25, 12)
+    L.r(25, 11, 25, 12)
     L.r(14, 14, 16, 14).plate(14, 13, 4)                  # west ledge with PK3 (stand 13)
     L.clear(26, 13, 32, 14).pool(28, 15, 3, 'M')          # T_M3
     L.r(25, 11, 27, 12)
@@ -696,19 +694,17 @@ def undertow():
     # ---- bottom band: SW, M2W/S1W tunnels, bottom crossing JB, M2E/S1E tunnels, SE
     L.clear(1, 20, 7, 27)                                 # SW
     L.p(2, 27, 'a')
-    L.r(6, 23, 7, 23)                                     # ledge where the moon tunnel leaves (stand 22)
-    L.r(3, 25, 4, 25)                                     # a step (stand 24)
-    L.r(1, 22, 2, 22)                                     # a perch (stand 21)
+    L.r(6, 24, 7, 24)                                     # ledge where the moon tunnel leaves (stand 23)
     L.plate(1, 27, 1)                                     # PG1: opens Sol's way into the upper sun tunnel
-    L.clear(8, 21, 15, 22).pool(10, 23, 3, 'M')           # M2W
+    L.clear(8, 22, 15, 23).pool(10, 24, 3, 'M')           # M2W
     L.clear(8, 26, 12, 27).pool(10, 28, 3, 'S')           # S1W, lower part
     vdoor(L, 8, 26, 3)                                    # Sol's gate out of his corner (white)
     L.plate(9, 27, 1)                                     # PG0, just outside it
-    L.clear(13, 24, 13, 27)                               # a chimney
-    L.clear(14, 24, 15, 25)                               # S1W, upper part (a step up going east)
+    L.clear(13, 26, 15, 27)                               # S1W runs straight into JB
     L.clear(16, 19, 23, 27)                               # JB
-    L.r(16, 23, 17, 23).plate(17, 22, 4)                  # west ledge with PK2 (stand 22)
-    L.r(19, 24, 20, 24)                                   # a step (stand 23)
+    L.r(16, 24, 17, 24).plate(17, 23, 4)                  # west ledge with PK2 (stand 23)
+    L.r(21, 25, 21, 25)                                   # a step (stand 24)
+    L.r(18, 19, 19, 21)                                   # a stone hanging between the two ledges; the way east is under it
     L.r(22, 23, 23, 25).r(23, 19, 23, 20)                 # east ledge (stand 22)
     vdoor(L, 24, 21, 5)                                   # Luna's gate out of JB (yellow)
     vdoor(L, 24, 26, 4)                                   # Sol's gate out of JB (pink)
@@ -717,11 +713,10 @@ def undertow():
     L.clear(25, 26, 32, 27).pool(27, 28, 4, 'S')          # S1E
     L.plate(25, 27, 5)                                    # PY1
     L.clear(33, 20, 38, 27)                               # SE
-    L.r(37, 24, 38, 24)                                   # a ledge (stand 23)
     L.plate(37, 27, 1)                                    # PG
     L.clear(4, 11, 6, 11).clear(5, 19, 6, 19)             # under the hatches
     # gems: corners and high spots in the chambers
-    L.p(1, 20, 's').p(21, 3, 's').p(36, 6, 's').p(16, 12, 's')
+    L.p(4, 22, 's').p(21, 3, 's').p(36, 6, 's').p(16, 12, 's')
     L.p(21, 19, 'm').p(5, 12, 'm').p(38, 22, 'm').p(38, 13, 'm').p(1, 3, 'm')
     L.p(38, 25, 's')
     return L
