@@ -582,69 +582,74 @@ def stone_raft():
 @level(11)
 def helpers_way_out():
     """A three-floor hub (x 15-24) between a west wing of sun channels and an east wing of moon channels.
-    The hub has two one-way pits, and the floor of each pit is a lift. Whoever drops into a pit and stands
-    on its plate holds a wing open, and stays stuck there until the runner reaches the lever that lifts the
-    pit floor, holder and all, to the next floor. Pink plates open every pink exit gate.
+    The west wing is a shaft on the outer wall, climbed by 3- and 4-tile jumps between small ledges and the
+    ends of its four storeys. The hub has two pits whose floors are lifts. Whoever stands on a pit's plate
+    holds a wing open until the runner reaches the lever that lifts the pit floor, holder and all, to the
+    next floor. Pink plates open every pink exit gate.
     0. Luna starts shut in a cell on F1. Sol holds P0 (purple) at the other end and she comes out.
-    1. Luna drops into pit A on F1 and stands on P1 (purple):
-       gate G1 into the west wing opens. Only Sol can wade its sun channel.
-    2. Sol climbs the west wing's four storeys. At the dead end on top he turns lever L2 (yellow): the hatch
-       over a pocket by the wing's entrance drops open (and gate G2 in the east wing opens, for later).
-    3. He goes all the way back down, drops into the pocket and walks left through lever L3 (green, on at
-       the start, holding pit A's floor down): pit A's floor rises and carries Luna to F2. He climbs two storeys again to the wing's F2 exit, G7 (pink).
-       Luna holds P7 (pink) on F2 and he comes out.
+    1. Luna steps onto pit A's floor and stands on P1 (purple): gate G1 into the west wing opens. Only Sol
+       can wade its sun channel.
+    2. Sol climbs the west wing's shaft to the top storey. He walks to its dead end at G9 and back left
+       through lever L2 (yellow, on at the start): turning it off drops the hatch over a pocket in the second
+       storey and opens gate G2 in the east wing, for later.
+    3. He goes back down, drops into the pocket and walks left through lever L3 (green, on at the start,
+       holding pit A's floor down): pit A's floor rises and carries Luna to F2. He climbs a storey again to
+       the wing's exit G7 (pink). Luna holds P7 (pink) on F2 and he comes out onto a ledge over F2.
     4. Swap. Sol drops into pit B on F2 and stands on P4 (orange): gate G4 into the east wing opens. Only
        Luna can wade its moon channel.
-    5. Luna goes through G2 and down two drops to the east wing's flooded bottom, wades its moon channel
-       and walks right through lever L5 (white) onto the east lift: pit B's floor rises and carries Sol to
-       F3. Luna is now the one stuck: the east lift is pink, and a rider can't drive it.
+    5. Luna goes through G2 and down two drops to the east wing's flooded bottom, wades its moon channel and
+       walks right through lever L5 (white) onto the east lift: pit B's floor rises and carries Sol to F3.
+       Luna is now the one stuck: the east lift is pink, and a rider can't drive it.
     6. Sol walks to P8 (pink) on F3 and holds it: the east lift carries Luna up to the wing's top floor,
        the wing's top exit G8 opens, and she comes out.
-    7. Luna holds P8 in turn: gates G10 and G9 open, and Sol walks home along the west wing's top floor to
-       his door at its far end. Luna goes to hers."""
-    L = Lv("Helper's Way Out", 50, 'Drop into a pit to hold a plate, and you stay there until your partner sets you free.')
+    7. Luna holds P8 in turn: gates G10 and G9 open, and Sol walks home along the west wing's top storey to
+       his door. Luna goes to hers."""
+    L = Lv("Helper's Way Out", 50, 'Stand in a pit to hold a plate. Your partner has the lever that lifts its floor, and you with it.')
     L.r(1, 1, 38, 28)
-    # ---- west wing (x 1-13): four storeys on floors 25, 20, 15, 10, top floor 5
-    L.clear(1, 2, 13, 24)
-    for y in (20, 15, 10, 5):
-        L.r(1, y, 13, y)
-    stairs(L, 1, 25, 'L'); stairs(L, 8, 20, 'R'); stairs(L, 1, 15, 'L'); stairs(L, 8, 10, 'R')
-    L.r(7, 21, 10, 22).pool(7, 25, 4, 'S')                 # sun channel at the entrance, under a low roof
-    L.gate(14, 23, 24, '=', 0, 21)                         # G1 (purple)
-    L.gate(14, 13, 14, '~', 4, 11)                         # G7 (pink), the exit onto F2
-    L.lever(7, 4, 5)                                       # L2 (yellow): the top floor is a dead end at G9
-    L.p(3, 4, 'A').floorgate(5, 3, 2, 4)                   # Sol's door at the far end, behind G9 (pink)
-    L.clear(14, 3, 14, 4).floorgate(14, 3, 2, 4)           # G10 (pink) joins the top floor to the hub's
-    L.clear(11, 25, 13, 27).plat(11, 25, 3, 1, 0, 2, 5)    # a yellow hatch over a pocket by the entrance
-    L.lever(12, 26, 1, on=True)                            # L3 (green, on), in the pocket: walking left through it frees Luna
-    # ---- hub (x 15-24): F1 floor 25, F2 floor 15, F3 floor 5
-    L.clear(15, 2, 24, 24)
-    L.r(15, 15, 24, 15).r(15, 5, 24, 5)
-    L.clear(16, 25, 18, 27).cells(16, 28, 18, 28, 1).mv(1, 0, -13).invert(1)   # pit A's floor: a lift held down while green is on
-    L.clear(16, 15, 18, 15)
-    L.plate(17, 27, 0)                                     # P1
-    L.clear(21, 15, 23, 18).r(20, 16, 20, 19).r(24, 16, 24, 19)
-    L.plat(21, 19, 3, 1, 0, -14, 3)                        # pit B, its floor a lift (white)
-    L.clear(21, 5, 23, 5)
-    L.plate(22, 18, 2)                                     # P4
-    L.plate(24, 14, 4)                                     # P7
-    L.plate(15, 4, 4)                                      # P8, by G10 at the far end from Luna's exit
-    L.r(17, 6, 20, 7)                                      # a hanging rock in F2
-    L.p(24, 4, 'B')
-    L.gate(22, 23, 24, '=', 0, 21).p(24, 24, 'b')          # Luna starts shut in a cell behind G0 (purple)
-    L.plate(15, 24, 0).p(19, 24, 'a')                      # P0 at the far end of F1 opens it
-    # ---- east wing (x 26-38): in at F2, down two drops to the flooded bottom, up a lift to the F3 exit
-    L.clear(26, 11, 34, 14).clear(26, 16, 34, 19).clear(26, 21, 34, 24).clear(26, 2, 34, 4)
-    L.clear(32, 15, 33, 15).clear(26, 20, 27, 20)         # the two drops, at opposite ends
-    L.r(34, 11, 34, 14).r(34, 16, 34, 19)                  # the corridors are walled off from the lift shaft
-    L.gate(25, 13, 14, '_', 2, 11)                         # G4 (orange)
-    L.gate(27, 13, 14, ':', 5, 11)                         # G2 (yellow), just inside G4
-    L.r(28, 21, 33, 22).pool(29, 25, 4, 'M')               # moon channel under a low roof
-    L.lever(34, 24, 3)                                     # L5: walking right through it lifts both white floors
-    L.clear(35, 2, 37, 25).plat(35, 25, 3, 1, 0, -20, 4)   # the east lift (pink), up to the top floor: Luna can't drive it
-    L.clear(25, 3, 25, 4).floorgate(25, 3, 2, 4)           # G8 (pink), the exit onto F3
-    L.r(29, 16, 30, 17).r(31, 2, 33, 2)                    # hanging rocks
-    # ---- gems
-    L.p(6, 18, 's').p(6, 8, 's').p(12, 3, 's').p(24, 20, 's').p(7, 16, 's')
-    L.p(27, 3, 'm').p(33, 12, 'm').p(32, 18, 'm').p(26, 22, 'm').p(29, 18, 'm')
+    # ---- west wing (x 1-13): the shaft (x 1-6) and storeys at rows 28, 22, 15, 8
+    L.clear(1, 1, 13, 7).clear(1, 8, 3, 8).clear(1, 9, 6, 28)
+    L.r(1, 26, 3, 26).r(1, 19, 3, 19).r(1, 11, 3, 11)      # the shaft's ledges on the outer wall
+    L.r(4, 8, 6, 8).clear(4, 8, 6, 8).r(7, 8, 13, 8)       # the top storey
+    L.clear(7, 9, 13, 14).clear(7, 16, 13, 21).clear(7, 23, 13, 27)
+    L.r(9, 23, 12, 25).pool(9, 28, 4, 'S')                 # sun channel at the entrance, under a low roof
+    L.clear(10, 22, 12, 24).plat(10, 22, 3, 1, 0, 2, 5, inv=True)   # the pocket and its yellow hatch
+    L.lever(11, 23, 1, on=True)                            # L3 (green, on), in the pocket
+    L.clear(13, 28, 13, 28).gate(14, 27, 28, '=', 0, 25).r(13, 23, 15, 23)   # G1 (purple)
+    L.cells(14, 13, 14, 14, 4).clear(14, 11, 14, 12).r(15, 9, 15, 12)   # G7 (pink): the third storey's exit onto the hub's ledge
+    L.lever(8, 7, 5, on=True).invert(5)                    # L2 (yellow, on): off drops the hatch and opens G2
+    L.gate(12, 6, 7, '~', 4, 4).r(11, 2, 13, 2)            # G9 (pink): the top storey is a dead end here
+    L.p(13, 7, 'A')
+    L.gate(14, 6, 7, '~', 4, 4).r(13, 2, 15, 2)            # G10 (pink) joins the top storey to the hub's F3
+    # ---- hub (x 15-24): F1 on the bottom wall, F2 at row 22, F3 at row 8
+    L.clear(15, 9, 24, 21).r(15, 15, 19, 15).r(20, 19, 20, 21)   # a ledge in F2 outside G7, a step down from it
+    L.clear(15, 23, 24, 28)
+    L.plate(15, 28, 0)                                     # P0 at the far end of F1
+    L.p(20, 28, 'a')
+    L.cells(17, 28, 19, 28, 1).mv(1, 0, -6).invert(1)      # pit A: its floor a lift, held down while green is on
+    L.plate(18, 27, 0)                                     # P1
+    L.clear(17, 22, 19, 22)
+    L.gate(22, 27, 28, '=', 0, 25).r(21, 23, 23, 23)       # Luna starts shut in a cell behind G0 (purple)
+    L.p(24, 28, 'b')
+    L.clear(21, 22, 23, 22).plat(21, 22, 3, 1, 0, -14, 3)  # pit B: its floor a lift (white), up to F3
+    L.plate(22, 21, 2)                                     # P4
+    L.plate(24, 21, 4)                                     # P7
+    L.clear(15, 2, 24, 7).clear(21, 8, 23, 8)
+    L.plate(15, 7, 4)                                      # P8, by G10 at the far end from Luna's exit
+    L.r(18, 6, 19, 7)                                      # a step in F3
+    L.p(24, 7, 'B')
+    # ---- east wing (x 26-38): in at F2, down two drops to the flooded bottom, up a lift to the top exit
+    L.clear(25, 9, 33, 21).clear(26, 23, 33, 24).clear(26, 26, 34, 27)
+    L.clear(31, 22, 32, 22).clear(26, 25, 27, 25)          # the two drops, at opposite ends
+    L.r(28, 19, 29, 21).r(31, 15, 34, 15)                  # a step and a high shelf over the entry
+    L.gate(25, 20, 21, '_', 2, 18).r(24, 17, 26, 17)       # G4 (orange)
+    L.cells(27, 20, 27, 21, 5).clear(27, 18, 27, 19).set(26, 18, '#'); L.set(28, 18, '#'); L.set(26, 19, '#'); L.set(28, 19, '#')   # G2 (yellow)
+    L.pool(28, 28, 4, 'M')                                 # moon channel under a low roof
+    L.lever(34, 27, 3)                                     # L5: walking right through it lifts pit B's floor
+    L.clear(35, 2, 37, 28).plat(35, 28, 3, 1, 0, -21, 4)   # the east lift (pink): Luna can't drive it
+    L.clear(26, 1, 34, 6)
+    L.gate(25, 5, 6, '~', 4, 3).r(24, 2, 26, 2)            # G8 (pink), the exit onto F3
+    L.r(4, 1, 13, 1).r(26, 9, 30, 10).r(15, 9, 15, 12)     # stone along the ceiling, over the east entry, G7's pillar
+    L.mv(0, 0, -2).mv(2, 0, -2).mv(5, 0, -2)
+    L.p(2, 6, 's').p(10, 13, 's').p(17, 14, 's').p(8, 27, 's').p(12, 9, 's')
+    L.p(33, 14, 'm').p(31, 24, 'm').p(29, 27, 'm').p(30, 4, 'm').p(37, 3, 'm')
     return L

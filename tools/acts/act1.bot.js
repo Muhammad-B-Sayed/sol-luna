@@ -174,23 +174,23 @@ export const SCRIPTS = {
   ],
   // Helper's Way Out: drop into a pit to hold a wing open; the runner's lever lifts the pit floor.
   11: () => [
-    press(SOL, 15, 24),                             // Sol holds P0: G0 lets Luna out of her cell
-    goto(LUNA, 21, 24), goto(SOL, 19, 24),
-    press(LUNA, 17, 27),                            // Luna drops into pit A onto P1: G1 opens
-    grab(SOL, 24, 20),
-    grab(SOL, 6, 18), grab(SOL, 7, 16), grab(SOL, 6, 8), grab(SOL, 12, 3),           // Sol climbs the west wing
-    flip(SOL, 7, 4),                                // the dead end: L2 opens the hatch and G2
-    flip(SOL, 12, 26, false),                       // back down into the pocket, left through L3: pit A's floor rises
-    waitPlat(16, 28),
-    goto(SOL, 13, 14),                              // Sol back down to the F2 exit
-    press(LUNA, 24, 14),                            // Luna holds P7: G7 opens
-    press(SOL, 22, 18),                             // Sol drops into pit B onto P4: G4 opens
-    grab(LUNA, 33, 12), grab(LUNA, 32, 18), grab(LUNA, 29, 18), grab(LUNA, 26, 22),   // Luna down through the east wing
-    seek(LUNA, 'luna through L5 onto the east lift', (S, p) => S.lv[1] === 1 && cx(p) > 35.3 && cx(p) < 37.7 && p.gr, { key: 'L5lift' }),   // both white floors rise
-    waitPlat(21, 19),                               // pit B carries Sol to F3; Luna waits on the east lift
-    press(SOL, 15, 4), waitPlat(35, 25),            // Sol holds P8: the east lift brings Luna up and G8 opens
-    grab(LUNA, 27, 3), goto(LUNA, 17, 4),           // Luna comes out
-    goto(SOL, 17, 4), press(LUNA, 15, 4),           // Luna holds P8: G9 opens
+    press(SOL, 15, 28),                             // Sol holds P0: G0 lets Luna out of her cell
+    goto(LUNA, 21, 28),
+    press(LUNA, 18, 27),                            // Luna steps into pit A onto P1: G1 opens
+    grab(SOL, 8, 27), grab(SOL, 10, 13),            // Sol through G1, wades the channel, climbs the shaft
+    grab(SOL, 2, 6), goto(SOL, 11, 7),              // to the top storey's dead end at G9
+    flip(SOL, 8, 7, false),                         // and back left through L2: the hatch drops, G2 opens
+    flip(SOL, 11, 23, false),                       // back down into the pocket, left through L3: pit A's floor rises
+    waitPlat(18, 28),
+    grab(SOL, 12, 9), goto(SOL, 13, 14),            // Sol climbs a storey to the exit G7
+    press(LUNA, 24, 21),                            // Luna holds P7: G7 opens
+    grab(SOL, 17, 14), press(SOL, 22, 21),          // Sol steps onto pit B's floor, onto P4: G4 opens
+    grab(LUNA, 33, 14), grab(LUNA, 31, 24), grab(LUNA, 29, 27),   // Luna down through the east wing
+    seek(LUNA, 'luna through L5 onto the east lift', (S, p) => S.lv[2] === 1 && cx(p) > 35.3 && cx(p) < 37.7 && p.gr, { key: 'L5lift' }),   // both white floors rise
+    waitPlat(22, 22),                               // pit B carries Sol to F3; Luna waits on the east lift
+    press(SOL, 15, 7), waitPlat(36, 28),            // Sol holds P8: the east lift brings Luna up and G8 opens
+    grab(LUNA, 37, 3), grab(LUNA, 30, 4), goto(LUNA, 17, 7),   // Luna comes out
+    goto(SOL, 21, 7), press(LUNA, 15, 7),           // Luna holds P8: G10 and G9 open
     door(SOL), door(LUNA), win(),
   ],
 };
