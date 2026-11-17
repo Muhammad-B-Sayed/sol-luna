@@ -7,6 +7,7 @@ import { WebSocketServer } from 'ws';
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, createState, step, PH_WON } from '../shared/sim.js';
 import { COURT, createDodge, stepDodge } from '../shared/dodge.js';
+import { buildRunner, createRunnerState, stepRunner, newSeed } from '../shared/runner.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -78,7 +79,7 @@ class Room {
     this.clients = [];       // { ws, char, name }
     this.level = -1;
     this.mode = 'coop';      // 'coop' (a level index) or a versus mode such as 'dodge'
-    this.L = null; this.S = null;
+    this.L = null; this.S = null; this.seed = 0;
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
     this.lastActive = Date.now();
   }
@@ -98,7 +99,20 @@ class Room {
     if (mode === 'dodge') { this.L = COURT; this.S = createDodge((Math.random() * 2 ** 31) | 0); }   // seeded first serve
     else { this.L = BUILT[level]; this.S = createState(this.L); }
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
-    this.broadcast({ t: 'start', level, mode, st: this.S });
+    this.broadcast(this.startMsg());
+  }
+  // versus Runner: a fresh seeded course every time (rematches included)
+  startRunner() {
+    this.mode = 'runner'; this.level = -1;
+    this.seed = newSeed();
+    this.L = buildRunner(this.seed);
+    this.S = createRunnerState(this.L);
+    this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
+    this.broadcast(this.startMsg());
+  }
+  restartGame() { if (this.mode === 'runner') this.startRunner(); else this.start(this.level, this.mode); }
+  startMsg() {
+    return this.mode === 'runner' ? { t: 'start', mode: 'runner', seed: this.seed, st: this.S } : { t: 'start', level: this.level, mode: this.mode, st: this.S };
   }
   stop() {
     this.level = -1; this.L = null; this.S = null;
@@ -114,7 +128,7 @@ class Room {
         this.cur[ch] = b; this.ack[ch] = s; this.starve[ch] = 0;
       } else if (++this.starve[ch] > 10) this.cur[ch] = 0; // no input arriving: let go of the keys
     }
-    (this.L.dodge ? stepDodge : step)(this.L, this.S, this.cur);
+    (this.mode === 'runner' ? stepRunner : this.L.dodge ? stepDodge : step)(this.L, this.S, this.cur);
     if (this.S.tick % 2 === 0) {
       this.broadcast({ t: 's', ack: this.ack, inp: this.cur, st: this.S });
     }
@@ -166,7 +180,7 @@ function onMessage(ws, data) {
         r.clients.push({ ws, char: 1 - taken, name: String(m.name || 'Player').slice(0, 16) });
         ws.room = r;
         r.broadcastRoom();
-        if (r.S) send(ws, { t: 'start', level: r.level, mode: r.mode, st: r.S });
+        if (r.S) send(ws, r.startMsg());
         return;
       }
       case 'swap': {
@@ -178,7 +192,7 @@ function onMessage(ws, data) {
         if (want === me.char) return;
         for (const c of room.clients) c.char = 1 - c.char;
         room.broadcastRoom();
-        if (room.S) room.start(room.level, room.mode);   // mid-level: restart with the new roles
+        if (room.S) room.restartGame();   // mid-game: restart with the new roles
         return;
       }
       case 'start': {
@@ -186,6 +200,11 @@ function onMessage(ws, data) {
         if (m.mode === 'dodge') {
           if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
           room.start(-1, 'dodge');
+          return;
+        }
+        if (m.mode === 'runner') {
+          if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
+          room.startRunner();
           return;
         }
         const lv = m.level | 0;
@@ -196,7 +215,7 @@ function onMessage(ws, data) {
       }
       case 'restart': {
         if (!room || !room.S) return;
-        room.start(room.level, room.mode);
+        room.restartGame();
         return;
       }
       case 'menu': {

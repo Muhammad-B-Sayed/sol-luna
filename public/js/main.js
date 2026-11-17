@@ -8,6 +8,7 @@ import { sfx } from './audio.js';
 // Dodgeball (versus mode)
 import { COURT, createDodge, stepDodge, DP_OVER } from '/shared/dodge.js';
 import { drawDodgeHud, dodgeListen, dodgeHearReset, dodgeHint } from './dodge-ui.js';
+import { RunnerMode } from './runner-app.js';
 
 const BUILT = LEVELS.map((raw, i) => buildLevel(raw, i));
 // A level is a co-op index or a versus mode name; each kind brings its own create and step.
@@ -43,6 +44,7 @@ const cv = $('#game');
 const R = new Renderer(cv);
 const input = new Input();
 const net = new Net();
+let runner = null;   // versus Runner mode (runner-app.js); created once app exists
 
 const app = {
   mode: 'menu',          // 'menu' | 'local' | 'online'
@@ -56,6 +58,7 @@ const app = {
   seq: 0, pending: [], remoteBits: 0, inGame: false,
   heard: null,
 };
+runner = new RunnerMode({ R, input, net, sfx, app, show: (id) => show(id), toast: (m) => toast(m), quit: () => { attract = null; if (app.mode === 'online') quitToMenu(); else { app.mode = 'menu'; show('menu'); } } });
 
 function fit() {
   const wrap = $('#stage');
@@ -258,6 +261,7 @@ function frame(now) {
   let dt = now - last; last = now;
   if (dt > 250) dt = DT;
   frames++; fpsT += dt; if (fpsT > 1000) { fps = Math.round(frames * 1000 / fpsT); frames = 0; fpsT = 0; }
+  if (runner.active) { runner.frame(dt, now); return; }
   const playing = app.L && (app.mode === 'local' || (app.mode === 'online' && app.inGame));
   if (playing) {
     acc += dt;
@@ -401,6 +405,7 @@ function pause(on) {
 }
 
 function quitToMenu() {
+  runner.stop();
   if (app.mode === 'online') { net.send({ t: 'leave' }); net.close(); }
   app.mode = 'menu'; app.L = null; app.S = null; app.inGame = false; app.room = null;
   chatShow(false);
@@ -420,6 +425,7 @@ net.on('room', (m) => {
   if (!app.inGame) renderLobby();
 });
 net.on('start', (m) => {
+  if (m.mode === 'runner') { runner.onStart(m); return; }
   app.inGame = true;
   app.seq = 0;
   beginLevel(m.mode === 'dodge' ? 'dodge' : m.level, m.st);

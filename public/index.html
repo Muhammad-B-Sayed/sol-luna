@@ -29,6 +29,7 @@
         <div class="modes" id="menuModes">
           <span class="modes-label">Versus · same keyboard</span>
           <button id="btnDodge">Dodgeball</button>
+          <button id="btnRunner">Runner</button>
         </div>
         <button id="btnHost">Host an online game</button>
         <form id="joinForm" class="join">
@@ -59,6 +60,7 @@
           <li>Collect your gems, then both stand at your own doors to finish.</li>
           <li><b>Dodgeball</b> (versus): hold <kbd>↓</kbd> (Sol) or <kbd>S</kbd> (Luna) to aim, release to throw. A tap throws straight; holding swings the aim up and down. Hit the other side before the ball touches the floor to score, and jump or hide to dodge. A missed ball belongs to whoever's side it stops on; hold it over 6 seconds and it goes to the other side. First to 5 hits wins.</li>
           <li><kbd>Esc</kbd> pause · <kbd>R</kbd> restart</li>
+          <li><b>Runner</b> (versus): the view scrolls on its own and keeps speeding up. Stay ahead of the dusk at the left edge, jump the pits, thorns and pools, ride the chain planks and lanterns. The last one standing wins.</li>
         </ul>
       </div>
       <button data-back>Back</button>
@@ -92,6 +94,7 @@
         <div class="modes" id="lobbyModes">
           <span class="modes-label">Versus</span>
           <button id="lobbyDodge">Dodgeball</button>
+          <button id="lobbyRunner" disabled>Runner</button>
         </div>
         <div class="row">
           <button id="lobbySwap" class="ghost">Swap characters</button>
@@ -140,6 +143,36 @@
       <div class="stack">
         <button id="dgRematch" class="primary">Rematch</button>
         <button id="dgBack" class="ghost">Back to title</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- runner (versus) -->
+  <section class="screen" id="runnerPause">
+    <div class="card">
+      <h2>Paused</h2>
+      <p id="rpOnline" class="muted" hidden>The world keeps scrolling online. Your character stands still while this menu is open.</p>
+      <div class="stack">
+        <button id="rpResume" class="primary">Resume</button>
+        <button id="rpRestart">New course</button>
+        <button id="rpRoom" hidden>Back to room</button>
+        <button id="rpQuit" class="ghost">Quit to title</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="runnerResults">
+    <div class="card">
+      <h2 id="rrTitle"></h2>
+      <p id="rrSub" class="muted"></p>
+      <div class="rr-grid">
+        <div id="rrSol" class="rr-card sol"><span class="who">Sol</span><b id="rrSolTime"></b><span id="rrSolDist"></span><small id="rrSolWhy"></small></div>
+        <div id="rrLuna" class="rr-card luna"><span class="who">Luna</span><b id="rrLunaTime"></b><span id="rrLunaDist"></span><small id="rrLunaWhy"></small></div>
+      </div>
+      <div class="stack">
+        <button id="rrAgain" class="primary">Rematch · new course</button>
+        <button id="rrMenu" class="ghost">Main menu</button>
       </div>
     </div>
   </section>
