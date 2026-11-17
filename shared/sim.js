@@ -47,6 +47,7 @@ const isSlope = (t) => t === T_SLOPE_R || t === T_SLOPE_L;
 const blockTop = (t, ty) => ty * TS + (t >= T_SUN ? POOL_DEPTH : 0);
 
 export function tileAt(L, tx, ty) {
+  if (L.tileFn) return L.tileFn(tx, ty);   // endless worlds (runner mode) supply their own lookup
   if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) return T_SOLID;
   return L.tiles[ty * COLS + tx];
 }
@@ -140,7 +141,7 @@ export function buildLevel(raw, index = 0) {
 // ---------------------------------------------------------------------------
 // State
 
-function mkPlayer(sp, i) {
+export function mkPlayer(sp, i) {
   return { id: 200 + i, x: sp.x, y: sp.y, w: PHYS.w, h: PHYS.h, vx: 0, vy: 0, gr: false, gref: -1,
     coy: 0, face: i === SOL ? 1 : -1, jumpN: 0, push: 0, strain: 0, atDoor: false, alive: true };
 }
@@ -289,7 +290,7 @@ function tryKick(W, p, b, dx) {
 }
 
 // Vertical move. Returns true if landed on something (sets e.gref).
-function moveY(W, e, dy, ignore) {
+export function moveY(W, e, dy, ignore) {
   if (!dy) return false;
   const L = W.L;
   const prevTop = e.y, prevBot = e.y + e.h;
@@ -348,7 +349,7 @@ function moveY(W, e, dy, ignore) {
 }
 
 // Move an entity and carry whatever stands on it.
-function moveEnt(W, e, dx, dy, ignore, depth = 0) {
+export function moveEnt(W, e, dx, dy, ignore, depth = 0) {
   const ox = e.x, oy = e.y;
   if (dx) moveX(W, e, dx, ignore, depth);
   if (dy) moveY(W, e, dy, ignore);
@@ -426,7 +427,7 @@ function stepBoxes(W) {
   }
 }
 
-function stepPlayer(W, p, bits) {
+export function stepPlayer(W, p, bits) {
   const { L } = W;
   if (!p.alive) return;
   const dir = ((bits & IN_RIGHT) ? 1 : 0) - ((bits & IN_LEFT) ? 1 : 0);
@@ -471,7 +472,7 @@ function hostileTo(t, who) {
   return false;
 }
 
-function checkHazards(W, p, who) {
+export function checkHazards(W, p, who) {
   const L = W.L;
   const bot = p.y + p.h;
   const tx0 = Math.floor((p.x + 5) / TS), tx1 = Math.floor((p.x + p.w - 5) / TS);
