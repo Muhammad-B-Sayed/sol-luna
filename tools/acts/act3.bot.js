@@ -42,31 +42,35 @@ export const SCRIPTS = {
   ],
 };
 
+const K2W = { keep: [3] };   // only the white lever may change
+// Walk along a low corridor in steps of 2 cells, so the bot never makes a long hop under its roof.
+const walk = (who, x0, x1, y, o) => { const out = [], d = x1 > x0 ? 2 : -2; for (let x = x0; d > 0 ? x <= x1 : x >= x1; x += d) out.push(goto(who, x, y, o)); return out; };
 SCRIPTS[24] = () => [
   // lever indexes in map order: 0 G (green), 1 P (purple), 2 W (white)
-  grab(LUNA, 4, 13), goto(LUNA, 11, 4),             // Luna's look down the ladder, back to the deck
-  grab(SOL, 2, 2), grab(SOL, 1, 11), grab(SOL, 1, 26), goto(SOL, 7, 27),
-  flip(LUNA, 9, 4, false),                          // P off: GA opens
+  grab(LUNA, 4, 13), goto(LUNA, 11, 6),             // Luna's look down the ladder, back to the deck
+  grab(SOL, 2, 2), grab(SOL, 1, 11), grab(SOL, 1, 26), goto(SOL, 5, 26), goto(SOL, 7, 27),
+  flip(LUNA, 9, 6, false),                          // P off: GA opens
   goto(SOL, 12, 26),
-  flip(LUNA, 7, 4, true, { keep: [0] }),            // G on: first bridge
+  flip(LUNA, 7, 6, true, { keep: [0] }),            // G on: first bridge
   goto(SOL, 17, 26),
-  flip(LUNA, 7, 4, false, { keep: [0] }),           // G off: second bridge
-  goto(SOL, 26, 26),
+  flip(LUNA, 7, 6, false, { keep: [0] }),           // G off: second bridge
+  goto(SOL, 26, 26), goto(SOL, 28, 27, K),
   grab(SOL, 29, 24, K), press(SOL, 30, 28, K),      // Sol stands in the orange socket: GB opens
   goto(LUNA, 17, 5), grab(LUNA, 17, 2),             // Luna leaves the deck (G and P go back on behind her)
-  goto(SOL, 34, 27),                                // out of the socket and right through W: first white bridge
-  goto(LUNA, 24, 4),
+  flip(SOL, 33, 27, true, K2W),                     // out of the socket and right through W: first white bridge
+  goto(LUNA, 24, 5),
   flip(SOL, 33, 27, false),                         // W off: the second bridge
   goto(LUNA, 30, 5),
-  pushTo(LUNA, 0, 36, { y: 27, tol: 0.6 }),         // the crate goes down the shaft onto the lift
+  seek(LUNA, 'crate down the shaft onto the lift, Luna stays up', (S, p) => S.b[0].gr && cx(S.b[0]) > 36.3 && cx(S.b[0]) < 37.7 && bot(S.b[0]) > 27.5 && p.gr && bot(p) < 7,
+    { key: 'crate24', h: (S, p) => Math.abs(cx(S.b[0]) - 37) * 13 + Math.abs(cx(p) - cx(S.b[0])) * 3 }),   // the crate goes down the shaft onto the lift
   pushTo(SOL, 0, 30, { y: 28, tol: 1 }),            // into the orange socket: the entry gate opens
   press(SOL, 27, 27), waitPlat(36, 28),             // the lift rises
   goto(LUNA, 34, 11), grab(LUNA, 34, 7), goto(LUNA, 33, 11),   // Luna rides it up (she followed the crate down) and steps onto the landing
   goto(SOL, 32, 27), waitPlat(36, 28, false), goto(SOL, 37, 27),
   press(LUNA, 35, 11), waitPlat(36, 28),            // Luna sends Sol up
   goto(SOL, 30, 11), goto(LUNA, 28, 11),
-  grab(SOL, 13, 9), goto(SOL, 9, 21),               // west along the inner top band and down the ladder
-  grab(LUNA, 8, 15), grab(LUNA, 7, 19), goto(LUNA, 11, 21),
+  ...walk(SOL, 28, 23, 11), ...walk(SOL, 18, 12, 11), grab(SOL, 13, 7), goto(SOL, 11, 18), goto(SOL, 9, 21),               // west along the inner top band and down the ladder
+  ...walk(LUNA, 26, 23, 11), ...walk(LUNA, 18, 12, 11), goto(LUNA, 11, 18), grab(LUNA, 10, 18), grab(LUNA, 8, 15), goto(LUNA, 11, 21),
   press(LUNA, 12, 21),                              // airlock: Luna holds the near plate
   goto(SOL, 18, 21),
   goto(LUNA, 10, 21),                               // she lets go: gate one shuts, gate two opens
@@ -74,10 +78,10 @@ SCRIPTS[24] = () => [
   goto(LUNA, 18, 21),
   goto(SOL, 28, 20),                                // he lets go: Luna walks out
   goto(LUNA, 23, 21), press(LUNA, 25, 20),          // Luna holds the far plate: the chamber door opens
-  grab(SOL, 31, 15), goto(SOL, 24, 16),
+  grab(SOL, 31, 15), goto(SOL, 24, 16), goto(SOL, 22, 16), goto(SOL, 20, 16), goto(SOL, 18, 16), goto(SOL, 16, 16), goto(SOL, 15, 16), goto(SOL, 13, 16),
   flip(SOL, 14, 16, true),                          // the pink lever keeps it open
   goto(LUNA, 28, 20), grab(LUNA, 24, 13),
-  door(SOL), door(LUNA), win(),
+  goto(SOL, 16, 16), door(SOL), goto(LUNA, 22, 16), door(LUNA), win(),
 ];
 
 SCRIPTS[25] = () => [

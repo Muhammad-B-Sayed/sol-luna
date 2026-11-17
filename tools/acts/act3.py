@@ -236,19 +236,24 @@ def dusk_gate():
     10. The chamber door is pink too. Luna stands on the far airlock plate again: the door
         opens and Sol climbs the inner right shaft into the chamber. He walks to its west end
         and back through the pink lever, which keeps the door open (and the airlock's second
-        gate shut, which no longer matters), and Luna climbs in."""
-    L = Lv('Dusk Gate', 80, 'The spiral winds in to the doors. One of you works the levers while the other runs; then swap.')
+        gate shut, which no longer matters), and Luna climbs in.
+    Re-spaced Nov 2026 for the higher jump: the deck is 6 rows high, the corridors where nobody
+    needs to jump have ramps for their steps, the booth is 6 rows high, and the climb into the
+    door chamber is two steps of 2 with full headroom."""
+    L = Lv('Dusk Gate', 92, 'The spiral winds in to the doors. One of you works the levers while the other runs; then swap.')
     rock(L)
     # deck (top left): x 1-5 on floor 6 with the shaft hole, x 6-11 on floor 5
-    L.clear(1, 1, 11, 4).clear(1, 5, 5, 5).clear(1, 6, 3, 6)
-    L.clear(12, 3, 12, 4)                                  # doorway to the top band
-    L.p(5, 5, 'a').p(11, 4, 'b')
-    L.lever(7, 4, 1)                                       # G (green): OB bridges
-    L.lever(9, 4, 0, on=True)                              # P (purple): GA / GB
+    L.clear(1, 1, 11, 6).clear(1, 7, 3, 7)                 # the deck: 6 rows high, the shaft's mouth at its west end
+    L.clear(12, 4, 12, 5).set(12, 6, '/')                  # doorway to the top band, a ramp up
+    L.p(5, 6, 'a').p(11, 6, 'b')
+    L.lever(7, 6, 1)                                       # G (green): OB bridges
+    L.lever(9, 6, 0, on=True)                              # P (purple): GA / GB
     # outer left shaft: a ladder of ledges
     # outer bottom band (rows 23-27) and the booth (x 27-38, floor 28)
-    L.clear(1, 7, 5, 22)
+    L.clear(1, 8, 5, 22)
     L.clear(1, 23, 26, 26).clear(6, 27, 11, 27).clear(18, 27, 19, 27)
+    L.set(6, 27, '\\'); L.set(11, 27, '/')                  # ramps in and out of GA's dip
+    L.set(18, 27, '\\'); L.set(19, 27, '/'); L.set(26, 27, '\\')   # and the dip between the pits, the step down to the booth
     ladder(L, 1, [24, 22, 20, 18, 16, 14, 12, 10, 8])
     L.r(8, 23, 10, 25)
     pgate(L, 9, 26, 27, 0, inv=True)                       # GA: open while purple is off
@@ -256,7 +261,7 @@ def dusk_gate():
     bridge(L, 14, 27, 3, 1)                                # pit one: bridge while green is on
     L.r(21, 23, 25, 24)                                    # low ceiling over pit two
     bridge(L, 22, 27, 3, 1, inv=True)                      # pit two: bridge while green is off
-    L.clear(27, 23, 38, 27)
+    L.clear(27, 22, 35, 22).clear(27, 23, 38, 27)          # the booth: 6 rows high
     L.plate(27, 27, 5)                                     # booth yellow plate
     L.clear(30, 28, 31, 28).plate(30, 28, 2).plate(31, 28, 2)   # orange socket
     L.lever(33, 27, 3)                                     # W (white): the top band's pits
@@ -270,37 +275,40 @@ def dusk_gate():
     L.clear(13, 1, 38, 5)
     L.r(14, 1, 16, 3)
     pgate(L, 15, 4, 5, 2)                                  # GB: open while orange is on
-    L.r(19, 5, 24, 5).r(19, 1, 23, 2)                      # raised floor, low ceiling
-    bridge(L, 20, 5, 3, 3)                                 # pit one: bridge while white is on
+    L.r(19, 1, 23, 3)                                      # a low ceiling: nobody jumps pit one
+    L.set(17, 5, '/'); L.set(18, 5, '\\')                    # a hump of two ramps before it
+    bridge(L, 20, 6, 3, 3)                                 # pit one: bridge while white is on
     L.r(26, 1, 30, 3)
     bridge(L, 27, 6, 3, 3, inv=True)                       # pit two: bridge while white is off
     L.p(31, 5, 'k')
     # inner top band (rows 8-11) from the entry gate west to the inner left shaft
-    L.clear(13, 8, 31, 11).r(31, 8, 31, 9).r(19, 11, 21, 11)
+    L.clear(13, 8, 31, 11).r(31, 8, 31, 9)                 # a corridor to walk: nobody jumps in it
+    L.set(20, 11, '/'); L.set(21, 11, '\\')                  # a hump of two ramps
     L.clear(12, 8, 12, 11)
+    L.clear(13, 7, 13, 7)                                  # a pocket in the corridor's roof
     # inner left shaft (x 7-11), a ladder down to the inner bottom band
-    L.clear(7, 7, 11, 21)
-    ladder(L, 7, [20, 18, 16, 14])
+    L.clear(7, 8, 11, 21)
+    L.r(7, 16, 8, 16).r(10, 19, 11, 19)                    # two ledges, staggered so each has clear air above
     # inner bottom band (rows 18-21) with the pink airlock; raised east end
-    L.clear(12, 18, 31, 21).r(24, 21, 31, 21)
+    L.clear(12, 18, 31, 21).r(25, 21, 31, 21).set(24, 21, '/')   # raised east end, a ramp up
     L.r(14, 17, 16, 19).r(20, 17, 22, 19)
     pgate(L, 15, 20, 21, 4)                                # airlock gate one: open while pink is on
     pgate(L, 21, 20, 21, 4, inv=True)                      # gate two: open while pink is off
     L.plate(12, 21, 4).plate(25, 20, 4)
     # inner right shaft (x 27-31) up to the door chamber
-    L.clear(27, 14, 31, 20).r(30, 19, 31, 19).r(27, 17, 28, 17)
+    L.clear(27, 13, 31, 20).r(30, 19, 31, 20).r(27, 17, 28, 17)   # two climbs of 2, each with 6 rows of air
     L.clear(26, 14, 26, 16)
     # the door chamber (x 13-25, rows 13-16)
     L.clear(13, 13, 25, 16)
-    L.r(25, 13, 25, 14).r(27, 14, 27, 14)
+    L.r(25, 13, 25, 14)
     pgate(L, 26, 15, 16, 4)                                # chamber door: open while pink is on
     L.lever(14, 16, 4)                                     # pink lever at the chamber's west end
     L.p(18, 16, 'A').p(20, 16, 'B')
     L.r(37, 1, 38, 2)                                      # hanging block over the shaft
     # gems: ledges off the ladders, nooks and corners
-    for x, y in ((2, 2), (1, 11), (1, 26), (29, 24), (13, 9), (31, 15)):
+    for x, y in ((2, 2), (1, 11), (1, 26), (29, 24), (13, 7), (31, 15)):
         L.p(x, y, 's')
-    for x, y in ((4, 13), (17, 2), (34, 7), (8, 15), (7, 19), (24, 13)):
+    for x, y in ((4, 13), (17, 2), (34, 7), (8, 15), (10, 18), (24, 13)):
         L.p(x, y, 'm')
     return L
 
