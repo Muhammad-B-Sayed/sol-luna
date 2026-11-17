@@ -540,7 +540,7 @@ def crate_relay():
     6. Luna pushes crate K2 off the west edge of her room: it drops into the tunnel.
     7. Sol climbs to the west middle room and walks through orange lever LO: the pusher shoves K2
        through the tunnel, and it drops into his room.
-    8. White is the upper ways. Sol holds white plate PW2: hatch HW opens (and L1 rises empty) and
+    8. White is the upper ways. Sol holds white plate PW2 under the tunnel's end: hatch HW opens (and L1 rises empty) and
        Luna climbs to the east top room.
     9. Sol steps off, pushes K2 onto white lift L1 and stands behind it. Luna holds white plate PW:
        L1 lifts Sol and K2 to the west top room.
@@ -549,57 +549,55 @@ def crate_relay():
     """
     L = Lv('Crate Relay', 75, 'A crate cannot cross on its own legs. Send it over, then go round to meet it.')
     solid(L)
+    # Every room has six rows of air: bottom rooms on floor 27, the west middle room on 20, the
+    # east middle room on 14, the top rooms on 7. The bridge runs in a 2-high tunnel, so nobody
+    # can jump the half that is still up.
     # ---- west wing
-    L.clear(1, 19, 12, 23)                                # bottom room (floor 24)
-    L.p(3, 23, 'b').p(7, 23, 'k')
-    L.plate(2, 23, 0)                                     # PF
-    L.plate(5, 23, 1)                                     # PG
-    L.r(2, 21, 3, 21)                                     # ledge under the hole (stand 20)
-    L.r(10, 19, 12, 19)
-    L.clear(1, 11, 12, 17).clear(13, 16, 14, 17)          # middle room (floor 18), reaching under the slab
-    L.clear(2, 18, 3, 18)                                 # hole up from the bottom room
-    L.lever(9, 17, 2)                                     # LO
-    L.r(9, 15, 10, 15).plate(10, 14, 3)                   # PW2 on a shelf (stand 14): opens HW (and lifts L1)
-    L.r(1, 11, 2, 11).r(11, 11, 12, 11)
-    L.r(1, 15, 1, 15)                                     # a perch in the far corner (stand 14)
-    L.clear(5, 6, 8, 17).cells(5, 18, 8, 18, 3).mv(3, 0, -12)   # L1 (white)
-    L.clear(1, 2, 12, 5)                                  # top room (floor 6)
-    L.r(1, 2, 4, 2).r(9, 4, 11, 5)                        # Luna's door on a step (stand 3)
-    L.clear(2, 6, 3, 6).plate(2, 6, 4)                    # S2 (pink)
-    L.p(10, 3, 'B')
-    # ---- chasm
-    L.clear(13, 2, 26, 5).clear(17, 6, 26, 11)            # the top: the bridge comes down into row 6
-    L.r(24, 7, 24, 11)                                    # a pillar beside the chute
-    L.cells(13, 2, 19, 2, 4).mv(4, 0, 4)                  # bridge, west half (pink)
-    L.cells(20, 2, 26, 2, 5).mv(5, 0, 4)                  # bridge, east half (yellow)
-    L.clear(13, 6, 26, 6)
-    L.pool(14, 12, 10, 'X')                               # shade on top of the slab
-    L.clear(13, 13, 27, 14).pool(13, 15, 14, 'X')         # the tunnel and the pusher's pocket
-    L.clear(25, 12, 26, 12)                               # the chute
-    L.plat(27, 13, 1, 2, -14, 0, 2)                       # the pusher (orange)
-    L.clear(13, 19, 26, 27)                               # under the slab: the ferry's run
+    L.clear(1, 21, 12, 26)                                # bottom room (floor 27)
+    L.p(6, 26, 'b').p(10, 26, 'k')
+    L.plate(5, 26, 0)                                     # PF
+    L.plate(8, 26, 1)                                     # PG
+    L.r(1, 23, 2, 23)                                     # a ledge under the hole (stand 22)
+    L.clear(1, 14, 11, 19).clear(12, 15, 12, 19).clear(13, 18, 20, 19)   # middle room (floor 20), reaching under the tunnel
+    L.clear(1, 20, 2, 20)                                 # hole up from the bottom room
+    L.plate(16, 19, 3)                                    # PW2, in the nook under the tunnel: opens HW (and lifts L1)
+    L.lever(11, 19, 2)                                    # LO
+    L.clear(3, 7, 6, 19).cells(3, 20, 6, 20, 3).mv(3, 0, -13)   # L1 (white)
+    L.clear(1, 1, 12, 6)                                  # top room (floor 7)
+    L.clear(1, 7, 2, 7).plate(1, 7, 4)                    # S2 (pink)
+    L.clear(8, 7, 11, 8).p(9, 8, 'B')                     # Luna's door down in a dip
+    # ---- chasm: the bridge tunnel on top, a shade-floored void under it, the slab with the crate
+    # tunnel through it, and the ferry's run underneath
+    L.clear(13, 5, 24, 6)                                 # the bridge tunnel (2 high)
+    L.cells(13, 4, 18, 4, 4).mv(4, 0, 3)                  # bridge, west half (pink)
+    L.cells(19, 4, 24, 4, 5).mv(5, 0, 3)                  # bridge, east half (yellow)
+    L.clear(13, 7, 23, 13).clear(24, 7, 24, 7).pool(13, 14, 11, 'X')   # the void under the bridge, shade at its foot
+    L.clear(24, 8, 24, 13)                                # a perch on the void's lip, over the chute
+    L.clear(13, 15, 27, 16).pool(13, 17, 14, 'X')         # the crate tunnel and the pusher's pocket
+    L.clear(25, 14, 26, 14)                               # the chute
+    L.plat(27, 15, 1, 2, -14, 0, 2)                       # the pusher (orange)
+    L.clear(13, 21, 26, 27)                               # under the slab: the ferry's run
     L.pool(13, 28, 14, 'X')
-    L.r(17, 27, 18, 27).r(22, 27, 23, 27)                 # low piers catch a fall
-    L.r(21, 21, 23, 21)                                   # an island over the ferry's run (stand 20)
-    L.cells(13, 24, 15, 24, 0).mv(0, 11, 0)               # the ferry
+    L.cells(13, 27, 15, 27, 0).mv(0, 11, 0)               # the ferry
+    L.r(16, 21, 17, 23).r(22, 21, 23, 23)                 # two stalactites over the run
     # ---- east wing
-    L.clear(27, 19, 38, 23)                               # bottom room (floor 24)
-    L.r(27, 21, 29, 21).r(37, 21, 38, 23)                 # a ledge (stand 20) and a step
-    L.p(30, 23, 'a')
-    L.clear(33, 12, 36, 23).cells(33, 24, 36, 24, 1).mv(1, 0, -12)   # L2 (green)
-    L.clear(25, 7, 38, 11)                                # middle room (floor 12)
-    L.p(30, 11, 'k')
-    L.clear(37, 12, 38, 12).plate(38, 12, 5)              # S1 (yellow), on the wall side
-    L.r(31, 11, 32, 11)                                   # step (stand 10)
-    L.r(25, 9, 29, 9)                                     # ledge under the hole, out over the chute (stand 8)
-    L.r(37, 7, 38, 8)
-    L.clear(27, 2, 38, 5)                                 # top room (floor 6)
-    L.r(37, 2, 38, 2).r(33, 4, 35, 5).plate(34, 3, 3)     # PW on a step (stand 3)
-    hatch(L, 28, 6, 3, 3, 3)                              # HW (white): the way up from the middle room
-    L.p(37, 5, 'A')
+    L.clear(27, 21, 38, 26)                               # bottom room (floor 27)
+    L.clear(34, 15, 36, 21).clear(37, 16, 38, 21)        # a tall alcove over the east end
+    L.r(35, 22, 38, 22)                                   # Sol starts on a terrace in it (stand 21)
+    L.p(36, 21, 'a')
+    L.clear(30, 14, 33, 26).cells(30, 27, 33, 27, 1).mv(1, 0, -13)   # L2 (green)
+    L.clear(25, 8, 38, 13)                                # middle room (floor 14)
+    L.p(28, 13, 'k')
+    L.clear(37, 14, 38, 14).plate(38, 14, 5)              # S1 (yellow), on the wall side
+    L.r(28, 11, 30, 11)                                   # the ledge under HW (stand 10)
+    L.clear(25, 1, 38, 6)                                 # top room (floor 7)
+    L.r(36, 6, 38, 6).p(37, 5, 'A')                       # Sol's door on a dais (stand 5)
+    L.plate(34, 6, 3)                                     # PW
+    hatch(L, 28, 7, 3, 3, 3)                              # HW (white): the way up from the middle room
+    L.r(31, 8, 33, 8)
     # gems
-    L.p(22, 20, 'm').p(25, 8, 'm').p(27, 3, 'm')
-    L.p(9, 13, 's').p(1, 3, 's').p(28, 19, 's').p(1, 13, 's')
+    L.p(37, 26, 's').p(20, 19, 's').p(35, 17, 's').p(37, 2, 's')
+    L.p(19, 22, 'm').p(24, 10, 'm').p(36, 11, 'm').p(27, 3, 'm').p(2, 3, 'm')
     return L
 
 

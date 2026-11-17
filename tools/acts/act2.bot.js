@@ -141,32 +141,33 @@ export const SCRIPTS = {
     const onLift = (who, x0, x1, y, crate, name) => seek(who, name, (S, p) => p.gr && Math.abs(p.vx) < 0.3 && cx(p) >= x0 && cx(p) <= x1 && Math.abs(bot(p) - (y + 1)) < 0.3 && S.b[crate].gr,
       { h: (S, p) => Math.abs(cx(p) - (x0 + x1) / 2) * 8 + Math.abs(bot(p) - (y + 1)) * 4 });
     return [
-      grab(SOL, 28, 19),
-      press(LUNA, 2, 23), waitPlat(14, 24),            // PF: the ferry slides east to Sol
-      goto(SOL, 25, 23),
-      goto(LUNA, 4, 23), waitPlat(14, 24, false),      // she steps off: it brings him west
-      goto(SOL, 12, 23), goto(LUNA, 14, 23),
-      press(SOL, 2, 23),                               // Sol holds PF: Luna rides east
-      grab(LUNA, 22, 20), goto(LUNA, 28, 23),          // and hops onto the island on the way
-      goto(SOL, 4, 23), waitPlat(14, 24, false),
-      pushTo(SOL, 1, 14, { y: 23 }),                   // K1 onto the ferry
-      press(SOL, 2, 23), waitPlat(14, 24),             // and across
-      pushTo(LUNA, 1, 35, { y: 23 }),                  // Luna pushes K1 onto L2
-      onLift(LUNA, 33.3, 34.5, 23, 1, 'Luna on L2 behind K1'),
-      press(SOL, 5, 23), waitPlat(34, 24),             // PG: L2 lifts Luna and K1
-      pushTo(LUNA, 1, 38, { y: 12 }),                  // K1 into S1, against the wall
-      within(pushTo(LUNA, 0, 25, { y: 14, tol: 0.8 }), 27, 7, 38, 11),   // K2 down the chute into the tunnel
-      grab(LUNA, 25, 8),
-      within(flip(SOL, 9, 17), 1, 11, 14, 17), goto(SOL, 14, 17),   // LO: the pusher shoves K2 through
-      wait('K2 drops into the west room', (S) => S.b[0].gr && cx(S.b[0]) < 13 && bot(S.b[0]) > 17.5, 600),
-      grab(SOL, 1, 13), grab(SOL, 9, 13), press(SOL, 10, 14),            // PW2: HW opens for Luna
-      goto(LUNA, 29, 8), goto(LUNA, 27, 5),
-      goto(SOL, 14, 17), waitPlat(6, 18, false),       // Sol steps off: L1 comes back down
-      pushTo(SOL, 0, 6, { y: 17 }),                    // K2 onto L1
-      onLift(SOL, 7.5, 8.6, 17, 0, 'Sol on L1 behind K2'),
-      grab(LUNA, 27, 3), press(LUNA, 34, 3), waitPlat(6, 18),   // PW: L1 lifts Sol and K2
-      pushTo(SOL, 0, 2, { y: 6, tol: 0.6 }),           // K2 into S2
-      grab(SOL, 1, 3), door(SOL), door(LUNA), win(),
+      grab(SOL, 35, 17), goto(SOL, 33, 26), mv(SOL, 37.5),   // down off the terrace, and in under it
+      press(LUNA, 5, 26), waitPlat(14, 27),            // PF: the ferry slides east to Sol
+      goto(SOL, 25, 26),
+      goto(LUNA, 7, 26), waitPlat(14, 27, false),      // she steps off: it brings him west
+      goto(SOL, 11, 26), goto(LUNA, 14, 26),
+      press(SOL, 5, 26),                               // Sol holds PF: Luna rides east
+      grab(LUNA, 19, 22), goto(LUNA, 28, 26),          // and jumps for a gem on the way
+      goto(SOL, 7, 26), waitPlat(14, 27, false),
+      pushTo(SOL, 1, 14, { y: 26 }),                   // K1 onto the ferry
+      press(SOL, 5, 26), waitPlat(14, 27),             // and across
+      pushTo(LUNA, 1, 32, { y: 26 }),                  // Luna pushes K1 onto L2
+      onLift(LUNA, 30.6, 31.5, 26, 1, 'Luna on L2 behind K1, clear of the wall'),
+      press(SOL, 8, 26), waitPlat(31, 27),             // PG: L2 lifts Luna and K1
+      pushTo(LUNA, 1, 38, { y: 14 }),                  // K1 into S1, against the wall
+      within(pushTo(LUNA, 0, 25, { y: 16, tol: 0.8 }), 25, 8, 38, 13),   // K2 down the chute into the tunnel
+      grab(LUNA, 24, 10), grab(LUNA, 36, 11),
+      goto(SOL, 1, 22), goto(SOL, 3, 19),              // Sol climbs to the west middle room
+      within(flip(SOL, 11, 19), 1, 14, 11, 19), grab(SOL, 20, 19, { keep: true }),   // LO; Sol waits under the tunnel
+      wait('K2 is shoved into the west room', (S) => S.b[0].gr && cx(S.b[0]) < 13 && bot(S.b[0]) > 19.8, 600),
+      press(SOL, 16, 19),                              // PW2: HW opens for Luna
+      goto(LUNA, 29, 10), goto(LUNA, 31, 6),
+      goto(SOL, 14, 19), waitPlat(4, 20, false),       // Sol steps off: L1 comes back down
+      pushTo(SOL, 0, 4, { y: 19 }),                    // K2 onto L1
+      onLift(SOL, 5.4, 6.4, 19, 0, 'Sol on L1 behind K2, clear of the wall'),
+      grab(LUNA, 27, 3), press(LUNA, 34, 6), waitPlat(4, 20),   // PW: L1 lifts Sol and K2
+      pushTo(SOL, 0, 1, { y: 7, tol: 0.6 }),           // K2 into S2
+      grab(SOL, 37, 2), door(SOL), grab(LUNA, 2, 3), door(LUNA), win(),
     ];
   },
 
