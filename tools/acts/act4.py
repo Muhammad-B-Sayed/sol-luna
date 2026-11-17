@@ -20,7 +20,8 @@ def high_noon():
     doors are at the ends of the two branches of the top arm. Each arm opens the next, so the order is
     west, bottom, east, top.
     Both start on the hub floor. The pit under the hub is sealed by an orange hatch, and the east arm
-    is shut by pink gate GE.
+    is shut by pink gate GE. Floors are 7 rows apart wherever anyone jumps (re-spaced Nov 2026 for the
+    higher jump); the crate drops five rows into the lake, so the climb of 3 out of it has full headroom.
     1. Sol holds P1 (purple) at the east end of the hub: gate GW opens and Luna runs into the west arm.
     2. Luna runs to the far end of the west floor and back east through lever L1 (purple): GW stays open.
     3. Luna stands on lift WA. Sol holds P2a (green) in the hub: WA lifts her to the mid ledge, and the
@@ -44,66 +45,63 @@ def high_noon():
     11. Sol walks the west branch to his door, Luna the east branch to hers."""
     L = Lv('High Noon', 65, 'Every arm holds a machine you have met. Each one opens the next: find the order.')
     solid(L)
-    # ---- top arm: the junction and two branches, doors at the far ends
-    L.clear(2, 2, 9, 3).clear(10, 2, 16, 4).clear(17, 2, 23, 5).clear(24, 2, 29, 4).clear(30, 2, 37, 3)
+    # Floors sit 7 rows apart wherever someone jumps: top corridor 4, attic 8, mid ledge 13,
+    # crawlway 15, hub and west floor 20, shore 21, gallery 27.
+    # ---- top arm: a low corridor (rows 2-3) with the junction over T, doors at the far ends
+    L.clear(2, 2, 37, 3)
     L.p(3, 3, 'A').p(36, 3, 'B')
-    L.clear(6, 4, 7, 5)                                    # a pocket under the west branch
-    L.clear(32, 1, 33, 1)                                  # a pocket in the east branch roof
-    L.r(13, 2, 14, 2).r(26, 2, 27, 2)                      # roof rocks
-    L.plate(17, 5, 3)                                      # P4b (white)
-    L.clear(19, 6, 21, 21)                                 # the top lift's shaft; T rests in the hub floor
-    L.plat(19, 21, 3, 1, 0, -15, 3)                        # T (white)
-    # ---- west arm: attic (rows 10-11), mid ledge, floor (row 21); WB on the west wall, WA by the gate
-    L.clear(2, 10, 16, 11)                                 # the attic
-    L.clear(2, 12, 4, 21)                                  # WB's shaft, from the attic floor to the west floor
-    L.plat(2, 12, 3, 1, 0, 9, 1)                           # WB (green): rests in the attic floor, comes down on green
-    L.clear(5, 13, 12, 20)
-    L.r(5, 16, 8, 16)                                      # the mid ledge
-    L.plate(6, 15, 1)                                      # P2b
-    L.clear(9, 13, 11, 21)
-    L.plat(9, 21, 3, 1, 0, -5, 1)                          # WA (green): rests in the floor, rises to the mid ledge
-    L.lever(5, 20, 0)                                      # L1 keeps GW open
-    L.gate(13, 19, 20, '=', 0, 17)                         # GW (purple)
-    L.lever(14, 11, 2)                                     # L6 (orange) opens the pit
-    # ---- hub (x 14-25, rows 13-20, floor 21)
-    L.clear(14, 13, 25, 20)
-    L.r(14, 13, 15, 14)                                    # a rock under the attic's end
-    L.clear(16, 12, 16, 12)                                # the attic's way down into the hub
-    L.r(14, 16, 14, 18)                                    # GW's pillar, hub side
-    L.plate(23, 20, 1)                                     # P2a: far from WA, so nobody can work it alone
-    L.plate(24, 20, 0)                                     # P1: far from GW
-    L.p(22, 20, 'a').p(18, 20, 'b')
-    L.clear(15, 21, 17, 26)                                # the pit, under the hatch
-    L.plat(15, 21, 3, 1, 0, -4, 2)                         # hatch (orange): swings up into a ledge
-    # ---- bottom arm: galleries either side of the pit bottom (rows 23-26, floor 27)
-    L.clear(8, 23, 25, 26)
+    L.clear(11, 1, 11, 1).clear(33, 1, 33, 1)              # pockets in the roof
+    L.plate(17, 3, 3)                                      # P4b (white)
+    L.clear(19, 4, 21, 20)                                 # the top lift's shaft; T rests in the hub floor
+    L.plat(19, 20, 3, 1, 0, -16, 3)                        # T (white)
+    # ---- west arm: attic (rows 6-7, floor 8), mid ledge (row 13), floor (row 20)
+    L.clear(2, 6, 16, 7)                                   # the attic
+    L.lever(14, 7, 2)                                      # L6 (orange) opens the pit
+    L.clear(16, 8, 16, 12)                                 # the attic's way down into the hub
+    L.clear(2, 8, 4, 20)                                   # WB's shaft, from the attic floor to the west floor
+    L.plat(2, 8, 3, 1, 0, 12, 1)                           # WB (green): rests in the attic floor, comes down on green
+    L.clear(5, 9, 11, 19)
+    L.r(5, 13, 8, 13)                                      # the mid ledge: 7 above the floor, 5 below the attic
+    L.plate(6, 12, 1)                                      # P2b
+    L.clear(9, 20, 11, 20)
+    L.plat(9, 20, 3, 1, 0, -7, 1)                          # WA (green): rests in the floor, rises to the mid ledge
+    L.lever(5, 19, 0)                                      # L1 keeps GW open
+    L.clear(12, 18, 12, 19)
+    L.gate(13, 18, 19, '=', 0, 16)                         # GW (purple)
+    # ---- hub (x 14-25, rows 13-19, floor 20)
+    L.clear(15, 13, 22, 19).clear(14, 18, 14, 19)
+    L.clear(22, 13, 33, 14)                                # the crawlway (rows 13-14, floor 15) leaves the hub's top
+    L.clear(23, 16, 25, 19)                                # a nook under the crawlway's west end
+    L.clear(22, 9, 24, 12)                                 # headroom where the crawlway drops into the hub
+    L.plate(23, 19, 1)                                     # P2a: far from WA, so nobody can work it alone
+    L.plate(24, 19, 0)                                     # P1: far from GW
+    L.p(22, 19, 'a').p(18, 19, 'b')
+    L.clear(15, 20, 17, 26)                                # the pit, under the hatch
+    L.plat(15, 20, 3, 1, 0, -3, 2)                         # hatch (orange): swings up into a ledge
+    # ---- bottom arm: the gallery under the hub (rows 21-26, floor 27)
+    L.clear(7, 21, 25, 26)
     L.clear(15, 27, 17, 27)
-    L.plat(15, 27, 3, 1, 0, -6, 5, inv=True)               # the pit floor (yellow): rises while L5 is off
+    L.plat(15, 27, 3, 1, 0, -7, 5, inv=True)               # the pit floor (yellow): rises while L5 is off
     L.plate(16, 26, 4)                                     # P3 (pink), on the pit floor
-    L.clear(5, 25, 7, 26)                                  # a notch at the west end
-    L.r(10, 26, 11, 26)                                    # a step in the west gallery
-    L.pool(20, 27, 2, 'M')
-    L.r(23, 25, 25, 26)                                    # a block in the east gallery
-    L.r(19, 23, 20, 23)                                    # a hanging rock
-    # ---- east arm: GE, the low corridor with the crate, the shade lake, the tower, the upper floor
-    L.gate(26, 19, 20, '~', 4, 17)                         # GE (pink)
-    L.clear(27, 19, 30, 20)                                # the low corridor: roof row 18, floor row 21
-    L.lever(27, 20, 4)                                     # L3 (pink): once someone walks in, GE stays open
-    L.p(29, 20, 'k')
-    L.clear(31, 16, 38, 23).clear(27, 22, 30, 23)
-    L.r(31, 18, 31, 18)                                    # the roof reaches one past the corridor's end
-    L.pool(27, 24, 8, 'X')                                 # the lake, x 27-34
-    L.r(35, 21, 38, 23)                                    # the far shore, as high as the corridor: a fall can't reach it
-    L.r(37, 19, 38, 19)                                    # tower step B
-    L.r(34, 17, 35, 17)                                    # tower step C
-    L.clear(22, 13, 38, 14).clear(34, 15, 38, 16)          # the upper floor's low room (rows 13-14: no jumping) and the tower top
-    L.r(24, 15, 33, 15)                                    # the upper floor
+    L.clear(5, 21, 6, 23)                                  # a pocket in the west wall, 3 up from the floor
+    L.pool(19, 27, 2, 'M')
+    L.r(22, 24, 25, 26)                                    # a block in the east gallery
+    # ---- east arm: GE, the low corridor with the crate, the shade lake, the tower, the crawlway
+    L.gate(26, 18, 19, '~', 4, 16)                         # GE (pink)
+    L.clear(27, 18, 30, 19)                                # the low corridor: roof row 17, floor row 20
+    L.lever(27, 19, 4)                                     # L3 (pink): once someone walks in, GE stays open
+    L.p(29, 19, 'k')
+    L.clear(31, 18, 34, 24).clear(32, 16, 33, 17)          # the lake's air; the roof reaches one past the corridor
+    L.pool(31, 25, 4, 'X')                                 # the lake: five rows under the corridor, so the crate lands
+                                                           # in it with room to jump out
+    L.clear(34, 9, 38, 20)                                 # the tower
+    L.r(37, 18, 38, 20)                                    # tower step B, on the shore's east end
+    L.r(34, 15, 34, 15)                                    # the landing at the crawlway's mouth
     L.lever(28, 14, 5, on=True)                            # L5 (yellow, on): walking left through it frees the pit
     L.plate(32, 14, 3)                                     # P4 (white) drives T, beyond L5: whoever frees the pit can't hold it
-    L.clear(16, 1, 16, 1)                                  # a pocket in the west branch roof
     # ---- gems
-    L.p(6, 5, 's').p(16, 15, 's').p(38, 16, 's').p(16, 1, 's')
-    L.p(7, 13, 'm').p(6, 25, 'm').p(24, 23, 'm').p(32, 1, 'm')
+    L.p(17, 16, 's').p(38, 12, 's').p(11, 1, 's').p(24, 16, 's')
+    L.p(5, 12, 'm').p(5, 23, 'm').p(25, 23, 'm').p(33, 1, 'm')
     return L
 
 

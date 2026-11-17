@@ -5,35 +5,36 @@ import { SOL, LUNA, goto, grab, flip, press, door, pushTo, seek, wait, waitPlat,
 export const SCRIPTS = {
   // High Noon: west (counterweights), bottom (the pit), east (the lake), top (the far plate).
   16: () => [
-    press(SOL, 24, 20),                             // P1: GW opens
-    goto(LUNA, 3, 21),                              // Luna runs to the far end of the west floor
-    flip(LUNA, 5, 20),                              // and back east through L1: GW stays open
-    goto(LUNA, 10, 20),                             // onto WA
-    press(SOL, 23, 20), waitPlat(9, 21),            // Sol holds P2a: WA lifts Luna, WB comes down
-    grab(LUNA, 7, 13), press(LUNA, 6, 15),          // Luna holds P2b on the mid ledge
-    goto(SOL, 3, 20, { keep: true }),               // Sol runs onto WB
-    goto(LUNA, 8, 15), waitPlat(2, 12, false),      // Luna steps off: WB carries Sol into the attic
-    flip(SOL, 14, 11),                              // L6: the hatch swings up, the pit is open
-    grab(SOL, 16, 15),
-    grab(LUNA, 6, 25, { keep: true }), grab(LUNA, 24, 23, { keep: true }),
+    grab(SOL, 24, 16),                              // the nook under the crawlway
+    press(SOL, 24, 19),                             // P1: GW opens
+    goto(LUNA, 3, 20),                              // Luna runs to the far end of the west floor
+    flip(LUNA, 5, 19),                              // and back east through L1: GW stays open
+    goto(LUNA, 10, 19),                             // onto WA
+    press(SOL, 23, 19), waitPlat(9, 20),            // Sol holds P2a: WA lifts Luna, WB comes down
+    grab(LUNA, 5, 12), press(LUNA, 6, 12),          // Luna holds P2b on the mid ledge
+    goto(SOL, 3, 19, { keep: true }),               // Sol runs onto WB
+    goto(LUNA, 8, 12), waitPlat(2, 8, false),       // Luna steps off: WB carries Sol into the attic
+    flip(SOL, 14, 7),                               // L6: the hatch swings up, the pit is open
+    grab(SOL, 17, 16),
+    grab(LUNA, 5, 23, { keep: true }), grab(LUNA, 25, 23, { keep: true }),
     press(LUNA, 16, 26),                            // Luna holds P3 on the pit floor: GE opens
-    flip(SOL, 27, 20),                              // Sol walks in through L3: GE stays open
-    pushTo(SOL, 0, 31, { y: 23, tol: 0.6 }),        // the crate off the corridor's end, into the lake
-    goto(SOL, 36, 20),                              // over the crate to the far shore
-    grab(SOL, 38, 16),
+    flip(SOL, 27, 19),                              // Sol walks in through L3: GE stays open
+    pushTo(SOL, 0, 31, { y: 24, tol: 0.6 }),        // the crate off the corridor's end, into the lake
+    goto(SOL, 36, 20),                              // down onto the crate, then a climb of 3 to the far shore
+    grab(SOL, 38, 12),
     flip(SOL, 28, 14, false),                       // up the tower, over P4, left through L5: the pit floor rises
     waitPlat(15, 27),
-    goto(SOL, 20, 20, { keep: true }),              // Sol drops into the hub onto T
-    goto(LUNA, 27, 20, { keep: true }),             // swap: Luna through GE
+    goto(SOL, 20, 19, { keep: true }),              // Sol drops into the hub onto T
+    goto(LUNA, 27, 19, { keep: true }),             // swap: Luna through GE
     goto(LUNA, 36, 20, { keep: true }),             // over the crate
-    press(LUNA, 32, 14, { keep: true }), waitPlat(19, 21),   // up the tower to P4: T carries Sol to the junction
-    goto(SOL, 18, 5),
-    goto(LUNA, 30, 14, { keep: true }), waitPlat(19, 21, false),   // Luna steps off P4: T comes back down
-    goto(LUNA, 20, 20, { keep: true }),             // she crawls left over L5 (it stays off) and drops onto T
-    press(SOL, 17, 5), waitPlat(19, 21),            // Sol holds P4b: T carries Luna up
-    goto(LUNA, 24, 4),
-    grab(SOL, 16, 1), grab(SOL, 6, 5), door(SOL),
-    grab(LUNA, 32, 1), door(LUNA), win(),
+    press(LUNA, 32, 14, { keep: true }), waitPlat(19, 20),   // up the tower to P4: T carries Sol to the junction
+    goto(SOL, 18, 3),
+    goto(LUNA, 30, 14, { keep: true }), waitPlat(19, 20, false),   // Luna steps off P4: T comes back down
+    goto(LUNA, 20, 19, { keep: true }),             // she crawls left over L5 (it stays off) and drops onto T
+    press(SOL, 17, 3), waitPlat(19, 20),            // Sol holds P4b: T carries Luna up
+    goto(LUNA, 24, 3),
+    grab(SOL, 11, 1), door(SOL),
+    grab(LUNA, 33, 1), door(LUNA), win(),
   ],
   // Shade Garden: leapfrog up the braid, one hopping while the other raises the stones.
   17: () => [
