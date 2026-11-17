@@ -522,19 +522,20 @@ def counterweights():
 
 @level(10)
 def stone_raft():
-    """A shade lake across the middle band with an island in it, a gallery above each shore and a long
-    gallery underneath. The west stretch is crossed on a ferry; the east stretch only on the crate, which
-    must land in the middle of it. A crate falls straight down where it leaves the floor, so it has to be
-    carried over the west stretch first and pushed off the island's shelf, which overhangs the east one.
-    Sol starts on the dock with the crate, Luna in the room above it.
+    """A deep shade lake across the middle of the room with an island in it, a room above each shore and a
+    long gallery underneath. The dock, the island and its shelf are a low deck you walk and push along; the
+    rooms above and the gallery below have full headroom. The west stretch is crossed on a ferry; the east
+    stretch only on the crate, which must land in the middle of it. A crate falls straight down where it
+    leaves the floor, so it has to be carried over the west stretch first and pushed off the island's shelf,
+    which overhangs the east one. Sol starts on the dock with the crate, Luna in the room above it.
     1. The ferry waits at the island. Luna holds P_G (green) upstairs: it comes to the dock. Sol pushes the
        crate onto it and steps on; Luna steps off and the ferry carries them to the island.
     2. Sol walks through lever L5 (yellow) on the island: gate G5 opens Luna's way down the west shaft.
     3. Sol pushes the crate along the shelf and off its end: it drops into the middle of the east stretch.
-       He hops onto it, over to the far lip, and drops down the lift shaft to the bottom of the room.
-    4. Luna drops down the west shaft and finds gate G1 (purple) shut. Sol climbs the east ramp, crosses
-       the raised middle of the gallery and holds P1 (purple) at its far end: G1 opens. Luna walks through
-       it and through lever L1 (purple), which keeps it open.
+       He drops onto it, leaps to the far lip, and drops down the lift shaft to the bottom of the room.
+    4. Luna drops down the west shaft and finds gate G1 (purple) shut. Sol climbs the east ramp, crosses the
+       raised middle of the gallery and holds P1 (purple) at its far end: G1 opens. Luna walks through it
+       and through lever L1 (purple), which keeps it open.
     5. Sol walks back east, through lever L3 (pink: gate G3 before his door opens), down onto the lift
        (white). Luna holds P4 (white) in the low tunnel: the lift carries him up to the east gallery.
     6. Luna goes on down the east ramp onto the lift, and Sol holds P4b (white) at the top to bring her up.
@@ -542,49 +543,39 @@ def stone_raft():
        She walks in, and he steps back to his door."""
     L = Lv('Stone Raft', 55, 'A crate dropped in a pool is a stepping stone, but it lands right where it falls. Ferries carry crates too.')
     L.r(1, 1, 38, 28)
-    # ---- the west room (rows 2-6, floor 7): Luna, the ferry plate, gate G5 over the west shaft
-    L.clear(1, 2, 15, 6).r(12, 2, 15, 3)                    # the west room reaches out over the lake
+    # ---- the west room (floor row 7): Luna, the ferry plate, gate G5 over the west shaft
+    L.clear(1, 1, 15, 6)
     L.gate(2, 5, 6, ':', 5, 3)                             # G5 (yellow)
-    L.clear(1, 7, 1, 21)                                   # the west shaft
+    L.clear(1, 7, 1, 27)                                   # the west shaft
     L.p(5, 6, 'b').plate(8, 6, 1)                          # P_G
-    # ---- the dock under it (rows 8-10, floor 11): Sol and the crate
-    L.clear(3, 8, 11, 10)
-    L.p(4, 10, 'a').p(7, 10, 'k')
-    # ---- the lake band (rows 8-15, lake row 16)
-    L.clear(12, 8, 34, 15)
-    L.pool(12, 16, 9, 'X').pool(26, 16, 9, 'X')
+    # ---- the east gallery (floor row 8) and the lift shaft
+    L.clear(24, 2, 35, 7).clear(36, 2, 38, 27)
+    L.p(25, 7, 'B')
+    L.gate(27, 6, 7, '_', 2, 4).r(26, 2, 28, 2)            # G6 (orange)
+    L.plate(29, 7, 2).p(31, 7, 'A')                        # P6, Sol's door
+    L.gate(33, 6, 7, '~', 4, 4).r(32, 2, 34, 2)            # G3 (pink)
+    L.plate(35, 7, 3)                                      # P4b
+    # ---- the deck: dock (row 11), the ferry, the island with its shelf, the lake (row 17)
+    L.clear(3, 8, 11, 10).p(4, 10, 'a').p(7, 10, 'k')
+    L.clear(12, 8, 20, 16).clear(21, 8, 25, 10).clear(26, 9, 35, 15).clear(26, 16, 34, 16)
+    L.r(26, 11, 28, 11)                                    # the shelf over the east stretch
+    L.pool(12, 17, 9, 'X').pool(26, 17, 9, 'X')
     L.cells(18, 11, 20, 11, 1).mv(1, -6, 0)                # the ferry: rests at the island, comes to the dock on green
-    L.r(21, 11, 25, 15)                                    # the island
     L.lever(23, 10, 5)                                     # L5
-    L.r(26, 11, 29, 11)                                    # the shelf over the east stretch
-    L.r(31, 8, 33, 8).r(14, 8, 16, 8)                      # hanging rocks
-    L.r(21, 7, 25, 7)                                      # island roof
-    # ---- the east lift (white) from the bottom to the east gallery
-    L.clear(35, 8, 35, 15)                                 # the far lip, open to the shaft
-    L.clear(36, 2, 38, 26).cells(36, 27, 38, 27, 3).mv(3, 0, -20)
-    # ---- the east gallery (rows 2-6, floor 7)
-    L.clear(24, 2, 35, 6)
-    L.plate(34, 6, 3)                                      # P4b
-    L.gate(32, 5, 6, '~', 4, 3)                            # G3 (pink)
-    L.p(31, 6, 'A')
-    L.plate(29, 6, 2)                                      # P6
-    L.gate(27, 5, 6, '_', 2, 3)                            # G6 (orange)
-    L.p(25, 6, 'B')
-    # ---- the gallery underneath: low west part, raised middle, low east part
-    L.clear(1, 22, 9, 26).clear(2, 19, 5, 21).r(2, 22, 3, 22)   # a gem ledge in the corner
-    L.gate(7, 25, 26, '=', 0, 23)                          # G1 (purple)
-    L.lever(9, 26, 0)                                      # L1
-    L.clear(10, 18, 15, 26).rampR(10, 26, 6, 27)           # ramp up to the middle
-    L.clear(16, 18, 28, 20)
-    L.plate(16, 20, 0)                                     # P1, at the far end of the middle from Sol's side
-    L.r(20, 18, 25, 18)                                    # a low tunnel
-    L.plate(22, 20, 3)                                     # P4, in the tunnel
-    L.lever(27, 20, 4)                                     # L3 opens G3
-    L.clear(28, 18, 35, 26).rampL(33, 26, 6, 27)           # ramp down to the east
-    L.r(34, 18, 35, 21)
-    # ---- gems
-    L.p(10, 8, 's').p(23, 8, 's').p(34, 23, 's').p(37, 3, 's')
-    L.p(14, 4, 'm').p(2, 20, 'm').p(18, 18, 'm').p(30, 3, 'm')
+    # ---- the gallery underneath: low west part, raised middle with a low tunnel, east part, the lift
+    L.clear(2, 19, 9, 27).r(2, 23, 4, 23)                  # a gem ledge in the corner
+    L.gate(7, 26, 27, '=', 0, 24).r(6, 19, 8, 23)          # G1 (purple)
+    L.lever(9, 27, 0)                                      # L1
+    L.clear(10, 19, 35, 24).clear(29, 25, 35, 27)
+    L.rampR(10, 27, 3, 28).rampL(31, 27, 3, 28)
+    L.r(18, 19, 23, 22)                                    # the low tunnel
+    L.plate(14, 24, 0)                                     # P1, at the far end of the middle from Sol's side
+    L.plate(20, 24, 3)                                     # P4, in the tunnel
+    L.lever(26, 24, 4)                                     # L3 opens G3
+    L.cells(36, 28, 38, 28, 3).mv(3, 0, -20)               # the lift
+    L.mv(0, 0, -2).mv(2, 0, -2).mv(4, 0, -2).mv(5, 0, -2)
+    L.p(10, 10, 's').p(24, 10, 's').p(34, 23, 's').p(37, 4, 's')
+    L.p(14, 4, 'm').p(3, 22, 'm').p(18, 24, 'm').p(30, 3, 'm')
     return L
 
 

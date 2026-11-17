@@ -152,23 +152,23 @@ export const SCRIPTS = {
   ],
   // Stone Raft: the crate rides the ferry, then drops off the shelf into the middle of the east stretch.
   10: () => [
-    grab(SOL, 10, 8), goto(SOL, 5, 10),
     press(LUNA, 8, 6),                              // Luna holds P_G: the ferry comes to the dock
-    pushTo(SOL, 0, 14, { y: 10 }), goto(SOL, 12, 10),   // Sol pushes the crate onto it and steps on
+    pushTo(SOL, 0, 13, { y: 10 }), grab(SOL, 10, 10), goto(SOL, 12, 10),   // Sol pushes the crate onto it and steps on
     goto(LUNA, 4, 6), grab(LUNA, 14, 4),            // Luna steps off: the ferry carries Sol and the crate over
-    flip(SOL, 23, 10), grab(SOL, 23, 8),            // L5 opens G5 for Luna
-    pushTo(SOL, 0, 30, { y: 15 }),                  // off the shelf: a stepping stone
-    goto(SOL, 35, 15), goto(SOL, 37, 26),           // across, and down the lift shaft
-    grab(LUNA, 2, 20), goto(LUNA, 5, 26),           // Luna down the west shaft to G1
-    grab(SOL, 34, 23), press(SOL, 16, 20),          // Sol holds P1 at the far end of the middle: G1 opens
-    flip(LUNA, 9, 26),                              // Luna through G1 and L1: it stays open
-    flip(SOL, 27, 20), goto(SOL, 37, 26),           // Sol back east through L3 (G3 opens) onto the lift
-    grab(LUNA, 18, 18), press(LUNA, 22, 20),        // Luna holds P4: the lift carries Sol up
-    waitPlat(36, 27), grab(SOL, 37, 3), goto(SOL, 35, 6),
-    goto(LUNA, 26, 20), waitPlat(36, 27, false), goto(LUNA, 37, 26),   // Luna down the east ramp onto the lift
-    press(SOL, 34, 6), waitPlat(36, 27),            // Sol holds P4b: the lift brings Luna up
-    goto(LUNA, 35, 6),
-    press(SOL, 29, 6),                              // Sol through G3 to P6: G6 opens
+    waitPlat(19, 11, false),
+    pushTo(SOL, 0, 29, { y: 16 }),                  // along the island through L5 (G5 opens for Luna) and off the shelf
+    flip(SOL, 23, 10), grab(SOL, 24, 10),
+    goto(SOL, 35, 15), goto(SOL, 37, 27),           // across, and down the lift shaft
+    grab(LUNA, 3, 22), goto(LUNA, 5, 27),           // Luna down the west shaft to G1
+    grab(SOL, 34, 23), press(SOL, 14, 24),          // Sol holds P1 at the far end of the middle: G1 opens
+    flip(LUNA, 9, 27),                              // Luna through G1 and L1: it stays open
+    flip(SOL, 26, 24), goto(SOL, 37, 27),           // Sol back east through L3 (G3 opens) onto the lift
+    grab(LUNA, 18, 24), press(LUNA, 20, 24),        // Luna holds P4: the lift carries Sol up
+    waitPlat(37, 28), grab(SOL, 37, 4), goto(SOL, 32, 7),
+    goto(LUNA, 34, 27), waitPlat(37, 28, false), goto(LUNA, 37, 27),   // Luna down the east ramp onto the lift
+    press(SOL, 35, 7), waitPlat(37, 28),            // Sol holds P4b: the lift brings Luna up
+    goto(LUNA, 36, 7),
+    press(SOL, 29, 7),                              // Sol through G3 to P6: G6 opens
     grab(LUNA, 30, 3), door(LUNA),
     door(SOL), win(),
   ],
