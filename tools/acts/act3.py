@@ -67,112 +67,105 @@ def patch(rows, x, y, s):
 @level(23)
 def eclipse():
     """Eclipse. A butterfly: the left wing (sun pools) is Sol's and mirrors Luna's right wing
-    (moon pools). A body splits them, with a locked tunnel through its middle. Each wing has a
-    wing-tip shaft with a yellow lift; the two lifts are a counterweight pair. Both start at the
+    (moon pools). A body splits them, with a locked tunnel through its middle band. Each wing has
+    a wing-tip shaft with a yellow lift; the two lifts are a counterweight pair. Both start at the
     top of their own wing and finish at the top of the other's, where the mirror breaks.
+    The wings fold into bands 7 rows apart (re-spaced Nov 2026 for the higher jump): the top band,
+    two low corridors where nobody needs to jump, the middle band with the tunnel, the bottom band.
+    Each wing climbs from the bottom to the middle band on a riser of two 3-row steps under a
+    5-wide hole. Even the levers mirror: Sol's purple lever is switched by walking east through it,
+    Luna's green lever (drawn pushed) by walking west.
 
-    0. Each drops down their own wing (through the open shaft doorway) to the bottom floor.
-    1. Sol stands on the purple plate: Luna's purple gate (right floor 2) opens.
-    2. Luna passes it and walks right through the green lever: Sol's green gate and the green
-       tunnel lock open for good. (Mirrored order works too: green plate, then purple lever.)
-       Green on shuts Sol's shaft doorway and Luna's door lock. Purple on shuts Luna's doorway
-       and opens Sol's door lock (it shuts again whenever purple goes off).
-    3. Sol climbs his wing and walks right through the purple lever: the purple lock opens.
+    0. Each drops down their own wing to the bottom: through the floor holes, then the shaft
+       doorway into the wing-tip shaft.
+    1. Sol stands on the purple plate: Luna's purple gate G opens.
+    2. Luna passes G and walks west through the green lever: Sol's green gate H and the green
+       tunnel lock open for good. That also shuts Sol's shaft doorway J and Luna's door lock F.
+    3. Sol passes H and walks east through the purple lever: the purple lock opens (and his door
+       lock E, while purple is on). Both climb their risers to the middle band.
     4. Both cross through the tunnel into the other's wing.
-    5. Sol walks down Luna's floors to her lift. Luna walks down Sol's floors and turns purple
-       off on the way (Luna's shaft doorway opens again).
-    6. Luna holds the yellow plate by her pit: Sol's lift rises, hers sinks. Sol pushes the crate
+    5. Sol walks down Luna's floors to her lift, jumping over her lever. Luna walks down Sol's and
+       turns purple off on the way (Luna's shaft doorway N opens again).
+    6. Luna holds the yellow plate by her lift: Sol's lift rises, hers sinks. Sol pushes the crate
        into the white socket (the white bridge on the left rises for good) and climbs out.
     7. Sol holds the yellow plate in his top corridor, Luna steps onto her sunken lift, Sol lets
        go: she rides up. Pump one.
     8. Luna wades her moon pocket and sets the orange lever: Sol's orange bridge rises.
-    9. Sol crosses it, drops into the low corridor and walks left through the green lever,
-       switching it off: Luna's door lock opens, and he is stranded at the bottom.
-    10. Luna walks back down; Sol takes the shaft down to the lift. Pump two: she sends him up,
-        he sends her up.
-    11. Luna walks right through the purple lever again: Sol's door lock opens.
-    12. Sol stands on the pink plate; Luna passes the pink gate onto the white bridge (pink and
-        white are needed at once, which is why the crate holds white).
-    13. Both walk over the roofs of the top corridors to their doors."""
-    L = Lv('Eclipse', 125, 'Each wing mirrors the other. What you do on your side changes theirs. The two yellow lifts balance each other.')
-    right = [
-        "#..................",  # 1
-        "#........###.......",  # 2
-        "#........#.#.......",  # 3
-        "#........#.#.......",  # 4
-        "#.........E........",  # 5
-        "####......E........",  # 6
-        "####...########....",  # 7
-        "#....#.............",  # 8
-        "#....#.............",  # 9
-        "#...###MMM##SSS#...",  # 10
-        "#...###OOO######...",  # 11
-        "#........#........#",  # 12
-        "#........#........#",  # 13
-        "#####...##..###...#",  # 14
-        "#.........##..#...#",  # 15
-        "#..................#"[:19],  # 16
-        "#......#...........",  # 17
-        "###########...#...#",  # 18
-        "#......#.#...##...#",  # 19
-        "#......#.#...##...#",  # 20
-        "#.......G...###...#",  # 21
-        "#.......G...###...#",  # 22
-        "#....##########...#",  # 23
-        "###................",  # 24
-        "###................",  # 25
-        "#####..............",  # 26
-        "#####..............",  # 27
-        "########MMM####YYY#",  # 28
-    ]
-    rows = mirror_half(right, {'O': 'W', 'G': 'H', 'Y': 'Z', 'E': 'F'})
-    # tunnel through the body (rows 16-17) with two locks rising into slots (rows 14-15)
-    for y in (14, 15):
-        patch(rows, 18, y, '#..#')
-    for y in (16, 17):
+    9. Sol crosses it, drops down to the bottom and walks east through the green lever: Luna's
+       door lock F and Sol's doorway J open, and he is stranded behind G. He climbs back up and
+       takes the shaft down to his lift.
+    10. Luna drops down through the hole where Sol's wing has its socket and takes the shaft down.
+        Pump two: she sends him up, he sends her up.
+    11. Sol stands on the pink plate; Luna passes the pink gate K (pink and white are needed at
+        once, which is why the crate holds white) and climbs to the roofs.
+    12. Luna holds the purple plate on the roof: Sol's door lock opens and he walks to his door.
+        She walks to hers."""
+    L = Lv('Eclipse', 90, 'Each wing mirrors the other, even the levers. What you do on your side changes theirs. The two yellow lifts balance each other.')
+    R = [['#'] * 19 for _ in range(28)]          # R[y-1][x-20], the right half (x 20..38)
+
+    def cut(x0, y0, x1, y1, ch='.'):
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                R[y - 1][x - 20] = ch
+
+    # top band (rows 1-6, floor 7): Luna's start, the pink plate, Sol's door behind lock E
+    cut(21, 1, 33, 6); cut(35, 1, 38, 6)        # the top band, walled off from the wing-tip well
+    cut(29, 2, 31, 2, '#'); cut(29, 3, 29, 4, '#'); cut(31, 3, 31, 4, '#'); cut(30, 5, 30, 6, 'E')
+    cut(24, 7, 26, 7); cut(35, 7, 38, 7)        # the drop hole, and the wing-tip well
+    # top corridor (rows 8-9, floor 10): moon pool on the orange bridge, sun pool, yellow plate
+    cut(21, 8, 24, 9); cut(26, 8, 34, 9); cut(35, 8, 38, 11)
+    cut(21, 10, 23, 11)                          # the drop column to the low corridor
+    cut(27, 10, 29, 10, 'M'); cut(27, 11, 29, 11, 'O'); cut(31, 10, 33, 10, 'S')
+    # low corridor (rows 12-13, floor 14): west part with a hole down, the crate room east
+    cut(21, 12, 28, 13); cut(30, 12, 37, 13)
+    cut(27, 14, 28, 14); cut(30, 14, 31, 14); cut(35, 14, 37, 14)   # a hole down at the west part's end
+    # middle band (rows 15-20, floor 21): the tunnel's mouth, the shaft doorway N
+    cut(21, 15, 29, 15); cut(32, 15, 33, 15); cut(21, 16, 33, 20); cut(35, 15, 37, 27)
+    cut(34, 17, 34, 18, 'N'); cut(34, 19, 34, 20)
+    cut(22, 21, 26, 21)                          # the riser's hole
+    # bottom band (rows 22-27, floor 28): riser steps, the lever, gate G, moon pool, the lift
+    cut(22, 22, 34, 27)
+    cut(22, 22, 23, 27, '#')                     # riser step B (stand on row 21), then
+    cut(24, 25, 25, 27, '#')                     # step A (row 24), climbed from the floor under the hole
+    cut(29, 22, 29, 23, '#'); cut(29, 26, 29, 27, 'G')
+    cut(31, 28, 33, 28, 'M'); cut(35, 28, 37, 28, 'Y')
+    rows = mirror_half([''.join(r) for r in R], {'O': 'W', 'G': 'H', 'Y': 'Z', 'E': 'F', 'N': 'J'})
+    # the body's tunnel (rows 19-20) with two locks that sink into slots in the body (rows 21-22)
+    for y in (21, 22):
+        patch(rows, 19, y, '..')
+    for y in (19, 20):
         patch(rows, 19, y, 'QP')
-    # the left wing breaks the mirror: Luna climbs from floor 3 to her low corridor on a step
-    # (Sol needs the lift), there is no socket, and a pink gate guards the white bridge
-    patch(rows, 12, 14, '......'); patch(rows, 10, 12, '.'); patch(rows, 10, 13, '.')
-    patch(rows, 14, 16, '##'); patch(rows, 14, 17, '##')
-    patch(rows, 8, 14, '##')
-    # Sol's floor-3 doorway into his shaft has a floor gate: open until green is set, shut after
-    patch(rows, 5, 16, 'J'); patch(rows, 5, 17, 'J'); patch(rows, 5, 18, '.'); patch(rows, 5, 19, '.')
-    # and Luna's doorway on the right is open until purple is set, shut after, open again once purple is off
-    patch(rows, 34, 16, 'N'); patch(rows, 34, 17, 'N'); patch(rows, 34, 18, '.'); patch(rows, 34, 19, '.')
-    for y in range(2, 7):
-        patch(rows, 8, y, '.....')
-    patch(rows, 10, 2, '###'); patch(rows, 10, 3, '#.#'); patch(rows, 10, 4, '#.#')
-    patch(rows, 11, 5, 'F'); patch(rows, 11, 6, 'F')
-    patch(rows, 8, 6, '#.#'); patch(rows, 9, 7, '.')
-    patch(rows, 9, 8, 'K'); patch(rows, 9, 9, 'K')
+    # the mirror breaks: Sol's wing has a hole where Luna's has the white socket, a pink gate K
+    # sinks into its top corridor before the climb to the roofs, and a plate sits by Luna's lift
+    patch(rows, 8, 14, '..'); patch(rows, 8, 15, '..')
+    patch(rows, 13, 10, '.'); patch(rows, 13, 11, '.')
     art(L, rows, {
-        'G': (0, 0, -2), 'P': (0, 0, -2),      # purple: Luna's floor-2 gate, tunnel lock
-        'H': (1, 0, -2), 'Q': (1, 0, -2),      # green: Sol's floor-2 gate, tunnel lock
-        'O': (2, 0, -1),                       # orange: bridge out of the moon pool (right top)
-        'W': (3, 0, -1),                       # white: bridge out of the sun pool (left top)
-        'K': (4, 0, -2),                       # pink: gate before the white bridge
+        'G': (0, 0, -2), 'P': (0, 0, 2),       # purple: Luna's gate, tunnel lock
+        'H': (1, 0, -2, True), 'Q': (1, 0, 2, True),    # green (lever starts on): Sol's gate, tunnel lock, open while green is off
+        'O': (2, 0, -1),                       # orange: bridge out of the moon pool (right top corridor)
+        'W': (3, 0, -1),                       # white: bridge out of the sun pool (left top corridor)
         'Y': (5, 0, -14),                      # yellow: right wing-tip lift, bottom to low corridor
         'Z': (5, 0, -14, True),                # yellow, counterweight: left lift rests up
         'E': (0, 0, -2),                       # Sol's door lock: open while purple is on
-        'F': (1, 0, -2, True),                 # Luna's door lock: shut while green is on
-        'J': (1, 0, 2, True),                  # Sol's shaft doorway: shut while green is on
-        'N': (0, 0, 2, True),                  # Luna's shaft doorway: shut while purple is on
+        'F': (1, 0, -2),                       # Luna's door lock: open while green is on
+        'J': (1, 0, 2, True),                  # Sol's shaft doorway: shut while green is off
+        'N': (0, 0, 2),                        # Luna's shaft doorway: shut while purple is on
     })
-    L.p(17, 5, 'a').p(21, 5, 'b')
+    L.plat(13, 8, 1, 2, 0, 2, 4)               # K (pink): sinks into the floor while pink is on
+    L.p(18, 6, 'a').p(21, 6, 'b')
     L.p(33, 6, 'A').p(6, 6, 'B')
-    L.plate(12, 27, 0).plate(27, 27, 1)        # purple plate (Sol's), green plate (Luna's)
-    L.lever(30, 22, 1)                         # green lever, Luna's floor 2
-    L.lever(10, 17, 0)                         # purple lever, Sol's floor 3
-    L.lever(8, 9, 2)                           # orange lever, behind Luna's moon pocket (left top)
+    L.plate(9, 27, 0)                          # purple plate, Sol's, by his gate H
+    L.lever(27, 27, 1, on=True)                # green lever, Luna's, drawn pushed: walk west through it
+    L.lever(12, 27, 0)                         # purple lever, Sol's: walk east through it
+    L.lever(9, 9, 2)                           # orange lever, past Luna's moon pocket (left top corridor)
     L.p(33, 13, 'k').plate(30, 14, 3)          # crate and the white socket (right low corridor)
-    L.plate(23, 5, 4)                          # pink plate on Sol's ledge
-    # each wing's far-wall notch, the pillar pockets of Sol's floor 2, the corners past each door
-    for x, y in ((2, 13), (38, 16), (8, 20), (1, 24), (21, 19), (35, 4)):
+    L.plate(23, 6, 4)                          # pink plate, Sol's, on the right roof
+    L.plate(12, 6, 0)                          # purple plate, Luna's, on the left roof
+    L.plate(5, 27, 5).plate(34, 9, 5)          # yellow plates: beside Luna's lift (left bottom), Sol's top corridor (right)
+    for x, y in ((3, 23), (13, 22), (16, 9), (30, 16), (37, 6)):
         L.p(x, y, 's')
-    for x, y in ((3, 7), (38, 24), (10, 20), (16, 23), (27, 12), (4, 4)):
+    for x, y in ((36, 23), (26, 22), (23, 9), (9, 16), (2, 6)):
         L.p(x, y, 'm')
-    L.plate(1, 27, 5).plate(35, 9, 5)         # yellow plates: beside Luna's lift (left bottom), Sol's top corridor (right)
     return L
 
 
