@@ -402,61 +402,57 @@ def twin_towers():
 
 @level(8)
 def dawn_gate():
-    """Chapter exam. An S through five floors from the bottom left to the doors in the top right, with a
-    vault in the middle of the third floor. Each of the chapter's tools appears once.
+    """Chapter exam. An S from the bottom left to the doors in the top right, folded into four bands seven
+    rows apart (the west half one row higher than the east, so the crate can step down on its way east).
+    The fourth floor and the top floor share the top band as low galleries you walk, with one open climb
+    between them. Each of the chapter's tools appears once.
     1. Pool route: the ground floor is cut by a sun tunnel. Sol wades it to P0 (purple) at the far side.
-    2. Held plate made permanent: P0 lifts gate G0 on the narrow ledge over the tunnel. Luna crosses there
-       and walks through lever L0 (purple) beyond it, so G0 stays open. Both walk up the ramp tunnel.
+    2. Held plate made permanent: P0 lifts gate G0 in the low ledge over the tunnel. Luna crosses there and
+       walks through lever L0 (purple) beyond it, so G0 stays open. Both climb the east stair.
     3. Bridge: on the first floor a moon channel blocks Sol. Luna wades it and stands on P1 (green): a bridge
        rises out of the pool and Sol crosses.
-    4. At the floor's dead end, on top of the stair, a lever (orange) unlocks the vault on the next floor.
+    4. At the floor's dead end they climb the west stair, and on top of it a lever (orange) unlocks the vault.
     5. They go through the vault and push the crate out of it, east along the floor to the lift.
-    6. Crate on a plate: Luna steps onto the lift; Sol pushes the crate across it onto the lift's plate (white)
-       against the wall. The crate holds the lift up and carries them both to the fourth floor.
+    6. Crate on a plate: Luna steps onto the lift; Sol pushes the crate across it into the socket beyond,
+       onto the lift's plate (white). The crate holds the lift up and carries them both to the fourth floor.
     7. Sol stands on P3 (pink) at the east end of the fourth floor: gate G3 at the west end opens and Luna
        climbs to the top floor.
-    8. Luna stands on the other pink plate halfway along the top floor: G3 opens again and Sol follows. They
-       walk to the doors together."""
+    8. Luna stands on the other pink plate on the top floor: G3 opens again and Sol follows. They walk to the
+       doors together."""
     L = Lv('Dawn Gate', 60, 'Everything you learned this chapter, once each.')
-    L.r(1, 1, 38, 28)
-    # top floor (row 5, raised to row 4 in the middle); hanging rocks
-    L.clear(1, 1, 38, 4).r(14, 4, 24, 4).r(9, 1, 10, 2).r(29, 1, 31, 2)
-    # fourth floor (row 10, raised to row 9 in the middle)
-    L.clear(1, 6, 35, 9).r(18, 9, 26, 9)
-    # third floor (row 15) with the vault (floor row 14) in the middle; a hanging rock in the west part
-    L.clear(1, 11, 37, 14).r(8, 11, 10, 12)
-    L.r(15, 14, 23, 14).r(24, 11, 24, 11)                  # vault floor and the lintel of its east opening
-    L.r(15, 9, 17, 11).clear(16, 10, 16, 11).cells(16, 12, 16, 13, 2)   # vault door G_v and its slot
-    L.p(20, 13, 'k')
-    L.cells(33, 15, 35, 15, 3).mv(3, 0, -5).clear(33, 10, 35, 10)   # the lift and its shaft
-    L.plate(37, 14, 3)
-    # first floor (row 20; raised to row 19 west of the gate bump)
-    L.clear(1, 16, 38, 19).r(12, 19, 17, 19)
-    L.r(22, 16, 25, 17).pool(22, 20, 3, 'M')               # moon channel under a low roof
-    L.cells(22, 21, 24, 21, 1).mv(1, 0, -1)                # its bridge, hidden in the stone below
-    L.plate(14, 18, 1)
-    stairs(L, 1, 20, 'L')                                  # up to the third floor at the west end
-    L.lever(1, 15, 2)                                      # unlocks the vault
-    # ground floor (row 27; the east part raised to row 26): sun tunnel under a ledge, G0 in the ledge
-    L.clear(1, 21, 20, 26).clear(21, 22, 28, 26)
-    L.r(22, 26, 28, 26)
-    L.r(6, 26, 7, 26)                                      # a step up to the ledge
-    L.r(10, 24, 20, 24).pool(11, 27, 7, 'S')
-    L.r(18, 18, 20, 21).clear(19, 20, 19, 21).cells(19, 22, 19, 23, 0)
-    L.lever(26, 25, 0).plate(28, 25, 0)
-    L.rampR(29, 25, 6)                                     # ramp tunnel up to the first floor's east end
-    for i in range(6):
-        L.clear(29 + i, 22 - i, 29 + i, 24 - i)
-    L.r(35, 20, 38, 26).clear(31, 20, 33, 21)
-    # fourth floor gate G3 at the west end, held by P3 (east end) or P4 (top floor)
-    stairs(L, 1, 10, 'L')
-    L.gate(12, 8, 9, '~', 4, 6).plate(30, 9, 4).plate(20, 3, 4)
-    L.r(36, 6, 38, 10)
-    L.mv(0, 0, -2).mv(2, 0, -2)
-    L.p(37, 4, 'A').p(38, 4, 'B')
-    L.p(2, 26, 'a').p(3, 26, 'b')
-    L.p(38, 17, 's').p(33, 2, 's').p(2, 2, 's')       # first floor's east dead end; under the hanging rock; top-left corner
-    L.p(1, 22, 'm').p(19, 11, 'm').p(12, 2, 'm')      # start corner; over the crate in the vault; a jump on the top floor
+    # ---- ground (west row 28, east on the bottom wall): the sun tunnel under a low ledge
+    L.r(1, 28, 19, 28).pool(10, 28, 7, 'S')
+    L.r(9, 25, 19, 25)                                     # the ledge over the tunnel
+    L.cells(17, 23, 17, 24, 0).clear(17, 21, 17, 22)       # G0 in the ledge, its slot in the floor above
+    L.lever(19, 24, 0)                                     # L0
+    L.p(2, 27, 'a').p(3, 27, 'b')
+    L.plate(22, 28, 0)                                     # P0
+    L.r(26, 24, 29, 25).cells(26, 23, 29, 23, 1)           # stone under the moon channel, its bridge
+    L.r(30, 23, 32, 25).r(38, 16, 38, 28)
+    L.r(34, 26, 35, 28).r(36, 23, 37, 28)                  # the east stair
+    # ---- first floor (west row 21, east row 22): the moon channel, the west stair
+    L.r(1, 21, 16, 21).r(18, 21, 19, 21).r(10, 22, 16, 22).r(18, 22, 19, 22)
+    step(L, 20, 21, '\\')
+    L.r(21, 22, 33, 22).pool(26, 22, 4, 'M').r(26, 16, 29, 19)   # the moon channel under a low roof
+    L.plate(23, 21, 1)                                     # P1
+    L.r(3, 18, 4, 20).r(1, 15, 2, 20)                      # the west stair
+    # ---- vault floor (west row 14, east row 15): the vault, the lift
+    L.r(5, 14, 19, 14).r(20, 15, 32, 15).r(37, 16, 38, 16)
+    L.lever(6, 13, 2)                                      # unlocks the vault
+    L.gate(16, 12, 13, '_', 2, 10).r(15, 8, 17, 8)         # the vault's door, on its far side
+    L.p(12, 13, 'k')
+    L.cells(33, 15, 36, 15, 3).mv(3, 0, -7)                # the lift
+    L.plate(37, 15, 3).plate(38, 15, 3)                    # its plate, in a socket against the wall
+    # ---- the top band: fourth floor (west row 7, east row 8) under the top floor (west row 3, east row 4)
+    L.r(1, 7, 24, 7).r(26, 8, 32, 8).set(25, 7, '\\')
+    L.plate(30, 7, 4)                                      # P3
+    L.cells(8, 5, 8, 6, 4).clear(8, 3, 8, 4).set(7, 4, '#'); L.set(9, 4, '#')   # G3
+    L.r(5, 3, 19, 3).r(21, 4, 38, 4); step(L, 20, 3, '\\')
+    L.plate(24, 3, 4)                                      # the other pink plate
+    L.p(35, 3, 'A').p(37, 3, 'B')
+    L.mv(0, 0, -2).mv(1, 0, -1).mv(2, 0, -2).mv(4, 0, -2)
+    L.p(37, 19, 's').p(2, 2, 's').p(26, 11, 's')
+    L.p(1, 25, 'm').p(11, 10, 'm').p(30, 2, 'm')
     return L
 
 

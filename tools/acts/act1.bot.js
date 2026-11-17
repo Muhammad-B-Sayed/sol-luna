@@ -112,17 +112,20 @@ export const SCRIPTS = {
   ],
   // Dawn Gate: the chapter's tools once each, up an S of five floors.
   8: () => [
-    press(SOL, 28, 25),          // pool route: Sol wades the sun tunnel and holds P0
-    grab(LUNA, 1, 22), flip(LUNA, 26, 25),   // Luna crosses the ledge through G0, L0 keeps it open
-    goto(SOL, 28, 19), grab(SOL, 38, 17),           // up the ramp tunnel
-    goto(LUNA, 27, 19), press(LUNA, 14, 18),        // bridge: Luna wades the moon channel, holds P1
-    goto(SOL, 9, 19), flip(SOL, 1, 15),             // Sol crosses, climbs, unlocks the vault
-    goto(SOL, 18, 13),            // into the vault, behind the crate
-    goto(LUNA, 9, 19), grab(LUNA, 19, 11), goto(LUNA, 34, 14),   // Luna follows and steps onto the lift
-    pushTo(SOL, 0, 37, { y: 14 }),                  // crate on a plate: the lift carries them both up
-    press(SOL, 30, 9),            // Sol holds P3: G3 opens
-    grab(LUNA, 12, 2), press(LUNA, 20, 3),   // Luna climbs, holds P4: G3 opens again
-    grab(SOL, 2, 2), grab(SOL, 33, 2), door(SOL), door(LUNA), win(),
+    press(SOL, 22, 28),                             // pool route: Sol wades the sun tunnel and holds P0
+    grab(LUNA, 1, 25), flip(LUNA, 19, 24),          // Luna crosses the ledge through G0, L0 keeps it open
+    grab(SOL, 37, 19), goto(SOL, 33, 21),           // up the east stair
+    goto(LUNA, 32, 21), press(LUNA, 23, 21),        // bridge: Luna wades the moon channel, holds P1
+    goto(SOL, 21, 21), flip(SOL, 6, 13),            // Sol crosses, climbs, unlocks the vault
+    goto(SOL, 10, 13), pushTo(SOL, 0, 29, { y: 14 }),   // out of the vault, east along the floor
+    grab(LUNA, 11, 10), goto(LUNA, 24, 14), ...leap(LUNA, 24, 27.4, 32),   // Luna follows and jumps the crate
+    goto(LUNA, 34, 14), grab(SOL, 26, 11),          // and steps onto the lift
+    seek(SOL, 'sol pushes the crate into the socket and stays on the lift', (S, p) => S.b[0].gr && cx(S.b[0]) > 37 && bot(S.b[0]) > 15.5 && cx(p) > 33.2 && cx(p) < 36.8 && bot(p) < 15.2, { key: 'socket' }),   // crate on a plate: the lift carries them both up
+    waitPlat(34, 15), mv(SOL, 31.6),
+    press(SOL, 30, 7),                              // Sol holds P3: G3 opens
+    goto(LUNA, 6, 6), goto(LUNA, 6, 2), press(LUNA, 24, 3),   // Luna goes through, climbs, holds the other plate: G3 opens again
+    goto(SOL, 6, 6), grab(SOL, 2, 2), door(SOL),
+    grab(LUNA, 30, 2), door(LUNA), win(),
   ],
   // Counterweights: one colour sends one lift up and the other down; the crate is the last weight.
   9: () => [
