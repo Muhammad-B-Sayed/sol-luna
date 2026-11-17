@@ -227,10 +227,14 @@ console.log(`\n4. Settling (${N} random throws from random spots with random aim
     const tiles = COURT.tiles.slice();
     const wallCol = who === SOL ? 20 : 19;   // the veil as a wall, so the search stays on its side
     for (let y = 0; y < 30; y++) tiles[y * COLS + wallCol] = T_SOLID;
+    // plus the middle of every surface, so the check covers platforms no random ball landed on
+    const mids = SURF[who].map(sf => [sf.lo + (sf.hi - sf.lo) / 2 + W / 2, sf.y + H - DODGE.r]);
     const L = { ...COURT, tiles, doors: [{ cx: -999, bottom: -999 }, { cx: -999, bottom: -999 }],
-      gems: spots.map(([x, y]) => ({ x, y, kind: who })) };
+      gems: spots.concat(mids).map(([x, y]) => ({ x, y, kind: who })) };
     const r = explore(L, who, { help: 'none', limit: 200000 });
-    ok(r.gems.size === spots.length, `${who ? 'Luna' : 'Sol'} can reach every spot a ball stopped on their side (${r.gems.size}/${spots.length}, ${r.states} states)`);
+    const got = [...r.gems], restGot = got.filter(i => i < spots.length).length, midGot = got.length - restGot;
+    ok(restGot === spots.length, `${who ? 'Luna' : 'Sol'} can reach every spot a ball stopped on their side (${restGot}/${spots.length}, ${r.states} states)`);
+    ok(midGot === mids.length, `${who ? 'Luna' : 'Sol'} can stand on every surface of their half (${midGot}/${mids.length})`);
   }
 }
 

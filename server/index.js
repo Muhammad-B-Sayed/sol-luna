@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, createState, step, PH_WON } from '../shared/sim.js';
+import { COURT, createDodge, stepDodge } from '../shared/dodge.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -76,13 +77,14 @@ class Room {
     this.code = code;
     this.clients = [];       // { ws, char, name }
     this.level = -1;
+    this.mode = 'coop';      // 'coop' (a level index) or a versus mode such as 'dodge'
     this.L = null; this.S = null;
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
     this.lastActive = Date.now();
   }
   get host() { return this.clients[0]; }
   info() {
-    return { code: this.code, level: this.level, players: this.clients.map(c => ({ char: c.char, name: c.name })) };
+    return { code: this.code, level: this.level, mode: this.mode, players: this.clients.map(c => ({ char: c.char, name: c.name })) };
   }
   broadcastRoom() {
     this.clients.forEach((c, i) => send(c.ws, { t: 'room', ...this.info(), you: c.char, host: i === 0 }));
@@ -91,12 +93,12 @@ class Room {
     const s = JSON.stringify(msg);
     for (const c of this.clients) out(c.ws, s);
   }
-  start(level) {
-    this.level = level;
-    this.L = BUILT[level];
-    this.S = createState(this.L);
+  start(level, mode = 'coop') {
+    this.level = level; this.mode = mode;
+    if (mode === 'dodge') { this.L = COURT; this.S = createDodge((Math.random() * 2 ** 31) | 0); }   // seeded first serve
+    else { this.L = BUILT[level]; this.S = createState(this.L); }
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
-    this.broadcast({ t: 'start', level, st: this.S });
+    this.broadcast({ t: 'start', level, mode, st: this.S });
   }
   stop() {
     this.level = -1; this.L = null; this.S = null;
@@ -112,7 +114,7 @@ class Room {
         this.cur[ch] = b; this.ack[ch] = s; this.starve[ch] = 0;
       } else if (++this.starve[ch] > 10) this.cur[ch] = 0; // no input arriving: let go of the keys
     }
-    step(this.L, this.S, this.cur);
+    (this.L.dodge ? stepDodge : step)(this.L, this.S, this.cur);
     if (this.S.tick % 2 === 0) {
       this.broadcast({ t: 's', ack: this.ack, inp: this.cur, st: this.S });
     }
@@ -140,7 +142,7 @@ function onMessage(ws, data) {
         if (!room || !room.S) return;
         const me = room.clients.find(c => c.ws === ws);
         if (!me) return;
-        room.q[me.char].push([m.s | 0, m.b & 7]);
+        room.q[me.char].push([m.s | 0, m.b & 15]);
         return;
       }
       case 'ping': send(ws, { t: 'pong', c: m.c }); return;
@@ -164,7 +166,7 @@ function onMessage(ws, data) {
         r.clients.push({ ws, char: 1 - taken, name: String(m.name || 'Player').slice(0, 16) });
         ws.room = r;
         r.broadcastRoom();
-        if (r.S) send(ws, { t: 'start', level: r.level, st: r.S });
+        if (r.S) send(ws, { t: 'start', level: r.level, mode: r.mode, st: r.S });
         return;
       }
       case 'swap': {
@@ -176,11 +178,16 @@ function onMessage(ws, data) {
         if (want === me.char) return;
         for (const c of room.clients) c.char = 1 - c.char;
         room.broadcastRoom();
-        if (room.S) room.start(room.level);   // mid-level: restart with the new roles
+        if (room.S) room.start(room.level, room.mode);   // mid-level: restart with the new roles
         return;
       }
       case 'start': {
         if (!room) return;
+        if (m.mode === 'dodge') {
+          if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
+          room.start(-1, 'dodge');
+          return;
+        }
         const lv = m.level | 0;
         if (lv < 0 || lv >= BUILT.length) return;
         if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
@@ -189,7 +196,7 @@ function onMessage(ws, data) {
       }
       case 'restart': {
         if (!room || !room.S) return;
-        room.start(room.level);
+        room.start(room.level, room.mode);
         return;
       }
       case 'menu': {

@@ -26,6 +26,10 @@
       <p class="sub">Temple of Twilight</p>
       <div class="stack">
         <button id="btnLocal" class="primary">Play together · same keyboard</button>
+        <div class="modes" id="menuModes">
+          <span class="modes-label">Versus · same keyboard</span>
+          <button id="btnDodge">Dodgeball</button>
+        </div>
         <button id="btnHost">Host an online game</button>
         <form id="joinForm" class="join">
           <input id="joinCode" maxlength="5" placeholder="ROOM CODE" autocomplete="off" spellcheck="false" aria-label="Room code">
@@ -53,6 +57,7 @@
           <li><span class="sw shade"></span> Shade pools swallow anyone.</li>
           <li>Pressure plates work while someone (or a crate) stands on them. Levers stay where you push them.</li>
           <li>Collect your gems, then both stand at your own doors to finish.</li>
+          <li><b>Dodgeball</b> (versus): hold <kbd>↓</kbd> (Sol) or <kbd>S</kbd> (Luna) to aim, release to throw. A tap throws straight; holding swings the aim up and down. Hit the other side before the ball touches the floor to score, and jump or hide to dodge. A missed ball belongs to whoever's side it stops on; hold it over 6 seconds and it goes to the other side. First to 5 hits wins.</li>
           <li><kbd>Esc</kbd> pause · <kbd>R</kbd> restart</li>
         </ul>
       </div>
@@ -84,6 +89,10 @@
       <p id="lobbyStatus" class="muted"></p>
       <div class="stack">
         <button id="lobbyPick" class="primary">Choose level</button>
+        <div class="modes" id="lobbyModes">
+          <span class="modes-label">Versus</span>
+          <button id="lobbyDodge">Dodgeball</button>
+        </div>
         <div class="row">
           <button id="lobbySwap" class="ghost">Swap characters</button>
           <button id="lobbyLeave" class="ghost">Leave</button>
@@ -124,8 +133,19 @@
     </div>
   </section>
 
+  <section class="screen" id="dodgeOver">
+    <div class="card">
+      <h2 id="dgWinner"></h2>
+      <div class="dg-score"><b id="dgSol" class="solc"></b><i>–</i><b id="dgLuna" class="lunac"></b></div>
+      <div class="stack">
+        <button id="dgRematch" class="primary">Rematch</button>
+        <button id="dgBack" class="ghost">Back to title</button>
+      </div>
+    </div>
+  </section>
+
   <div id="touch" aria-hidden="true">
-    <button id="tLeft">◀</button><button id="tRight">▶</button><button id="tJump">▲</button>
+    <button id="tLeft">◀</button><button id="tRight">▶</button><button id="tAct">●</button><button id="tJump">▲</button>
   </div>
   <div id="chat" hidden>
     <button id="chatToggle" type="button" aria-label="Open chat" aria-expanded="false" title="Chat (Enter)">

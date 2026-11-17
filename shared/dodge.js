@@ -49,13 +49,15 @@ export const B_HELD = 0, B_LIVE = 1, B_DEAD = 2, B_REST = 3;
 
 // ---------------------------------------------------------------------------
 // Court: one screen, mirrored halves. Thin platforms 3 tiles apart (the jump is 4.1 tiles),
-// so height matters without boxing anyone in. The upper third is open air for arcs and banks.
+// so height matters without boxing anyone in. Five tiers climb to a perch at mid-height; the
+// top of the court is open air for lobs and ceiling banks.
 
 const HALF = [ // [row, firstCol, lastCol] on Sol's half (cols 1..19); Luna's is mirrored
   [25, 7, 10],
   [22, 2, 5], [22, 13, 16],
   [19, 8, 11],
   [16, 2, 4], [16, 15, 17],
+  [13, 8, 11],     // the high perch: throw down from the top of the court
 ];
 
 function courtMap() {
