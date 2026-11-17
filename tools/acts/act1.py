@@ -247,13 +247,14 @@ def the_long_way_round():
     """A ring of corridors round a solid core. The players start in a split chamber at the foot of the
     core, each standing beside the other's door. The west exit is a sun channel (only Sol), the east exit a
     moon channel (only Luna), so Sol must go round clockwise and Luna anticlockwise to reach their doors.
-    Bridges rise out of pools while their plate is held.
+    Each stairwell is a tall shaft climbed by jumps of 3 and 4 tiles between ledges on its two walls,
+    seven rows apart on each wall. The east half of the room sits one row higher than the west. Bridges rise out of pools while their plate is held.
     1. Sol wades west and climbs the left stairwell; Luna wades east and climbs the right one.
-    2. Halfway up, both duck into vaults cut into the core. Luna stands on P4 (pink): Sol's vault gate opens
-       and he takes his gem. Sol stands on P5 (yellow) by his gate: Luna's vault opens and she takes hers,
-       walking back out before he lets go.
-    3. At the top Luna stands on P1 (purple): a bridge rises out of the moon pool in the top-left channel and
-       Sol crosses to the middle of the roof.
+    2. Halfway up, both duck into corridors that lead to vaults in the core. Luna stands on P4 (pink): Sol's
+       vault gate opens and he takes his gem. Sol stands on P5 (yellow): Luna's vault opens and she takes
+       hers, walking back out before he lets go.
+    3. At the top Luna stands on P1 (purple): a bridge rises out of the moon pool in the top-left channel
+       and Sol crosses to the middle of the roof.
     4. Sol stands on P2 (green) there: a bridge rises out of the sun pool in the top-right channel and Luna
        crosses. They pass and each wades on through the other's channel and down the far stairwell.
     4b. Halfway down they meet the vaults again from the other side and swap the same favour the other way
@@ -263,40 +264,34 @@ def the_long_way_round():
     6. Sol stands on P6 (white) there: a bridge rises over the sun channel and Luna walks into the west half
        to her door."""
     L = Lv('The Long Way Round', 50, 'Raised bridges cover a pool while their plate is held. Your pools mark your way round.')
-    T = (
-        ('#############', '############', '#############'),   # 1
-        ('.............', '#####..#####', '.............'),   # 2
-        ('...m.........', '#####..#####', '.........s...'),   # 3
-        ('.............', '#####s.#####', '.............'),   # 4
-        ('.............', '#####.m#####', '.............'),   # 5
-        ('.............', '............', '...........1.'),   # 6
-        ('########.....', '.....2......', '.....########'),   # 7
-        ('..........###', '#MMM####SSS#', '###..........'),   # 8
-        ('..........###', '#===####---#', '###..........'),   # 9
-        ('........#####', '############', '#####........'),   # 10
-        ('........#####', '############', '#####........'),   # 11
-        ('.....########', '############', '########.....'),   # 12
-        ('###..........', '.#.#.##.#.#.', '..........###'),   # 13
-        ('###..........', '.#.#.##.#.#.', '..........###'),   # 14
-        ('#####........', '..~..##..:..', '........#####'),   # 15
-        ('#####........', '.6~ms##ms:5.', '........#####'),   # 16
-        ('########.....', '############', '.....########'),   # 17
-        ('..........###', '############', '###..........'),   # 18
-        ('..........###', '############', '###..........'),   # 19
-        ('........#####', '############', '#####........'),   # 20
-        ('........#####', '############', '#####........'),   # 21
-        ('.....########', '############', '########.....'),   # 22
-        ('###.....#####', '#....##....#', '#####.....###'),   # 23
-        ('###.....#####', '#....##....#', '#####.....###'),   # 24
-        ('#####........', '.....##.....', '........#####'),   # 25
-        ('#####.3......', '.a..B##A..4b', '........#####'),   # 26
-        ('#########SSS#', '############', '#MMM#########'),   # 27
-        ('#########+++#', '############', '#___#########'),   # 28
-    )
-    art(L, T)
+    # ---- the core (x 10-29). The east half sits one row higher than the west.
+    L.r(10, 8, 29, 26).r(13, 28, 31, 28).r(19, 27, 26, 27)
+    L.clear(10, 9, 18, 14)                                 # west corridor (x 10-11) and Sol's vault (x 13-18)
+    L.gate(12, 13, 14, '~', 4, 11).r(11, 9, 13, 9)         # Sol's vault gate (pink)
+    L.clear(22, 8, 29, 13)                                 # Luna's vault (x 22-26) and the east corridor (x 28-29)
+    L.gate(27, 12, 13, ':', 5, 10).r(26, 8, 28, 8)         # Luna's vault gate (yellow)
+    L.plate(10, 14, 5).plate(29, 13, 4)                    # P5 in Sol's corridor, P4 in Luna's
+    L.r(7, 8, 9, 8).pool(14, 8, 4, 'M').r(14, 1, 17, 5).cells(14, 9, 17, 9, 0)     # west roof, moon channel, bridge
+    L.r(21, 7, 32, 7).pool(22, 7, 4, 'S').r(22, 1, 25, 4).cells(22, 8, 25, 8, 1)   # east roof, sun channel, bridge
+    L.set(21, 7, '.')                                      # the middle of the roof (x 18-21) is on row 8
+    L.plate(19, 7, 1).plate(29, 6, 0)                      # P2 in the middle of the roof, P1 on the east roof
+    L.clear(13, 21, 18, 26).r(13, 27, 18, 27)              # west half of the chamber
+    L.clear(10, 25, 12, 26).pool(10, 27, 3, 'S').cells(10, 28, 12, 28, 3)   # west exit: sun channel, bridge
+    L.clear(21, 20, 26, 25)                                # east half of the chamber
+    L.clear(27, 24, 29, 25).pool(27, 26, 3, 'M').cells(27, 27, 29, 27, 2)   # east exit: moon channel, bridge
+    L.p(15, 26, 'a').p(18, 26, 'B').p(21, 25, 'A').p(25, 25, 'b')
+    L.plate(23, 25, 3)                                     # P6
+    # ---- the stairwells: ledges on the outer wall and the inner wall, seven rows apart on each
+    L.r(1, 28, 7, 28).r(9, 27, 9, 28); step(L, 8, 27, '/')                  # west floor
+    L.r(1, 25, 3, 27).r(7, 22, 9, 22).r(1, 18, 3, 18).r(7, 15, 9, 15).r(1, 11, 3, 11)
+    L.r(32, 27, 38, 28).r(30, 26, 30, 28); step(L, 31, 26, '\\')             # east floor
+    L.r(36, 24, 38, 26).r(30, 21, 32, 21).r(36, 17, 38, 17).r(30, 14, 32, 14).r(36, 10, 38, 10)
+    L.plate(5, 27, 2)                                      # P3, at the bottom left
     for g in range(4):
         L.mv(g, 0, -1)               # bridges rise one tile out of the stone under their pool
-    L.mv(4, 0, -2).mv(5, 0, -2)      # the two vault gates in the core
+    L.mv(4, 0, -2).mv(5, 0, -2)      # the two vault gates
+    L.p(2, 6, 'm').p(37, 5, 's').p(19, 3, 's').p(20, 4, 'm')
+    L.p(16, 14, 'm').p(17, 14, 's').p(23, 13, 'm').p(24, 13, 's')
     return L
 
 

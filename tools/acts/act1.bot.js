@@ -54,19 +54,19 @@ export const SCRIPTS = {
   ],
   // The Long Way Round: a ring; Sol clockwise, Luna anticlockwise; bridges rise out of pools.
   5: () => [
-    goto(SOL, 14, 16),                       // Sol wades west, climbs to his vault
-    press(LUNA, 24, 16),                    // Luna climbs to hers and holds P4: Sol's vault opens
-    grab(SOL, 18, 16), press(SOL, 15, 16),                      // Sol takes his gem, holds P5: Luna's vault opens
-    grab(LUNA, 21, 16), goto(LUNA, 25, 16),         // she walks back out while Sol still holds P5
+    goto(SOL, 10, 14),                              // Sol wades west, climbs to his vault corridor
+    press(LUNA, 29, 13),                            // Luna climbs to hers and holds P4: Sol's vault opens
+    grab(SOL, 17, 14), press(SOL, 10, 14),          // Sol takes his gem, holds P5: Luna's vault opens
+    grab(LUNA, 23, 13), goto(LUNA, 30, 13),         // she walks back out while Sol still holds P5
     goto(SOL, 13, 7),
-    press(LUNA, 37, 6),                             // Luna holds P1: bridge over the moon pool
-    grab(SOL, 19, 4), press(SOL, 19, 7),                        // Sol crosses, holds P2: bridge over the sun pool
-    grab(LUNA, 20, 5), goto(LUNA, 12, 7), grab(LUNA, 4, 3), goto(LUNA, 14, 16),   // Luna crosses, takes the far corner gem, goes down the left
-    goto(SOL, 27, 7), grab(SOL, 35, 3), press(SOL, 24, 16),                       // Sol goes down the right, holds P4
-    grab(LUNA, 17, 16), press(LUNA, 15, 16),                                      // Luna's second gem; she holds P5
-    grab(SOL, 22, 16), goto(SOL, 25, 16),
-    press(LUNA, 7, 26),                                                           // Luna holds P3 at the bottom left
-    goto(SOL, 33, 26), press(SOL, 24, 26),                                        // Sol crosses the moon channel, holds P6
+    press(LUNA, 29, 6),                             // Luna holds P1: bridge over the moon pool
+    grab(SOL, 19, 3), press(SOL, 19, 7),            // Sol crosses, holds P2: bridge over the sun pool
+    grab(LUNA, 20, 4), goto(LUNA, 12, 7), grab(LUNA, 2, 6), goto(LUNA, 10, 14),   // Luna crosses, takes the far corner gem, goes down the left
+    mv(SOL, 24), goto(SOL, 27, 6), grab(SOL, 37, 5), press(SOL, 29, 13),       // Sol wades east, goes down the right, holds P4
+    grab(LUNA, 16, 14), press(LUNA, 10, 14),                                     // Luna's second gem; she holds P5
+    grab(SOL, 24, 13), goto(SOL, 30, 13),
+    press(LUNA, 5, 27),                                                          // Luna holds P3 at the bottom left
+    goto(SOL, 24, 25), press(SOL, 23, 25),                                       // Sol crosses the moon channel, holds P6
     door(LUNA), door(SOL), win(),
   ],
   // Crate Cellar: bring the crate down the cascade, then it is the step and the weight at the chimney foot.
