@@ -1,6 +1,6 @@
 // Bot scripts for this act file. One per level: a function that returns the phases.
 // Read the top of tools/botlib.js for the builders.
-import { SOL, LUNA, goto, grab, flip, press, door, pushTo, seek, wait, waitPlat, platAt, win, mv, push, hop, hopTo, jumpWhen, leap, both, cx, bot, L_, R_, U_ } from '../botlib.js';
+import { SOL, LUNA, goto, grab, flip, press, door, pushTo, seek, wait, waitPlat, platAt, win, mv, push, hop, hopTo, jumpWhen, leap, both, toward, cx, bot, L_, R_, U_ } from '../botlib.js';
 
 // Wrap a search phase so it only succeeds while the player stands inside cells x0..x1, y0..y1.
 const within = (ph, x0, y0, x1, y1) => ({
@@ -107,76 +107,85 @@ export const SCRIPTS = {
 
   // Twilight Spiral
   30: () => [
-    // the outer ring: three-stage lift pumps driven from the far side
+    // the outer bottom corridor: each holds the other's bridge
     press(LUNA, 27, 27),                             // PGb: Sol's bridge over the moon water
-    grab(SOL, 3, 24), press(SOL, 4, 27),             // over it; PGw: Luna's bridge over the sun water
-    grab(LUNA, 36, 24), goto(LUNA, 35, 27, { tol: 0.1 }),
-    goto(SOL, 1, 27, { tol: 0.1 }),                  // Sol onto L1
-    press(LUNA, 34, 27), waitPlat(1, 28),   // PLs: L1 up
-    goto(SOL, 3, 21, { tol: 0.1 }),                  // onto the first step
-    goto(LUNA, 33, 27), waitPlat(4, 22, false),      // she lets go: L2 comes down
-    goto(SOL, 5, 21, { tol: 0.1 }),
-    press(LUNA, 34, 27), waitPlat(4, 22),            // PLs again: L2 up
-    goto(SOL, 3, 13, { tol: 0.1 }),                  // onto the second step
-    goto(LUNA, 33, 27), waitPlat(1, 14, false),      // she lets go: L3 comes down
-    goto(SOL, 1, 13, { tol: 0.1 }),
-    press(LUNA, 34, 27), waitPlat(1, 14),            // PLs a third time: L3 to the top
-    grab(SOL, 1, 3), goto(SOL, 7, 5),
-    goto(LUNA, 38, 27, { tol: 0.1 }),                // Luna onto R1
-    press(SOL, 8, 5), waitPlat(38, 28),              // PRl: R1 up
-    goto(LUNA, 36, 21, { tol: 0.1 }),
-    goto(SOL, 7, 5, { tol: 0.1 }), waitPlat(34, 22, false),
-    goto(LUNA, 34, 21, { tol: 0.1 }),
-    press(SOL, 8, 5), waitPlat(34, 22),              // PRl again: R2 up
-    goto(LUNA, 36, 13, { tol: 0.1 }),
-    goto(SOL, 7, 5, { tol: 0.1 }), waitPlat(37, 14, false),
-    goto(LUNA, 38, 13, { tol: 0.1 }),
-    press(SOL, 8, 5), waitPlat(37, 14),              // PRl a third time: R3 to the top
-    grab(LUNA, 38, 3),
-    // crossing one
-    press(LUNA, 21, 5),                              // P1: G1 opens
-    flip(SOL, 27, 5),                                // Sol through, and through L1: G1 stays open
-    press(LUNA, 12, 5),                              // PGr: his bridge over the moon water rises
-    goto(SOL, 32, 4),                                // he crosses and holds PGe: hers rises
-    within(goto(LUNA, 7, 5), 6, 2, 8, 5),
-    // down the far sides into the inner bottom
-    grab(LUNA, 8, 18), press(LUNA, 9, 21),           // Luna west, down the left column, in; PIw
-    goto(SOL, 33, 21), grab(SOL, 29, 18),            // Sol east, down the right column, in
-    press(SOL, 22, 21),                              // over the moon water on her bridge; PIe
-    goto(LUNA, 18, 21),                              // she crosses the sun water on his
-    // crossing two
-    press(SOL, 24, 21),                              // P2: G2 opens
-    goto(LUNA, 22, 21),
-    press(LUNA, 24, 21),
-    goto(SOL, 15, 21),
-    // the inner lifts
-    press(LUNA, 28, 21), waitPlat(12, 12),           // PIL: IL comes down
-    goto(SOL, 12, 21),
-    goto(LUNA, 29, 21), waitPlat(12, 12, false),     // she lets go: up he goes
-    grab(SOL, 12, 8),
-    press(SOL, 14, 11), waitPlat(31, 12),            // PIR: IR comes down
-    goto(LUNA, 31, 21),
-    goto(SOL, 17, 11), waitPlat(31, 12, false),      // he lets go: up she goes
-    grab(LUNA, 29, 8), goto(LUNA, 26, 11),
-    // crossing three: the airlock
-    goto(SOL, 22, 11),
-    press(LUNA, 28, 11),                             // P3
-    goto(SOL, 26, 11),                               // he runs through as she steps on
-    goto(LUNA, 25, 11), waitPlat(24, 6, false),     // she steps off; the slow gate rises again
-    press(SOL, 28, 11),
-    goto(LUNA, 19, 9),                               // she runs through west
-    grab(LUNA, 9, 10), flip(LUNA, 7, 11),            // the moon bay: the hatches open
-    // into the sanctum
-    goto(SOL, 25, 16), grab(SOL, 27, 13),            // Sol drops in through his hatch
-    goto(LUNA, 15, 11),
-    press(SOL, 22, 16),                              // PGc: her hatch opens
-    grab(LUNA, 15, 13), goto(LUNA, 17, 16),
-    goto(SOL, 25, 16),
-    // crossing four: the airlock
-    press(SOL, 24, 16),
-    goto(LUNA, 21, 16),
-    goto(SOL, 20, 16, { tol: 0.4 }), waitPlat(19, 11, false),
-    press(LUNA, 24, 16),
+    mv(SOL, 5.5), grab(SOL, 3, 24), press(SOL, 4, 27),   // PGw: Luna's bridge over the sun water
+    mv(LUNA, 35.5), grab(LUNA, 36, 24),
+    // Sol pumps up the left column on three lifts, Luna holding white PLs
+    mv(SOL, 2.0, 0.1), mv(LUNA, 33.2),
+    press(LUNA, 34, 27), waitPlat(1, 28),            // L1 up
+    mv(SOL, 3.5, 0.1),
+    mv(LUNA, 33.2), waitPlat(4, 21, false),          // she lets go: L1 down, L2 back
+    mv(SOL, 5.0, 0.1),
+    press(LUNA, 34, 27), waitPlat(4, 21),            // L2 up
+    mv(SOL, 3.5, 0.1),
+    mv(LUNA, 33.2), waitPlat(1, 14, false),
+    mv(SOL, 2.0, 0.1),
+    press(LUNA, 34, 27), waitPlat(1, 14),            // L3 up into the top corridor
+    grab(SOL, 1, 3), mv(SOL, 4.0), mv(LUNA, 33.2), waitPlat(37, 28, false),
+    // Luna pumps up the right column, Sol holding white PRl
+    mv(LUNA, 38.0, 0.1),
+    press(SOL, 5, 6), waitPlat(37, 28),
+    mv(LUNA, 36.5, 0.1),
+    mv(SOL, 4.0), waitPlat(34, 21, false),
+    mv(LUNA, 35.0, 0.1),
+    press(SOL, 5, 6), waitPlat(34, 21),
+    mv(LUNA, 36.5, 0.1),
+    mv(SOL, 4.0), waitPlat(37, 14, false),
+    mv(LUNA, 38.0, 0.1),
+    press(SOL, 5, 6), waitPlat(37, 14),
+    grab(LUNA, 38, 3), mv(LUNA, 35.5),
+    mv(SOL, 4.0),
+    // west along the top: she wades her moon water under the low roof
+    mv(LUNA, 26.5), mv(LUNA, 19.5),
+    // crossing one: Luna holds orange P1, Sol through G1 and right through the orange lever
+    press(LUNA, 19, 6),
+    mv(SOL, 13.5), flip(SOL, 28, 6),
+    // crossing one and a half: each holds the other's bridge
+    mv(LUNA, 12.5), press(LUNA, 12, 6),
+    mv(SOL, 33.5), press(SOL, 33, 5),
+    mv(LUNA, 4.5),
+    // down the far columns into the inner bottom corridor
+    goto(LUNA, 4, 20), mv(LUNA, 7.5), grab(LUNA, 8, 19), press(LUNA, 9, 20),
+    mv(SOL, 36.5), goto(SOL, 36, 20), mv(SOL, 32.5), grab(SOL, 32, 19),
+    // crossing two: bridges, then the purple gate both ways
+    mv(SOL, 22.5), press(SOL, 22, 20),               // over the moon water on his bridge; PIe
+    mv(LUNA, 17.5),                                  // she crosses the sun water on hers
+    press(SOL, 24, 20),                              // P2: G2 sinks
+    mv(LUNA, 24.5), press(LUNA, 24, 20),             // she comes through and takes over the plate
+    mv(SOL, 17.5),
+    // the inner lifts: each calls the other's lift down and sends it up
+    mv(SOL, 10.4),
+    mv(LUNA, 28.5), press(LUNA, 28, 20), waitPlat(11, 11),   // PIL: IL comes down
+    mv(SOL, 12.5, 0.1),
+    mv(LUNA, 26.5), waitPlat(11, 11, false),         // she lets go: up he goes
+    hopUp(SOL, 'Sol hops for the gem'),
+    press(SOL, 14, 10), waitPlat(29, 11),            // PIR: IR comes down
+    mv(LUNA, 30.0, 0.1),
+    mv(SOL, 12.5), waitPlat(29, 11, false),          // he lets go: up she goes
+    mv(LUNA, 28.5), hopUp(LUNA, 'Luna hops for the gem'),
+    // crossing three: the airlock. Luna steps on P3 and Sol runs east at once
+    mv(LUNA, 28.6), mv(SOL, 21.9),
+    both('Luna steps on P3, Sol runs east', (S) => (cx(S.p[0]) < 26.2 ? R_ : 0), (S) => toward(S.p[1], 27.5, 0.1),
+      (S) => cx(S.p[0]) > 25.9 && S.p[0].gr && Math.abs(S.p[0].vx) < 0.6 && cx(S.p[1]) < 27.8, 200),
+    mv(SOL, 29.4),
+    mv(LUNA, 26.3), waitPlat(24, 5, false),          // she steps off: the airlock resets
+    both('Sol steps on P3, Luna runs west', (S) => toward(S.p[0], 27.5, 0.1), (S) => (cx(S.p[1]) > 22.4 ? L_ : 0),
+      (S) => cx(S.p[1]) < 22.6 && S.p[1].gr && Math.abs(S.p[1].vx) < 0.6, 200),
+    mv(SOL, 26.0),                                   // Sol waits on his hatch
+    // Luna through the moon bay, back out through the yellow lever: Sol's hatch opens
+    mv(LUNA, 7.5), flip(LUNA, 7, 10),
+    waitPlat(25, 11), grab(SOL, 26, 13),
+    mv(LUNA, 16.0, 0.1),
+    mv(SOL, 22.5, 0.1), press(SOL, 22, 16), waitPlat(15, 11),   // PGc: Luna's hatch lowers her into the west
+    grab(LUNA, 15, 13), mv(LUNA, 17.4),
+    mv(SOL, 23.5, 0.1), waitPlat(15, 11, false),     // he steps off between the plates; her hatch rises
+    // crossing four: the sanctum airlock, Luna east, then Sol west
+    both('Sol steps on P4, Luna runs east', (S) => toward(S.p[0], 24.5, 0.1), (S) => (cx(S.p[1]) < 21.9 ? R_ : 0),
+      (S) => cx(S.p[1]) > 21.7 && S.p[1].gr && Math.abs(S.p[1].vx) < 0.6, 200),
+    mv(SOL, 23.5, 0.1), waitPlat(19, 11, false),     // he steps off: the airlock resets
+    both('Luna steps on P4, Sol runs west', (S) => (cx(S.p[0]) > 17.6 ? L_ : 0), (S) => toward(S.p[1], 24.5, 0.1),
+      (S) => cx(S.p[0]) < 17.8 && S.p[0].gr && Math.abs(S.p[0].vx) < 0.6, 200),
     door(SOL),
     door(LUNA), win(),
   ],

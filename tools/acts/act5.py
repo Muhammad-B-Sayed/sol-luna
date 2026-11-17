@@ -169,13 +169,15 @@ def sunken_halls():
     return L
 
 
-def airlock(L, xa, xb, y0, g, travel=4):
-    """Two gates side by side in a 2-high doorway at rows y0..y0+1. The gate at xa opens while g
-    is active; the gate at xb is open at rest and shuts slowly while g is active (it falls
-    `travel` cells). Nobody passes while the control rests, nor while it is held: the runner
-    must go the moment the partner steps on. The caller keeps stone around both slots."""
+def airlock(L, xa, y0, g, travel=4):
+    """Three gates side by side in a 2-high doorway at rows y0..y0+1, columns xa..xa+2. The two
+    outer gates open while g is active; the middle one is open at rest and shuts slowly while g
+    is active (it falls `travel` cells). Nobody passes while the control rests, nor while it is
+    held: the runner must go the moment the partner steps on. From either side the first gate
+    is a shut one, so nobody can wait under the slow gate. The caller keeps stone around the slots."""
     vdoor(L, xa, y0, g)
-    vdoor(L, xb, y0, g, inv=True, travel=travel)
+    vdoor(L, xa + 1, y0, g, inv=True, travel=travel)
+    vdoor(L, xa + 2, y0, g)
     return L
 
 
@@ -272,18 +274,18 @@ def twilight_spiral():
     L.lever(7, 10, 5)                                     # LY (yellow)
     lift(L, 11, 21, 3, 10, 3, inv=True)                   # IL: waits at the top until called down
     L.plate(14, 10, 3)                                    # PIR (white): Luna's inner lift
-    L.plat(15, 11, 2, 1, 0, 5, 1)                         # HW (green): the hatch into the west sanctum, held from inside
-    L.clear(15, 11, 16, 11)
+    L.plat(15, 11, 2, 1, 0, 6, 1)                         # HW (green): the hatch into the west sanctum, held from inside;
+    L.clear(15, 11, 16, 11)                               # it sinks flush with the sanctum floor
     L.p(17, 10, '/').r(18, 10, 20, 10).p(21, 10, '\\')   # a hump over the sanctum airlock's slot
-    L.r(22, 8, 25, 8)
-    airlock(L, 23, 24, 9, 4, travel=4)                    # crossing three (pink)
+    L.r(22, 8, 26, 8)
+    airlock(L, 23, 9, 4)                                  # crossing three (pink), x 23-25
     L.plat(25, 11, 2, 1, 0, 5, 5).clear(25, 11, 26, 11)   # HE (yellow): the hatch into the east sanctum
     L.plate(27, 10, 4)                                    # P3 (pink)
     lift(L, 29, 21, 3, 10, 3, inv=True)                   # IR, the same
     # ---- the sanctum (rows 12-16, floor 17, x 15-27)
-    L.clear(15, 12, 27, 16)
-    L.r(17, 12, 20, 14)
-    airlock(L, 18, 19, 15, 4)                             # crossing four (pink)
+    L.clear(15, 12, 27, 16).clear(15, 17, 16, 17)         # with HW's berth in its floor
+    L.r(17, 12, 21, 14)
+    airlock(L, 18, 15, 4)                                 # crossing four (pink), x 18-20
     L.plate(24, 16, 4)                                    # P4 (pink)
     L.plate(22, 16, 1)                                    # PGc (green): Sol holds Luna's hatch
     L.p(17, 16, 'A').p(27, 16, 'B')
