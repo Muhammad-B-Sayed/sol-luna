@@ -17,13 +17,13 @@ export const SCRIPTS = {
 
   // Parting Ways: two towers, each opens the other's way.
   2: () => [
-    grab(SOL, 18, 24), flip(SOL, 16, 27, false),     // Sol runs to the window and back: L5 off, G5 opens
-    press(LUNA, 21, 27),                            // Luna runs to the window and holds P0: G0 opens
-    grab(SOL, 2, 20), goto(SOL, 12, 22), grab(SOL, 18, 15), flip(SOL, 1, 13),   // Sol passes G0, sets L1: G1 opens
-    goto(SOL, 7, 12),
-    grab(LUNA, 38, 20), grab(LUNA, 22, 14), press(LUNA, 30, 17),   // Luna climbs through G1 and holds P2: G2 opens
-    goto(SOL, 13, 12), goto(SOL, 13, 7), grab(SOL, 1, 4), flip(SOL, 2, 6), goto(SOL, 17, 8),     // Sol passes G2, sets L3: G3 opens
-    grab(LUNA, 38, 10), goto(LUNA, 33, 12), goto(LUNA, 26, 12), grab(LUNA, 36, 6), press(LUNA, 38, 6),   // Luna holds P4: G4 lets Sol out
+    grab(SOL, 17, 26), flip(SOL, 12, 28, false),    // Sol runs to the window and back: L5 off, G5 opens
+    press(LUNA, 21, 21),                            // Luna runs to the window, climbs and holds P0: G0 opens
+    grab(SOL, 13, 18), flip(SOL, 11, 14, false),    // Sol passes G0, climbs, walks left through L1: G1 opens
+    goto(SOL, 10, 14),                              // and waits at G2
+    grab(LUNA, 37, 25), grab(LUNA, 32, 17), press(LUNA, 30, 13),   // Luna climbs through G1 and holds P2: G2 opens
+    grab(SOL, 1, 7), grab(SOL, 8, 4), flip(SOL, 10, 7), goto(SOL, 15, 7),   // Sol passes G2, sets L3: G3 opens
+    grab(LUNA, 22, 6), grab(LUNA, 34, 3), press(LUNA, 37, 6),   // Luna climbs through G3 and holds P4: G4 lets Sol out
     door(SOL), door(LUNA), win(),
   ],
   // Shade Well: a one-way descent down both sides of a deadly well.

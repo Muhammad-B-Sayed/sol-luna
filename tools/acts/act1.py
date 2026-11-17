@@ -83,58 +83,61 @@ def stairs(L, x, f, side):
 
 @level(2)
 def parting_ways():
-    """Two towers split by a thick wall with windows in it. Sol climbs the left tower, Luna the right.
-    They start on the ground floors, Sol by his stair, Luna shut out of the west end of hers by gate G5.
+    """Two towers split by a thick wall with slit windows. Sol climbs the left tower, Luna the right. Each
+    tower has four floors seven rows apart (Sol's one row lower: his ground floor is the bottom wall), and
+    every stair is two 2-wide blocks of 3-tile climbs with a leap back over the lower one.
     0. Sol runs to the window end of his ground floor and back. Walking back left through lever L5
        (yellow, starts on) turns it off, and gate G5 in Luna's tower opens.
-    1. Luna runs west to the window and stands on P0 (purple): gate G0 on Sol's first floor opens.
+    1. Luna runs west to the window, climbs her stair and stands on P0 (purple) at its top: gate G0 on
+       Sol's first floor opens.
        Sol climbs and goes through G0.
-    2. Sol climbs to the top of his second floor's stair and turns lever L1 (green): gate G1 on Luna's
-       first floor opens for good.
-    3. Luna climbs through G1 and stands on P2 (orange) on her second floor: gate G2 on Sol's third
-       floor opens; Sol goes through.
-    4. Sol walks to the dead end of his top floor and turns lever L3 (white): gate G3 on Luna's third
-       floor opens for good. Sol waits at the tall gate G4 that shuts his tower off from the roof.
-    5. Luna climbs through G3 to her top gallery and stands on P4 (pink) at its far end: G4 rises and
-       Sol steps out onto the roof to his door.
-    6. Luna walks back and steps over the wall onto the roof beside him."""
+    2. On his second floor Sol walks left through lever L1 (green, starts on): gate G1 on Luna's first
+       floor opens for good. He waits at gate G2.
+    3. Luna climbs through G1 and stands on P2 (orange) on her second floor: G2 opens; Sol goes through.
+    4. Sol walks right through lever L3 (white) on his top floor: gate G3 on Luna's top floor opens for
+       good. Sol waits at the tall gate G4 that shuts his tower off from the roof.
+    5. Luna climbs through G3 to the far east end of her top floor and stands on P4 (pink): G4 rises
+       and Sol steps out onto the roof to his door.
+    6. Luna walks all the way back and over her stair's top onto the roof beside him."""
     L = Lv('Parting Ways', 45, 'Your plates and levers open the other tower. A lever turns on when you walk right through it, off when you walk left.')
-    T = (
-        ('##################', '##', '##################'),   # 1
-        ('##################', '##', '##################'),   # 2
-        ('########........#.', '#.', '......############'),   # 3
-        ('s...............#.', '#.', '......############'),   # 4
-        ('................#.', '#.', '..................'),   # 5
-        ('.%...............~', '..', '...............m.5'),   # 6
-        ('####.............~', 'AB', '.............#####'),   # 7
-        ('#############....~', '##', '.....####SSS######'),   # 8
-        ('.......#.#.....###', '##', '###...#.#.........'),   # 9
-        ('.......#.#.....###', '##', '###...#.#........m'),   # 10
-        ('........_....#####', '##', '#####..+..........'),   # 11
-        ('........_....#####', '##', '#####..+..........'),   # 12
-        ('@....#############', '##', '#############.....'),   # 13
-        ('###...............', '##', '.m.............###'),   # 14
-        ('###..............s', '##', '...............###'),   # 15
-        ('#####.............', '..', '.............#####'),   # 16
-        ('#####.............', '##', '.........3...#####'),   # 17
-        ('#####MM######.....', '##', '.....#############'),   # 18
-        ('.......#.#.....###', '##', '###...#.#.........'),   # 19
-        ('.s.....#.#.....###', '##', '###...#.#........m'),   # 20
-        ('........=....#####', '##', '#####..-..........'),   # 21
-        ('........=....#####', '##', '#####..-..........'),   # 22
-        ('.....#############', '##', '#############.....'),   # 23
-        ('###..............s', '##', '...#.#.........###'),   # 24
-        ('###...............', '..', '...#.#.........###'),   # 25
-        ('#####.............', '##', '....:........#####'),   # 26
-        ('#####.a........&..', '##', '1...:....b...#####'),   # 27
-        ('########MM########', '##', '#######SS#########'),   # 28
-    )
-    art(L, T)
+    L.r(19, 8, 20, 28)                                     # the central wall, its top is the roof
+    # ---- Sol's tower (x 1-18): ground on the bottom wall, floors at rows 22, 15, 8
+    L.r(1, 23, 2, 28).r(3, 26, 4, 28)                      # west stair up to floor 1
+    L.p(8, 28, 'a').lever(12, 28, 5, on=True)              # L5 (starts on)
+    L.r(5, 22, 18, 22)
+    L.gate(10, 20, 21, '=', 0, 18).r(9, 16, 11, 16)        # G0 (purple)
+    L.pool(12, 22, 2, 'M')
+    L.r(15, 19, 16, 21).r(17, 16, 18, 21)                  # east stair up to floor 2
+    L.r(1, 15, 14, 15)
+    L.lever(11, 14, 1, on=True)                            # L1 (starts on)
+    L.gate(8, 13, 14, '_', 2, 11).r(7, 9, 9, 9)            # G2 (orange)
+    L.r(3, 12, 4, 14).r(1, 9, 2, 14)                       # west stair up to the top floor
+    L.r(5, 8, 18, 8)
+    L.lever(10, 7, 3)                                      # L3 (white)
+    L.gate(17, 6, 7, '~', 4, 4).r(16, 1, 18, 2)            # G4 (pink) between Sol's top floor and the roof
+    L.p(19, 7, 'A').p(20, 7, 'B')
+    # ---- Luna's tower (x 21-38): floors at rows 28, 21, 14, 7
+    L.r(21, 28, 38, 28)
+    L.r(21, 22, 22, 27).r(23, 25, 24, 27)                  # west stair up to floor 1
+    L.plate(21, 21, 0)                                     # P0, at the window on top of the stair
+    L.gate(27, 26, 27, ':', 5, 24).r(26, 22, 28, 22)       # G5 (yellow), shut while L5 is on
+    L.p(31, 27, 'b').pool(34, 28, 2, 'S')
+    L.r(25, 21, 38, 21)
+    L.gate(28, 19, 20, '-', 1, 17).r(27, 15, 29, 15)       # G1 (green), shut while L1 is on
+    L.r(35, 18, 36, 20).r(37, 15, 38, 20)                  # east stair up to floor 2
+    L.r(21, 14, 34, 14)
+    L.plate(30, 13, 2)                                     # P2
+    L.pool(26, 14, 2, 'S')
+    L.r(23, 11, 24, 13).r(21, 8, 22, 13)                   # west stair up to the top floor (its top is the roof's edge)
+    L.r(25, 7, 38, 7)
+    L.gate(28, 5, 6, '+', 3, 3).r(27, 1, 29, 1)            # G3 (white)
+    L.plate(37, 6, 4)                                      # P4, at the far end of the top floor
+    L.clear(19, 26, 24, 26).clear(15, 20, 20, 20).clear(19, 12, 24, 12)   # slit windows through the wall
     for g in (0, 1, 2, 3, 5):
         L.mv(g, 0, -2)
-    L.mv(4, 0, -3)
-    L.leverOn.append(5)            # L5 starts on, and G5 is inverted: it is shut while L5 is on
-    L.invert(5)
+    L.invert(5).invert(1)                                  # G5 and G1 are shut while their lever is on
+    L.p(17, 26, 's').p(13, 18, 's').p(1, 7, 's').p(8, 4, 's')
+    L.p(37, 25, 'm').p(32, 17, 'm').p(22, 6, 'm').p(34, 3, 'm')
     return L
 
 
