@@ -11,27 +11,29 @@ const within = (ph, x0, y0, x1, y1) => ({
 export const SCRIPTS = {
   // The Drop
   12: () => [
-    within(grab(SOL, 11, 3), 1, 2, 21, 7),
-    within(pushTo(SOL, 0, 8, { y: 28, tol: 0.6 }), 1, 2, 21, 7),   // K1 left into C0: purple bridge
-    within(pushTo(LUNA, 1, 13, { y: 14, tol: 0.6 }), 1, 2, 21, 7), // K2 left into C1: green bridge
+    within(grab(SOL, 11, 2), 1, 1, 20, 6),
+    within(pushTo(SOL, 0, 8, { y: 28, tol: 0.6 }), 1, 1, 20, 6),   // K1 left into C0: purple bridge
+    within(goto(LUNA, 18, 6), 1, 1, 20, 6),
+    within(pushTo(LUNA, 1, 13, { y: 14, tol: 0.6 }), 1, 1, 20, 6), // K2 left into C1: green bridge
+    within(goto(LUNA, 11, 6), 1, 1, 20, 6),
     press(SOL, 1, 6),                                // Sol holds P4 at the start: G4 opens
-    grab(LUNA, 21, 10),
+    grab(LUNA, 21, 9),
     press(LUNA, 2, 13),                              // Luna in the west room holds P2: G2 opens
-    grab(SOL, 21, 13), grab(SOL, 2, 18),
+    grab(SOL, 21, 13), grab(SOL, 1, 16),
     flip(SOL, 23, 27),                               // Sol through G2, sets L2
     flip(SOL, 2, 27),                                // back west (L2 flips off): L4 opens G4 for good
     flip(SOL, 23, 27),                               // east again: L2 back on, so Luna may leave P2
-    grab(LUNA, 4, 16), grab(LUNA, 1, 25),            // Luna out of the room: gallery B, then the cellar
-    goto(LUNA, 30, 27), grab(LUNA, 38, 24), goto(LUNA, 34, 18), grab(LUNA, 31, 14),
+    grab(LUNA, 5, 17), grab(LUNA, 1, 23),            // Luna out of the room: gallery B, then the cellar
+    grab(LUNA, 38, 24), grab(LUNA, 28, 20),
     goto(LUNA, 25, 27),                              // Luna on the lift
-    grab(SOL, 38, 22), goto(SOL, 33, 23), grab(SOL, 38, 14),
-    press(SOL, 29, 12), waitPlat(25, 28),            // Sol holds P5 up in the gallery: lift up
+    grab(SOL, 38, 17), grab(SOL, 37, 13),
+    press(SOL, 29, 13), waitPlat(25, 28),            // Sol holds P5 up in the gallery: lift up
     press(LUNA, 32, 6),                              // Luna crosses B0 and holds P5b
     goto(SOL, 28, 27),
     goto(LUNA, 30, 6), waitPlat(25, 28, false),      // lift comes back down
     goto(SOL, 25, 27),
     press(LUNA, 32, 6), waitPlat(25, 28),            // and brings Sol up
-    door(LUNA), door(SOL), win(),
+    door(SOL), door(LUNA), win(),
   ],
 
   // Switchback

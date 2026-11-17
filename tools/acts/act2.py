@@ -51,65 +51,59 @@ def the_drop():
     """
     L = Lv('The Drop', 90, 'A crate down a chute stays on its plate for good. Read the colours before you push.')
     solid(L)
-    # ---- top shelf (rows 2-7) with three chute mouths; crates between them
-    L.clear(1, 2, 21, 7)
-    L.r(1, 2, 5, 2).r(13, 2, 16, 3).r(20, 2, 21, 2)        # ceiling bumps
-    L.r(1, 7, 4, 7)                                        # start ledge
+    # Four bands, seven rows apart (floors 7, 14, 21, 28) so every jump gets its full arc.
+    # ---- top shelf (rows 1-6, floor 7) with three chute mouths; crates between them
+    L.clear(1, 1, 20, 6)
     L.p(2, 6, 'a').p(4, 6, 'b')
     L.plate(1, 6, 3)                                       # P4 opens the west room, far below
-    L.p(10, 7, 'k').p(16, 7, 'k')
-    L.p(11, 3, 's')                                       # a jump off the crate
-    # ---- gallery A (rows 10-13, floor 14). C1 ends here in a bin. The west room behind G4 holds P2
-    L.clear(1, 10, 21, 13)
-    L.r(1, 10, 6, 10).r(4, 11, 6, 11)                      # room ceiling and gate pillar
-    vgate(L, 5, 12, 13, 3, 10)
+    L.p(10, 6, 'k').p(16, 6, 'k')
+    L.p(11, 2, 's')                                        # high over the first crate
+    # ---- gallery A (rows 8-13, floor 14). C1 ends here in a bin. The west room behind G4 holds P2
+    L.clear(1, 8, 21, 13)
+    L.r(1, 8, 6, 11)                                       # the room's roof, up to the shelf
+    L.clear(1, 12, 4, 13)
+    vgate(L, 5, 12, 13, 3, 10)                             # G4 (white)
     L.plate(2, 13, 2)                                      # P2 (orange) holds G2 open
-    L.r(9, 13, 10, 13)                                     # split height
     L.plate(13, 14, 1).clear(14, 14, 14, 14)               # C1 bin: green
-    L.p(21, 13, 's')
-    L.p(21, 10, 'm')
-    L.clear(16, 14, 17, 15)                                # drop into gallery B
+    L.p(21, 13, 's').p(21, 9, 'm')
+    L.clear(16, 14, 17, 14)                                # drop into gallery B
     # ---- gallery B (rows 15-20, floor 21). C2 ends here in a bin
-    L.clear(1, 16, 21, 20)
-    L.r(1, 19, 3, 20).r(12, 16, 15, 17)
+    L.clear(1, 15, 20, 20)
     L.plate(19, 21, 2).clear(20, 21, 20, 21)               # C2 bin: orange (the decoy)
-    L.p(2, 18, 's').p(4, 16, 'm')
-    L.clear(10, 21, 11, 22)                                # drop into the cellar
-    # ---- west cellar (rows 23-27). C0 ends here in a bin; L4 frees the west room
-    L.clear(1, 23, 21, 27)
-    L.r(1, 23, 4, 24).r(15, 26, 16, 27).r(18, 23, 21, 25)
+    L.r(13, 15, 14, 15)                                    # the floor of the C1 bin
+    L.p(1, 16, 's').p(5, 17, 'm')
+    L.clear(10, 21, 11, 21)                                # drop into the cellar
+    # ---- west cellar (rows 22-27, floor 28). C0 ends here in a bin; L4 frees the west room
+    L.clear(1, 22, 17, 27).clear(18, 26, 21, 27)
+    L.p(13, 27, '/##\\')                                   # a ramped hump on the way to G2
     L.plate(7, 28, 0).clear(8, 28, 8, 28)                  # C0 bin: purple
     L.lever(2, 27, 3)                                      # L4 keeps G4 open
-    L.p(1, 25, 'm')
+    L.p(1, 23, 'm')
     # chutes: C0 to the cellar, C1 to gallery A, C2 to gallery B
-    L.clear(7, 8, 8, 27).clear(13, 8, 14, 13).clear(19, 8, 20, 20)
+    L.clear(7, 7, 8, 27).clear(13, 7, 14, 13).clear(19, 7, 20, 20)
     # ---- G2 and the east cellar
-    L.r(22, 22, 23, 25)
     vgate(L, 22, 26, 27, 2, 24)
     L.clear(23, 26, 23, 27).lever(23, 27, 2)               # L2 keeps G2 open
-    L.clear(24, 23, 38, 27)
+    L.clear(24, 22, 38, 27)
     # ---- lift shaft (x 24-26) and the low corridor (rows 5-6)
     L.clear(24, 7, 26, 27)
     L.cells(24, 28, 26, 28, 5).mv(5, 0, -21)
     L.clear(24, 5, 38, 6)
     L.plate(32, 6, 5)                                      # P5b, past the purple bridge
-    L.clear(29, 7, 31, 11).clear(34, 7, 36, 11)            # bridge holes drop to the gallery
+    L.clear(29, 7, 31, 7).clear(34, 7, 36, 7)              # bridge holes drop to the gallery
     L.clear(29, 3, 31, 4).cells(29, 3, 31, 3, 0).mv(0, 0, 4)    # B0 comes down from the ceiling
     L.clear(34, 3, 36, 4).cells(34, 3, 36, 3, 1).mv(1, 0, 4)    # B1
     L.clear(37, 2, 38, 6)
     L.p(37, 6, 'A').p(38, 6, 'B')
-    # ---- east gallery (x 28-38, rows 12-27): a zigzag climb from the cellar to gem ledges
-    # under the bridge holes. Falling through a hole lands here, and the way back is the cellar.
-    L.clear(28, 12, 38, 22)
-    L.r(36, 26, 38, 27)                                    # S1
-    L.r(33, 24, 34, 24)                                    # S2
-    L.r(30, 22, 31, 22)                                    # S3
-    L.r(33, 19, 35, 19)                                    # S4
-    L.r(36, 17, 38, 18)                                    # S5
-    L.r(30, 15, 32, 15)                                    # S6
-    L.r(28, 13, 29, 13)                                    # S7
-    L.p(38, 14, 's').p(31, 14, 'm').p(38, 22, 's').p(38, 24, 'm')
-    L.plate(29, 12, 5)                                     # P5 drives the lift from up here
+    # ---- east gallery (x 28-38, rows 8-27): a zigzag climb from the cellar, each side's ledges
+    # seven rows apart so every take-off has its full arc. Falling through a hole lands here.
+    L.clear(28, 8, 38, 21)
+    L.r(35, 25, 38, 27)                                    # S1 (stand 24)
+    L.r(28, 21, 30, 21)                                    # S2 (stand 20)
+    L.r(35, 18, 38, 18)                                    # S3 (stand 17)
+    L.r(28, 14, 30, 14)                                    # S4 (stand 13), P5 drives the lift
+    L.plate(29, 13, 5)
+    L.p(37, 13, 's').p(28, 20, 'm').p(38, 17, 's').p(38, 24, 'm')
     return L
 
 
