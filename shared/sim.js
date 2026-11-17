@@ -25,9 +25,9 @@ export const PHYS = {
   turnBoost: 1.7,
   airAccel: 0.4,
   airDecel: 0.1,
-  gravity: 0.42,
+  gravity: 0.33,     // about 79% of the old 0.42: higher, floatier jumps (4.1 tiles, 0.82 s running)
   jumpVel: 8.25,
-  maxFall: 9.5,
+  maxFall: 8.5,
   coyote: 5,
   stepUp: 14,
   snap: 8,
