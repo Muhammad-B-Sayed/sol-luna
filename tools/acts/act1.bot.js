@@ -93,22 +93,22 @@ export const SCRIPTS = {
   ],
   // Twin Towers: each crosses the chasm on a ferry the other drives.
   7: () => [
-    press(LUNA, 31, 20),                            // Luna drops to her first landing, holds P_A: G_A opens
-    flip(SOL, 1, 6),   // Sol climbs his tower, sets L_B: G_B opens
-    goto(SOL, 14, 21),   // back down to the low ferry's dock
-    press(LUNA, 34, 25),        // Luna drops to the ground, holds P_F1: the low ferry comes over
-    goto(SOL, 17, 21),                              // Sol steps on
-    goto(LUNA, 35, 25),                             // Luna steps off: the ferry carries Sol back across
-    grab(SOL, 20, 19), goto(SOL, 25, 21),
-    goto(LUNA, 25, 11),   // Luna climbs through G_B to the high dock
-    press(SOL, 38, 25),          // Sol holds P_F2: the high ferry comes over
-    goto(LUNA, 22, 11),                             // Luna steps on
-    goto(SOL, 37, 25),                              // Sol steps off: the ferry carries Luna back across
-    grab(LUNA, 19, 9), goto(LUNA, 14, 11),
-    grab(SOL, 37, 3), flip(SOL, 37, 6, false), goto(SOL, 32, 5),   // Sol climbs, wades, turns L_C off
-    press(LUNA, 9, 25),         // Luna goes down to P_D: the gate before Sol's door opens
-    grab(SOL, 22, 4), door(SOL),
-    grab(LUNA, 2, 3), grab(LUNA, 17, 4), door(LUNA), win(),
+    grab(LUNA, 32, 10), press(LUNA, 30, 20),        // Luna climbs down to her first floor, holds P_A: G_A opens
+    grab(SOL, 12, 18), flip(SOL, 9, 7),             // Sol climbs his tower, sets L_B: G_B opens
+    goto(SOL, 16, 21),                              // down through the hole, back to the low ferry's dock
+    press(LUNA, 27, 27),                            // Luna drops to the ground, holds P_F1: the low ferry comes over
+    goto(SOL, 18, 21),                              // Sol steps on
+    goto(LUNA, 25, 27),                             // Luna steps off: the ferry carries Sol back across
+    waitPlat(21, 22, false), goto(SOL, 24, 21),
+    goto(LUNA, 23, 14),                             // Luna climbs through G_B to the high dock
+    press(SOL, 31, 27),                             // Sol holds P_F2: the high ferry comes over
+    goto(LUNA, 21, 14),                             // Luna steps on
+    goto(SOL, 33, 27),                              // Sol steps off: the ferry carries Luna back across
+    waitPlat(18, 15, false), goto(LUNA, 15, 14), grab(LUNA, 8, 11),
+    grab(SOL, 34, 3), flip(SOL, 29, 6, false), goto(SOL, 27, 6),   // Sol climbs, wades, turns L_C off
+    press(LUNA, 6, 28),                             // Luna goes down to P_D: the gate before Sol's door opens
+    grab(SOL, 22, 6), door(SOL),
+    grab(LUNA, 17, 6), door(LUNA), win(),
   ],
   // Dawn Gate: the chapter's tools once each, up an S of five floors.
   8: () => [

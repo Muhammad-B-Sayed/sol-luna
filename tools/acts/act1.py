@@ -342,58 +342,61 @@ def crate_cellar():
 
 @level(7)
 def twin_towers():
-    """Two towers with a chasm between them; shade at the bottom of the chasm and on a band halfway up.
-    Two ferries cross it, each parked on the far side from whoever needs it, and nobody can drive the ferry
-    they ride. Sol starts at the foot of the left tower and his door is on top of the right one. Luna starts
-    halfway up the right tower, shut in by gate G_B, and her door is on top of the left one.
-    1. Luna drops to her first landing and stands on P_A (purple): gate G_A at the foot of Sol's tower opens.
-    2. Sol climbs all the way to the top of the left tower's stair and turns lever L_B (green): G_B opens for
-       good. He walks back down to the low ferry's dock.
-    3. Luna drops to the foot of her tower and stands on P_F1 (orange): the low ferry crosses to Sol. He steps
-       on, she steps off, and it carries him back across.
-    4. Luna climbs her whole tower through G_B to the high ferry's dock. Sol goes down to the foot of the right
-       tower and stands on P_F2 (white): the high ferry comes over. She steps on, he steps off, and it carries
-       her across. (A gem hangs over each ferry's lane.)
-    5. Sol climbs the whole right tower, wading a sun channel on its third landing that keeps Luna out of its
-       top, and on top of the stair walks back left through lever L_C (pink, starts on): the gate in front
-       of Luna's door opens.
-    6. The gate in front of Sol's door is held by P_D (yellow) at the foot of the left tower. Luna climbs all
-       the way down her new tower and stands on it; Sol walks to his door.
+    """Two towers with a chasm between them and shade at its bottom. Each tower has four floors seven rows
+    apart (the left tower one row lower) joined by a shaft on its outer wall, climbed by 3- and 4-tile jumps
+    between the floors' ends and small ledges. Two ferries cross the chasm, each parked on the far side from
+    whoever needs it, and nobody can drive the ferry they ride. Sol starts at the foot of the left tower and
+    his door is on top of the right one. Luna starts on the right tower's second floor, shut off from its
+    ferry dock by gate G_B, and her door is on top of the left one.
+    1. Luna climbs down her shaft to her first floor and stands on P_A (purple): gate G_A at the foot of
+       Sol's tower opens.
+    2. Sol climbs to the top of the left tower, walks right through lever L_B (green): G_B opens for good.
+       He drops through the hole beyond it and goes back down to the low ferry's dock.
+    3. Luna drops to the foot of her tower and stands on P_F1 (orange): the low ferry crosses to Sol. He
+       steps on, she steps off, and it carries him back across.
+    4. Luna climbs her tower through G_B to the high ferry's dock. Sol goes down to the foot of the right
+       tower and stands on P_F2 (white): the high ferry comes over. She steps on, he steps off, and it
+       carries her across.
+    5. Sol climbs the right tower, wades the sun channel on its top floor that keeps Luna out, and walks left
+       through lever L_C (pink, starts on): the gate in front of Luna's door opens.
+    6. The gate in front of Sol's door is held by P_D (yellow) at the foot of the left tower. Luna climbs
+       all the way down her new tower and stands on it; Sol walks to his door.
     7. Luna climbs the left tower again, through her open gate, to her door."""
     L = Lv('Twin Towers', 52, "Ferries cross the chasm. You can't drive the one you stand on. Don't fall: the chasm is full of shade.")
-    L.r(1, 1, 38, 28)
-    L.clear(1, 2, 15, 25).clear(24, 2, 38, 25)
-    # left tower: floors at rows 26, 21, 16, 11, 6; stairs alternate between the chasm side and the outer wall
-    stairs(L, 11, 26, 'R'); L.r(1, 21, 10, 21)
-    stairs(L, 1, 21, 'L'); L.r(6, 16, 15, 16)
-    stairs(L, 11, 16, 'R'); L.r(1, 11, 10, 11)
-    stairs(L, 1, 11, 'L'); L.r(6, 6, 15, 6)
-    # right tower, mirrored
-    stairs(L, 24, 26, 'L'); L.r(29, 21, 38, 21)
-    stairs(L, 34, 21, 'R'); L.r(24, 16, 33, 16)
-    stairs(L, 24, 16, 'L'); L.r(29, 11, 38, 11)
-    stairs(L, 34, 11, 'R'); L.r(24, 6, 33, 6)
-    # tower walls on the chasm side, open only at the two ferry docks and the top
-    L.r(15, 7, 15, 8).r(15, 17, 15, 18).r(24, 7, 24, 8).r(24, 17, 24, 18)
-    # the chasm: a walkway at the top cut by shade under a low rock, ferry lanes, a shade band, shade at the bottom
-    L.clear(16, 2, 23, 5).r(18, 2, 21, 3)
-    L.p(16, 6, '##XXXX##')
-    L.clear(16, 9, 23, 13).pool(16, 14, 8, 'X')
-    L.clear(16, 18, 23, 23).pool(16, 24, 8, 'X')
-    L.cells(21, 22, 23, 22, 2).mv(2, -5, 0)           # low ferry, parked on the right: holding its plate calls it over
-    L.cells(16, 12, 18, 12, 3).mv(3, 5, 0)            # high ferry, parked on the left: holding its plate calls it over
-    # gates and controls
-    L.gate(7, 24, 25, '=', 0, 22).plate(31, 20, 0)     # G_A at the foot of Sol's tower; P_A on Luna's first landing
-    L.gate(31, 14, 15, '-', 1, 12).lever(1, 6, 1)      # G_B on Luna's second landing; L_B atop Sol's top stair
-    L.plate(34, 25, 2).plate(38, 25, 3)                # both ferry plates on the right tower's ground floor
-    L.r(30, 7, 32, 8).pool(31, 11, 2, 'S')             # sun channel on the right tower's third landing: only Sol goes higher
-    L.gate(10, 4, 5, '~', 4, 2).lever(37, 6, 4, on=True).invert(4)   # G_C before Luna's door; L_C (starts on) atop the right stair
-    L.gate(29, 4, 5, ':', 5, 2).plate(9, 25, 5)        # G_D before Sol's door; its plate P_D is at the foot of the left tower
-    L.p(13, 5, 'B').p(26, 5, 'A')
-    L.p(2, 25, 'a').p(33, 15, 'b')
-    L.p(20, 19, 's').p(19, 9, 'm')                    # one over each ferry's lane
-    L.p(22, 4, 's').p(17, 4, 'm')                     # on the shade walkway under the top rock
-    L.p(37, 3, 's').p(2, 3, 'm')                      # the far top corners
+    # ---- left tower (x 1-16): floors on the bottom wall and rows 22, 15, 8; the shaft at x 1-4
+    L.r(5, 22, 16, 22).r(5, 15, 16, 15).r(5, 8, 16, 8).clear(11, 8, 12, 8)
+    L.r(1, 26, 2, 26).r(1, 19, 2, 19).r(1, 12, 2, 12)      # shaft ledges
+    L.gate(8, 27, 28, '=', 0, 25).r(7, 23, 9, 23)          # G_A at the foot of Sol's tower
+    L.plate(6, 28, 5)                                      # P_D
+    L.p(14, 28, 'a')
+    L.lever(9, 7, 1)                                       # L_B on the top floor
+    L.gate(14, 6, 7, '~', 4, 4).r(13, 1, 15, 3)            # G_C before Luna's door (shut while L_C is on)
+    L.p(16, 7, 'B')
+    L.r(16, 9, 16, 12).r(16, 16, 16, 19).r(16, 23, 16, 28)  # the wall on the chasm side, open at the two docks
+    # ---- right tower (x 23-38): floors at rows 28, 21, 14, 7 (the docks one row lower); the shaft at x 35-38
+    L.r(23, 28, 34, 28).r(23, 7, 34, 7)
+    L.r(23, 22, 25, 22).r(27, 21, 34, 21); step(L, 26, 21, '/')     # first floor, its dock at row 22
+    L.r(23, 15, 25, 15).r(27, 14, 34, 14); step(L, 26, 14, '/')     # second floor, its dock at row 15
+    L.r(23, 9, 23, 12).r(23, 16, 23, 19).r(23, 23, 23, 27)          # the wall on the chasm side
+    L.r(35, 28, 38, 28).r(37, 25, 38, 25).r(37, 18, 38, 18).r(37, 11, 38, 11)
+    L.plate(27, 27, 2).plate(31, 27, 3)                    # P_F1 (low ferry), P_F2 (high ferry)
+    L.plate(30, 20, 0)                                     # P_A
+    L.gate(28, 12, 13, '-', 1, 10).r(27, 8, 29, 9)         # G_B between Luna's start and the high dock
+    L.p(31, 13, 'b')
+    L.p(24, 6, 'A')
+    L.gate(26, 5, 6, ':', 5, 3).r(25, 1, 27, 2)            # G_D before Sol's door
+    L.lever(29, 6, 4, on=True).invert(4)                   # L_C (starts on)
+    L.pool(31, 7, 3, 'S').r(31, 1, 33, 4)                  # the sun channel under a low roof
+    # ---- the chasm (x 17-22)
+    L.r(17, 26, 22, 28).pool(17, 25, 6, 'X')
+    L.r(17, 8, 22, 8).pool(18, 8, 4, 'X').r(18, 1, 21, 5).r(17, 1, 22, 4)   # the top walkway, cut by shade under a low rock
+    L.r(1, 1, 12, 1).r(35, 1, 38, 3).r(23, 1, 24, 3)       # stone in the top corners
+    L.r(1, 27, 2, 28).r(37, 26, 38, 27)                    # and at the feet of the shafts
+    L.cells(20, 22, 22, 22, 2).mv(2, -3, 0)                # low ferry, parked on the right
+    L.cells(17, 15, 19, 15, 3).mv(3, 3, 0)                 # high ferry, parked on the left
+    L.mv(0, 0, -2).mv(1, 0, -2).mv(4, 0, -2).mv(5, 0, -2)
+    L.p(12, 18, 's').p(22, 6, 's').p(34, 3, 's')
+    L.p(17, 6, 'm').p(32, 10, 'm').p(8, 11, 'm')
     return L
 
 
