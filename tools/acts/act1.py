@@ -7,53 +7,51 @@ from lvdsl import Lv, level
 # Define helpers that only this act needs here, not in tools/lvdsl.py.
 
 
+def step(L, x, y, ch):
+    """A one-tile ramp tile ch ('/' or '\\') in cell (x, y), with stone under it in row y+1."""
+    L.set(x, y, ch)
+    L.set(x, y + 1, '#')
+    return L
+
+
 @level(1)
 def first_light():
-    """Pilot room, built by the planner as the worked example. Five floors climbed in a zigzag,
-    each floor split into two heights by a one-tile ramp so no floor reads as a flat slab.
-    Sol wades to plate P1 so Luna can pass gate G1 and set lever L1, which keeps it open.
-    Two floors up the roles swap: Luna wades to P2, Sol passes G2 and sets L2."""
+    """A zigzag of four floors stacked seven rows apart, so every jump gets its full arc. The west part
+    of the room sits one row lower than the east (its ground floor is the bottom wall), which splits every
+    floor in two heights. Each floor ends in a two-block stair of 3-tile climbs with a leap back over the
+    lower block, at alternate ends. Doors top right.
+    Sol wades his channel to plate P1 so Luna can pass gate G1 and set lever L1, which keeps it open.
+    One floor up the roles swap: Luna wades her channel to P2, Sol passes G2 and sets L2."""
     L = Lv('First Light', 45, 'Arrows move Sol, WASD moves Luna. Your own pool is safe. A plate works while you stand on it. A lever stays put.')
-    L.r(1, 1, 38, 3)                       # ceiling
-    for y in (8, 13, 18, 23, 28):
-        L.r(1, y, 38, y)
-    # floor 0 (row 28): stairs up on the left, start in the middle, Sol's channel, raised P1 chamber
-    L.r(1, 24, 3, 27).r(4, 26, 5, 27)      # two steps up to floor 1
-    L.clear(1, 23, 5, 23)
-    L.pool(8, 28, 2, 'M')                  # Luna wades it, Sol jumps it
-    L.p(12, 27, 'a').p(14, 27, 'b')
-    L.r(16, 24, 25, 25).pool(17, 28, 8, 'S')   # low ceiling: only Sol can cross
-    L.p(26, 27, '/').r(27, 27, 38, 27)     # chamber floor one tile higher
-    L.plate(35, 26, 0)                     # P1 opens G1
-    # floor 1 (row 23, then row 22 past the gate): gate G1, lever L1, one step up on the right
-    L.gate(20, 21, 22, '=', 0, 19)
-    L.p(22, 22, '/').r(23, 22, 38, 22)
-    L.lever(25, 21, 0)                     # L1 keeps G1 open
-    L.r(27, 20, 28, 21)                    # step up to floor 2
-    L.r(29, 19, 38, 21)                    # solid mass behind the step
-    L.clear(26, 18, 28, 18)
-    # floor 2 (row 18, then row 17 on the left): Luna's channel and P2 on the right, stairs on the left
-    L.r(31, 14, 36, 15).pool(32, 18, 5, 'M')   # low ceiling: only Luna can cross
-    L.plate(38, 17, 1)                     # P2 opens G2
-    L.p(17, 17, '\\').r(1, 17, 16, 17)
-    L.pool(9, 17, 2, 'S')                  # Sol wades it, Luna jumps it
-    L.r(1, 14, 3, 16).r(4, 15, 5, 16)      # two steps up to floor 3
-    L.clear(1, 13, 7, 13)                  # open above the take-off too, or the jump bonks
-    # floor 3 (row 13, then row 12 on the right): gate G2, lever L2, one step up on the right
-    L.gate(14, 11, 12, '-', 1, 9)
-    L.lever(18, 12, 1)                     # L2 keeps G2 open
-    L.p(21, 12, '/').r(22, 12, 38, 12)
-    L.pool(25, 12, 2, 'M')
-    L.r(32, 10, 33, 11)                    # step up to floor 4
-    L.clear(31, 8, 33, 8)
-    # floor 4 (row 8, then row 7 on the left): walk left to the doors
-    L.pool(24, 8, 2, 'S')
-    L.r(17, 4, 18, 5)                      # hanging block
-    L.p(15, 7, '\\').r(1, 7, 14, 7)
-    L.pool(10, 7, 2, 'M')
-    L.p(2, 6, 'A').p(5, 6, 'B')
-    L.p(30, 24, 's').p(9, 14, 's').p(36, 6, 's').p(24, 5, 's')
-    L.p(10, 21, 'm').p(37, 15, 'm').p(25, 9, 'm').p(11, 4, 'm')
+    L.r(1, 1, 15, 1).r(1, 2, 6, 2)         # hanging stone in the top-left corner
+    # floor 0 (the bottom wall in the west, row 28 in the east): west stair, start, Sol's channel, P1
+    L.r(4, 26, 6, 28).r(1, 23, 3, 28)      # the west stair: two 3-tile steps
+    L.p(14, 28, 'a').p(16, 28, 'b')
+    L.set(18, 28, '/')
+    L.r(19, 28, 38, 28)
+    L.pool(20, 28, 2, 'M')                 # Luna wades it, Sol jumps it
+    L.r(24, 22, 33, 25).pool(25, 28, 8, 'S')   # low ceiling: only Sol can cross
+    L.plate(37, 27, 0)                     # P1 opens G1
+    # floor 1 (row 22 west, row 21 east): gate G1, lever L1, a sun pool, the east stair
+    L.r(7, 22, 17, 22).r(19, 21, 35, 21); step(L, 18, 21, '/')
+    L.gate(12, 20, 21, '=', 0, 18).r(11, 16, 13, 16)
+    L.lever(20, 20, 0)                     # L1 keeps G1 open
+    L.pool(23, 21, 2, 'S')                 # Sol wades it, Luna jumps it
+    L.r(33, 18, 35, 20).r(36, 15, 38, 21)  # the east stair: two 3-tile steps
+    # floor 2 (row 15 west, row 14 east): the middle stair, Luna's channel and P2 in the west
+    L.r(16, 14, 32, 14).r(1, 15, 15, 15)
+    L.r(19, 11, 21, 13).r(16, 8, 18, 13)   # the middle stair: two 3-tile steps
+    L.r(14, 12, 15, 14)                    # a step back up out of the channel's mouth
+    L.r(1, 9, 10, 12).pool(4, 15, 6, 'M')  # low ceiling: only Luna can cross
+    L.plate(2, 14, 1)                      # P2 opens G2
+    # floor 3 (row 7; the channel's roof at row 9 is a shelf): gate G2, lever L2, a moon pool, the doors
+    L.r(22, 7, 38, 7)
+    L.gate(25, 5, 6, '-', 1, 3).r(24, 1, 26, 1)
+    L.lever(28, 6, 1)                      # L2 keeps G2 open
+    L.pool(30, 7, 2, 'M')
+    L.p(37, 6, 'A').p(35, 6, 'B')
+    L.p(36, 24, 's').p(23, 17, 's').p(5, 7, 's').p(31, 2, 's')
+    L.p(2, 21, 'm').p(37, 13, 'm').p(8, 7, 'm').p(33, 3, 'm')
     return L
 
 

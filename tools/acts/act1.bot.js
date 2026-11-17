@@ -5,14 +5,14 @@ import { SOL, LUNA, goto, grab, flip, press, door, pushTo, seek, wait, waitPlat,
 export const SCRIPTS = {
   // First Light (pilot, written by the planner as the worked example).
   1: () => [
-    grab(SOL, 30, 24), press(SOL, 35, 26),          // Sol wades his channel and holds P1: G1 opens
-    grab(LUNA, 10, 21), flip(LUNA, 25, 21),         // Luna climbs, passes G1, sets L1: G1 stays open
-    grab(LUNA, 37, 15),
-    press(LUNA, 38, 17),                            // floor 2: Luna wades her channel and holds P2: G2 opens
-    grab(SOL, 9, 14),                              // Sol follows through G1 and walks floor 2
-    flip(SOL, 18, 12),                              // floor 3: Sol passes G2, sets L2: G2 stays open
-    grab(LUNA, 25, 9), grab(LUNA, 11, 4), door(LUNA),
-    grab(SOL, 36, 6), grab(SOL, 24, 5), door(SOL), win(),
+    grab(SOL, 36, 24), press(SOL, 37, 27),          // Sol jumps the moon pool, wades his channel and holds P1: G1 opens
+    grab(LUNA, 2, 21), flip(LUNA, 20, 20),          // Luna climbs the west stair, passes G1, sets L1: G1 stays open
+    grab(LUNA, 37, 13),                             // up the east stair
+    press(LUNA, 2, 14),                             // floor 2: Luna wades her channel and holds P2: G2 opens
+    grab(SOL, 23, 17), grab(SOL, 5, 7),             // Sol follows through G1, up the east stair and the middle stair
+    flip(SOL, 28, 6),                               // floor 3: Sol passes G2, sets L2: G2 stays open
+    grab(SOL, 31, 2), door(SOL),
+    grab(LUNA, 8, 7), grab(LUNA, 33, 3), door(LUNA), win(),
   ],
 
   // Parting Ways: two towers, each opens the other's way.
