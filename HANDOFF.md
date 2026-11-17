@@ -382,3 +382,34 @@ V=1 node tools/coop-bot.js 28        # verbose scripted co-op run
   - Spectators or rooms with more than 2 people (not requested).
 - **CI:** none. If added, run `node tools/coop-bot.js` and a subset of `check-levels.js`.
   The full set is slow.
+
+---
+
+## 9. Dodgeball (versus mode, Nov 2026)
+
+A competitive mode on one single-screen court, Sol on the left and Luna on the right.
+
+- **Code.** Rules, court and ball live in `shared/dodge.js` (deterministic, used by browser and
+  server). `sim.js` only gained `IN_ACT = 8` and `stepPlayersOnly()`; co-op levels are unchanged.
+  Client: `public/js/dodge-draw.js` (veil, fireball / moonball, trails, effects; hooked from
+  `render.js`) and `public/js/dodge-ui.js` (HUD, sounds). `main.js` treats the level `'dodge'`
+  like a level index (`levelOf`, `newState`, `stepAny`). The server's `Room` has a `mode`;
+  clients send `{t:'start', mode:'dodge'}`.
+- **Controls.** Hold the action key (Sol `↓`, Luna `S`, pad X/B/RT, touch `●`) to aim, release to
+  throw toward the other side. A tap is flat; holding swings the aim arrow up and down.
+- **Rules.** A thrown ball is live until it touches a floor or platform top, or a wall or ceiling
+  for the second time (one bank shot counts). A live ball touching the other player scores. A dead
+  ball belongs to whoever's side it is on; touching it picks it up. 6 s shot clock per possession,
+  then the ball goes over; a throw that stays on your side doesn't reset it. The player who was
+  hit serves next. First to 5. The first serve comes from a seeded RNG kept in the state.
+- **Tuning** (`DODGE` in `shared/dodge.js`): ball 24 px/tick. Net to far back wall (457 px) takes
+  0.30 s; half-centre to half-centre 0.32 s. A flat throw needs only 3 ticks of jump to clear,
+  so a jump at 0.2 s reaction dodges only from the back third of the court and a 0.25 s jump only
+  from the back wall. Closer than about 340 px you have to read the throw.
+- **Checks.** `node tools/check-dodge.js` (~5 s): speed, dodge window table, settling bound and
+  reachability, possession, scoring, determinism. `tools/check-dodge-browser.cjs` drives local
+  and online play in Chrome and writes screenshots (see `docs/img/dodgeball/`).
+- **Known issue.** Online, the defender sees a remote throw about one round trip late (at 100 ms
+  RTT a spawn-to-spawn throw is visible for ~4 frames instead of 14). The drawn ball catches up
+  smoothly, but dodging online is harder than local. Options: slow the ball by measured RTT per
+  room, or rewind the victim on the server (lag compensation).

@@ -60,4 +60,15 @@ export const sfx = {
   door() { tone(392, 0.25, { vol: 0.15 }); tone(523, 0.3, { vol: 0.12, delay: 0.08 }); },
   win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.35, { type: 'triangle', vol: 0.2, delay: i * 0.11 })); },
   ui() { tone(700, 0.04, { type: 'triangle', vol: 0.08 }); },
+  // Dodgeball
+  throwBall(who) {
+    noise(0.16, 0.28, who ? 3200 : 1600);
+    if (who) { tone(1400, 0.16, { type: 'sine', vol: 0.12, slide: 0.45 }); tone(2100, 0.12, { type: 'sine', vol: 0.06, slide: 0.5, delay: 0.02 }); }
+    else { tone(260, 0.18, { type: 'sawtooth', vol: 0.1, slide: 0.45 }); tone(520, 0.1, { type: 'triangle', vol: 0.08, slide: 0.6 }); }
+  },
+  hit() { noise(0.35, 0.45, 2200); tone(130, 0.4, { type: 'square', vol: 0.18, slide: 0.35 }); tone(80, 0.5, { type: 'sine', vol: 0.3, slide: 0.5 }); },
+  pickup(who) { const b = who ? 880 : 587; tone(b, 0.07, { type: 'triangle', vol: 0.12 }); tone(b * 1.5, 0.1, { type: 'triangle', vol: 0.1, delay: 0.05 }); },
+  turnover() { tone(330, 0.18, { type: 'square', vol: 0.08, slide: 0.5 }); tone(220, 0.22, { type: 'square', vol: 0.07, slide: 0.5, delay: 0.1 }); },
+  tock() { tone(1000, 0.05, { type: 'square', vol: 0.07 }); },
+  go() { tone(660, 0.08, { type: 'triangle', vol: 0.14 }); tone(990, 0.14, { type: 'triangle', vol: 0.12, delay: 0.07 }); },
 };
