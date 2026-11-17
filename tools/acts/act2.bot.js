@@ -281,35 +281,35 @@ export const SCRIPTS = {
   // Clockwork
   15: () => {
     // lever indices in map order: 0 K (the landing), 1 purple, 2 green, 3 orange
-    const set = (who, want, name) => seek(who, name, (S, p) => p.gr && Math.abs(p.vx) < 0.3 && bot(p) > 16 && bot(p) < 21 && cx(p) > 15 && cx(p) < 25 &&
+    const set = (who, want, name) => seek(who, name, (S, p) => p.gr && Math.abs(p.vx) < 0.3 && bot(p) > 17 && bot(p) < 21.5 && cx(p) > 16 && cx(p) < 25 &&
       Object.entries(want).every(([i, v]) => S.lv[i] === v), { key: JSON.stringify(want), h: (S, p) => Object.entries(want).filter(([i, v]) => S.lv[i] !== v).length * 30 });
     return [
-      press(SOL, 23, 16),                            // Sol holds PC: the door opens
-      within(goto(LUNA, 9, 22), 4, 18, 10, 23), goto(SOL, 21, 19),   // Luna walks out; the door shuts on Sol
+      press(SOL, 24, 20, { keep: true }),            // Sol holds PC (jumping the levers): the door opens
+      within(goto(LUNA, 7, 27), 4, 22, 12, 28), goto(SOL, 21, 20),   // Luna walks out; the door shuts on Sol
       set(SOL, { 1: 1, 2: -1, 3: -1 }, 'Sol: purple on'), waitPlat(2, 8),
-      within(grab(SOL, 16, 15), 15, 15, 24, 20),
-      goto(LUNA, 2, 27),   // Luna onto the left lift
+      within(grab(SOL, 17, 16), 16, 15, 24, 20),
+      goto(LUNA, 2, 27),                             // Luna onto the left lift
       set(SOL, { 1: -1, 2: -1, 3: -1 }, 'Sol: purple off'), waitPlat(2, 8, false),
-      grab(LUNA, 10, 12), goto(LUNA, 14, 7),
+      grab(LUNA, 11, 9), goto(LUNA, 11, 6),
       set(SOL, { 1: -1, 2: 1, 3: -1 }, 'Sol: green on'),
-      grab(LUNA, 20, 10), goto(LUNA, 28, 7),
+      grab(LUNA, 23, 9), goto(LUNA, 24, 6),
       set(SOL, { 1: -1, 2: -1, 3: -1 }, 'Sol: green off'),
-      grab(LUNA, 27, 11), grab(LUNA, 37, 3), goto(LUNA, 37, 7),
+      grab(LUNA, 29, 10), grab(LUNA, 37, 2), goto(LUNA, 37, 7),
       set(SOL, { 1: -1, 2: -1, 3: 1 }, 'Sol: orange on'), waitPlat(37, 8),
       set(SOL, { 1: -1, 2: -1, 3: -1 }, 'Sol: orange off'),
-      goto(LUNA, 26, 27), press(SOL, 15, 19),        // Sol holds PY: GY opens
-      flip(LUNA, 12, 19),                            // K on: the door stays open
-      seek(SOL, 'Sol out past K, leaving it on', (S, p) => p.gr && cx(p) < 10 && bot(p) > 21.5 && S.lv[0] === 1, { key: 'out' }),
+      goto(LUNA, 27, 27), press(SOL, 16, 20),        // Sol holds PY: GY opens
+      flip(LUNA, 12, 20),                            // K on: the door stays open
+      seek(SOL, 'Sol out past K, leaving it on', (S, p) => p.gr && cx(p) < 10 && bot(p) > 22.5 && S.lv[0] === 1, { key: 'out' }),
       set(LUNA, { 0: 1, 1: -1, 2: -1, 3: -1 }, 'Luna in, levers untouched'),   // swap
-      seek(LUNA, 'Luna holds PY', (S, p) => p.gr && Math.abs(p.vx) < 0.05 && Math.abs(cx(p) - 15.5) < 0.3 && Math.abs(bot(p) - 20) < 0.3 && S.lv[0] === 1 && S.lv[1] === -1 && S.lv[2] === -1 && S.lv[3] === -1, { key: 'py' }),
-      goto(SOL, 17, 27), goto(SOL, 33, 27),
-      within(grab(LUNA, 21, 15), 15, 15, 24, 20),
+      seek(LUNA, 'Luna holds PY', (S, p) => p.gr && Math.abs(p.vx) < 0.05 && Math.abs(cx(p) - 16.5) < 0.3 && Math.abs(bot(p) - 21) < 0.3 && S.lv[0] === 1 && S.lv[1] === -1 && S.lv[2] === -1 && S.lv[3] === -1, { key: 'py' }),
+      goto(SOL, 18, 27), goto(SOL, 33, 27),
+      within(grab(LUNA, 21, 16), 16, 15, 24, 20),
       set(LUNA, { 0: 1, 1: -1, 2: -1, 3: 1 }, 'Luna: orange on'), waitPlat(37, 8),
       goto(SOL, 37, 27),                             // onto the right lift
       set(LUNA, { 0: 1, 1: -1, 2: -1, 3: -1 }, 'Luna: orange off'), waitPlat(37, 8, false),
-      grab(SOL, 30, 12), grab(SOL, 24, 11), goto(SOL, 18, 7),
+      grab(SOL, 27, 9), goto(SOL, 25, 6), grab(SOL, 15, 9), goto(SOL, 16, 6),
       set(LUNA, { 0: 1, 1: -1, 2: 1, 3: -1 }, 'Luna: green on'),
-      grab(SOL, 12, 11), grab(SOL, 2, 3), goto(SOL, 2, 7),
+      grab(SOL, 5, 10), grab(SOL, 2, 2), goto(SOL, 2, 7),
       set(LUNA, { 0: 1, 1: 1, 2: 1, 3: -1 }, 'Luna: purple on'), waitPlat(2, 8),
       door(SOL), door(LUNA), win(),
     ];

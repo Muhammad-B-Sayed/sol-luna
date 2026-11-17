@@ -299,8 +299,8 @@ def clockwork():
     leaves it alone.
 
     Chain:
-    1. Both start in the control room. Its door GC (pink) opens while pink plate PC, on a ledge
-       far from the door, is held. Sol holds it; Luna walks out.
+    1. Both start in the control room. Its door GC (pink) opens while pink plate PC, at the room's
+       far end from the door, is held. Sol holds it; Luna walks out.
     Yellow gate GY on the bottom band opens only while the operator stands on yellow plate PY at
     the west end of the control room, so the operator must leave the levers to let a runner by.
 
@@ -320,53 +320,51 @@ def clockwork():
     """
     L = Lv('Clockwork', 120, 'One of you works the levers, the other runs. Walk through a lever to flip it, jump over it to leave it alone.')
     solid(L)
-    # top band (rows 2-7, floor 8), low over the two gates
-    L.clear(1, 2, 38, 7)
-    L.r(9, 2, 13, 4).r(21, 2, 27, 5).r(31, 2, 33, 3)
-    L.r(16, 2, 17, 3).clear(16, 4, 17, 5)
-    L.r(17, 4, 17, 5).r(15, 4, 15, 5).clear(16, 4, 16, 5)
-    vgate(L, 16, 6, 7, 1, 4)                               # GG1 (green)
-    L.clear(29, 4, 29, 5).r(28, 4, 28, 5).r(30, 4, 30, 5)
-    L.plat(29, 6, 1, 2, 0, -2, 1, inv=True)               # GG2 (green-inverse)
-    # the two lifts: purple on the left (x 1-3), orange on the right (x 36-38)
-    # both rest at the top, capping their shafts, and go down while their colour is on
+    # Four bands, seven rows apart: the top of the ring (floor 7), three galleries (14), the
+    # control room and landing (21), the bottom of the ring (28). The lifts run the full height.
+    # ---- top band (rows 1-7 over the lifts, floor 7 between them): GG1 and GG2 in 2-high doorways,
+    # and a hole down into each gallery
+    L.clear(1, 1, 38, 6).clear(1, 7, 3, 7).clear(36, 7, 38, 7)
+    L.r(12, 1, 14, 4)
+    vgate(L, 13, 5, 6, 1, 3)                               # GG1 (green)
+    L.r(25, 1, 27, 4).clear(26, 3, 26, 4)
+    L.plat(26, 5, 1, 2, 0, -2, 1, inv=True)               # GG2 (green-inverse)
+    L.clear(6, 7, 9, 7).clear(17, 7, 20, 7).clear(30, 7, 34, 7)
+    # ---- the two lifts: purple on the left (x 1-3), orange on the right (x 36-38); both rest at
+    # the top, capping their shafts, and go down while their colour is on
     L.clear(1, 9, 3, 28).cells(1, 8, 3, 8, 0).mv(0, 0, 20)
     L.clear(36, 9, 38, 28).cells(36, 8, 38, 8, 2).mv(2, 0, 20)
-    # bottom band (rows 22-27, floor 28)
-    L.clear(1, 22, 38, 27)
-    L.r(13, 22, 16, 23).r(24, 22, 26, 25).clear(25, 24, 25, 25)
-    vgate(L, 25, 26, 27, 5, 24)                            # GY (yellow), held from the control room
-    L.clear(23, 8, 27, 8)                                  # a dip in the top band floor
-    L.r(30, 22, 32, 25).clear(31, 24, 31, 25)
-    L.plat(31, 26, 1, 2, 0, -2, 0, inv=True)              # GP (purple-inverse)
+    # ---- galleries under the top band, each with two steps back up under its hole
+    L.clear(5, 8, 11, 13).r(8, 12, 9, 13).r(6, 10, 7, 13)
+    L.clear(15, 8, 24, 13).r(17, 12, 18, 13).r(19, 10, 20, 13)
+    L.clear(27, 8, 34, 13).r(31, 12, 32, 13).r(33, 10, 34, 13)
+    # ---- bottom band (rows 22-27, floor 28) with three gates and three pools
+    L.clear(4, 22, 35, 27)
     L.r(19, 22, 21, 25).clear(20, 24, 20, 25)
     L.plat(20, 26, 1, 2, 0, -2, 2, inv=True)              # GO (orange-inverse)
-    # stairs from the bottom band up to the landing outside the control room
-    L.clear(4, 20, 9, 21)
-    L.r(4, 27, 5, 27).r(7, 25, 8, 25).r(9, 23, 10, 23)   # a bump and two floating steps; the band runs under
-    # landing (x 10-13, rows 16-19, floor 20) with the doors and lever K
-    L.clear(10, 16, 13, 19)
-    L.p(10, 19, 'A').p(11, 19, 'B')
-    L.lever(12, 19, 4)                                     # K keeps GC open
-    # control room (x 15-24, rows 15-19, floor 20)
-    L.clear(15, 15, 24, 19)
-    L.r(13, 16, 13, 17).r(15, 16, 15, 17)
-    vgate(L, 14, 18, 19, 4, 16)                            # GC (pink), the door
-    L.lever(17, 19, 0).lever(20, 19, 1).lever(23, 19, 2)   # purple, green, orange
-    L.r(22, 17, 24, 17).plate(23, 16, 4)                   # PC on a ledge
-    L.plate(15, 19, 5)                                     # PY holds GY open
-    L.p(18, 19, 'a').p(19, 19, 'b')
-    # galleries under the top band, each a hole with stairs back up
-    L.clear(5, 10, 12, 12).clear(5, 8, 8, 9).r(7, 12, 8, 12).r(5, 10, 6, 12)
-    L.clear(27, 10, 34, 12).clear(31, 8, 34, 9).r(31, 12, 32, 12).r(33, 10, 34, 12)
-    L.clear(15, 10, 24, 12).clear(15, 8, 18, 9).r(17, 12, 18, 12).r(15, 10, 16, 12)
-    L.clear(6, 16, 9, 19)                                  # open space over the stairs
+    L.r(24, 22, 26, 25)
+    vgate(L, 25, 26, 27, 5, 24)                            # GY (yellow), held from the control room
+    L.r(30, 22, 32, 25).clear(31, 24, 31, 25)
+    L.plat(31, 26, 1, 2, 0, -2, 0, inv=True)              # GP (purple-inverse)
     L.pool(14, 28, 2, 'S').pool(27, 28, 2, 'M').pool(34, 28, 1, 'S')
+    # ---- stairs from the bottom band up to the landing: two floating steps under an opening
+    L.clear(5, 15, 9, 21)
+    L.r(5, 25, 6, 25).r(8, 23, 9, 23)
+    # ---- landing (x 10-12, floor 21) with the doors and lever K
+    L.clear(10, 15, 12, 20)
+    L.p(10, 20, 'A').p(11, 20, 'B')
+    L.lever(12, 20, 4)                                     # K keeps GC open
+    # ---- control room (x 16-24, rows 15-20, floor 21) behind the door GC
+    L.clear(13, 19, 15, 20)
+    vgate(L, 14, 19, 20, 4, 17)                            # GC (pink), the door
+    L.clear(16, 15, 24, 20)
+    L.lever(17, 20, 0).lever(19, 20, 1).lever(21, 20, 2)   # purple, green, orange
+    L.plate(24, 20, 4)                                     # PC, at the far end from the door
+    L.plate(16, 20, 5)                                     # PY holds GY open
+    L.p(18, 20, 'a').p(20, 20, 'b')
     # gems
-    L.p(12, 11, 's').p(27, 11, 'm').p(20, 10, 'm').p(24, 11, 's')   # in the galleries
-    L.p(30, 12, 's').p(10, 12, 'm')
-    L.p(16, 15, 's').p(21, 15, 'm')                       # jumps inside the control room
-    L.p(2, 3, 's').p(37, 3, 'm')                          # far corners of the top band
+    L.p(2, 2, 's').p(17, 16, 's').p(15, 9, 's').p(5, 10, 's').p(27, 9, 's')
+    L.p(37, 2, 'm').p(21, 16, 'm').p(23, 9, 'm').p(11, 9, 'm').p(29, 10, 'm')
     return L
 
 
