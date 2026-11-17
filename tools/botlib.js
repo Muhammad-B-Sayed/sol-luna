@@ -160,7 +160,7 @@ const unrle = (o) => { const bits = []; for (let i = 0; i < o.length; i += 2) fo
 
 function loadCache(levelNo, raw) {
   const file = join(CACHE_DIR, `level-${levelNo}.json`);
-  const levelHash = sha(JSON.stringify(raw));
+  const levelHash = sha(JSON.stringify(raw) + JSON.stringify(PHYS));   // physics changes invalidate recorded inputs
   let data = { levelHash, entries: {} };
   if (!process.env.NOCACHE && existsSync(file)) {
     try { const d = JSON.parse(readFileSync(file, 'utf8')); if (d.levelHash === levelHash) data = d; } catch { /* rebuilt below */ }
@@ -187,7 +187,7 @@ const flatten = (phases) => {
   return out;
 };
 
-export function run(levelNo, phases, { verbose = false, onPhase = null } = {}) {
+export function run(levelNo, phases, { verbose = false, onPhase = null, onTick = null } = {}) {
   const raw = LEVELS[levelNo - 1];
   const L = buildLevel(raw, levelNo - 1);
   const S = createState(L);
@@ -202,6 +202,7 @@ export function run(levelNo, phases, { verbose = false, onPhase = null } = {}) {
   };
   const advance = (a, b) => {
     step(L, S, [a, b]);
+    if (onTick) onTick(S, L);
     for (let i = 0; i < 2; i++) if (S.p[i].alive) seen[i].add(sectorOf(S.p[i]));
     for (let i = 0; i < S.btn.length; i++) { if (S.btn[i] && !prevBtn[i]) edges++; prevBtn[i] = S.btn[i]; }
     for (let i = 0; i < S.lv.length; i++) { const on = S.lv[i] > 0; if (on !== prevLv[i]) edges++; prevLv[i] = on; }
@@ -354,3 +355,30 @@ export const leap = (who, from, at, to) => {
 };
 // Both players act at once: fa(S) and fb(S) return input bits for Sol and Luna.
 export const both = (name, fa, fb, cond, max = 900) => [name, (S) => [fa(S), fb(S)], cond, max];
+
+// Watches a run for jumps that hit a roof on the way up. Pass `w.onTick` to run()/runScript().
+// Only jumps that matter are kept: climbs (landing a tile or more higher) and crossings (landing
+// 3+ tiles away). Hops the search makes in corridors are skipped unless `all` is set.
+// A full jump rises 4.1 tiles, so it needs 6 free rows above the take-off and along the arc.
+export function roofWatcher({ all = false } = {}) {
+  const cell = (p) => [Math.floor((p.x + p.w / 2) / TS), Math.floor((p.y + p.h) / TS) - 1];
+  const prev = [null, null], jump = [null, null];
+  const hits = new Map();
+  const onTick = (S) => S.p.forEach((p, i) => {
+    const q = prev[i];
+    if (q && q.gr && !p.gr && p.vy < 0) jump[i] = { from: cell(q), bonk: null };
+    const j = jump[i];
+    if (j && q && !p.gr && q.vy < -0.5 && p.vy === 0 && !j.bonk) j.bonk = { at: cell(p), rise: (j.from[1] + 1) - (p.y + p.h) / TS };
+    if (j && q && p.gr && !q.gr) {
+      const to = cell(p), climb = j.from[1] - to[1], dist = Math.abs(to[0] - j.from[0]);
+      if (j.bonk && (all || climb >= 1 || dist >= 3)) {
+        const k = `${i ? 'Luna' : 'Sol '} (${j.from}) -> (${to}) ${climb >= 1 ? `climb ${climb}` : `cross ${dist}`}: head hits the roof at (${j.bonk.at}) after ${j.bonk.rise.toFixed(1)} tiles`;
+        hits.set(k, (hits.get(k) || 0) + 1);
+      }
+      jump[i] = null;
+    }
+    if (!p.alive) jump[i] = null;
+    prev[i] = { gr: p.gr, vy: p.vy, x: p.x, y: p.y, w: p.w, h: p.h };
+  });
+  return { onTick, hits };
+}
