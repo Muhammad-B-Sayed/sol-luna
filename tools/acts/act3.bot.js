@@ -154,26 +154,33 @@ const boardWithCrate = (x0, f) => seek(LUNA, `luna and crate onto lift ${x0},${f
   { key: `w4c${x0},${f}`, h: (S, p) => Math.abs(cx(S.b[0]) - (x0 + 2)) * 13 + Math.abs(cx(p) - (x0 + 2)) * 7 + Math.abs(bot(p) - f) * 4 });
 const board = (who, x0, f) => seek(who, `${who ? 'luna' : 'sol'} onto lift ${x0},${f}`, (S, p) => onLift(p, x0, f),
   { key: `${x0},${f}`, h: (S, p) => Math.abs(cx(p) - (x0 + 1.5)) * 7 + Math.abs(bot(p) - f) * 4 });
-const K2 = { keep: [1] };   // only the yellow lever (index 1, after orange in map order) may change
 // Leapfrog Spire: three lifts each way, each worked from the other side; the crate rides Luna's.
 SCRIPTS[27] = () => [
   grab(SOL, 1, 23), grab(LUNA, 38, 21),
-  board(SOL, 13, 28), press(LUNA, 26, 25), waitPlat(14, 28),        // 1. Luna sends Sol up W1
-  grab(SOL, 12, 16),
-  boardWithCrate(31, 26), press(SOL, 8, 20), waitPlat(32, 26),       // 2. Sol sends Luna and the crate up E1
-  grab(LUNA, 26, 14), pushTo(LUNA, 0, 25.5, { y: 18, tol: 0.3 }),
+  board(SOL, 13, 28), press(LUNA, 25, 25), waitPlat(14, 28),        // 1. Luna sends Sol up W1
+  goto(SOL, 12, 20), grab(SOL, 12, 16),
+  press(LUNA, 38, 25), goto(SOL, 7, 20),                             // she holds G21 open for him
+  goto(LUNA, 28, 25), pushTo(LUNA, 0, 32.5, { y: 25, tol: 0.25 }), board(LUNA, 31, 26), press(SOL, 5, 20), waitPlat(32, 26),   // 2. Sol sends Luna and the crate up E1
+  pushTo(LUNA, 0, 29.95, { y: 18, tol: 0.1 }), goto(LUNA, 36, 18), grab(LUNA, 36, 14),   // the crate off E1, against G19; Luna off the lift
   board(SOL, 1, 21), press(LUNA, 38, 18), waitPlat(2, 21),           // 3. Luna sends Sol up W2
-  grab(SOL, 4, 9),
-  boardWithCrate(24, 19), press(SOL, 8, 13), waitPlat(25, 19),       // 4. Sol sends Luna and the crate up E2
-  grab(LUNA, 30, 7), pushTo(LUNA, 0, 32.5, { y: 11, tol: 0.3 }),
-  boardWithCrate(31, 12), press(SOL, 5, 13), waitPlat(32, 12),       // and up E3 to the top
+  goto(SOL, 4, 13), goto(LUNA, 36, 18), waitPlat(2, 21, false),
+  press(LUNA, 35, 18), goto(SOL, 8, 13),                             // she holds G14 open for him
+  grab(SOL, 11, 9), grab(SOL, 15, 9), press(SOL, 11, 13),            // he holds G19 open for her
+  pushTo(LUNA, 0, 25.5, { y: 18, tol: 0.3 }), grab(LUNA, 26, 14),
+  boardWithCrate(24, 19), press(SOL, 9, 13), waitPlat(25, 19),       // 4. Sol sends Luna and the crate up E2
+  grab(LUNA, 26, 7), pushTo(LUNA, 0, 28.95, { y: 11, tol: 0.1 }),   // the crate east off E2, against gate G12
+  goto(LUNA, 28, 11, { tol: 0.2 }),
+  press(SOL, 11, 13),                                                // Sol holds G12 open
+  pushTo(LUNA, 0, 32.5, { y: 11, tol: 0.25 }), board(LUNA, 31, 12), press(SOL, 7, 13), waitPlat(32, 12),   // and up E3 to the top
+  pushTo(LUNA, 0, 34.9, { y: 4, tol: 0.15 }), goto(LUNA, 30, 4),     // the crate off the lift, by the chute
   board(SOL, 13, 14),                                                // 5. Sol waits on W3
   seek(LUNA, 'luna sends the crate down the chute into the socket', (S, p) => S.b[0].gr && bot(S.b[0]) > 12.5 && cx(S.b[0]) > 36 && p.gr && bot(p) < 5.5,
     { key: 'chute27', h: (S, p) => Math.abs(cx(S.b[0]) - 37) * 13 + Math.abs(bot(S.b[0]) - 13) * 3 + Math.abs(cx(p) - cx(S.b[0])) * 3 }),
   waitPlat(14, 14),                                                  // the crate holds the plate: Sol rides up
-  grab(SOL, 5, 1), flip(SOL, 3, 6, true, K2),                        // 6. the yellow lever: the top hatch drops
-  flip(LUNA, 27, 4, true),                                           // the orange lever: the lower hatch drops
-  waitPlat(19, 5), waitPlat(19, 16),
-  grab(LUNA, 18, 8, K), grab(LUNA, 18, 22, K), grab(SOL, 22, 14, K), // 7. down the column
-  door(SOL, K), door(LUNA, K), win(),
+  grab(SOL, 5, 1), flip(SOL, 3, 6, true),                            // 6. the yellow lever: the top hatch slides away
+  waitPlat(19, 5),
+  goto(SOL, 13, 6, K), press(LUNA, 27, 4, K), waitPlat(19, 16),      // 7. Luna holds the lower hatch open
+  grab(SOL, 21, 14, K), press(SOL, 20, 27, K),                       // Sol drops to the foot and holds it from below
+  goto(LUNA, 24, 4, K), grab(LUNA, 18, 8, K), grab(LUNA, 18, 22, K),
+  door(LUNA, K), door(SOL, K), win(),
 ];

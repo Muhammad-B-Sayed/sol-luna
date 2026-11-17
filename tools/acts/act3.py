@@ -538,16 +538,21 @@ def leapfrog_spire():
     lifts are 4 wide and carry the crate too. Then both go back down inside the column to the doors.
 
     1. Luna on her bottom landing holds the purple plate: Sol rides W1 up to his second landing.
+       Gate G21 bars it; Luna holds the yellow plate at the far end of her landing and he passes.
     2. Sol holds the white plate: Luna and the crate ride E1 up. Luna pushes the crate west to E2.
-    3. Luna holds the green plate: Sol rides W2 up to his third landing.
-    4. Sol holds the pink plate: Luna and the crate ride E2 up; she pushes it east onto E3. Sol
-       holds the second white plate: E3 carries them to the top.
+    3. Luna parks the crate at gate G19 and holds the green plate: Sol rides W2 up. Gate G14 bars
+       his landing: she holds the orange plate and he passes. He holds the yellow plate: G19 opens
+       and she pushes the crate through to E2.
+    4. Sol holds the pink plate: Luna and the crate ride E2 up; she pushes it east to gate G12.
+       Sol holds the yellow plate on his landing: she pushes it through onto E3. Sol holds the
+       second white plate: E3 carries them to the top.
     5. Sol stands on his last lift W3, whose purple plate is in a socket on Luna's third landing,
        which nobody can stand on now. Luna pushes the crate along the top and down the chute: it
        lands in the socket and holds the plate, and Sol rides up.
     6. Sol walks out to the west end of his top and back through the yellow lever: the top hatch of
-       the column drops. Luna does the same with the orange lever at her top: the lower hatch drops.
-    7. Both drop down the column, steering onto ledges for gems, to the doors at its foot."""
+       the column slides away, and the gates stay open.
+    7. Luna holds the orange plate at her top: the lower hatch opens and Sol drops down the column
+       to its foot, steering onto ledges for gems. He holds the orange plate there, and she drops."""
     L = Lv('Leapfrog Spire', 90, 'Each lift is worked from the other side. The crate never climbs: it rides.')
     rock(L)
     for f in (28, 21, 14, 7):                              # Sol's landings, x 1-15
@@ -555,32 +560,45 @@ def leapfrog_spire():
     for f in (26, 19, 12, 5):                              # Luna's landings, x 24-38
         L.clear(24, max(1, f - 6), 38, f - 1)
     L.clear(16, 1, 23, 4)                                  # the crossing over the column's top (floor 5)
+    L.r(8, 1, 11, 2).r(28, 1, 30, 2).r(38, 1, 38, 4)       # roof rocks over the tops, where nobody jumps
+    for x0, y0, x1 in ((5, 22, 10), (4, 15, 9), (1, 8, 4)):
+        L.r(x0, y0, x1, y0 + 1)                            # stalactites over floor that is only walked
     # Sol's lifts (3 wide) and Luna's (4 wide), each one landing high
     lifts = ((13, 28, 0), (1, 21, 1), (13, 14, 0), (31, 26, 3), (24, 19, 4), (31, 12, 3))
     for x0, f, g in lifts:
         w = 3 if x0 < 16 else 4
         L.clear(x0, f, x0 + w - 1, f).clear(x0, f - 7, x0 + w - 1, f - 7)
         L.plat(x0, f, w, 1, 0, -7, g)
+    # two gates, each held open from the other side: G21 on Sol's second landing, G12 on Luna's third
+    L.r(11, 15, 11, 16); pgate(L, 11, 19, 20, 5)            # G21 (yellow)
+    L.r(30, 6, 30, 7); pgate(L, 30, 10, 11, 5)             # G12 (yellow)
+    L.r(29, 13, 29, 14); pgate(L, 29, 17, 18, 5)           # G19 (yellow), on Luna's second landing
+    L.r(5, 8, 5, 9); pgate(L, 5, 12, 13, 2)                # G14 (orange), on Sol's third landing
+    L.plate(35, 18, 2)                                     # G14's plate, Luna's second landing
+    L.plate(38, 25, 5)                                     # G21's plate, Luna's bottom landing
+    L.plate(11, 13, 5)                                     # G12's and G19's plate (yellow), Sol's third landing
     # plates: Luna's lifts are worked from Sol's landings, Sol's from Luna's
-    L.plate(26, 25, 0)                                     # W1 (purple), Luna's bottom landing
-    L.plate(8, 20, 3)                                      # E1 (white), Sol's second landing
-    L.plate(38, 18, 1)                                     # W2 (green), Luna's second landing, off the crate's path
-    L.plate(8, 13, 4).plate(5, 13, 3)                      # E2 (pink) and E3 (white), Sol's third landing
+    L.plate(25, 25, 0)                                     # W1 (purple), Luna's bottom landing
+    L.plate(5, 20, 3)                                      # E1 (white), Sol's second landing
+    L.plate(38, 18, 1)                                     # W2 (green), Luna's second landing
+    L.plate(9, 13, 4).plate(7, 13, 3)                      # E2 (pink) and E3 (white), Sol's third landing
     # W3's socket on Luna's third landing, fed by a chute from her top
     L.clear(36, 5, 37, 5).clear(36, 12, 37, 12).plate(36, 12, 0).plate(37, 12, 0).r(36, 13, 37, 13)
-    L.lever(3, 6, 5)                                       # yellow: the column's top hatch (Sol's top)
-    L.lever(27, 4, 2)                                      # orange: the lower hatch (Luna's top)
+    L.lever(3, 6, 5)                                       # yellow: the column's top hatch (Sol's top), and both gates for good
+    L.plate(27, 4, 2)                                      # orange: holds the lower hatch open (Luna's top)
     # the column: descent shaft with ledges, the door chamber at its foot
-    L.clear(17, 6, 22, 27).clear(19, 5, 20, 5).clear(19, 28, 20, 28)
-    for x, y in ((17, 12), (22, 15), (17, 19), (22, 22), (18, 9), (21, 18), (18, 23), (21, 10)):
+    L.clear(18, 6, 21, 27).clear(19, 5, 20, 5)
+    for x, y in ((18, 12), (21, 15), (18, 19), (21, 22), (18, 9), (21, 18), (18, 23), (21, 10)):
         L.set(x, y, '#')
-    L.r(17, 16, 18, 16).r(21, 16, 22, 16)                  # the lower hatch's frame
-    L.p(17, 27, 'A').p(22, 27, 'B')
-    L.plat(19, 5, 2, 1, 0, 23, 5)                          # the hatch over the shaft (Sol's yellow lever)
-    L.plat(19, 16, 2, 1, 0, 12, 2)                         # the lower hatch (Luna's orange lever)
-    for x, y in ((1, 23), (12, 16), (4, 9), (5, 1), (22, 14)):
+    L.clear(16, 16, 18, 16)                                # the lower hatch slides into the wall
+    L.clear(21, 5, 23, 5)                                  # and the top hatch into the crossing's floor
+    L.plate(20, 27, 2)                                     # orange plate at the foot: holds the lower hatch open from below
+    L.p(18, 27, 'A').p(21, 27, 'B')
+    L.plat(19, 5, 2, 1, 2, 0, 5)                           # the hatch over the shaft (Sol's yellow lever)
+    L.plat(19, 16, 2, 1, -3, 0, 2)                         # the lower hatch (orange plates, top and foot)
+    for x, y in ((1, 23), (12, 16), (11, 9), (5, 1), (21, 14), (15, 9)):
         L.p(x, y, 's')
-    for x, y in ((38, 21), (26, 14), (30, 7), (18, 8), (18, 22)):
+    for x, y in ((38, 21), (26, 14), (26, 7), (18, 8), (18, 22), (36, 14)):
         L.p(x, y, 'm')
-    L.p(3, 27, 'a').p(37, 25, 'b').p(30, 25, 'k')
+    L.p(3, 27, 'a').p(36, 25, 'b').p(30, 25, 'k')
     return L
