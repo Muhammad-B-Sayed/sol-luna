@@ -101,37 +101,36 @@ export const SCRIPTS = {
 
   // Closing Time
   18: () => [
-    grab(LUNA, 27, 23),
+    grab(LUNA, 28, 22), mv(LUNA, 32.5),              // walk out from under the ledge
     press(LUNA, 38, 27),                             // PO1: Sol's pocket opens
-    grab(SOL, 2, 23),
-    press(SOL, 9, 27),                               // PB: Luna's gate opens
-    grab(LUNA, 18, 23),
+    grab(SOL, 8, 21),
+    press(SOL, 10, 27),                              // PB: Luna's gate opens
+    grab(LUNA, 18, 22),
     goto(SOL, 11, 27),                               // Sol waits at airlock X
     press(LUNA, 23, 27),                             // P0: the airlock swaps
-    goto(SOL, 18, 27),                               // Sol runs under the closing gate
-    grab(SOL, 19, 23),
+    goto(SOL, 17, 27),                               // Sol runs under the closing gate
+    within(grab(SOL, 20, 22), 14, 20, 21, 27), goto(SOL, 21, 27),
     goto(LUNA, 14, 27),                              // Luna waits at the airlock
     press(SOL, 23, 27),                              // P0 again
-    goto(LUNA, 9, 27),                               // Luna runs it the other way
-    press(LUNA, 9, 27),                              // PB: GB opens
-    press(SOL, 33, 27),                              // Sol into Luna's cell, holds PG: HB opens
-    within(grab(LUNA, 1, 13), 1, 10, 11, 18),
-    press(LUNA, 8, 18),                              // Luna climbs west and holds PW: HC opens
+    press(LUNA, 10, 27),                             // Luna runs it the other way and holds PB: GB opens
+    press(SOL, 36, 27),                              // Sol into Luna's cell, holds PG: HB opens
+    within(grab(LUNA, 11, 12), 1, 10, 11, 18),
+    press(LUNA, 7, 18),                              // Luna climbs west and holds PW: HC opens
     goto(SOL, 32, 18),                               // Sol climbs east
     grab(SOL, 38, 13),
     grab(LUNA, 21, 13),
     press(LUNA, 17, 18),                             // Luna into the centre, holds P5: DR opens
-    grab(SOL, 19, 12), press(SOL, 17, 18),           // Sol in, takes over P5
+    grab(SOL, 19, 11), press(SOL, 17, 18),           // Sol in, takes over P5
     goto(LUNA, 28, 16),                              // Luna out east
     goto(SOL, 10, 16),                               // Sol steps off: DL opens, he goes west
-    press(LUNA, 35, 18),                             // PG2: HL opens
+    press(LUNA, 38, 18),                             // PG2: HL opens
     goto(SOL, 9, 8), press(SOL, 1, 6),               // Sol climbs, holds PW2: HR opens
-    goto(LUNA, 31, 8), grab(LUNA, 35, 4),            // Luna climbs
-    press(SOL, 9, 8),                                // PP: ZR opens, ZL shuts
+    goto(LUNA, 35, 8), grab(LUNA, 35, 4),            // Luna climbs
+    press(SOL, 10, 8),                               // PP: ZR opens, ZL shuts
     goto(LUNA, 18, 6),                               // Luna into the top centre
-    goto(SOL, 6, 8),                                 // Sol steps off: ZL opens
-    goto(LUNA, 10, 8), goto(SOL, 16, 8),             // they pass in the doorway
-    press(LUNA, 9, 8),                               // PP: ZR opens
+    goto(SOL, 8, 8),                                 // Sol steps off: ZL opens
+    goto(LUNA, 11, 8), goto(SOL, 16, 8),             // they pass in the doorway
+    press(LUNA, 10, 8),                              // PP: ZR opens
     grab(SOL, 20, 2), goto(SOL, 35, 8),              // Sol into the top right
     press(LUNA, 1, 6),                               // PW2: his door chamber opens
     door(SOL), door(LUNA), win(),

@@ -430,24 +430,24 @@ def closing_time():
     13. Sol steps off: ZR shuts, ZL opens, and they pass each other in the doorway.
     14. Luna holds PP and Sol goes on through ZR into the top right.
     15. His door is in a chamber behind white gate GW. Luna steps across to PW2: GW opens and
-        Sol goes in. She steps off and climbs to her door on the high ledge in the top left.
+        Sol goes in. She steps off to her door beside it on the block in the top left.
     """
     L = Lv('Closing Time', 80, 'Several controls open one door and shut another. Where two gates stand together, run the moment your partner moves.')
     solid(L)
-    # cells: columns x 1-11, 14-24, 27-38; rows 1-8, 10-18, 20-27; walls 2 thick, slabs 1 thick
+    # cells: columns x 1-11, 14-24, 27-38; rows 1-8, 10-18, 20-27; walls 2 thick, slabs 1 thick.
+    # Every climb to a hatch is a low step (with the cell's full headroom over it) and then a
+    # ledge right under the hatch hole, so each take-off has six free rows above it.
     for x0, x1 in ((1, 11), (14, 24), (27, 38)):
         L.clear(x0, 1, x1, 8).clear(x0, 10, x1, 18).clear(x0, 20, x1, 27)
 
-    # ---- bottom left: Sol's pocket, PB, stairs up to HB, airlock X
-    L.r(1, 24, 3, 25)                                     # pocket roof (stand 23)
+    # ---- bottom left: Sol's pocket, PB, a step and a ledge under HB, airlock X
+    L.r(1, 20, 3, 25).r(4, 23, 6, 25)                     # the pocket's roof; its top under HB is the ledge
     L.p(2, 27, 'a')
     vdoor(L, 4, 26, 2)                                    # GS (orange)
-    L.plate(9, 27, 2)                                     # PB
-    L.r(7, 27, 8, 27)                                     # step (stand 26)
-    L.r(9, 24, 10, 24)                                    # ledge (stand 23)
-    L.r(5, 22, 6, 22)                                     # ledge under the hatch (stand 21)
+    L.plate(10, 27, 2)                                    # PB
+    L.r(8, 26, 9, 27)                                     # a low step (stand 25)
     hatch(L, 4, 19, 3, -3, 1)                             # HB (green) slides west into a closed slot
-    L.r(1, 20, 3, 20).r(1, 18, 3, 18)
+    L.r(1, 18, 3, 18)
     L.r(11, 20, 11, 25)
     L.clear(12, 26, 14, 27)
     L.r(14, 20, 14, 25)
@@ -456,77 +456,67 @@ def closing_time():
     # ---- bottom centre: P0, gate GB
     L.plate(23, 27, 0)                                    # P0
     L.p(15, 27, '/#\\')                                   # a hump
-    L.r(18, 25, 20, 25)                                   # a ledge in the middle (stand 24)
-    L.r(15, 20, 16, 20).r(15, 21, 15, 21).r(23, 20, 24, 20).r(24, 21, 24, 21)
+    L.r(18, 26, 20, 27)                                   # a block in the middle (stand 25)
+    L.r(15, 20, 16, 20).r(23, 20, 24, 20)
     L.clear(25, 26, 26, 27)
     vdoor(L, 25, 26, 2)                                   # GB (orange)
 
-    # ---- bottom right: Luna's start, PO1, PG, stairs up to HC
-    L.p(30, 27, 'b')
+    # ---- bottom right: Luna's start, PO1, PG, a step and a floating ledge under HC
+    L.p(32, 27, 'b')
     L.plate(38, 27, 2)                                    # PO1
-    L.plate(33, 27, 1)                                    # PG
-    L.r(36, 26, 37, 27)                                   # step (stand 25)
-    L.r(33, 24, 34, 24)                                   # ledge (stand 23)
-    L.r(30, 22, 31, 22)                                   # ledge under the hatch (stand 21)
+    L.plate(36, 27, 1)                                    # PG
+    L.r(34, 26, 35, 27)                                   # a low step (stand 25)
+    L.r(29, 23, 31, 23)                                   # the ledge under HC (stand 22)
     hatch(L, 29, 19, 3, -3, 3)                            # HC (white) slides west into a closed slot
-    L.r(27, 20, 28, 20).r(37, 20, 38, 20).r(38, 21, 38, 21)
+    L.r(27, 20, 28, 20)
 
-    # ---- west: PW, stairs up to HL, DL
-    L.r(10, 17, 11, 18)                                   # arrival block (stand 16)
-    L.plate(8, 18, 3)                                     # PW
-    L.r(8, 14, 9, 14)                                     # ledge (stand 13)
-    L.r(6, 12, 7, 12)                                     # ledge under the hatch (stand 11)
-    hatch(L, 6, 9, 3, -3, 1)                              # HL (green)
-    L.r(3, 10, 5, 10)
+    # ---- west: PW, a step and a ledge under HL, DL
+    L.r(10, 17, 11, 18)                                   # block up to the doorway (stand 16)
+    L.r(8, 16, 9, 18)                                     # a step (stand 15)
+    L.r(5, 12, 7, 12)                                     # the ledge under HL (stand 11)
+    L.plate(7, 18, 3)                                     # PW
+    hatch(L, 5, 9, 3, -3, 1)                              # HL (green)
+    L.r(2, 10, 4, 10)
     L.clear(12, 15, 13, 16)
     vdoor(L, 13, 15, 5, inv=True)                         # DL (yellow-inverse)
 
     # ---- centre: P5 between DL and DR
     L.r(14, 17, 15, 18).r(23, 17, 24, 18)                 # blocks up to the doorways (stand 16)
     L.plate(17, 18, 5)                                    # P5
-    L.r(14, 10, 15, 10).r(14, 11, 14, 11).r(23, 10, 24, 10).r(24, 11, 24, 11)
-    L.r(18, 13, 20, 13).r(20, 15, 21, 15)                 # a shelf in the middle, a step up to it
+    L.r(18, 16, 20, 16)                                   # a shelf (stand 15)
     L.clear(25, 15, 26, 16)
     vdoor(L, 25, 15, 5)                                   # DR (yellow)
 
-    # ---- east: PG2, stairs up to HR
-    L.r(27, 17, 28, 18)                                   # arrival block (stand 16)
-    L.plate(35, 18, 1)                                    # PG2
-    L.r(29, 14, 30, 14)                                   # ledge (stand 13)
-    L.r(32, 12, 33, 12)                                   # ledge under the hatch (stand 11)
-    hatch(L, 32, 9, 3, 3, 3)                              # HR (white)
-    L.r(35, 10, 37, 10).r(38, 10, 38, 11)
+    # ---- east: PG2, a step and a ledge under HR
+    L.r(27, 17, 28, 18)                                   # block up to the doorway (stand 16)
+    L.r(35, 16, 36, 18)                                   # a step (stand 15)
+    L.r(32, 12, 34, 12)                                   # the ledge under HR (stand 11)
+    L.plate(38, 18, 1)                                    # PG2
+    hatch(L, 32, 9, 3, -3, 3)                             # HR (white) slides west under the top right's block
+    L.r(29, 10, 31, 10)
 
-    # ---- top left: PW2, gate ZL
+    # ---- top left: PW2, Luna's door, PP, gate ZL
     L.r(11, 1, 11, 6)
-    L.r(1, 7, 2, 8).plate(1, 6, 3)                        # PW2 on a block (stand 6)
-    L.r(4, 4, 6, 4).p(5, 3, 'B')                          # Luna's door on a high ledge (stand 3)
-    L.plate(9, 8, 4)                                      # PP
-    L.r(1, 1, 3, 1).r(9, 1, 10, 1)
+    L.r(1, 7, 4, 8).plate(1, 6, 3)                        # PW2 on a block (stand 6) over HL's slot
+    L.p(4, 6, 'B')                                        # Luna's door on the block
+    L.plate(10, 8, 4)                                     # PP
     L.clear(12, 7, 14, 8).r(12, 1, 14, 6)
     vdoor(L, 13, 7, 4, inv=True)                          # ZL (pink-inverse)
 
     # ---- top centre: the crossing room
     L.r(17, 7, 24, 8)                                     # dais (stand 6)
-    L.r(15, 1, 16, 2).r(15, 3, 15, 3).r(23, 1, 24, 1).r(24, 2, 24, 2)
-    L.r(19, 4, 21, 4)                                     # a ledge over the dais (stand 3)
+    L.r(15, 1, 16, 1)
     L.r(25, 1, 26, 8).clear(25, 5, 26, 6)
     vdoor(L, 26, 5, 4)                                    # ZR (pink)
 
-    # ---- top right: arrival from HR, Sol's door
-    L.r(27, 7, 29, 8).r(27, 1, 27, 4)                     # block up to ZR (stand 6)
+    # ---- top right: a block up to ZR over HR's slot, the hole from HR, Sol's door chamber
+    L.r(27, 7, 31, 8).r(27, 1, 27, 4)                     # block (stand 6)
     L.p(38, 8, 'A')
-    L.r(36, 5, 36, 5).r(37, 3, 38, 4).r(38, 5, 38, 6)
+    L.r(36, 5, 36, 6).r(37, 1, 38, 4).r(38, 5, 38, 6)
     vdoor(L, 37, 7, 3)                                    # GW (white): Sol's door chamber
-    L.r(36, 1, 38, 2).r(38, 3, 38, 3)
-    L.r(34, 6, 36, 6)                                     # a high ledge (stand 5)
-    # gems: on the pocket roof, the centre shelf, the high ledges, and corner pockets
-    L.p(2, 23, 's').p(19, 23, 's').p(19, 12, 's').p(20, 2, 's')
-    L.r(27, 24, 28, 24).p(27, 23, 'm')                    # a pocket in Luna's first cell
-    L.r(1, 15, 2, 15).p(1, 13, 'm')                       # a perch above the west step
-    L.p(35, 4, 'm').p(21, 13, 'm')
-    L.r(37, 16, 38, 16).p(38, 13, 's')                    # a perch in the east cell's far corner
-    L.p(18, 23, 'm')
+    # gems: jumps from the steps and blocks, and the cells' far corners
+    L.p(8, 21, 's').p(20, 22, 's').p(19, 11, 's').p(38, 13, 's').p(20, 2, 's')
+    L.p(28, 22, 'm').p(18, 22, 'm').p(11, 12, 'm').p(21, 13, 'm').p(35, 4, 'm')
     return L
 
 
