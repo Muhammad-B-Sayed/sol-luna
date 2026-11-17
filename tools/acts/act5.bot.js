@@ -11,62 +11,96 @@ const within = (ph, x0, y0, x1, y1) => ({
 const dropped = (who, i, y, x, name) => seek(who, name, (S) => S.b[i].gr && bot(S.b[i]) > y + 0.5,
   { key: `drop${i},${y}`, h: (S, p) => Math.abs(cx(S.b[i]) - x) * 13 + Math.abs(cx(p) - cx(S.b[i])) * 4 });
 
+// Gems collected so far.
+const gemCount = (S) => S.gm.reduce((a, b) => a + b, 0);
+// Jump straight up until a gem is collected (for gems over a low roof, where a search might
+// pick a sideways jump that hits the ceiling).
+const hopUp = (who, name) => {
+  let n0 = null;
+  return [name, (S) => {
+    if (n0 === null) n0 = gemCount(S);
+    const b = S.p[who].gr && gemCount(S) === n0 ? U_ : 0;
+    return who ? [0, b] : [b, 0];
+  }, (S) => n0 !== null && gemCount(S) > n0 && S.p[who].gr, 200];
+};
+
+// A timed jump: jump toward dir, hold it for `hold` ticks, then brake until landing.
+// For hops under a low roof, where the landing cell has to be exact.
+const timedHop = (who, dir, hold, name) => {
+  let t = -1, air = false;
+  const back = dir === R_ ? L_ : R_;
+  return [name, (S) => {
+    t++;
+    const p = S.p[who];
+    if (!p.gr) air = true;
+    const b = t === 0 ? dir | U_ : air && p.gr ? 0 : t < hold ? dir : back;
+    return who ? [0, b] : [b, 0];
+  }, (S) => air && S.p[who].gr && Math.abs(S.p[who].vx) < 0.6, 200];
+};
+
 export const SCRIPTS = {
   // Sunken Halls
   29: () => [
-    // hall 1
-    press(SOL, 16, 6),                               // PG: G0 opens
-    within(goto(LUNA, 8, 5), 7, 2, 9, 6),            // Luna through the moon tunnel into the west room
-    goto(SOL, 17, 6),                                // Sol steps off: G0 shuts behind her
-    dropped(LUNA, 0, 6.2, 6, 'Luna pushes K1 onto the hatch in C1'),
-    grab(LUNA, 1, 3), goto(LUNA, 8, 5),
-    press(SOL, 16, 6),                               // PG again: she comes out
-    goto(LUNA, 18, 6),
-    goto(SOL, 20, 12), grab(SOL, 14, 11),            // Sol down the well
-    press(SOL, 14, 13), wait('K1 falls into the lake', (S) => S.b[0].gr && bot(S.b[0]) > 14, 300),   // PK: HK slides away
-    grab(SOL, 1, 10), flip(SOL, 2, 13),              // over the lake on K1: L1 on, the east room opens
-    goto(SOL, 20, 12, { tol: 0.1 }),                 // beside R1's empty berth
-    press(LUNA, 21, 6), waitPlat(23, 7),             // rescue one: PR1 calls R1 down
-    goto(SOL, 23, 12),
-    goto(LUNA, 18, 6), waitPlat(23, 7, false),       // she lets go: it carries him up
-    goto(SOL, 29, 6),
-    press(LUNA, 16, 6),                              // PG: the inner gate opens
-    grab(SOL, 38, 2),
-    pushTo(SOL, 1, 23, { tol: 0.4 }),                // K2 out onto R1
-    goto(SOL, 26, 6),
-    press(LUNA, 21, 6), waitPlat(23, 7),             // PR1: R1 carries the crate down
+    // hall 1 is a low gallery: walk it, don't jump
+    press(SOL, 21, 5),                               // PG: G0 opens
+    mv(LUNA, 12.5),                                  // Luna through the moon tunnel into the west room
+    mv(SOL, 19.5),                                   // Sol steps off: G0 shuts behind her
+    ['Luna pushes K1 into C1', (S) => [0, bot(S.b[0]) > 5.05 ? 0 : L_], (S) => S.b[0].gr && bot(S.b[0]) > 5.9 && S.p[1].gr, 400],
+    mv(LUNA, 11.2, 0.1), hopUp(LUNA, 'Luna hops for the gem'),
+    mv(SOL, 21.5),                                   // PG again: she comes out
+    mv(LUNA, 20.5),
     // hall 2
-    goto(SOL, 21, 12),                               // Sol drops in after it
-    pushTo(SOL, 1, 26, { tol: 0.6 }),                // K2 off the lift, against the pink gate
-    goto(LUNA, 18, 6), waitPlat(23, 7, false),       // she lets go; R1 goes back up
-    goto(SOL, 20, 12), grab(LUNA, 22, 10), goto(LUNA, 19, 12),
-    goto(LUNA, 16, 20),                              // Luna down R2's shaft
-    flip(LUNA, 23, 20, false), grab(LUNA, 21, 20),   // the pink lever: the ferry room opens, the lake drains
-    goto(LUNA, 16, 20),
-    press(SOL, 12, 13), waitPlat(16, 21),            // rescue two
-    pushTo(LUNA, 0, 16, { tol: 0.8 }),               // K1 out of the drained lake onto R2
-    goto(SOL, 13, 13), waitPlat(16, 21, false),      // Sol lets go: K1 rides down
-    pushTo(LUNA, 1, 31, { tol: 0.3 }),               // K2 onto the ferry
-    within(goto(LUNA, 29, 12, { tol: 0.6 }), 29, 12, 30, 12),
-    press(SOL, 3, 13), waitPlat(30, 13),            // PF: the ferry crosses
-    within(dropped(LUNA, 1, 19, 35, 'Luna pushes K2 down C2'), 29, 12, 38, 12), grab(LUNA, 38, 11), goto(LUNA, 36, 19),
-    grab(LUNA, 35, 16),
+    goto(SOL, 22, 12),                               // Sol down the well
+    press(SOL, 16, 12), wait('K1 falls into the lake', (S) => S.b[0].gr && bot(S.b[0]) > 14, 300),   // PK: HK slides away
+    mv(SOL, 13.5),
+    grab(SOL, 1, 8), flip(SOL, 2, 12),               // over the lake on K1: L1 on, the east rooms open
+    goto(SOL, 13, 12), mv(SOL, 17.5),
+    goto(SOL, 23, 12, { tol: 0.1 }),                 // over R2's shaft to R1's berth
+    press(LUNA, 18, 5), waitPlat(24, 6),             // rescue one: PR1 calls R1 down
+    goto(SOL, 25, 12),
+    mv(LUNA, 20.5), waitPlat(24, 6, false),          // she lets go: it carries him up
+    press(LUNA, 21, 5),                              // PG: the inner gate opens
+    mv(SOL, 35.45, 0.02), timedHop(SOL, R_, 30, 'Sol hops over K2'),   // a short hop: two cells, under the low roof
+    grab(SOL, 38, 2),                                // taken in the air on the way over
+    push(SOL, 1, 31.5),                              // K2 out through G2
+    mv(LUNA, 20.5),
+    push(SOL, 1, 25.5), mv(SOL, 28.5),               // and onto R1
+    press(LUNA, 18, 5), waitPlat(24, 6),             // PR1: R1 carries the crate down
+    mv(SOL, 26.2), goto(SOL, 23, 12),                // Sol drops in after it and steps off west
+    pushTo(SOL, 1, 28, { tol: 0.6 }),                // K2 off the lift, against the pink gate
+    goto(SOL, 23, 12),
+    mv(LUNA, 20.5), waitPlat(24, 6, false),          // she lets go; R1 goes back up
+    mv(LUNA, 22.6), grab(LUNA, 22, 8),               // Luna down the well
+    goto(LUNA, 19, 20),                              // and down R2's shaft
+    flip(LUNA, 27, 20, false), grab(LUNA, 25, 20),   // the pink lever: the ferry gate opens, the lake drains
+    goto(LUNA, 19, 20),
+    goto(SOL, 17, 12), mv(SOL, 13.5),
+    press(SOL, 1, 12), waitPlat(18, 21),             // rescue two: PR2 on the far shore
+    mv(LUNA, 14.5), leap(LUNA, 11, 10.5, 5.5),       // over K1 in the drained lake
+    push(LUNA, 0, 19.5), mv(LUNA, 16.5),             // K1 out onto R2
+    mv(SOL, 5.5), waitPlat(18, 21, false),           // Sol lets go: K1 rides down
+    pushTo(LUNA, 1, 31, { tol: 0.4 }),               // K2 through G3 onto the ferry
+    within(goto(LUNA, 30, 12, { tol: 0.45 }), 30, 12, 30, 12),
+    press(SOL, 3, 12), waitPlat(30, 13),             // PF: the ferry crosses
+    within(dropped(LUNA, 1, 19, 36.5, 'Luna pushes K2 down C2'), 30, 12, 38, 12),
+    mv(LUNA, 36.6), goto(LUNA, 38, 20), grab(LUNA, 38, 15),
     // hall 3
-    goto(SOL, 18, 20),                               // Sol down R2's shaft onto K1, and off it east
-    press(LUNA, 38, 19),                             // P8: GP opens
-    dropped(SOL, 0, 20.7, 10, 'Sol pushes K1 through GP into the shade pool'),
-    press(SOL, 7, 20),                               // over it to P5: G5 opens
-    within(dropped(LUNA, 1, 20.3, 27, 'Luna pushes K2 onto the hatch in C3'), 28, 16, 38, 19),
-    press(LUNA, 28, 19),                             // she follows it through G5, onto P7
-    grab(SOL, 1, 16), goto(SOL, 3, 20, { tol: 0.4 }),   // P7 holds Sol's hatch open: he drops
-    grab(SOL, 1, 24),
-    press(SOL, 3, 27), wait('the crate falls into the bottom hall', (S) => S.b[1].gr && bot(S.b[1]) > 26.5, 300),   // P9: HC slides away under it
-    goto(LUNA, 28, 26),                              // she drops after it while he holds
-    dropped(LUNA, 1, 26.6, 23, 'Luna pushes K2 into the socket'),
+    mv(SOL, 17.5), mv(SOL, 19.4), goto(SOL, 21, 20), // Sol down R2's shaft onto K1, and off it east
+    press(LUNA, 38, 20),                             // P8: GP opens
+    pushTo(SOL, 0, 15, { tol: 0.3 }),                // K1 through GP to the foot of the wall
+    grab(SOL, 14, 14),                               // up from the crate onto the ledge
+    grab(SOL, 1, 16), press(SOL, 2, 21),             // down into the west end: P5, G5 opens
+    within(dropped(LUNA, 1, 21.3, 31.5, 'Luna pushes K2 onto the hatch in C3'), 31, 14, 38, 20),
+    press(LUNA, 33, 20),                             // P7: Sol's hatch opens
+    goto(SOL, 7, 28, { tol: 0.5 }), grab(SOL, 1, 24),
+    press(SOL, 3, 28), wait('the crate falls into the bottom hall', (S) => S.b[1].gr && bot(S.b[1]) > 27.5, 300),   // P9: HC slides away
+    mv(LUNA, 31.9),                                  // she drops after it while he holds
+    mv(SOL, 4.6),                                    // he lets go: HC slides back
+    dropped(LUNA, 1, 28.2, 25.5, 'Luna pushes K2 into the socket'),
     // hall 4
-    goto(LUNA, 29, 26), grab(LUNA, 24, 23), press(LUNA, 15, 26),   // over the bridge to P6: G6 opens
-    grab(SOL, 37, 27), goto(SOL, 32, 27),            // Sol through G6, over the bridge, onto L4
-    press(LUNA, 30, 26), waitPlat(32, 28),           // PR3: up he goes
+    grab(LUNA, 30, 23), press(LUNA, 15, 27),         // over the bridge to P6: G6 opens
+    goto(SOL, 35, 27),                               // Sol through G6, over the bridge, onto L4
+    press(LUNA, 33, 27), waitPlat(34, 28),           // PR3: up he goes
     press(SOL, 38, 23),                              // P6b on the shelf: G6 opens for Luna
     door(LUNA), door(SOL), win(),
   ],
