@@ -71,22 +71,25 @@ export const SCRIPTS = {
   ],
   // Crate Cellar: bring the crate down the cascade, then it is the step and the weight at the chimney foot.
   6: () => [
-    grab(LUNA, 9, 4),
-    pushTo(SOL, 0, 9, { y: 8 }), goto(LUNA, 6, 8),  // off the top ledge onto the second; Luna gets behind it
-    grab(SOL, 6, 11), press(SOL, 2, 13),   // Sol drops into his pocket, holds P1: G1 opens
-    pushTo(LUNA, 0, 22, { y: 17 }),                 // Luna pushes the crate through G1 and off the ledge
-    pushTo(LUNA, 0, 23, { y: 17 }), grab(LUNA, 29, 12),   // the crate as a step into the niche
-    press(LUNA, 14, 17),        // Luna holds P2: G2 opens and Sol gets out
-    goto(SOL, 25, 17), pushTo(SOL, 0, 14, { y: 17 }),
-    pushTo(SOL, 0, 3, { y: 22 }),                   // west along the third ledge and down the shaft
-    goto(SOL, 1, 22),
-    pushTo(SOL, 0, 32, { y: 26 }),                  // east down the fourth ledge, onto P3 at the chimney foot
-    goto(LUNA, 36, 22),         // Luna climbs the crate and steps onto the lift
-    press(SOL, 21, 25),                             // Sol holds P4: the lift carries Luna up
-    goto(LUNA, 33, 6),                              // Luna steps off at the top
-    grab(SOL, 37, 20), goto(SOL, 36, 22),           // Sol lets go; the empty lift comes down and he boards it
-    press(LUNA, 38, 6),                             // Luna holds the top plate: the lift brings Sol up
-    door(SOL), grab(LUNA, 37, 3), door(LUNA), win(),
+    grab(LUNA, 10, 3),
+    pushTo(SOL, 0, 13, { y: 13 }), goto(LUNA, 12, 13),   // off the starting ledge onto the second; Luna gets behind it
+    grab(SOL, 3, 16), press(SOL, 1, 17),           // Sol drops into his pocket, holds P1: G1 opens
+    pushTo(LUNA, 0, 23, { y: 20 }),                 // Luna pushes the crate through G1 and off the ledge
+    pushTo(LUNA, 0, 30, { y: 20 }), grab(LUNA, 30, 14),   // the crate as a step up to a high gem
+    press(LUNA, 16, 20),                            // Luna holds P2: G2 opens and Sol gets out
+    grab(SOL, 20, 17), pushTo(SOL, 0, 15, { y: 20 }),
+    pushTo(SOL, 0, 13, { y: 27 }),                  // west along the third ledge and down the gap
+    goto(SOL, 11, 27),
+    pushTo(SOL, 0, 32, { y: 28 }),                  // east along the fourth ledge, down onto P3 at the chimney foot
+    grab(SOL, 26, 24),
+    goto(LUNA, 36, 23),                             // Luna climbs the crate and steps onto the lift
+    press(SOL, 30, 28),                             // Sol holds P4: the lift carries Luna up
+    waitPlat(36, 24), goto(LUNA, 34, 6),            // Luna steps off at the top
+    mv(SOL, 31.6), waitPlat(36, 24, false),         // Sol lets go; the empty lift comes down
+    goto(SOL, 36, 23),                              // and he boards it
+    press(LUNA, 32, 6),                             // Luna holds the top plate: the lift brings Sol up
+    door(SOL),
+    grab(LUNA, 33, 3), door(LUNA), win(),
   ],
   // Twin Towers: each crosses the chasm on a ferry the other drives.
   7: () => [

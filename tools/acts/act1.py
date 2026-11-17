@@ -298,45 +298,45 @@ def the_long_way_round():
 @level(6)
 def crate_cellar():
     """A cascade of ledges that zigzags down from the top left to the bottom right, then a chimney back up
-    to the doors in the top right. The crate rides the cascade down: pushed off one ledge, it lands on the
-    next. A crate is wider than a one-tile hole, so it rolls over holes a player would fall through.
+    to the doors in the top right. Each ledge is seven rows below the one before, so its jumps get their
+    full arc. The crate rides the cascade down: pushed off one ledge, it lands on the next. A crate is wider
+    than a one-tile hole, so it rolls over holes a player would fall through.
     1. Both push the crate off the starting ledge onto the second.
-    2. Sol drops through the one-tile hole into a sun-pool pocket and stands on P1 (purple): gate G1 on the
-       ledge above opens and Luna pushes the crate through it and off the end.
+    2. Sol walks back under the starting ledge, drops through a one-tile hole into a sun-pool pocket and
+       stands on P1 (purple): gate G1 on the second ledge opens and Luna pushes the crate through it and
+       off the end onto the third ledge.
     3. Luna stands on P2 (green) on the third ledge: the pocket's gate G2 opens and Sol gets out.
-    3b. Luna parks the crate one tile short of the east wall and uses it as a step into a high niche for a gem.
-    4. Together they push the crate west along the third ledge, off its far end, then east along the fourth,
-       step by step down to the cellar floor, and against the foot of the chimney wall, onto P3 (white).
-       P3 opens the gate in front of the doors for good, and the crate is the step up into the chimney.
-    5. Luna steps onto the chimney lift (orange) and Sol stands on P4 beside it: she rides to the top.
-    6. Luna stands on the second orange plate at the top: the empty lift comes down for Sol and brings him up."""
+    3b. Luna parks the crate near the east wall and jumps from it for a gem that hangs too high to reach
+        from the floor.
+    4. Together they push the crate west along the third ledge and off its far end, then east along the
+       fourth, down a step to the cellar floor and against the foot of the chimney wall, onto P3 (orange).
+       P3 opens the gate in front of the doors for good, and the crate is the step up onto the lift.
+    5. Luna steps onto the chimney lift (white) and Sol stands on P4 beside it: she rides to the top.
+    6. Luna stands on the second white plate at the top: the empty lift comes down for Sol and brings him up."""
     L = Lv('Crate Cellar', 60, 'Push the crate off ledges to bring it down. Stuck against a wall? Lean on it, then jump into its corner.')
-    L.r(1, 1, 38, 28)
-    L.clear(1, 3, 21, 8).r(2, 6, 8, 6)                                 # top ledge: a thin shelf (row 6) over the second ledge (row 9)
-    L.r(17, 4, 19, 6).clear(18, 5, 18, 6).cells(18, 7, 18, 8, 0)        # gate G1 on the second ledge
-    L.clear(11, 9, 11, 9)                                              # one-tile hole into Sol's pocket
-    L.clear(2, 10, 14, 13).clear(15, 12, 15, 13).pool(10, 14, 3, 'S')
-    L.plate(2, 13, 0)                                                  # P1 at the far end of the pocket
-    L.clear(16, 10, 16, 11).cells(16, 12, 16, 13, 1)                   # gate G2, the pocket's way out
-    L.clear(22, 7, 23, 11).clear(17, 12, 25, 17)                        # the crate's first drop; third ledge, east half
-    L.clear(13, 15, 16, 17).clear(1, 15, 12, 18)                        # third ledge, west half one row lower
-    L.clear(1, 19, 3, 22)                                              # drop shaft at the west end
-    L.plate(14, 17, 1)
-    L.clear(1, 20, 10, 22).clear(11, 20, 20, 24).clear(21, 23, 29, 25)  # fourth ledge, stepping down eastwards
-    L.clear(30, 20, 32, 26)                                            # cellar floor at the chimney foot
-    L.plate(32, 26, 3).plate(21, 25, 2)
-    L.clear(34, 8, 38, 22).clear(33, 21, 33, 22)                        # chimney
-    L.r(38, 12, 38, 12).r(34, 17, 34, 17)                              # ledges in the chimney wall
-    L.clear(25, 11, 30, 13).p(29, 12, 'm')                              # a niche you can only reach from the crate
-    L.cells(35, 23, 37, 23, 2).mv(2, 0, -16)                            # the chimney lift
-    L.clear(28, 3, 38, 6).clear(35, 7, 37, 7)                           # top landing
-    L.r(31, 2, 33, 4).clear(32, 3, 32, 4).cells(32, 5, 32, 6, 3)        # gate G3 in front of the doors
-    L.plate(38, 6, 2)
-    L.p(29, 6, 'A').p(30, 6, 'B')
-    L.p(3, 5, 'a').p(4, 5, 'b').p(6, 5, 'k')
-    L.mv(0, 0, -2).mv(1, 0, -2).mv(3, 0, -2)
-    L.p(6, 11, 's').p(37, 20, 's')                                     # Sol's pocket; the chimney ledge
-    L.p(9, 4, 'm').p(37, 3, 'm')                                       # over the top shelf; the top landing's corner
+    L.r(1, 7, 12, 7)                                       # the starting ledge
+    L.p(3, 6, 'a').p(4, 6, 'b').p(8, 6, 'k')
+    L.r(1, 14, 22, 14).clear(5, 14, 5, 14)                 # the second ledge, a one-tile hole into the pocket
+    L.gate(18, 12, 13, '=', 0, 10).r(17, 1, 19, 9)         # G1, its pillar up to the ceiling
+    L.r(1, 18, 12, 18).pool(7, 18, 3, 'S').r(6, 15, 10, 15)   # Sol's pocket: a sun channel under a low roof
+    L.plate(1, 17, 0)                                      # P1
+    L.r(13, 15, 13, 17).clear(13, 14, 13, 15).cells(13, 16, 13, 17, 1)   # G2, the pocket's way out
+    L.r(15, 21, 32, 21)                                    # the third ledge
+    L.plate(16, 20, 1)                                     # P2
+    L.r(33, 9, 34, 21)                                     # the chimney wall
+    L.r(1, 24, 10, 28)                                     # a shelf under the pocket
+    L.r(11, 28, 23, 28).r(22, 22, 23, 25)                  # the fourth ledge, one step above the cellar floor; a low lintel
+    L.plate(32, 28, 2).plate(30, 28, 3)                    # P3 at the foot of the chimney wall, P4
+    L.r(33, 24, 34, 28).r(35, 25, 38, 28).r(38, 8, 38, 24)  # the step up onto the lift
+    L.cells(35, 24, 37, 24, 3).mv(3, 0, -17)               # the chimney lift
+    L.r(24, 7, 34, 7).r(24, 8, 27, 9).set(38, 7, '#')      # the top landing
+    L.r(29, 12, 31, 12).clear(38, 14, 38, 15)              # a perch over the third ledge, a nook off the chimney
+    L.gate(29, 5, 6, '_', 2, 3).r(28, 1, 30, 1)            # G3 in front of the doors
+    L.plate(32, 6, 3)                                      # the second white plate
+    L.p(25, 6, 'A').p(26, 6, 'B')
+    L.mv(0, 0, -2).mv(1, 0, -2).mv(2, 0, -2)
+    L.p(3, 16, 's').p(26, 24, 's').p(20, 17, 's')
+    L.p(10, 3, 'm').p(30, 14, 'm').p(33, 3, 'm')        # the middle one only from the crate
     return L
 
 
