@@ -188,7 +188,7 @@ try {
     const both = await Promise.all([H, G].map(P => P.eval(`document.body.dataset.screen`)));
     if (both.every(s => s === 'runnerResults')) break;
   }
-  const w = await Promise.all([H, G].map(P => P.eval(`document.querySelector('#rrTitle').textContent`)));
+  const w = await Promise.all([H, G].map(P => P.eval(`[...document.querySelectorAll('#rrTitle, #rrSol, #rrLuna')].map(e => e.textContent.trim()).join(' | ')`)));
   await H.key('ArrowRight', 'keyUp');
   check('online: both see the same result', w[0] && w[0] === w[1], JSON.stringify(w));
   await G.shot('runner-online-results');
