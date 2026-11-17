@@ -28,13 +28,13 @@ export const SCRIPTS = {
   ],
   // Shade Well: a one-way descent down both sides of a deadly well.
   3: () => [
-    grab(LUNA, 2, 2), press(LUNA, 37, 4),           // Luna fetches her gem from Sol's end, then holds P0: G0 opens
-    grab(SOL, 38, 2), goto(SOL, 17, 11), grab(SOL, 7, 9),
-    flip(SOL, 2, 11), flip(SOL, 4, 11),             // Sol inside: L1 opens G1 for Luna, L0 keeps G0 open
-    goto(SOL, 18, 11), goto(SOL, 18, 17),           // Sol walks back out and drops to ledge LB
-    goto(LUNA, 22, 12), grab(LUNA, 36, 9), press(LUNA, 38, 12),   // Luna drops, passes G1, holds P2: G2 opens
-    flip(SOL, 2, 17), grab(SOL, 14, 25), door(SOL), // Sol passes G2, sets L3: G3 opens; he drops to his door
-    goto(LUNA, 27, 20), grab(LUNA, 25, 25), door(LUNA), win(),
+    grab(LUNA, 1, 4), press(LUNA, 37, 6),           // Luna fetches her gem from Sol's end, then holds P0: G0 opens
+    grab(SOL, 38, 3), goto(SOL, 16, 7), goto(SOL, 17, 14), grab(SOL, 7, 11),   // Sol drops into the left slot and goes through G0
+    flip(SOL, 2, 14), flip(SOL, 4, 14),             // Sol inside: L0 keeps G0 open, L1 opens G1 for Luna
+    goto(SOL, 18, 21),                              // Sol walks back out and drops to ledge LB
+    goto(LUNA, 22, 13), grab(LUNA, 36, 10), press(LUNA, 38, 13),   // Luna drops, passes G1, holds P2: G2 opens
+    flip(SOL, 2, 21), grab(SOL, 8, 25), door(SOL), // Sol passes G2, sets L3: G3 opens; he drops to his door
+    goto(LUNA, 29, 20), grab(LUNA, 27, 25), door(LUNA), win(),
   ],
   // The Lift: riders can't drive; the partner's plate moves the lift.
   4: () => [

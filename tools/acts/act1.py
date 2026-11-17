@@ -145,50 +145,51 @@ def parting_ways():
 def shade_well():
     """A descent. Both start on the roof of a deep well in the middle of the screen; its floor is a shade
     pool. Sol's door is in the bottom left corner, Luna's in the bottom right, and every drop is one way.
-    0. A beam splits the well's mouth in two, so each can fetch a gem from the other's end of the roof.
-    1. Luna stays up top and stands on P0 (purple) at the east end of the roof. Sol drops into the left
-       mouth, lands on ledge LA and goes west through gate G0 into the left upper room.
+    The roof, two upper rooms, two lower rooms and the two door rooms sit seven rows apart (the west side
+    one row lower than the east), so each room's jumps get their full arc.
+    0. The well's beam splits its mouth into two one-tile slots, which you run over and stop on to drop.
+       So each can fetch a gem from the other's end of the roof first.
+    1. Luna stays up top and stands on P0 (purple) at the east end of the roof. Sol drops into the
+       left slot, lands on ledge LA and goes west through gate G0 into the left upper room.
     2. At the room's dead end Sol turns levers L1 (green) and L0 (purple): L0 keeps G0 open so he can get
        back out, L1 opens gate G1 on the right side of the well for good.
-    3. Luna drops into the right mouth, lands on ledge RB, goes through G1 and stands on P2 (orange) at the
+    3. Luna drops into the right slot, lands on ledge RB, goes through G1 and stands on P2 (orange) at the
        far end of the right room: gate G2 opens. Sol, who dropped to ledge LB, goes through G2.
     4. Sol turns lever L3 (white) at the dead end of the left lower room and drops through its floor to
        his door. L3 opened gate G3 in the right lower room.
     5. Luna drops through her room's floor, goes through G3 and falls to her door."""
     L = Lv('Shade Well', 45, 'Black pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.')
-    T = (
-        ('################', '######', '################'),   # 1
-        ('.m........####..', '......', '..####.........s'),   # 2
-        ('..........####..', '......', '..####..........'),   # 3
-        ('................', '......', '..............1.'),   # 4
-        ('######........a.', '......', '.b........######'),   # 5
-        ('#######XX#######', '..##..', '#######XX#######'),   # 6
-        ('################', '......', '################'),   # 7
-        ('.............#.#', '......', '##.#############'),   # 8
-        ('......s......#.#', '......', '##.#.........m..'),   # 9
-        ('..............=.', '......', '##.#............'),   # 10
-        ('.@.!..........=.', '......', '..-.............'),   # 11
-        ('#######XX#######', '##....', '..-............3'),   # 12
-        ('################', '....##', '#####..###XX####'),   # 13
-        ('............#.##', '......', '#####..#########'),   # 14
-        ('............#.##', '......', '#####..#########'),   # 15
-        ('............._..', '......', '#####..#########'),   # 16
-        ('.%..........._..', '......', '##.........#.#..'),   # 17
-        ('####..##########', '###...', '##.........#.#..'),   # 18
-        ('####..##########', '......', '##..........+...'),   # 19
-        ('####..##########', '......', '##..........+...'),   # 20
-        ('####..##########', '......', '#######XX####...'),   # 21
-        ('####..##########', '......', '#############...'),   # 22
-        ('####..##########', '......', '#############...'),   # 23
-        ('..............##', '......', '##..............'),   # 24
-        ('.............s##', '......', '##m.............'),   # 25
-        ('..............##', '......', '##..............'),   # 26
-        ('.A....##########', '......', '#########.....B.'),   # 27
-        ('##XX############', 'XXXXXX', '#########XX#####'),   # 28
-    )
-    art(L, T)
+    # ---- the roof: west half and the beam on row 8, east half on row 7; one-tile slots either side
+    L.r(1, 8, 21, 8).clear(17, 8, 17, 8).pool(7, 8, 2, 'X')   # Sol's slot at x 17
+    L.r(18, 1, 20, 5)                                      # a rock hangs over the beam: walk under it
+    L.r(23, 7, 38, 7).pool(29, 7, 2, 'X')                  # Luna's slot at x 22
+    L.plate(37, 6, 0)                                      # P0
+    L.p(9, 7, 'a').p(26, 6, 'b')
+    # ---- upper rooms (left floor row 15, right floor row 14)
+    L.r(1, 15, 18, 15).pool(8, 15, 2, 'X')                 # left upper room, ledge LA at x 16-18
+    L.gate(15, 13, 14, '=', 0, 11).r(14, 9, 16, 9)         # G0
+    L.lever(2, 14, 0).lever(4, 14, 1)                      # L0, L1 at the dead end
+    L.r(21, 14, 38, 14).pool(33, 14, 2, 'X')               # right upper room, ledge RB at x 21-23
+    L.gate(24, 12, 13, '-', 1, 10).r(23, 8, 25, 8)         # G1
+    L.clear(28, 14, 29, 14)                                # the hole down to the right lower room
+    L.plate(38, 13, 2)                                     # P2
+    # ---- lower rooms (left floor row 22, right floor row 21)
+    L.r(1, 22, 19, 22).pool(9, 22, 2, 'X')                 # left lower room, ledge LB at x 15-19
+    L.gate(14, 20, 21, '_', 2, 18).r(13, 16, 15, 16)       # G2
+    L.lever(2, 21, 3)                                      # L3 at the dead end
+    L.clear(4, 22, 5, 22)                                  # the hole down to Sol's door
+    L.r(23, 15, 26, 20).r(23, 21, 23, 27).r(23, 21, 38, 21).pool(30, 21, 2, 'X')   # right lower room, walled off from the well
+    L.gate(34, 19, 20, '+', 3, 17).r(33, 15, 35, 15)       # G3
+    L.clear(36, 21, 38, 21)                                # the shaft down to Luna's door
+    # ---- the door rooms and the bottom of the well
+    L.r(10, 23, 19, 28)                                    # stone under LB and the left lower room
+    L.pool(20, 28, 3, 'X')                                 # the shade at the bottom of the well
+    L.r(24, 28, 38, 28).pool(31, 28, 2, 'X')
+    L.p(2, 28, 'A').p(37, 27, 'B')
     for g in range(4):
         L.mv(g, 0, -2)
+    L.p(38, 3, 's').p(7, 11, 's').p(8, 25, 's')
+    L.p(1, 4, 'm').p(36, 10, 'm').p(27, 25, 'm')
     return L
 
 
