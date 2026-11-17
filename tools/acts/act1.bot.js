@@ -129,23 +129,25 @@ export const SCRIPTS = {
   ],
   // Counterweights: one colour sends one lift up and the other down; the crate is the last weight.
   9: () => [
-    grab(SOL, 16, 24), goto(SOL, 11, 26),           // Sol onto W0
-    grab(LUNA, 24, 24), grab(LUNA, 37, 24), press(LUNA, 33, 26),   // Luna drops down, holds P0a: W0 up, E0 down
-    grab(SOL, 6, 21), flip(SOL, 23, 20), goto(SOL, 27, 21),   // Sol crosses F1 through L2 onto E0
-    goto(LUNA, 31, 26),                             // Luna lets go: E0 carries Sol to F2
-    goto(LUNA, 11, 26),                             // Luna through G2 onto W0
-    grab(SOL, 30, 11), press(SOL, 35, 13),          // Sol wades to P0b: W0 lifts Luna, E0 sinks
-    goto(LUNA, 27, 21),                             // Luna onto E0
-    goto(SOL, 37, 13),                              // Sol steps off P0b: E0 carries Luna to F2
-    goto(LUNA, 11, 15),                             // Luna onto W1
-    press(SOL, 38, 13),                             // Sol holds P1a: W1 lifts Luna, E1 sinks
-    grab(LUNA, 3, 10), goto(LUNA, 27, 9),           // Luna onto E1 (off its weight pad)
-    goto(SOL, 37, 13),                              // Sol lets go: E1 carries Luna to the top
-    grab(LUNA, 24, 1), pushTo(LUNA, 0, 28, { y: 3 }),   // the crate onto E1's far end
-    goto(SOL, 11, 15),                              // Sol onto W1
-    press(LUNA, 20, 2), waitPlat(26, 4),            // Luna holds P1b until E1 has sunk: the crate holds it there for good
-    press(LUNA, 10, 3),                             // over the bridge to P3: G3 opens
-    grab(SOL, 7, 9), grab(SOL, 31, 5), flip(SOL, 37, 7), door(SOL),  // Sol into the east wing, through L4: G4 sinks
+    grab(SOL, 6, 25), goto(SOL, 11, 27),            // Sol onto W0
+    mv(LUNA, 27), grab(LUNA, 24, 25), grab(LUNA, 37, 25), press(LUNA, 33, 27),   // Luna drops down, holds P0a: W0 up, E0 down
+    waitPlat(11, 28),
+    flip(SOL, 23, 21), mv(SOL, 27),           // Sol crosses F1 through L2 onto E0
+    goto(LUNA, 31, 27),                             // Luna lets go: E0 carries Sol to F2
+    goto(LUNA, 11, 27),                             // Luna through G2 onto W0
+    waitPlat(27, 17, false), mv(SOL, 30), mv(SOL, 35),   // Sol walks into the wing, wades to P0b: W0 lifts Luna, E0 sinks
+    waitPlat(11, 28), waitPlat(27, 17), mv(LUNA, 27),     // Luna onto E0
+    mv(SOL, 36.6),                                  // Sol steps off P0b: E0 carries Luna to F2
+    waitPlat(27, 17, false), mv(LUNA, 11),                                   // Luna onto W1
+    press(SOL, 38, 16),                             // Sol holds P1a: W1 lifts Luna, E1 sinks
+    waitPlat(11, 17), waitPlat(27, 7), mv(LUNA, 26.6),                                 // Luna onto E1 (off its weight pad)
+    mv(SOL, 36.6), waitPlat(27, 7, false),          // Sol lets go: E1 carries Luna to the top
+    ...leap(LUNA, 27.4, 28.2, 30.5), mv(LUNA, 35), mv(LUNA, 29.6),       // a hop up onto the east gallery for its gem
+    grab(LUNA, 24, 2), pushTo(LUNA, 0, 28, { y: 6 }),   // the crate onto E1's far end
+    grab(SOL, 30, 16), mv(SOL, 11),                 // Sol back west onto W1
+    press(LUNA, 21, 5), waitPlat(27, 7),            // Luna holds P1b until E1 has sunk: the crate holds it there for good
+    press(LUNA, 12, 6),                             // over the bridge to P3: G3 opens
+    mv(SOL, 24), grab(SOL, 1, 9), flip(SOL, 2, 11), door(SOL),   // Sol into the west wing, through L4: G4 opens; out onto the gallery
     door(LUNA), win(),
   ],
   // Stone Raft: the crate rides the ferry, then drops off the shelf into the middle of the east stretch.

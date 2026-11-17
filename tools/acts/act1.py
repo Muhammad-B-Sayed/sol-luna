@@ -458,69 +458,64 @@ def dawn_gate():
 
 @level(9)
 def counterweights():
-    """Twin shafts side by side, west (x 10-12) and east (x 26-28), with landings F1-F3 between them and
-    small wings outside them. Each colour drives a pair of lifts that move in opposite senses: while it is
-    on, the west lift goes up and the east lift comes down. Purple works the bottom pair (W0 from the
-    floor to F1, E0 from F1 to F2), green the top pair (W1 from F2 to F3, E1 from F3 to the top gallery)
-    and the bridge over the shade at the top. So one press sends a rider up the west shaft and brings the
-    east lift down to meet them; letting go carries them on up the east shaft.
-    1. Luna starts up in the pocket off E0's lower stop and drops down the east shaft. She holds P0a (purple): W0 lifts Sol to F1 and E0 sinks to meet him.
+    """Twin shafts side by side, west (x 10-12) and east (x 26-28), with landings F1-F3 between them. Each
+    colour drives a pair of lifts that move in opposite senses: while it is on, the west lift goes up and
+    the east lift comes down. Purple works the bottom pair (W0 from the floor to F1, E0 from F1 to F2),
+    green the top pair (W1 from F2 to F3, E1 from F3 to the top gallery) and the bridge over the shade at
+    the top. The floor and the top gallery have full headroom; the three landings are low decks you walk
+    on and off the lifts from.
+    1. Luna starts up in the pocket off E0's lower stop and drops down the east shaft. She holds P0a
+       (purple): W0 lifts Sol to F1 and E0 sinks to meet him.
     2. Sol walks east over F1 through lever L2 (orange: gate G2 on the floor opens) onto E0. Luna steps
        off: E0 carries him to F2.
-    3. Luna walks west through G2 onto W0. Sol climbs into the east wing and wades its sun channel to
-       P0b (purple): W0 lifts her, E0 sinks; she crosses F1 onto E0 and Sol steps off, so E0 carries her
-       up too. Both plates past the channel are Sol's, so he is the operator up here.
+    3. Luna walks west through G2 onto W0. Sol walks into the east wing and wades its sun channel to P0b
+       (purple): W0 lifts her, E0 sinks; she crosses F1 onto E0 and Sol steps off, so E0 carries her up
+       too. Both plates past the channel are Sol's, so he is the operator up here.
     4. Swap: Luna walks back across F2 onto W1. Sol holds P1a (green) at the end of the wing: W1 lifts
        her to F3, E1 sinks; she crosses onto E1, Sol steps off, and E1 carries her to the top.
     5. The counterweight. The east end of E1's lower stop has a pad (green) that anything resting there
        presses. Luna pushes the crate onto E1, against its far wall. Sol steps onto W1. Luna holds P1b:
        E1 sinks under the crate and stays down, which holds W1 (and Sol) up at F3 and the bridge raised.
-    6. Luna crosses the bridge and holds P3 (white): gate G3 in the east wing at F3 opens. Sol walks over
-       the sunk E1 into the wing, through G3 and lever L4 (pink), which sinks gate G4 before Luna's door.
+    6. Luna crosses the bridge and holds P3 (white): gate G3 in the west wing at F3 opens. Sol walks in,
+       through lever L4 (pink) at its dead end, which raises gate G4 before Luna's door, and climbs out
+       onto the top gallery and through G4 to his door.
     7. Luna steps off P3 and walks through G4 to her door."""
     L = Lv('Counterweights', 55, 'One colour moves two lifts: one goes up as the other comes down. A weight left on the far end of a sunk lift keeps it down.')
     L.r(1, 1, 38, 28)
-    # ---- bottom floor (rows 23-26, floor 27), split by gate G2 under F1
-    L.clear(1, 23, 38, 26)
-    L.r(29, 26, 30, 26)                                    # a bump in the east end
-    L.pool(24, 27, 2, 'M')
-    L.gate(20, 25, 26, '_', 2, 23)                         # G2 (orange)
-    L.p(2, 26, 'a')
-    L.plate(33, 26, 0)                                     # P0a
-    # ---- the shafts
-    L.clear(10, 11, 12, 26).cells(10, 27, 12, 27, 0).mv(0, 0, -5)     # W0: floor -> F1
-    L.cells(10, 16, 12, 16, 1).mv(1, 0, -6)                            # W1: F2 -> F3
-    L.clear(26, 1, 28, 22).clear(10, 10, 12, 10)
-    L.plat(26, 22, 3, 1, 0, -6, 0, inv=True)                           # E0: rests at F2, sinks to F1
-    L.plat(26, 10, 3, 1, 0, -6, 1, inv=True)                           # E1: rests at the top, sinks to F3
-    # ---- F1 (rows 17-21; floor row 22, raised to row 21 in the east half)
-    L.clear(13, 17, 25, 21).r(19, 21, 25, 21).r(14, 17, 16, 18)
-    L.lever(23, 20, 2)                                     # L2 opens G2
-    L.clear(5, 20, 9, 21)                                  # crawl pocket off W0's top stop
-    L.clear(29, 17, 36, 19).p(35, 19, 'b')                 # Luna starts in the pocket off E0's lower stop
-    # ---- F2 (rows 11-15, floor 16)
-    L.clear(13, 11, 25, 15).r(18, 11, 20, 12)
-    L.clear(29, 11, 38, 13).r(31, 11, 35, 11).pool(32, 14, 3, 'S')   # east wing: P0b, sun channel, P1a
-    L.plate(35, 13, 0).plate(38, 13, 1)                    # both past the channel: only Sol works them
-    # ---- F3 (rows 5-9, floor 10)
-    L.clear(10, 5, 25, 9).r(19, 5, 22, 6)
-    L.clear(2, 9, 9, 11).clear(8, 7, 9, 8)                 # pocket off W1's top stop (open over its exit)
-    L.clear(29, 5, 38, 7)                                  # east wing at F3: Sol's door
-    L.gate(35, 6, 7, '+', 3, 4)                            # G3 (white)
-    L.lever(37, 7, 4).p(38, 7, 'A')                        # L4 sinks G4
-    L.plate(28, 9, 1)                                      # the weight pad on E1's lower stop
-    # ---- top gallery (rows 1-3, floor 4)
-    L.clear(4, 1, 25, 3)
-    L.r(13, 1, 17, 1).pool(14, 4, 4, 'X')                  # shade under a low roof
-    L.clear(14, 5, 17, 5).plat(14, 5, 4, 1, 0, -1, 1)      # the bridge rises out of it (green)
-    L.r(20, 3, 20, 3).plate(20, 2, 1)                      # P1b on a step the crate can't climb
-    L.p(22, 3, 'k')
-    L.plate(10, 3, 3)                                      # P3
-    L.floorgate(7, 1, 3, 4)                                # G4 (pink) sinks into the floor
-    L.p(5, 3, 'B')
-    # ---- gems
-    L.p(6, 21, 's').p(30, 11, 's').p(31, 5, 's').p(16, 24, 's').p(7, 9, 's')
-    L.p(3, 10, 'm').p(24, 1, 'm').p(37, 24, 'm').p(24, 24, 'm')
+    # ---- the top gallery (floor row 7) and the east gallery beyond E1's far wall (row 6)
+    L.clear(1, 1, 28, 6).clear(1, 7, 6, 11).clear(26, 7, 28, 11).clear(29, 1, 38, 5)
+    L.r(15, 1, 18, 4).pool(15, 7, 4, 'X').plat(15, 8, 4, 1, 0, -1, 1)   # shade under a low rock, and its bridge
+    L.gate(10, 5, 6, '~', 4, 3).r(9, 1, 11, 1)             # G4 before Luna's door
+    L.p(14, 6, 'A').p(8, 6, 'B')
+    L.plate(12, 6, 3)                                      # P3
+    L.set(21, 6, '#'); L.plate(21, 5, 1)                   # P1b on a step the crate can't climb
+    L.p(23, 6, 'k')
+    L.plate(28, 11, 1)                                     # the weight pad on E1's lower stop
+    L.plat(26, 12, 3, 1, 0, -5, 1, inv=True)               # E1: rests at the top, sinks to F3
+    # ---- F3 (floor row 12) and the west wing
+    L.clear(6, 8, 25, 11)
+    L.gate(8, 10, 11, '+', 3, 8)                           # G3
+    L.r(4, 9, 5, 11)                                       # a block to climb out onto the gallery
+    L.lever(2, 11, 4)                                      # L4 at the dead end
+    L.clear(10, 12, 12, 16).plat(10, 17, 3, 1, 0, -5, 1)   # W1: F2 -> F3
+    # ---- F2 (floor row 17) and the east wing with its sun channel
+    L.clear(13, 13, 25, 16).clear(26, 13, 28, 28).clear(29, 13, 38, 16).r(31, 13, 33, 14)
+    L.pool(31, 17, 3, 'S')
+    L.plate(35, 16, 0).plate(38, 16, 1)                    # P0b, P1a: both past the channel
+    L.plat(26, 22, 3, 1, 0, -5, 0, inv=True)               # E0: rests at F2, sinks to F1
+    # ---- F1 (floor row 22) and Luna's pocket off E0's lower stop
+    L.clear(13, 18, 25, 21).clear(10, 18, 12, 27).clear(29, 18, 36, 20)
+    L.lever(23, 21, 2)                                     # L2 opens G2
+    L.p(35, 20, 'b')
+    # ---- the floor: west part (row 28), middle on the bottom wall, east part (row 28)
+    L.clear(1, 22, 9, 27).clear(13, 23, 28, 28).clear(29, 22, 38, 27)
+    L.cells(10, 28, 12, 28, 0).mv(0, 0, -6)                # W0: floor -> F1
+    L.gate(20, 27, 28, '_', 2, 25).r(19, 23, 21, 23)       # G2
+    L.plate(33, 27, 0)                                     # P0a
+    L.p(2, 27, 'a')
+    L.mv(2, 0, -2).mv(3, 0, -2).mv(4, 0, -2)
+    L.p(6, 25, 's').p(24, 10, 's').p(30, 16, 's').p(1, 9, 's')
+    L.p(24, 25, 'm').p(37, 25, 'm').p(24, 2, 'm').p(35, 5, 'm')
     return L
 
 
