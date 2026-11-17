@@ -81,28 +81,30 @@ export const SCRIPTS = {
   28: () => [
     press(SOL, 8, 26), waitPlat(1, 9),              // Sol holds P_W: W comes down
     goto(LUNA, 2, 26),                              // Luna onto W
-    goto(SOL, 6, 26), waitPlat(1, 9, false),        // Sol lets go: W carries her up into the cell
+    goto(SOL, 5, 26), waitPlat(1, 9, false),        // Sol lets go: W carries her up into the cell
     grab(LUNA, 1, 5),
     press(LUNA, 4, 8),                              // P_Bot: G_Bot opens
-    grab(SOL, 12, 20), grab(SOL, 26, 22),
-    press(SOL, 30, 26),                             // Sol runs the bottom band and holds P_A: G_A opens
+    grab(SOL, 12, 20), goto(SOL, 15, 27), grab(SOL, 26, 22),
+    press(SOL, 28, 26),                             // Sol runs the bottom band and holds P_A: G_A opens
     pushTo(LUNA, 0, 9, { y: 8 }),                   // crate A out of the cell
-    flip(LUNA, 10, 4),                              // from the crate to the high ledge, through L1: H1 opens
-    grab(LUNA, 12, 2),
+    flip(LUNA, 10, 3),                              // from the crate to the high ledge, through L1: H1 opens
+    grab(LUNA, 12, 2), goto(LUNA, 10, 3), goto(LUNA, 8, 8),
     pushTo(LUNA, 0, 12, { y: 8 }),                  // crate A to G_Top
-    press(SOL, 31, 22),                             // up to the first ledge, P_Top: G_Top opens
-    pushTo(LUNA, 0, 19, { y: 10, tol: 0.6 }),       // crate A into the shaft, onto H2
+    press(SOL, 30, 23),                             // up to the first ledge, P_Top: G_Top opens
+    goto(LUNA, 11, 8), pushTo(LUNA, 0, 19, { y: 10, tol: 0.6 }),       // crate A into the shaft, onto H2
     grab(LUNA, 22, 4),
-    press(SOL, 28, 20),                             // up to the second ledge, P_TR: G_TR opens
+    press(SOL, 32, 20),                             // up to the second ledge, P_TR: G_TR opens
     goto(LUNA, 29, 8),
-    grab(SOL, 28, 17), flip(SOL, 32, 18),           // to the top of the tower, through L3: H3 opens
+    grab(SOL, 28, 13), flip(SOL, 28, 17),           // a leap to the top of the tower, through L3: H3 opens
+    goto(SOL, 35, 26, { keep: true }),
     press(LUNA, 28, 8), waitPlat(36, 9),            // Luna holds P_R: R comes down
     seek(SOL, 'crate B wholly on R', (S, p) => S.b[1].gr && cx(S.b[1]) > 36.6 && cx(S.b[1]) < 37.0 && bot(S.b[1]) > 26.5, { key: 'crateOnR', h: (S, p) => Math.abs(cx(S.b[1]) - 36.8) * 13 + Math.abs(cx(p) - cx(S.b[1])) * 3 }),   // Sol pushes crate B onto R
     seek(SOL, 'sol on R east of the crate', (S, p) => p.gr && Math.abs(p.vx) < 0.3 && cx(p) > 37.4 && bot(p) > 26.5, { key: 'eastR' }),
-    goto(LUNA, 30, 8), waitPlat(36, 9, false),      // Luna steps off: R carries Sol and the crate up
-    grab(SOL, 37, 2),
-    pushTo(SOL, 1, 31, { y: 8, tol: 0.25 }),        // crate B west under the ledge onto P_G: G_G opens
-    grab(LUNA, 35, 2), flip(LUNA, 35, 5),           // Luna climbs through G_G, L2: H2 opens, crate A drops into socket X
+    goto(LUNA, 31, 8), waitPlat(36, 9, false),      // Luna steps off: R carries Sol and the crate up
+    grab(SOL, 38, 3),
+    pushTo(SOL, 1, 30, { y: 8, tol: 0.25 }),        // crate B west under the ledge onto P_G: H2 opens, crate A drops into socket X
+    goto(LUNA, 29, 8), flip(LUNA, 33, 3), grab(LUNA, 34, 2),           // Luna climbs from the crate to the high ledge, through L2: H2 stays open
+    goto(LUNA, 35, 8),
     seek(SOL, 'crate B into the shaft, Sol stays up', (S, p) => p.gr && bot(p) < 9.5 && S.b[1].gr && bot(S.b[1]) > 20.5, { key: 'Bdown', h: (S, p) => Math.abs(cx(S.b[1]) - 20) * 13 + Math.abs(cx(p) - cx(S.b[1])) * 3 + Math.abs(bot(S.b[1]) - 21) * 4 }),   // crate B off P_G, through G_TR and down the shaft onto crate A
     goto(LUNA, 37, 8),                              // Luna onto R
     press(SOL, 28, 8), waitPlat(36, 9),             // Sol holds P_R: R carries her down
@@ -112,7 +114,7 @@ export const SCRIPTS = {
     goto(SOL, 2, 8),                                // onto W, at the top of the west shaft
     press(LUNA, 8, 26), waitPlat(1, 9),             // Luna runs the bottom band home and holds P_W: W brings Sol down
     goto(SOL, 5, 26),                               // he steps off
-    goto(LUNA, 12, 20), grab(LUNA, 16, 16), door(LUNA),   // Luna up the start room's climb and in through GX
-    goto(SOL, 27, 19), door(SOL), win(),   // Sol along the bottom band, up his tower and in through GY
+    goto(LUNA, 8, 26), goto(LUNA, 12, 20), goto(LUNA, 14, 19), grab(LUNA, 16, 16), door(LUNA),   // Luna up the start room's climb and in through GX
+    goto(SOL, 15, 27), goto(SOL, 32, 20), door(SOL), win(),   // Sol along the bottom band, up his tower and in through GY
   ],
 };

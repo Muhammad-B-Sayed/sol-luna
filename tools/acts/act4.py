@@ -225,7 +225,9 @@ def the_vault():
     east lift and is a weight in the top-right room. Then both stack in one deep socket in the vault.
     The top-left and top-right rooms need both players; the bottom-right one Sol does alone while
     Luna is busy above. Both lifts rest at the top and come down while a white plate is held.
-    Both start in the bottom-left room.
+    Both start in the bottom-left room. Re-spaced Nov 2026 for the higher jump: every climb is 3 with
+    full headroom, the bottom band is 6 rows high, and both high ledges (L1, L2) sit 5 above their
+    floor, so only a crate is a step up to them.
     1. Sol holds P_W (white): the west lift W comes down. Luna steps on, Sol lets go, and W carries her
        up the west shaft into a cell in the top-left room, beside crate A.
     2. Luna holds P_Bot (yellow) in the cell: gate G_Bot opens and Sol runs the bottom band under the
@@ -238,9 +240,9 @@ def the_vault():
     7. Alone, Sol climbs to the top of his tower and walks through lever L3 (orange): H3 opens.
     8. Luna holds P_R (white): the east lift R comes down. Sol pushes crate B onto it and steps on
        behind it; she lets go and R carries them both up.
-    9. Sol pushes crate B under the ledge onto P_G (green), which holds gate G_G open. Luna climbs
-       through G_G and walks through lever L2 (green) on the ledge: H2 opens and crate A drops all the
-       way into the vault's socket. Pink is on for good: G_TR and the vault's west gate GX stay open.
+    9. Sol pushes crate B under a high ledge onto P_G (green): H2 opens and crate A drops all the
+       way into the vault's socket. The ledge is 5 above the floor, so only the crate on P_G is a step
+       up to it: Luna climbs from the crate and walks through lever L2 (green), so H2 stays open. Pink is on for good: G_TR and the vault's west gate GX stay open.
     10. Sol pushes crate B off P_G, out through G_TR and down the shaft onto crate A. Yellow is on for
         good: G_Top, G_Bot and the vault's east gate GY stay open.
     A player who drops down the shaft lands in the sealed crate chamber; the partner lets them out
@@ -256,23 +258,28 @@ def the_vault():
     L.clear(1, 15, 12, 26)
     L.clear(1, 9, 3, 27).plat(1, 9, 3, 1, 0, 18, 3)        # W (white): rests at the top, comes down while white is on
     L.r(4, 10, 12, 14)                                     # rock between the shaft and the vault's corner
-    L.r(9, 25, 10, 26).r(6, 23, 7, 23).r(9, 21, 12, 21)    # a climb to a ledge
+    L.r(6, 24, 7, 26).r(11, 21, 12, 21)                    # a climb of 3, then a leap of 3 up and 3 across, to the ledge by the vault
     L.r(12, 22, 12, 24)                                    # G_Bot's slot closed on the room side
     L.r(4, 15, 6, 17)
     L.plate(8, 26, 3)                                      # P_W (white), far from W
     L.p(5, 26, 'a').p(4, 26, 'b')
     door_gate(L, 13, 25, 2, 5)                             # G_Bot (yellow) into the bottom band
     # ---- bottom band, under the vault (x 14-26, rows 23-27, floor 28)
-    L.clear(14, 23, 26, 27)                                # a step lower than the corner rooms
-    L.pool(18, 28, 2, 'X').r(22, 27, 23, 27).r(15, 23, 16, 23)
+    L.clear(14, 22, 26, 27)                                # a step lower than the corner rooms, 6 rows high
+    L.pool(15, 28, 2, 'X')
+    L.set(14, 27, '\\'); L.set(26, 27, '/')                   # ramps up into the corner rooms
+    L.r(19, 22, 20, 22)                                    # the socket's floor hangs into the band
+    L.clear(24, 21, 25, 21)                                # headroom where the band meets the tower's doorway
     # ---- bottom-right (x 27-38, rows 15-26, floor 27): Sol's plates, G_O and L3, the east lift R
-    L.clear(27, 15, 38, 26)
-    L.r(28, 25, 29, 26).r(31, 23, 32, 23).r(28, 21, 29, 21).r(31, 19, 32, 19)   # Sol's control tower
-    L.plate(30, 26, 0)                                     # P_A (purple) on the floor opens G_A, up in the far corner
-    L.plate(31, 22, 5)                                     # P_Top (yellow) on the first ledge opens G_Top
-    L.plate(28, 20, 4)                                     # P_TR (pink) on the second ledge opens G_TR
-    L.lever(32, 18, 2)                                     # L3 (orange) on top of the tower: hatch H3
-    L.p(34, 26, 'k')                                       # crate B, beside the east lift
+    L.clear(27, 15, 38, 26).clear(27, 11, 35, 14)
+    # Sol's control tower climbs east then leaps back west: step L1, block L2, then a leap of 4 up
+    # to the top ledge over the doorway pocket, which leads on into GY's corridor
+    L.r(30, 24, 30, 24).r(31, 21, 32, 23).r(27, 18, 29, 18)   # the step and block hang over a low walkway
+    L.plate(28, 26, 0)                                     # P_A (purple) in the doorway pocket opens G_A, up in the far corner
+    L.plate(30, 23, 5)                                     # P_Top (yellow) on the step opens G_Top
+    L.plate(32, 20, 4)                                     # P_TR (pink) on the block opens G_TR
+    L.lever(28, 17, 2)                                     # L3 (orange) on the top ledge: land west of it, walk east
+    L.p(33, 26, 'k')                                       # crate B, near the east lift
     L.clear(36, 9, 38, 27).plat(36, 9, 3, 1, 0, 18, 3)     # R (white): rests at the top, comes down while white is on
     # ---- top-left (x 1-12, rows 2-8, floor 9): the cell with crate A, the high ledge with L1
     L.clear(1, 2, 12, 8)
@@ -280,10 +287,10 @@ def the_vault():
     L.p(5, 8, 'k').plate(4, 8, 5)                          # crate A; P_Bot (yellow) in the cell
     door_gate(L, 7, 7, 2, 0)                               # G_A (purple)
     L.r(7, 2, 7, 4)
-    L.r(10, 5, 11, 5)                                      # the high ledge: only from a crate
-    L.lever(10, 4, 0)                                      # L1 (purple): hatch H1
+    L.r(10, 4, 12, 6).clear(8, 1, 12, 1)                   # the high ledge: 5 above the floor, so only from a crate
+    L.lever(10, 3, 0)                                      # L1 (purple): hatch H1
     door_gate(L, 13, 7, 2, 5)                              # G_Top (yellow)
-    L.r(13, 2, 13, 4).r(12, 5, 12, 6)
+    L.r(13, 2, 13, 4)
     # ---- top band (x 14-26, rows 2-8, floor 9) and the vault shaft (x 19-20)
     L.clear(14, 2, 26, 8)
     L.r(16, 2, 17, 4).r(23, 2, 24, 3)                      # hanging rocks
@@ -292,17 +299,15 @@ def the_vault():
     L.clear(17, 10, 18, 10).plat(19, 10, 2, 1, -2, 0, 0)   # H1 (purple) slides west
     L.clear(21, 11, 22, 11).plat(19, 11, 2, 1, 2, 0, 1)    # H2 (green) slides east
     L.clear(17, 12, 18, 12).plat(19, 12, 2, 1, -2, 0, 2)   # H3 (orange) slides west
-    # ---- top-right (x 28-38, rows 2-8, floor 9): crate B, P_G, G_G, L2, Luna's plates for Sol
+    # ---- top-right (x 28-38, rows 2-8, floor 9): crate B, P_G, the high ledge with L2, Luna's plates for Sol
     door_gate(L, 27, 7, 2, 4)                              # G_TR (pink)
     L.r(27, 2, 27, 4)
     L.clear(28, 2, 38, 8)
-    L.r(28, 5, 28, 6)                                      # G_TR's slot closed on the room side
+    L.r(28, 2, 28, 6)                                      # G_TR's slot closed on the room side, up to the roof: no foothold
     L.plate(28, 8, 3)                                      # P_R (white) brings R down
-    L.plate(31, 8, 1)                                      # P_G (green): a weight holds G_G open
-    L.r(34, 6, 35, 6)                                      # a ledge no crate can climb; the floor runs under it
-    door_gate(L, 34, 4, 2, 1)                              # G_G (green), on the ledge's west end
-    L.r(33, 2, 33, 3)                                      # G_G's slot, closed on the west
-    L.lever(35, 5, 1)                                      # L2 (green): hatch H2. Leave by dropping off the east end
+    L.plate(30, 8, 1)                                      # P_G (green): a weight opens H2, and a step to the ledge
+    L.r(31, 4, 34, 4)                                      # a high ledge: 5 above the floor, 4 above crate B on P_G
+    L.lever(33, 3, 1)                                      # L2 (green): hatch H2 stays open for good
     # ---- the vault (x 15-24, rows 13-19, floor 20). The shaft drops into a sealed crate chamber
     # (x 18-22) where both crates stack in one deep socket: the bottom one opens GX on the west wall,
     # the top one GY on the east wall. Each door has its own side room behind its gate.
@@ -317,18 +322,19 @@ def the_vault():
     L.r(15, 16, 15, 17).r(24, 16, 24, 17)                  # the two gates' slots, closed on the inside
     door_gate(L, 14, 18, 2, 4)                             # GX (pink), Luna's way in, from the start room
     L.clear(13, 18, 13, 19)
+    L.set(13, 20, '/'); L.clear(13, 15, 13, 17)          # a ramp from the start room's ledge up to GX, open above
     door_gate(L, 25, 18, 2, 5)                             # GY (yellow), Sol's way in, from his tower
-    L.clear(26, 18, 27, 19).r(27, 20, 27, 20)
+    L.clear(26, 16, 26, 19).clear(26, 21, 26, 21)          # GY's corridor, a drop of 2 from the top ledge, over the band's doorway
     L.p(24, 19, 'A').p(16, 19, 'B')
     # ---- gems, on detours
     L.p(12, 20, 's')                                       # top of the start room's climb
     L.clear(25, 22, 26, 22).p(26, 22, 's')                 # a pocket in the bottom band's roof
-    L.p(28, 17, 's')                                       # over the tower's second ledge
-    L.p(37, 2, 's')                                        # top corner of the east room
+    L.p(28, 13, 's')                                       # high over the top of the tower
+    L.p(38, 3, 's')                                        # top corner of the east room
     L.p(12, 2, 'm')                                        # over the high ledge in the west room
     L.p(1, 5, 'm')                                         # over the west lift's top stop
     L.p(22, 4, 'm')                                        # under the top band's hanging rock
-    L.p(35, 2, 'm')                                        # over L2's ledge
+    L.p(34, 2, 'm')                                        # on L2's ledge
     L.p(16, 16, 'm')                                       # high in the vault, by Luna's door
     L.p(5, 7, 's')                                         # in crate A's empty cell, on Sol's way home
     L.p(34, 22, 'm')                                       # over the foot of the east lift
