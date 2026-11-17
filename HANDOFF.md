@@ -382,3 +382,21 @@ V=1 node tools/coop-bot.js 28        # verbose scripted co-op run
   - Spectators or rooms with more than 2 people (not requested).
 - **CI:** none. If added, run `node tools/coop-bot.js` and a subset of `check-levels.js`.
   The full set is slow.
+
+---
+
+## 9. Runner (versus mode, Nov 2026)
+
+An endless, seeded side-scroller for two: the view scrolls right and speeds up, the last player
+standing wins. Local (one keyboard) and online rooms (server authoritative, client prediction).
+Everything is in `docs/runner.md`: files, the hooks in the shell files, the difficulty ramp, the
+obstacles and how each meets the fairness rules, and the checks.
+
+```bash
+node tools/check-runner.js                  # fairness proof over 50 seeds with the real sim (~20 min)
+PORT=3217 node server/index.js & PORT=3217 OUT=docs/img/runner node tools/runner-browser.js
+```
+
+- Keep `stepRunner` free of `Math.sin`/`cos` (prediction must match the server). Swings use a
+  polynomial.
+- `sim.js` changes for it are additive: `tileAt` checks `L.tileFn`, and five internals are exported.
