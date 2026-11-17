@@ -111,18 +111,21 @@ def the_drop():
 def switchback():
     """Switchback. A figure of eight: two loops through the left and right halves that meet at
     the tower in the centre. The tower is the only way up. Each loop goes one way round: up the
-    tower, out along the top arc, down three switchback legs through the core, home along the
+    tower, out along the top arc, down the shaft and two legs beside the core, home along the
     bottom. On a top arc you choose: turn back, so the lever ends the way you last walked, or
     go round.
 
     Walking right through a lever turns it on, walking left turns it off.
     Luna's door sits in a pit on the top-left arc under a purple hatch. Sol's door is at the end
-    of a low sun tunnel at the bottom right, behind green gate GD. Out on each top arc a pool
+    of a low sun tunnel at the bottom left, behind green gate GD. Out on each top arc a pool
     under a low ceiling keeps the loop to one player (sun on the left, moon on the right), then
     the lever: purple LP on the left, green LG on the right, both off.
 
+    Every floor is seven rows above the next, so each climb gets the full jump: the tower's four
+    floors are joined by two-step stairs under its hatches.
+
     Chain:
-    1. The players start apart, at the tops of the two sets of legs. Sol walks down the left
+    1. The players start apart, at the tops of the two pairs of legs. Sol walks down the left
        legs, through orange lever LO (on). Luna walks down the right legs; orange gate GO waits
        for Sol's LO, purple-inverse gate GP is open while purple is off.
     2. The tower has three hatches (pink, white, yellow), each open while a plate of its colour
@@ -137,63 +140,63 @@ def switchback():
        Luna drops into her pit. Then Sol goes round the left loop a last time (her hatch shuts
        over her) and down to his door through GD.
     """
-    L = Lv('Switchback', 120, 'Walk right through a lever to switch it on, left to switch it off. Which way you go round decides how it ends.')
+    L = Lv('Switchback', 85, 'Walk right through a lever to switch it on, left to switch it off. Which way you go round decides how it ends.')
     solid(L)
-    # top band (rows 2-5, floor 6). From the tower outwards: a door pit under a hatch, the
-    # hatch's slot, then a pool under a low ceiling (sun on the left, moon on the right), the
-    # lever, and the shaft down into the legs.
-    L.clear(1, 2, 38, 5)
-    L.r(3, 2, 6, 3).r(31, 2, 35, 3)                        # low ceilings over the pools
-    L.pool(4, 6, 3, 'S').pool(32, 6, 3, 'M')
-    L.lever(3, 5, 0)                                       # LP
-    L.clear(7, 6, 8, 7).p(7, 7, 'B')                       # Luna's door pit, purple hatch
-    L.cells(7, 6, 8, 6, 0).mv(0, 2, 0).clear(9, 6, 10, 6)
-    L.clear(27, 2, 27, 3).r(26, 2, 26, 3).r(28, 2, 28, 3).plat(27, 4, 1, 2, 0, -2, 0)   # GT (purple)
-    L.lever(36, 5, 1)                                      # LG
-    # left half: shaft, three switchback legs (east, west, east), the bottom arc east to the tower
-    L.clear(1, 6, 2, 8)
-    L.clear(1, 9, 12, 11).clear(11, 12, 12, 13)
-    L.clear(1, 14, 12, 16).clear(1, 17, 2, 18)
-    L.clear(1, 19, 12, 21).clear(9, 22, 10, 22)
-    L.lever(6, 21, 2)                                      # LO (orange)
-    L.clear(1, 23, 13, 27).r(1, 23, 6, 25).pool(2, 28, 3, 'M')   # Luna's moon tunnel, west
-    # right half: shaft, legs (west, east, west), GO on leg 2, GP on leg 3, the bottom arc
-    L.clear(37, 6, 38, 8)
-    L.clear(27, 9, 38, 11).clear(35, 12, 36, 13)
-    L.clear(27, 14, 38, 16).clear(37, 17, 38, 18)
-    L.clear(26, 19, 38, 21).clear(26, 22, 27, 22)
-    L.r(32, 19, 32, 19).r(34, 19, 34, 19)
-    vgate(L, 33, 20, 21, 2, 18)                            # GO (orange)
-    L.r(29, 19, 29, 19).r(31, 19, 31, 19).clear(30, 18, 30, 19)
-    L.plat(30, 20, 1, 2, 0, -2, 0, inv=True)              # GP: open only while purple is off
-    L.clear(26, 23, 38, 27).r(26, 26, 27, 27).r(33, 23, 38, 25).pool(35, 28, 3, 'S')   # Sol's sun tunnel, east
-    vgate(L, 34, 26, 27, 1, 24)                            # GD (green) shuts the tunnel
-    L.p(38, 27, 'A')                                       # Sol's door, at the end of it
-    # tower (x 14-25): floors every five rows with stairs under a hole, alternating sides,
-    # and a hatch in three of the holes
-    L.clear(14, 6, 25, 27)
-    L.r(22, 26, 23, 27).r(24, 24, 25, 27)                  # bottom stairs (right)
-    L.r(14, 23, 21, 23)                                    # floor 23
-    L.r(16, 21, 17, 22).r(14, 19, 15, 22)                  # stairs (left)
-    L.r(18, 18, 25, 18)                                    # floor 18; H1 (pink) in the hole x 14-17
-    L.cells(14, 18, 17, 18, 4).mv(4, -8, 0).clear(6, 18, 13, 18)
-    L.r(22, 16, 23, 17).r(24, 14, 25, 17)                  # stairs (right)
-    L.r(14, 13, 21, 13)                                    # floor 13; H0 (white) in the hole x 22-25
-    L.cells(22, 13, 25, 13, 3).mv(3, 8, 0).clear(26, 13, 33, 13)
-    L.r(16, 11, 17, 12).r(14, 9, 15, 12)                   # stairs (left)
-    L.r(18, 8, 25, 8)                                      # floor 8; H2 (yellow) in the hole x 14-17
-    L.cells(14, 8, 17, 8, 5).mv(5, -5, 0).clear(9, 8, 13, 8)
-    L.p(1, 11, 'a').p(38, 11, 'b')
-    L.plate(14, 27, 4)                                     # P1 (pink), below H1
-    L.plate(20, 17, 4)                                     # P2 (pink), above H1
-    L.plate(18, 17, 3)                                     # P5 (white), below H0
-    L.plate(21, 12, 3)                                     # P6 (white), above H0
-    L.plate(18, 12, 5)                                     # P3 (yellow), below H2
-    L.plate(25, 7, 5)                                      # P4 (yellow), above H2
-    # gems
-    # gems: corners past the arc levers, jumps in the tower and over the bottom arc
-    L.p(2, 3, 's').p(12, 10, 's').p(19, 21, 's').p(12, 24, 's').p(30, 24, 's')
-    L.p(38, 3, 'm').p(24, 2, 'm').p(23, 11, 'm').p(1, 26, 'm').p(28, 24, 'm')
+    # ---- top band. The left arc and the tower top share floor 7; the right arc is one higher
+    # (floor 6), so the yellow hatch's slot runs under it.
+    L.clear(1, 1, 25, 6).clear(26, 1, 38, 5)
+    # left arc: shaft x1, turn x2, LP x3, sun pool x4-6 under a low ceiling, Luna's pit x9-10
+    L.r(3, 1, 6, 4)                                        # low ceiling: a 2-high tunnel over the pool
+    L.pool(4, 7, 3, 'S')
+    L.lever(3, 6, 0)                                       # LP
+    L.clear(1, 7, 1, 7)                                    # the shaft
+    L.clear(9, 8, 10, 8).p(9, 8, 'B')                      # Luna's door pit
+    L.cells(9, 7, 10, 7, 0).mv(0, 2, 0).clear(11, 7, 12, 7)   # purple hatch over it, slot beside
+    # right arc: GT (purple) in a low tunnel over the moon pool, LG, the shaft
+    L.r(30, 1, 35, 3)
+    L.clear(31, 2, 31, 3).plat(31, 4, 1, 2, 0, -2, 0)      # GT
+    L.pool(32, 6, 3, 'M')
+    L.lever(35, 5, 1)                                      # LG
+    L.clear(37, 6, 38, 7)                                  # the shaft
+    # ---- the tower (x 14-25): floors 28, 21, 14 and 7, each with a hatch and stairs under it
+    L.clear(14, 8, 25, 13).clear(14, 15, 25, 20).clear(14, 22, 25, 27)
+    hatch(L, 22, 21, 4, 4, 4)                              # H1 (pink) slides east under the right legs
+    hatch(L, 14, 14, 4, -4, 3)                             # H0 (white) slides west under the left legs
+    hatch(L, 22, 7, 4, 4, 5)                               # H2 (yellow) slides east under the right arc
+    L.r(22, 24, 24, 24)                                    # a ledge under H1; the way in from the east runs beneath it
+    L.r(16, 19, 17, 20).r(14, 17, 15, 20)                  # stairs under H0
+    L.r(22, 12, 23, 13).r(24, 10, 25, 13)                  # stairs under H2
+    L.plate(14, 27, 4)                                     # P1 (pink), below H1 and far from it
+    L.plate(21, 20, 4)                                     # P2 (pink), above H1
+    L.plate(19, 20, 3)                                     # P5 (white), below H0
+    L.plate(18, 13, 3)                                     # P6 (white), above H0
+    L.plate(20, 13, 5)                                     # P3 (yellow), below H2
+    L.plate(20, 6, 5)                                      # P4 (yellow), above H2
+    # ---- left half: leg A east (LO), leg B east, the bottom arc with Sol's sun tunnel
+    L.clear(1, 8, 7, 13)
+    L.lever(3, 13, 2)                                      # LO (orange)
+    L.clear(5, 14, 6, 14)
+    L.clear(1, 15, 9, 20)
+    L.clear(8, 21, 9, 21)
+    L.clear(1, 22, 13, 27).r(1, 22, 7, 25).pool(2, 28, 3, 'S')
+    vgate(L, 6, 26, 27, 1, 24)                             # GD (green) shuts the tunnel
+    L.pool(11, 28, 2, 'S')                                 # sun water where Sol lands
+    L.p(1, 27, 'A')
+    # ---- right half: leg A' west, leg B' east through GO and GP, the bottom arc
+    L.clear(30, 8, 38, 13)
+    L.clear(30, 14, 31, 14)
+    L.clear(30, 15, 38, 20)
+    L.r(32, 15, 34, 18)
+    vgate(L, 33, 19, 20, 2, 17)                            # GO (orange)
+    L.r(35, 15, 37, 18).clear(36, 17, 36, 18)
+    L.plat(36, 19, 1, 2, 0, -2, 0, inv=True)               # GP: open only while purple is off
+    L.clear(37, 21, 38, 21)
+    L.clear(26, 23, 38, 27).clear(30, 22, 38, 22)
+    L.p(26, 27, '/##\\')                                   # a hump into the tower's foot
+    L.p(1, 13, 'a').p(38, 13, 'b')
+    # gems: corners of the arcs and the legs' dead ends, jumps in the tower
+    L.p(2, 2, 's').p(7, 9, 's').p(2, 16, 's').p(11, 23, 's').p(19, 23, 's')
+    L.p(36, 2, 'm').p(33, 9, 'm').p(31, 16, 'm').p(33, 23, 'm').p(24, 2, 'm')
     return L
 
 

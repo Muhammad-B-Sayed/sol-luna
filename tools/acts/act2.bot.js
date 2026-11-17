@@ -41,32 +41,30 @@ export const SCRIPTS = {
     // leapfrog up the tower: the first player holds the plate below a hatch, the other climbs
     // past it and holds the plate above, and so on through the pink, white and yellow hatches
     const climb = (a, b) => [
-      press(a, 14, 27), press(b, 20, 17),            // pink H1
-      press(a, 18, 17), press(b, 21, 12),            // white H0
-      press(a, 18, 12), press(b, 25, 7),             // yellow H2
-      goto(a, 22, 7),
+      press(a, 14, 27), press(b, 21, 20),            // pink H1
+      press(a, 19, 20), press(b, 18, 13),            // white H0
+      press(a, 20, 13), press(b, 20, 6),             // yellow H2
+      goto(a, 17, 6),
     ];
     return [
       // the players start apart, at the tops of the legs, and walk down
-      grab(SOL, 12, 10), goto(SOL, 1, 21), flip(SOL, 6, 21), grab(SOL, 12, 24),
-      grab(SOL, 30, 24),
-      goto(LUNA, 27, 11), goto(LUNA, 37, 16), goto(LUNA, 27, 21), grab(LUNA, 28, 24),
-      grab(LUNA, 1, 26),
-      grab(SOL, 19, 21),
+      flip(SOL, 3, 13), within(grab(SOL, 7, 9), 4, 8, 7, 13), grab(SOL, 2, 16), grab(SOL, 11, 23),
+      within(grab(LUNA, 33, 9), 30, 8, 38, 13), grab(LUNA, 31, 16), grab(LUNA, 33, 23), goto(LUNA, 21, 27),
+      grab(SOL, 19, 23),
       ...climb(LUNA, SOL),
-      grab(LUNA, 23, 11), grab(LUNA, 24, 2),
-      within(grab(SOL, 2, 3), 1, 2, 13, 5),
-      flip(SOL, 3, 5), within(goto(SOL, 20, 7), 13, 2, 25, 7),   // turn back through LP: purple on
+      grab(LUNA, 24, 2),
+      within(grab(SOL, 2, 2), 1, 1, 13, 6),
+      flip(SOL, 3, 6), within(goto(SOL, 19, 6), 14, 1, 25, 6),   // turn back through LP: purple on
       // Luna goes round the right loop: green on, then down to GP
-      within(flip(LUNA, 36, 5), 26, 2, 38, 5), grab(LUNA, 38, 3), goto(LUNA, 27, 16),
+      within(flip(LUNA, 35, 5), 26, 1, 38, 5), within(grab(LUNA, 36, 2), 26, 1, 38, 5), goto(LUNA, 34, 20),
       // Sol goes round the left loop: purple off
-      flip(SOL, 3, 5, false), goto(SOL, 19, 27),
+      flip(SOL, 3, 6, false), goto(SOL, 19, 27),
       // Luna on through GP, home
-      goto(LUNA, 20, 27),
+      goto(LUNA, 21, 27),
       ...climb(SOL, LUNA),
-      flip(SOL, 3, 5), within(goto(SOL, 12, 5), 9, 2, 25, 5),   // west past LP and back east: purple on
+      flip(SOL, 3, 6), within(goto(SOL, 13, 6), 11, 1, 25, 6),   // west past LP and back east: purple on
       door(LUNA),                                    // Luna drops into her pit
-      flip(SOL, 3, 5, false),                        // Sol round the left loop once more
+      flip(SOL, 3, 6, false),                        // Sol round the left loop once more
       door(SOL), win(),
     ];
   },
