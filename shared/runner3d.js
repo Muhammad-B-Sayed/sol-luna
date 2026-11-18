@@ -453,19 +453,20 @@ const FEAT = {
     }
     g.floor(0.5);
   },
-  // Pendulum blades swinging sideways across a narrow bridge, each on its own fixed clock.
+  // Pendulum blades swinging sideways across a narrow bridge. The blades of one bridge share a
+  // clock, each phased by the running time from the first: time the first, run through the rest.
   pendulum(g, d, intro) {
     const w = intro ? 1.5 : g.rf(1, 1.5), cx = clamp(g.cx, -2.5, 2.5);
     const count = intro ? 1 : 1 + g.ri(0, 1 + Math.round(d));
     g.cx = cx; g.w = w;
-    const rb = 0.55;
+    const rb = 0.55, P = g.ri(130, 170) - Math.round(30 * (intro ? 0 : d)), ph0 = g.ri(0, P - 1);
     g.floor(2);
+    const z1st = g.z + 0.5;
     for (let k = 0; k < count; k++) {
       const R = g.rf(4, 5), pz = g.z + 0.5;
       const A = Math.min(1.1, (w + rb + HW + 0.5) / R * 1.15);
-      const P = g.ri(130, 170) - Math.round(30 * (intro ? 0 : d));
-      const reach = R * A + rb;
-      g.obj({ k: 'pendulum', x0: cx - reach, x1: cx + reach, z0: pz - 0.3, z1: pz + 0.3, y: g.y, px: cx, py: g.y + 0.75 + R, pz, R, rb, A, P, ph: g.ri(0, P - 1) });
+      const reach = R * A + rb, lag = Math.round((pz - z1st) / P3.maxSpeed);
+      g.obj({ k: 'pendulum', x0: cx - reach, x1: cx + reach, z0: pz - 0.3, z1: pz + 0.3, y: g.y, px: cx, py: g.y + 0.75 + R, pz, R, rb, A, P, ph: ((ph0 - lag) % P + P) % P });
       g.floor(g.rf(3, 5));
     }
     g.floor(0.5);
