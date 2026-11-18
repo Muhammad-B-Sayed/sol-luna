@@ -131,7 +131,7 @@ export function makeVignette(layer) {
         vec2 q = vUv - 0.5; q.x *= uAspect;
         float r = length(q * vec2(1.0, 1.25));
         float base = smoothstep(0.45, 0.95, r) * 0.38;                          // gentle always-on vignette
-        float n = fbm(vec2(atan(q.y, q.x) * 3.0, r * 4.0 - uTime * 0.8));
+        float n = uK > 0.002 ? fbm(vec2(atan(q.y, q.x) * 3.0, r * 4.0 - uTime * 0.8)) : 0.0;   // no noise while the dusk is far
         float k = uK;
         float reach = mix(0.9, 0.28, k) - n * 0.12 * k;
         float dusk = smoothstep(reach, reach + 0.35, r) * k;

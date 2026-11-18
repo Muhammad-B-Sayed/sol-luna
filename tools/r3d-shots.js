@@ -37,7 +37,9 @@ const SHOTS = [
   ['spikes', 'seed=7&kind=spikes', 60],
   ['low', 'seed=7&z=140&q=low', 150],
   // deaths and the victory pose (set directly in the state; the renderer reacts to the change)
-  ['death-spike', 'seed=7&z=30', 14, `__r3d.step(60); __r3d.render(); const S = __r3d.S; S.p[0].alive = false; S.dead[0] = S.tick; S.why[0] = 'spike';`],
+  // one per cause of loss (WHY3): Sol is lost, the camera is Sol's
+  ...['spike', 'sweep', 'gate', 'blade', 'orb', 'pool', 'fall'].map((why) => ['death-' + why, 'seed=7&z=30&bot=0', 16,
+    `__r3d.step(30); __r3d.render(); const S = __r3d.S; S.p[0].alive = false; S.dead[0] = S.tick; S.why[0] = '${why}';`]),
   ['death-zone', 'seed=7&z=30&me=1', 30, `__r3d.step(60); __r3d.render(); const S = __r3d.S; S.p[1].alive = false; S.dead[1] = S.tick; S.why[1] = 'zone'; S.zone = S.p[1].z - 0.2;`],
   ['victory', 'seed=7&z=30&cam=0.6,1.3,3.6', 40, `__r3d.step(60); const S = __r3d.S; S.phase = __r3d.R3.R3_OVER; S.win = 0; S.p[1].alive = false; S.dead[1] = S.tick; S.why[1] = 'fall';`],
   ['leak', 'seed=7&z=200', 6, `window.__leak = JSON.stringify(__r3d.leakCheck(6)); console.warn('leak check [geometries, textures, views] per reset: ' + window.__leak);`],

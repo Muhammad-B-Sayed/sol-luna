@@ -11,15 +11,15 @@ same tick it is a draw.
 Each player has their own camera behind them, looking down +z. It never turns, so the
 controls are world directions.
 
-## Files
+Play it from the title menu (**Versus, same keyboard: Runner 3D**) or from an online room
+(**Versus: Runner 3D**, once both players are in). Rematch always starts a new course. Online,
+the server picks the seed.
 
-| File | What |
-| --- | --- |
-| `shared/runner3d.js` | The sim: course generator, obstacles, `stepRunner3d`, `objPose`. Runs in the browser and on the server. The CONTRACT header at the top is the interface for the renderer and the app shell. |
-| `tools/runner3d-bot.js` | Search bot over the real sim (macro actions, best-first, retry ladder). `node tools/runner3d-bot.js 1,2,3 1700` runs it down whole courses. |
-| `tools/check-runner3d.js` | The fairness checker (below). |
+Contents: 1 rules and controls, 2 speed and difficulty, 3 obstacles and fairness, 4 the checker
+and its numbers, 5 determinism and netcode, 6 files and hooks, 7 rendering, 8 readability cues,
+9 how to run each tool, 10 known issues, 11 work log.
 
-## Space, controls and movement
+## 1. Rules and controls
 
 - x is lateral (+x is the player's right), y is up, z is forward. 1 unit = one 2D tile.
 - Input bits: `IN_L 1`, `IN_R 2`, `IN_J 4`, `IN_F 8`, `IN_B 16`. Forward and sideways together
@@ -44,17 +44,17 @@ controls are world directions.
   a live threat and the active object window small (12 units behind the dusk to 76 ahead of
   it, or 30 past the leading player).
 
-## Determinism and the wire
+| | Move (the camera never turns, so up is always forward) | Jump |
+| --- | --- | --- |
+| Sol, local | arrow keys | Right Shift, `/`, Numpad 0 |
+| Luna, local | W A S D | Space, Left Shift |
+| Online | either set drives your own character | any of the above, Space included |
+| Gamepad | left stick or d-pad (pad 0 is Sol, pad 1 is Luna locally; any pad online) | A |
+| Touch (online only) | left thumb pad, 8 directions | the round button |
 
-- Fixed 60 Hz. The step and the generator use only + - * /, `Math.sqrt`, `Math.floor` and
-  comparisons. Rotation and swinging go through `trig()` (Taylor polynomials around the middle
-  of each quadrant, error below 1e-13) and `wave()` (a smooth back-and-forth polynomial). The
-  server (Node) and every browser compute the same numbers.
-- The course is generated section by section from the seed, on demand.
-- `S` is plain JSON. Only stateful objects in the active window (from 12 units behind the dusk
-  to 30 units past `LEAD_HARD`) have state in `S.o`.
+`Esc` or `P` pauses, and `R` starts a new course, the same as the 2D runner.
 
-## Difficulty ramp
+## 2. Speed and difficulty
 
 Zone speed by distance it has travelled, and difficulty (0 to 1 over the first 1100 units):
 
@@ -83,7 +83,7 @@ stones (150), ember slabs (190), thorn sweeper (240), eclipse stones (290), twin
 pendulums (390), orbiting stones (440), thorn curtain (500), rolling orbs (560). After that
 each section is a weighted random pick, never the same kind twice in a row.
 
-## Obstacles and the four fairness rules
+## 3. Obstacles and the four fairness rules
 
 Rules: (1) every jump is possible, (2) arriving second never makes a section impossible,
 (3) moving parts return to rest and can't be wedged, (4) both characters face equal
@@ -106,7 +106,7 @@ difficulty.
 | Thorn curtain (new, 3D) | A thorn curtain across the course, too tall to jump, with an opening that slides from side to side | Opening ≥ 2.0 wide; it crosses every point of the course twice a period; curtains in one section share a clock phased by running time, so following the opening through one lines you up with the next | Fixed clock | Clock only | Same for both |
 | Rolling orbs | Orbs rolling down lanes toward the players on fixed clocks | Dodge between lanes, or jump (an orb is 1.4 tall) | Fixed clock | Clock only | Same for both |
 
-## Checks
+## 4. The checker and its final numbers
 
 ```bash
 node tools/check-runner3d.js                  # 50 seeds, course to z 1700
@@ -136,7 +136,7 @@ zone reaches it at z 1600 travelled). It tests, for every section:
    a freshly generated course, and with the state sent through `JSON.parse(JSON.stringify(S))`
    every 250 ticks.
 
-## What the checker found
+### What the checker found
 
 The first full runs failed, and each failure was traced to either the course or the bot:
 
@@ -155,7 +155,7 @@ The first full runs failed, and each failure was traced to either the course or 
   front of thorns past a short run-up, or a buffered jump at a run-up's edge). It now has
   retry rungs with other time weights and with a sideways or backward start.
 
-## Final numbers
+### Final numbers
 
 `node tools/check-runner3d.js` (50 seeds, z 1700, `JOBS=6`), at commit `4c0c574`: **PASS** in 146 s.
 
@@ -172,3 +172,200 @@ The first full runs failed, and each failure was traced to either the course or 
 Average clear time per section at full speed ranges from 1.8 s (curtains, pendulums,
 sweepers) to 3.7 s (stepping stones).
 
+The sim is unchanged on the polish branch (`r3d-polish`), so these numbers still hold.
+
+## 5. Determinism and netcode
+
+- Fixed 60 Hz. The step and the generator use only + - * /, `Math.sqrt`, `Math.floor` and
+  comparisons. Rotation and swinging go through `trig()` (Taylor polynomials around the middle
+  of each quadrant, error below 1e-13) and `wave()` (a smooth back-and-forth polynomial). The
+  server (Node) and every browser compute the same numbers.
+- The course is generated section by section from the seed, on demand.
+- `S` is plain JSON. Only stateful objects in the active window (from 12 units behind the dusk
+  to 30 units past `LEAD_HARD`) have state in `S.o`.
+
+Online play uses the same scheme as the 2D runner. The client predicts with its own input and
+the last known remote input. On each snapshot it replays its unacknowledged inputs and carries
+the difference as a decaying visual offset. Two additions:
+
+- When the drawn position is ahead of the corrected one and the player is running forward, the
+  offset shrinks by at most 60% of their forward speed each tick. The player slows down for a
+  moment instead of sliding backwards. This matters when the server trims a long input queue
+  after a stall (`q.length > 12`), which drops up to 12 ticks of running.
+- A snapshot can name objects (up to `S.hi`) that the client's lazily generated course doesn't
+  have yet. `cover()` generates up to them before the state is stepped or drawn. The renderer
+  only draws objects from `L.objs`, and `L` is always generated at least as far as `S.hi`, so the
+  real renderer is safe too.
+
+`window.__runner3d.corr` records the largest correction of your own player (`max` overall, `back`
+backwards in z, `viewBack` the most the drawn player moved backwards in one frame while forward
+was held) and the other player's drawn motion (`remoteStep`, the largest move between two frames,
+and `remoteBack`, the most it moved backwards in one frame while running forward).
+
+PERF_ONLINE
+
+## 6. Files and the hooks in the shell files
+
+| File | What |
+| --- | --- |
+| `shared/runner3d.js` | The sim: course generator, obstacles, `stepRunner3d`, `objPose`. Runs in the browser and on the server. The CONTRACT header is the interface for the renderer and the app. |
+| `tools/runner3d-bot.js` | Search bot over the real sim. `node tools/runner3d-bot.js 1,2,3 1700` runs it down whole courses. |
+| `tools/check-runner3d.js` | The fairness checker (section 4). |
+| `public/js/runner3d-app.js` | `Runner3DMode`: local loop, online prediction, DOM HUD (tips, held note), sounds, touch pad, pause and results. |
+| `public/js/runner3d-debug.js` | A 2D-canvas debug view with the renderer's API (`?r3ddebug=1`, or when WebGL fails). |
+| `public/js/r3d/renderer.js` | `Runner3DRenderer`, the entry the app imports: cameras, streaming of object views, blob shadows, death effects, lead veil, bloom, auto quality, shader warm-up. |
+| `public/js/r3d/views.js` | One view per object kind: `VIEWS[kind] = { make, update }`. |
+| `public/js/r3d/kit.js` | Sim-to-three mapping (`toV`: z is negated, only here), palette, shared uniforms, textures, `patchWorld` (dusk, creeping shadow, glow, rim, dissolve), slabs, chains, `GlowField`. |
+| `public/js/r3d/characters.js` | Sol and Luna, procedural, with their animation and death effects. |
+| `public/js/r3d/world.js` | Sky, abyss, mist, motes, pillars, arches, lanterns, distant silhouettes. |
+| `public/js/r3d/zone.js` | The dusk wall, tendrils, floor glow, vignette, and the lead-cap veil. |
+| `public/js/r3d/fx.js` | Particles. |
+| `public/js/r3d/boxes.js` | Debug overlay of the sim's collision shapes (`?boxes=1`). |
+| `public/r3d-demo.html` | The renderer on its own, with bots (section 9). |
+| `tools/runner3d-browser.js`, `tools/r3d-shots.js`, `tools/r3d-perf.js`, `tools/r3d-eval.js`, `tools/r3d-glprobe.js` | Browser checks and look and speed tools (section 9). |
+
+Hooks in the shared shell files. Each is a few lines next to the matching 2D runner hook.
+
+- `public/index.html:18` `<canvas id="game3d">`; `:34` the title button `btnRunner3d`; `:66` the
+  "How to play" line; `:101` the lobby button `lobbyRunner3d`; `:184-211` the `#r3Pause` and
+  `#r3Results` cards.
+- `public/js/main.js:12` import; `:49` and `:64` create `Runner3DMode`; `:268` hands it the frame
+  loop while active; `:413` stops it in `quitToMenu`; `:434` routes `start{mode:'runner3d'}` to it.
+- `public/js/input.js:5-6` the `SOL_3D` and `LUNA_3D` key maps; `:17` `preventDefault` for the
+  extra keys only while `mode3d` is on and never in a text field; `:24` the `mode3d` and `touch3`
+  fields; `:52-60` `pad3()`, `local3d()`, `any3d()`.
+- `server/index.js:11` import; `:115` `Room.startRunner3d()`; `:123`, `:125`, `:142`, `:221` the
+  `runner3d` branches in `restartGame()`, `startMsg()`, `tick()` and the `start` message; `:170`
+  the input mask `& 31` (bit 16 is "back"; the co-op sim and the 2D runner read only bits 1, 2
+  and 4, and Dodgeball reads 8).
+- `public/style.css:145-195` one block for the canvas, HUD, tips, held note and touch pad.
+
+## 7. Rendering
+
+Three.js r170, vendored in `public/vendor/three/`. The mode draws to `#game3d`, which fills the
+stage while the mode is active; `body.r3d` hides the 2D canvas. On the first match the app imports
+`/js/r3d/renderer.js` (it starts that download earlier when the lobby fills or the Runner 3D button
+is hovered). If the import or the WebGL constructor fails, or the page was opened with
+`?r3ddebug=1`, the debug view draws instead. A renderer that throws while drawing is replaced by
+the debug view, and the error is kept in `renderErrors`.
+
+`draw(L, S, view, time, { split, me, paused })` gets `split: true` locally (Sol left, Luna right)
+and `split: false, me` online. Everything drawn comes from `L`, `S` and changes between frames, so
+it stays right under rollback. Moving parts are posed with `objPose(L, S, i, S.tick - 1 + alpha)`,
+the same fractional tick as the interpolated players.
+
+### Art against collision
+
+`/r3d-demo.html?boxes=1` draws the sim's own shapes as lines over the art: floors green, moving
+platforms cyan, ember halves orange (grey while not solid), eclipse stones gold or blue, hazards
+red, pools as the hostile area at the depth where they kill, and both players' boxes. Every shape
+already has the sim's insets applied, so the player's box touching a red line means death. I
+checked every kind this way at an easy and a hard instance, and the moving ones at several ticks.
+
+| Kind | Before | Now |
+| --- | --- | --- |
+| Gaps, steps, beams, stones | Matched | Matched (slab edges are the sim's edges) |
+| Thorns | Matched | Matched (thorn field fills the box, tips at `th`) |
+| Pools | Matched | Matched; plus a per-player danger rim |
+| Chain slab (tilt) | Matched (exact shear of the sim's plane) | Matched |
+| Ember slabs | Halves matched, but a re-forming half looked solid while it held nobody | Re-forming halves are a see-through outline until they are solid |
+| Eclipse stones | Matched (solid for its own player's camera, ghost for the other) | Matched |
+| Thorn sweeper | Thorns reached 0.56 from the arm's line and 0.8 high; the sim's arm is 0.15 and 0.55 high | Beam and thorns stay within 0.15 and below the bar |
+| Pendulum | A crescent: the top half of the deadly disc was empty | A full disc blade, radius `rb - 0.06`, 0.28 thick at the hub |
+| Orbiting stones | Matched | Matched |
+| Thorn curtain | Loose floating crystals | A bramble wall from `x0` to the opening's edge (`gw + 0.06`), thorns inside the 0.4 deep deadly slab |
+| Rolling orbs | Drawn at a quarter of their size at both ends of the lane while deadly at full size | Always full size; they come out of an archway and drop into a socket |
+
+### Rendering notes
+
+- Quality: `setQuality('auto' | 'high' | 'low')`, default auto. High has bloom through
+  `EffectComposer` and pixel ratio up to 1.5; low draws straight to the screen at pixel ratio 1.
+  Auto steps down to low when the median frame over 3 s is longer than 24 ms.
+- The first `reset()` builds one view of every kind on a throwaway course and compiles their
+  shaders, so the first curtain or orb of a match does not stall a frame.
+- Per-frame updates reuse scratch vectors and matrices (no garbage every frame).
+- A NaN from a shader spreads over the whole frame through bloom. Every `pow()` in a shader takes
+  a clamped value.
+- Thorn curtains a camera's player has passed are hidden for that camera, so they never stand
+  between the camera and the player.
+- The glow sprite texture is opaque grey on black. A transparent canvas uploads its near-zero
+  alpha pixels as white, which showed the sprite's square edge.
+- Luna's hood has a dark lining on its inside face. Her own light used to make it read pale from
+  the front.
+
+### Adding a view for a new kind
+
+1. Read its `KIND_DOC` line and `objPose` case in `shared/runner3d.js`.
+2. Add `VIEWS.<kind>` in `views.js`. Build at rest in `make` (sim to three: `x, y, -z`), move it in
+   `update` from `pose`. Put every geometry, InstancedMesh and per-view material in
+   `userData.geos / insts / mats` so `disposeView` frees it.
+3. Add its collision shape to `boxes.js` and compare with `?boxes=1`.
+4. If players can stand on it, add a case to `groundAt` in `renderer.js` (blob shadows).
+5. If it brings a new cause of death (`WHY3`), add a branch in `onDeath` and in `Character.update`.
+6. Add a tip in `TIPS` in `runner3d-app.js`.
+
+PERF_SECTION
+
+## 8. Readability cues
+
+- **Which pools kill you.** Each player's camera shows a pulsing pink rim around the pools that
+  kill that player (camera layers: sun pools on Luna's camera, moon pools on Sol's, shade on both).
+  The first pools section also shows a tip.
+- **Which eclipse stones are yours.** Your own stones are solid stone in your colour; the other
+  player's are see-through ghosts on your camera. The first eclipse section shows a tip in each
+  player's own words.
+- **Ember slabs about to fall.** A whole half glows softly. Once stood on it shakes harder and
+  harder, its cracks flare and sparks rise; a crack sound plays for your own player. A fallen half
+  drops and fades; a re-forming half is a see-through outline until it is solid again.
+- **The dusk.** A wavering shadow creeps over the floor ahead of the wall (4 units plus 40 times
+  the zone speed per tick, so about 6 to 8.6 units), with a faint ember line at its front. It
+  enters the frame before the wall does. The screen vignette closes in from 12 units, the HUD
+  meter and edge glow turn red from 8, and a tick sound quickens as the dusk nears your player.
+- **The lead cap.** A shimmering violet veil rises across the run-up just past where the cap
+  stops a player, fading in from 3 units before it and brightening while they are held. The
+  player's HUD box shows "held by the twilight", a click plays, and the first time it happens a
+  tip explains it.
+- **First-time tips.** Each player gets one line the first time each obstacle kind comes up,
+  shown 9 units before its run-up in that player's half of the screen (bottom, clear of the
+  action) for 4 s.
+- **Causes of loss.** The results card shows each player's cause from `WHY3`. Each cause has its
+  own death effect: thorns, thorn arm and curtain burst into pink shards; a blade knocks the
+  player spinning; an orb flattens them; a pool sinks them with a splash in its colour; the dusk
+  darkens and swallows them; a fall dissolves them.
+
+## 9. How to run each tool
+
+```bash
+PORT=3470 node server/index.js &                     # LAG_MS=80 to test prediction
+PORT=3470 node tools/runner3d-browser.js             # local, online, other modes, WebGL pass, screenshots
+JOBS=8 node tools/check-runner3d.js                  # fairness proof (about 2 minutes); QUICK=1 for 4 seeds
+NOSERVER=1 PORT=3470 node tools/r3d-shots.js [names] # renderer screenshots (docs/img/runner3d/render-*.png)
+PORT=3470 node tools/r3d-perf.js                     # frame times; SECS, SIZES, ZS, VIEWS, Q
+PORT=3470 node tools/r3d-eval.js "seed=7&kind=gate" "__r3d.S.tick"   # run expressions in the demo
+node tools/r3d-glprobe.js                            # which WebGL renderer each set of Chromium flags gets
+```
+
+- **Browser test.** `ONLY=local|online|webgl`, `RENDER=debug|webgl|both`, `OUT`, `GL_FLAGS`
+  (default `--enable-gpu`), `MAX_VIEW_BACK`, `MAX_REMOTE_STEP`. The play checks run on the debug
+  view so they pass without a GPU. The WebGL pass then plays a local split-screen match and an
+  online match in real time with the real renderer when it gets a GPU, and fast-forwards on
+  software GL.
+- **Demo.** `/r3d-demo.html?seed=7&split=1`. Bots run both players; arrows and Enter, or WASD and
+  Space, take one over. Parameters: `seed`, `split=1`, `me=1`, `z=`, `kind=` (a section kind such
+  as `gate`, or an object kind such as `orb`) with `after=Z` for a later, harder one, `q=high|low`,
+  `count=1`, `bot=0`, `hud=0`, `auto=0`, `cam=dx,dy,dz[,ahead[,side]]`, `boxes=1`, `perf=1`.
+  `__r3d.aim(__r3d.obj('gate'), [0, 2, -6], [0, 1.8, 0])` fixes the cameras on an object.
+- **Shots.** Names are substrings: `kind-` (easy instance of every kind), `hard-` (past z 900),
+  `death-` (one per cause), `split`, `chars`. `ADHOC='[["name", "query", steps, "setup"]]'` adds
+  your own.
+- **Headless GPU.** Plain `--enable-gpu` gives headless Chromium the real GPU here (AMD Radeon 780M
+  through ANGLE on OpenGL ES). Without flags it uses SwiftShader. `--use-angle=vulkan
+  --enable-features=Vulkan` and `--use-gl=angle --use-angle=gl-egl` also reach the GPU.
+
+## 10. Known issues
+
+KNOWN
+
+## 11. Work log
+
+WORKLOG

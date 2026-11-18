@@ -1,6 +1,8 @@
-// Frame times of the Runner 3D renderer on this machine's GPU (headless Chromium, vsync and the
-// frame-rate limit off, so each frame's interval is what it really costs). The demo page runs its
-// bots in real time (they respawn when lost) and records every frame (?perf=1).
+// Frame times of the Runner 3D renderer on this machine's GPU (headless Chromium with --enable-gpu).
+// The demo page runs its bots in real time (they respawn when lost) and records every frame (?perf=1).
+// By default the browser runs at its normal 60 Hz: a frame that takes too long shows up as a
+// 33 ms interval, and "slow" counts frames over 20 ms. UNCAPPED=1 turns vsync and the frame-rate
+// limit off (then the intervals mostly measure how far Chromium lets the CPU run ahead of the GPU).
 //   PORT=3470 node tools/r3d-perf.js                     single and split, 1280x720 and 1920x1080, z 0 / 600 / 1300, 30 s each
 //   SECS=10 SIZES=1280x720 ZS=600 VIEWS=split Q=high node tools/r3d-perf.js
 // Prints the median and 99th percentile frame interval, the median JS draw time, draw calls and
@@ -20,7 +22,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const profile = mkdtempSync('/tmp/sl-r3dpolish-perf-');
 const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
-  '--mute-audio', ...(process.env.GL_FLAGS ?? '--enable-gpu').split(' ').filter(Boolean), '--disable-gpu-vsync', '--disable-frame-rate-limit',
+  '--mute-audio', ...(process.env.GL_FLAGS ?? '--enable-gpu').split(' ').filter(Boolean), ...(process.env.UNCAPPED ? ['--disable-gpu-vsync', '--disable-frame-rate-limit'] : []),
   '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--window-size=1920,1080', 'about:blank'],
   { stdio: ['ignore', 'ignore', 'pipe'] });
 const cleanup = () => { try { chrome.kill('SIGKILL'); } catch {} try { rmSync(profile, { recursive: true, force: true }); } catch {} };
@@ -50,7 +52,7 @@ const ev = async (expr) => {
 };
 const gpu = [];
 const pct = (a, q) => { const b = a.slice().sort((x, y) => x - y); return b[Math.min(b.length - 1, Math.floor(q * b.length))]; };
-console.log('view    size        z     frames  median  p99    js-med  calls/view  tris/view  level');
+console.log('view    size        z     frames  median  p99    slow   js-med  js-p99  calls/view  tris/view  level');
 for (const view of VIEWS) for (const [W, H] of SIZES) for (const z of ZS) {
   await cmd('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false }, s);
   await cmd('Page.navigate', { url: `${BASE}/r3d-demo.html?hud=0&perf=1&seed=7&z=${z}${view === 'split' ? '&split=1' : ''}${Q ? '&q=' + Q : ''}` }, s);
@@ -62,7 +64,7 @@ for (const view of VIEWS) for (const [W, H] of SIZES) for (const z of ZS) {
   const p = await ev('__r3d.perf');
   const nv = view === 'split' ? 2 : 1;
   const lv = {}; for (const l of p.level) lv[l] = (lv[l] || 0) + 1;
-  console.log(`${view.padEnd(7)} ${(W + 'x' + H).padEnd(10)} ${String(z).padStart(5)}  ${String(p.dt.length).padStart(6)}  ${pct(p.dt, 0.5).toFixed(2).padStart(6)}  ${pct(p.dt, 0.99).toFixed(2).padStart(5)}  ${pct(p.js, 0.5).toFixed(2).padStart(6)}  ${String(Math.round(pct(p.calls, 0.5) / nv)).padStart(10)}  ${String(Math.round(pct(p.tris, 0.5) / nv / 1000) + 'k').padStart(9)}  ${Object.entries(lv).map(([k, v]) => k + ' ' + Math.round(v / p.level.length * 100) + '%').join(' ')}`);
+  console.log(`${view.padEnd(7)} ${(W + 'x' + H).padEnd(10)} ${String(z).padStart(5)}  ${String(p.dt.length).padStart(6)}  ${pct(p.dt, 0.5).toFixed(2).padStart(6)}  ${pct(p.dt, 0.99).toFixed(2).padStart(5)}  ${(p.dt.filter(d => d > 20).length / p.dt.length * 100).toFixed(1).padStart(4)}%  ${pct(p.js, 0.5).toFixed(2).padStart(6)}  ${pct(p.js, 0.99).toFixed(2).padStart(6)}  ${String(Math.round(pct(p.calls, 0.5) / nv)).padStart(10)}  ${String(Math.round(pct(p.tris, 0.5) / nv / 1000) + 'k').padStart(9)}  ${Object.entries(lv).map(([k, v]) => k + ' ' + Math.round(v / p.level.length * 100) + '%').join(' ')}`);
 }
 console.log('GPU:', gpu[0]);
 ws.close();

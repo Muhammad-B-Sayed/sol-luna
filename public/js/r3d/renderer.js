@@ -6,7 +6,7 @@
 //   r.dispose();
 //
 // Everything visual is derived from L, S and changes between frames (never mutated), so it stays
-// correct under network rollback. Quality: r.setQuality('auto' | 'high' | 'low') (default auto).
+// correct under network rollback. Quality: r.setQuality('auto' | 'high' | 'mid' | 'low') (default auto).
 import * as THREE from './three.js';
 import { EffectComposer } from '../../vendor/three/addons/postprocessing/EffectComposer.js';
 import { Pass } from '../../vendor/three/addons/postprocessing/Pass.js';
@@ -105,7 +105,7 @@ export class Runner3DRenderer {
     r.toneMappingExposure = 0.95;
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.autoClear = false;
-    this.quality = 'auto'; this.level = 'high';
+    this.quality = 'auto'; this.level = 'high'; this.picked = false;   // level: 'high' | 'mid' | 'low' (auto picks it from the canvas size on the first frame, then steps down)
     this.cssW = canvas.clientWidth || 960; this.cssH = canvas.clientHeight || 540; this.dpr = 1;
 
     const scene = this.scene = new THREE.Scene();
@@ -162,6 +162,10 @@ export class Runner3DRenderer {
     if (lvl !== this.appliedLevel) { this.level = lvl; this.resize(this.cssW, this.cssH, this.dpr); }
   }
 
+  // Quality levels. high: bloom, 4x MSAA, pixel ratio up to 1.5. mid: bloom at a lower resolution,
+  // no MSAA, pixel ratio 1. low: no bloom, straight to the (antialiased) canvas, pixel ratio 1.
+  // Measured on an AMD 780M (tools/r3d-perf.js): high holds 60 fps at 1280x720, not at 1920x1080.
+
   buildComposer() {
     const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 });
     this.composer = new EffectComposer(this.renderer, rt);
@@ -211,9 +215,12 @@ export class Runner3DRenderer {
     const pr = Math.min(this.dpr, high ? 1.5 : 1);
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(this.cssW, this.cssH, false);
+    const samples = high ? 4 : 0;
+    for (const rt of [this.composer.renderTarget1, this.composer.renderTarget2]) if (rt.samples !== samples) { rt.samples = samples; rt.dispose(); }
     this.composer.setPixelRatio(pr);
     this.composer.setSize(this.cssW, this.cssH);
-    this.bloom.resolution.set(this.cssW * pr / 2, this.cssH * pr / 2);
+    const bk = high ? 2 : 3;
+    this.bloom.resolution.set(this.cssW * pr / bk, this.cssH * pr / bk);
     this.appliedLevel = this.level;
   }
 
@@ -342,6 +349,10 @@ export class Runner3DRenderer {
     const realDt = dt;
     this.lastTime = time;
     if (paused) dt = 0;
+    if (!this.picked) {   // auto starts at high on canvases up to about 1.25 million device pixels, at mid above that
+      this.picked = true;
+      if (this.quality === 'auto') { this.level = this.cssW * this.cssH * this.dpr * this.dpr > 1.25e6 ? 'mid' : 'high'; this.resize(this.cssW, this.cssH, this.dpr); }
+    }
     this.autoQuality(realDt);
 
     U.uTime.value = time;
@@ -459,7 +470,7 @@ export class Runner3DRenderer {
 
   render(split) {
     const r = this.renderer;
-    if (this.level === 'high') {
+    if (this.level !== 'low') {
       this.composer.render();
     } else {
       r.setRenderTarget(null);
@@ -487,9 +498,11 @@ export class Runner3DRenderer {
     this.ft.push(dt);
     this.ftAcc += dt;
     if (this.ftAcc < 3) return;
+    // step down when more than 1 frame in 10 took over 20 ms (a missed 60 Hz frame), or the median is long
     const sorted = this.ft.slice().sort((a, b) => a - b), med = sorted[sorted.length >> 1];
+    const slow = this.ft.filter(d => d > 0.02).length / this.ft.length;
     this.ft = []; this.ftAcc = 0;
-    if (this.level === 'high' && med > 1 / 42) { this.level = 'low'; this.resize(this.cssW, this.cssH, this.dpr); }
+    if (this.level !== 'low' && (slow > 0.1 || med > 1 / 42)) { this.level = this.level === 'high' ? 'mid' : 'low'; this.resize(this.cssW, this.cssH, this.dpr); }
   }
 
   // per-frame renderer counters for the perf report (draw calls and triangles of the last frame)
