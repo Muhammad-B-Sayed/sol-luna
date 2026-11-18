@@ -11,16 +11,19 @@
 //      Also that the thrower can punish a jump if they read it.
 //   4. Every thrown ball comes to rest within a bounded time, on one side, on a surface the
 //      owner can reach (checked with the level checker's search).
-//   5. Possession: miss -> the side it stops on; pickup; shot-clock turnover; own-side throw
-//      keeps the clock running; hit -> score, victim serves; first to 5 wins.
+//   5. Possession: miss -> the side it stops on; pickup; the pickup clock (10 s, from when the
+//      ball comes loose on your side) and the shot clock (20 s, from the moment you hold it;
+//      a serve starts it in hand) each hand the ball over; an own-side throw resets neither
+//      clock; a player who loops throws to their own side, or leaves their own fumble lying,
+//      still loses the ball within one shot clock; hit -> score, victim serves; first to 5 wins.
 //   6. Determinism: same seed and inputs give identical states; seeded first serve is ~50/50.
 //   7. Online wind-up (fix C): its size from round trip and queue; a throw at a player with
 //      wind-up k leaves the hand exactly k ticks after the release, from where the planted
 //      thrower stands, with the aim it was released with, and then flies exactly like the local
-//      throw; the shot clock waits; the dodge window from the launch equals local; a hit on the
+//      throw; the shot clock can't run out mid wind-up; the dodge window from the launch equals local; a hit on the
 //      player the screen waits for stops the ball without scoring; determinism mid wind-up.
 import { COURT, DODGE, NET, createDodge, stepDodge, aimSlope, sideOf, ownerOf, windupFor, handPos,
-  DP_READY, DP_PLAY, DP_POINT, DP_OVER, B_HELD, B_LIVE, B_DEAD, B_REST } from '../shared/dodge.js';
+  CLOCK_PICK, CLOCK_SHOT, DP_READY, DP_PLAY, DP_POINT, DP_OVER, B_HELD, B_LIVE, B_DEAD, B_REST } from '../shared/dodge.js';
 import { cloneState, SOL, LUNA, TS, PHYS, TICK_RATE, IN_ACT, T_SOLID, COLS } from '../shared/sim.js';
 import { explore } from './check-levels.js';
 
@@ -68,7 +71,7 @@ function setup(thrower, tp, vp) {
   place(S.p[1 - thrower], vp.x, vp.y);
   D.phase = DP_PLAY; D.t = 0;
   D.holder = thrower; Object.assign(D.ball, { st: B_HELD, by: thrower, vx: 0, vy: 0, t: 0 });
-  D.clockOwner = thrower; D.clock = DODGE.shotClock;
+  D.clockOwner = thrower; D.clockKind = CLOCK_SHOT; D.clock = DODGE.shotClock;
   stepDodge(COURT, S, [0, 0]);   // snap the ball to the hand
   return S;
 }
@@ -253,13 +256,24 @@ console.log('\n5. Possession and scoring');
   const S = r.S;
   let t = 0, since = r.t; while (S.d.ball.st !== B_REST && S.d.holder < 0 && t++ < 600) { stepDodge(COURT, S, [0, 0]); since++; }
   ok(ownerOf(S.d) === LUNA, `the missed ball belongs to Luna, whose side it stopped on (x=${S.d.ball.x.toFixed(0)})`);
+  const restS = cloneState(S);   // the ball at rest on Luna's side, untouched
+  ok(S.d.clockOwner === LUNA && S.d.clockKind === CLOCK_PICK && S.d.clock < DODGE.pickClock && S.d.clock >= DODGE.pickClock - since,
+    `while the ball lies on her side, Luna's pickup clock runs (${S.d.clock} of ${DODGE.pickClock} left, ball there ${since} ticks at most)`);
   const pick0 = S.d.pickN;
   for (t = 0; t < 400 && S.d.holder !== LUNA; t++) {
     const p = S.p[LUNA], dx = S.d.ball.x - (p.x + p.w / 2);
     stepDodge(COURT, S, [0, dx < -2 ? LEFT : dx > 2 ? RIGHT : 0]); since++;
   }
   ok(S.d.holder === LUNA && S.d.pickN === pick0 + 1, `Luna walks to it and picks it up (${t} ticks)`);
-  ok(S.d.clockOwner === LUNA && S.d.clock < DODGE.shotClock && S.d.clock >= DODGE.shotClock - since, `Luna's shot clock runs from when the ball came to her side (${S.d.clock} left)`);
+  ok(S.d.clockOwner === LUNA && S.d.clockKind === CLOCK_SHOT && S.d.clock === DODGE.shotClock,
+    `her shot clock starts in full when she picks it up, not when the ball came over (${S.d.clock} = ${DODGE.shotClock})`);
+  // pickup clock: Luna leaves it lying
+  {
+    const S2 = restS, left = S2.d.clock, turn0 = S2.d.turnN;
+    let k = 0; while (S2.d.turnN === turn0 && k++ < DODGE.pickClock + 10) stepDodge(COURT, S2, [0, 0]);
+    ok(k === left && S2.d.holder === SOL && S2.d.clockKind === CLOCK_SHOT && S2.d.clock === DODGE.shotClock,
+      `a ball left lying goes to the other player's hand when the pickup clock runs out (after ${k} more ticks = what was left), and their shot clock starts in full`);
+  }
   // Sol can't pick up a ball on Luna's side
   {
     const S2 = setup(SOL, tp, vp);
@@ -271,7 +285,15 @@ console.log('\n5. Possession and scoring');
   // shot clock: Luna stalls
   let k = 0; const turn0 = S.d.turnN;
   while (S.d.holder === LUNA && k++ < DODGE.shotClock + 10) stepDodge(COURT, S, [0, 0]);
-  ok(S.d.holder === SOL && S.d.turnN === turn0 + 1, `holding too long hands the ball over (after ${k} more ticks, clock ${DODGE.shotClock})`);
+  ok(S.d.holder === SOL && S.d.turnN === turn0 + 1 && k === DODGE.shotClock, `holding too long hands the ball over (after ${k} ticks, clock ${DODGE.shotClock})`);
+  ok(DODGE.pickClock === 600 && DODGE.shotClock === 1200 && DODGE.clockWarn === 300, 'clocks: 10 s to pick up, 20 s to throw, shown in the last 5 s');
+  // a serve starts in hand: the shot clock, and it does not run during the ready freeze
+  {
+    const S5 = createDodge(3);
+    ok(S5.d.holder === S5.d.serve && S5.d.clockKind === CLOCK_SHOT && S5.d.clock === DODGE.shotClock, 'the server starts with the ball in hand, so the shot clock applies');
+    while (S5.d.phase === DP_READY) stepDodge(COURT, S5, [0, 0]);
+    ok(S5.d.clock === DODGE.shotClock - 1, `it starts when play does, after the ${DODGE.ready}-tick ready freeze (${S5.d.clock} left on the first play tick)`);
+  }
   // own-side throw: Sol spikes it into his own floor; it stays his and the clock keeps running
   {
     const S3 = setup(SOL, { x: FLOOR[SOL].lo + 40, y: FLOOR[SOL].y }, vp);
@@ -283,7 +305,58 @@ console.log('\n5. Possession and scoring');
     ok(aimSlope(down) < -0.7, `aim after ${down} ticks points down (slope ${aimSlope(down).toFixed(2)})`);
     let i = 0; while (S3.d.ball.st === B_LIVE && i++ < 100) stepDodge(COURT, S3, [0, 0]);
     ok(sideOf(S3.d.ball.x) === SOL, 'a steep throw from the back lands on the thrower\'s own side');
-    ok(S3.d.clockOwner === SOL && S3.d.clock < before, `own-side throw does not reset the clock (${before} -> ${S3.d.clock})`);
+    ok(S3.d.clockOwner === SOL && S3.d.clockKind === CLOCK_SHOT && S3.d.clock < before - down,
+      `own-side throw resets nothing: the shot clock ran through the aim and the flight, and no pickup clock (${before} -> ${S3.d.clock})`);
+  }
+  // a fumble left lying on his own side goes over when his shot clock runs out, not after a fresh pickup clock
+  {
+    const S7 = setup(SOL, { x: FLOOR[SOL].lo, y: FLOOR[SOL].y }, { x: FLOOR[LUNA].hi, y: FLOOR[LUNA].y });
+    S7.d.holder = -1; Object.assign(S7.d.ball, { st: B_REST, x: NET - 60, y: 28 * TS - DODGE.r - 0.01, vx: 0, vy: 0 });
+    S7.d.clock = 450;
+    const turn0 = S7.d.turnN;
+    let k = 0; while (S7.d.turnN === turn0 && k++ < DODGE.shotClock + 10) stepDodge(COURT, S7, [0, 0]);
+    ok(S7.d.holder === LUNA && k === 450, `a fumble left lying goes over when the shot clock runs out (${k} ticks, what was left), not after a fresh ${DODGE.pickClock}`);
+  }
+  // Stalling: Sol loops steep throws into his own floor and picks the ball up again, with the
+  // fastest loop (tap-throws as soon as he holds it) and a slow one (full aim swing, waits
+  // before walking over). Online too, with the longest wind-up. The ball must still go over
+  // within one shot clock plus one last throw's wind-up and flight.
+  {
+    const bound = DODGE.shotClock + DODGE.windMax + DODGE.liveMax;
+    // find throws that come to rest on the thrower's own side: from a spot on the floor, hold h
+    const fumbles = [];
+    for (let x = FLOOR[SOL].lo; x <= FLOOR[SOL].hi; x += 12) for (let h = 0; h < MAXHOLD; h += 2) {
+      const S = setup(SOL, { x, y: FLOOR[SOL].y }, { x: FLOOR[LUNA].hi, y: FLOOR[LUNA].y });
+      for (let i = 0; i <= h; i++) stepDodge(COURT, S, [ACT, 0]);
+      stepDodge(COURT, S, [0, 0]);
+      if (S.d.holder >= 0) continue;
+      let i = 0; while (S.d.ball.st !== B_REST && i++ < 400) { S.p[LUNA].x = 2900; stepDodge(COURT, S, [0, 0]); }
+      if (S.d.ball.st === B_REST && sideOf(S.d.ball.x) === SOL) fumbles.push({ x, h, rest: i });
+    }
+    ok(fumbles.length > 0, `there are throws that stay on the thrower's side (${fumbles.length} spot and aim pairs on the floor)`);
+    const f = fumbles.reduce((a, b) => (b.rest < a.rest ? b : a), fumbles[0] || { x: FLOOR[SOL].lo, h: 0 });
+    // the loop: walk to the spot, aim, release, walk to the ball, pick it up, repeat
+    for (const [name, wait, lag] of [['fast loop', 0, 0], ['slow loop (waits 3 s before each pickup)', 180, 0], ['online loop (longest wind-up)', 0, DODGE.windMax]]) {
+      const S6 = setup(SOL, { x: f.x, y: FLOOR[SOL].y }, { x: FLOOR[LUNA].hi, y: FLOOR[LUNA].y });
+      S6.d.lag = [lag, lag];
+      const turn0 = S6.d.turnN;
+      let t = 0, held = -1, loose = 0, throws = 0;
+      while (S6.d.turnN === turn0 && t++ < 4 * DODGE.shotClock) {
+        const D = S6.d, p = S6.p[SOL], inp = [0, 0];
+        if (D.holder === SOL && D.wind === 0) {
+          loose = 0;
+          if (held < 0 && Math.abs(p.x - f.x) > 2) inp[SOL] = p.x < f.x ? RIGHT : LEFT;
+          else if (held < 0 && Math.abs(p.vx) > 0.01) inp[SOL] = 0;
+          else if (held < f.h) { inp[SOL] = ACT; held++; }
+          else { held = -1; throws++; }
+        } else if (D.holder < 0 && D.ball.st !== B_LIVE && sideOf(D.ball.x) === SOL && loose++ >= wait) {
+          const dx = D.ball.x - (p.x + p.w / 2); inp[SOL] = dx < -2 ? LEFT : dx > 2 ? RIGHT : 0;
+        }
+        stepDodge(COURT, S6, inp);
+      }
+      ok(S6.d.turnN === turn0 + 1 && S6.d.holder === LUNA && t <= bound && throws >= 2,
+        `stalling, ${name}: ${throws} throws to his own side, the ball still goes over after ${t} ticks (${sec(t)}) <= ${bound} (${sec(bound)})`);
+    }
   }
   // hit -> score, pause, victim serves
   {
@@ -375,12 +448,12 @@ console.log('\n7. Online wind-up (fix C)');
   const aimed = run(6, 40).rec.find(r => r.throwN), aimedLocal = run(0, 40).rec.find(r => r.throwN);
   const slope = (q, h) => (q.y - h.y);
   ok(Math.abs(slope(aimed, handPos(setup(SOL, tp, vp).p[SOL], SOL)) - slope(aimedLocal, handPos(setup(SOL, tp, vp).p[SOL], SOL))) < 1e-9, `an aimed throw keeps the aim it was released with (slope ${aimSlope(40).toFixed(2)})`);
-  // shot clock waits, and a release at the last clock tick still throws
+  // the shot clock can't run out during a wind-up: a release at the last clock tick still throws
   {
     const S = setup(SOL, tp, vp); S.d.lag = [0, 9]; S.d.clock = 2;
     stepDodge(COURT, S, [ACT, 0]); stepDodge(COURT, S, [0, 0]);
     const c0 = S.d.clock; for (let i = 0; i < 9; i++) stepDodge(COURT, S, [0, 0]);
-    ok(S.d.throwN === 1 && S.d.turnN === 0 && c0 > 0, 'the shot clock waits for a winding-up throw (released at the last tick, it still flies)');
+    ok(S.d.throwN === 1 && S.d.turnN === 0 && c0 === 0, 'the shot clock can\'t run out during a wind-up (it reaches 0 while winding up, and the ball still flies)');
   }
   // dodge window measured from the launch is the local one
   const window = (k) => { const out = []; for (let r = 1; r <= 40; r++) { const { rec } = run(k, 0, () => 0, (t) => (t - k >= r ? JUMP : 0)); if (!rec.at(-1).hitN && rec.some(x => x.throwN)) out.push(r); } return out; };

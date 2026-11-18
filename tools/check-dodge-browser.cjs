@@ -21,7 +21,7 @@ async function errorsOf(page, bag) {
 const D = (page) => page.evaluate(() => { const d = window.__app.S && window.__app.S.d; return d && JSON.parse(JSON.stringify({ phase: d.phase, t: d.t, holder: d.holder, score: d.score, ball: d.ball, throwN: d.throwN, hitN: d.hitN, turnN: d.turnN, pickN: d.pickN, winner: d.winner, serve: d.serve, aim: d.aim })); });
 // Play-out budget. It used to be a fixed count of loop passes (600 local, 800 online), about 31 s
 // of play at ~52 ms a pass. A 9-point match takes about 28 s, and each missed ball that stops
-// where the bots can't reach costs a 6 s shot clock, so the local run often stopped at 4-3 and
+// where the bots can't reach cost a 6 s shot clock (now the 10 s pickup clock), so the local run often stopped at 4-3 and
 // then timed out waiting for the winner card. Now the budget is game progress: keep going while
 // something happened (a throw, pickup, turnover or point) in the last 30 s, 4 minutes in all.
 async function playOut(dPage, pass) {

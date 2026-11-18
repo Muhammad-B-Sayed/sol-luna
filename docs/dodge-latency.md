@@ -72,7 +72,7 @@ grows), and at 75 ms and up most dodges first look like hits on the thrower's sc
 
 Broken test, not a game bug. The match play-out loop had a fixed budget of 600 passes, about
 52 ms each, so about 31 s of play. A 9-point match takes about 28 s, and every missed ball that
-comes to rest where the bots can't reach (they never jump) costs a 6 s shot clock before the
+comes to rest where the bots can't reach (they never jump) cost a 6 s shot clock (now a 10 s pickup clock) before the
 turnover. When the budget ran out at 4-3 the script waited 5 s for the winner card and failed.
 Reproduced by resetting the score before the play-out: `FAILED page.waitForSelector: Timeout
 5000ms exceeded`, score 4-3, 2 turnovers.

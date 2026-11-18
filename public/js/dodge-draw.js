@@ -100,14 +100,17 @@ export function drawDodge(R, g, S, view, time) {
   if (F.look > 0.001) drawMoon(g, bx, by, r, b.vx, b.vy, time, F.look, k);
   emit(R, b, bx, by, F.look, speed);
 
-  // shot clock ring for the last three seconds
+  // clock ring for a clock's last 5 s: solid and red for "throw it" (in hand), dashed and pale
+  // for "pick it up" (loose on the owner's side)
   const own = ownerOf(D);
-  if (D.phase === DP_PLAY && own >= 0 && D.clock <= 180) {
-    const f = D.clock / 180;
-    const pulse = 0.6 + 0.4 * Math.sin(time * 14);
-    g.strokeStyle = `rgba(255,${110 + 80 * f},${120 + 60 * f},${0.55 + 0.35 * pulse})`;
+  if (D.phase === DP_PLAY && own >= 0 && D.clock <= DODGE.clockWarn) {
+    const f = D.clock / DODGE.clockWarn, held = D.holder === own;
+    const pulse = 0.6 + 0.4 * Math.sin(time * 14), a = 0.55 + 0.35 * pulse;
+    g.strokeStyle = held ? `rgba(255,${110 + 80 * f},${120 + 60 * f},${a})` : `rgba(240,232,255,${a})`;
     g.lineWidth = 2.2;
+    if (!held) g.setLineDash([5, 4]);
     g.beginPath(); g.arc(bx, by, r * 2.1, -Math.PI / 2, -Math.PI / 2 + TAU * f); g.stroke();
+    if (!held) g.setLineDash([]);
   }
 
   // the thrower's screen waits for the server's word on a ball that reached the other player:

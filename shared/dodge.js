@@ -15,9 +15,20 @@
 //     still counts. A live ball that touches the other player scores a point for the thrower.
 //   - A dead ball bounces, rolls and stops. Whoever's side it is on may pick it up by touching
 //     it (even mid-bounce). It always settles within REST_MAX ticks.
-//   - Shot clock: whoever owns the ball (holding it, or it's loose on their side) has
-//     SHOT_CLOCK ticks to throw it. If time runs out the ball goes to the other player.
-//     A throw that stays on your own side does not reset your clock.
+//   - Two clocks stop a player hogging the ball. Each possession (the ball is yours from the
+//     moment it is served to you, handed to you, or comes down on your side, until it is the
+//     other player's) starts with one of them:
+//       * Pickup clock (pickClock, 10 s): the ball is loose on your side and you have not
+//         held it yet this possession. Pick it up in time.
+//       * Shot clock (shotClock, 20 s): starts the moment you hold the ball (a serve and a
+//         handover put it in your hand, so it starts there). From then on it runs until the
+//         ball is the other player's: while you hold it, while it is loose on your side after
+//         your own throw, and while that throw is in the air. A throw that stays on your own
+//         side does not reset it and does not bring back the pickup clock.
+//     If the running clock reaches 0 the ball jumps the veil into the other player's hand. It
+//     cannot run out while a throw is winding up or in the air; it hands over as soon as the
+//     ball is down on your side. So one possession lasts at most pickClock + shotClock plus
+//     one throw's flight.
 //   - After a hit, everyone resets to their spawns and the player who was hit serves.
 //   - First to TO_WIN hits wins the match.
 
@@ -36,7 +47,9 @@ export const DODGE = {
   aimDwell: 10,       // ticks the aim stays flat before it starts swinging (so a tap is flat)
   aimPeriod: 90,      // one full swing up, down and back (ticks)
   aimMax: 0.75,       // steepest aim, as a slope (about 37 degrees)
-  shotClock: 360,     // 6 s
+  pickClock: 600,     // 10 s to reach a loose ball on your side (before you first hold it)
+  shotClock: 1200,    // 20 s from the moment you hold it until it is over the veil
+  clockWarn: 300,     // the clocks show (and tick) only in their last 5 s
   ready: 50,          // freeze on throwing at the start of a point
   pointTicks: 100,    // pause after a hit
   liveMax: 75,        // a live ball that somehow never bounces dies after this
@@ -61,6 +74,7 @@ export function windupFor(rttMs, queue = 0) {
 export const NET = WORLD_W / 2;
 export const DP_READY = 0, DP_PLAY = 1, DP_POINT = 2, DP_OVER = 3;
 export const B_HELD = 0, B_LIVE = 1, B_DEAD = 2, B_REST = 3;
+export const CLOCK_PICK = 0, CLOCK_SHOT = 1;   // which clock D.clock is (D.clockKind)
 
 // ---------------------------------------------------------------------------
 // Court: one screen, mirrored halves. Thin platforms 3 tiles apart (the jump is 4.1 tiles),
@@ -154,7 +168,7 @@ export function createDodge(seed = 1) {
   const D = {
     phase: DP_READY, t: 0, score: [0, 0], rng: seed | 0, winner: -1,
     holder: -1, ball: freshBall(), aim: [-1, -1],
-    clockOwner: -1, clock: DODGE.shotClock,
+    clockOwner: -1, clockKind: CLOCK_SHOT, clock: DODGE.shotClock,
     serve: -1, lastHit: null,
     throwN: 0, hitN: 0, pickN: 0, turnN: 0, point: 0,
     lag: [0, 0],     // wind-up (ticks) for throws at each player; online the server sets it between points
@@ -178,7 +192,7 @@ function givePoint(S, who) {
   D.wind = 0;
   D.serve = who;
   hold(S, who);
-  D.clockOwner = who; D.clock = DODGE.shotClock;
+  D.clockOwner = who; D.clockKind = CLOCK_SHOT; D.clock = DODGE.shotClock;   // served in hand
 }
 
 function hold(S, who) {
@@ -343,17 +357,28 @@ function pickUp(S) {
   if (circleHitsBox(b.x, b.y, DODGE.r + 3, p.x, p.y, p.w, p.h)) { hold(S, who); D.pickN++; }
 }
 
+// The pickup and shot clocks (rules at the top of this file).
 function shotClock(S) {
   const D = S.d;
-  if (D.wind > 0) return;   // a released throw is committed: the clock waits for it
   const own = ownerOf(D);
-  if (own < 0) return;
-  if (own !== D.clockOwner) { D.clockOwner = own; D.clock = DODGE.shotClock; return; }
-  if (--D.clock > 0) return;
+  // a throw winding up or in the air: the thrower's shot clock keeps running (a throw to your
+  // own side buys no time) but can't run out until the ball is down
+  if (D.wind > 0 || own < 0) {
+    if (D.clockKind === CLOCK_SHOT && D.ball.by === D.clockOwner && D.clock > 0) D.clock--;
+    return;
+  }
+  if (own !== D.clockOwner) {   // a new possession: in hand, the shot clock; loose, the pickup clock
+    D.clockOwner = own;
+    D.clockKind = D.holder === own ? CLOCK_SHOT : CLOCK_PICK;
+    D.clock = D.clockKind === CLOCK_SHOT ? DODGE.shotClock : DODGE.pickClock;
+    return;
+  }
+  if (D.clockKind === CLOCK_PICK && D.holder === own) { D.clockKind = CLOCK_SHOT; D.clock = DODGE.shotClock; return; }
+  if (D.clock > 0 && --D.clock > 0) return;
   // too slow: the ball jumps the veil to the other player
   const other = 1 - own;
   hold(S, other);
   D.aim[own] = -1;
   D.turnN++;
-  D.clockOwner = other; D.clock = DODGE.shotClock;
+  D.clockOwner = other; D.clockKind = CLOCK_SHOT; D.clock = DODGE.shotClock;
 }

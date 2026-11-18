@@ -432,8 +432,17 @@ A competitive mode on one single-screen court, Sol on the left and Luna on the r
   throw toward the other side. A tap is flat; holding swings the aim arrow up and down.
 - **Rules.** A thrown ball is live until it touches a floor or platform top, or a wall or ceiling
   for the second time (one bank shot counts). A live ball touching the other player scores. A dead
-  ball belongs to whoever's side it is on; touching it picks it up. 6 s shot clock per possession,
-  then the ball goes over; a throw that stays on your side doesn't reset it. The player who was
+  ball belongs to whoever's side it is on; touching it picks it up. Two clocks per
+  possession, shown only in their last 5 s (`DODGE.clockWarn`): a loose ball on your side gives
+  you 10 s to pick it up (`pickClock`, HUD "pick it up!", dashed pale ring), and holding it
+  starts a 20 s shot clock (`shotClock`, HUD "throw!", red ring). A serve or a handover puts the
+  ball in your hand, so the shot clock starts there (after the ready freeze). Once you have held
+  it, the shot clock runs until the ball is the other player's, including while your own throw
+  is in the air or lying on your side; a throw that stays on your side resets nothing and does
+  not bring back the pickup clock. Neither clock can run out mid wind-up or mid flight; it hands
+  over as soon as the ball is down. So a possession is at most 10 s + 20 s + one flight, and
+  throwing to yourself can't stall (checked in `check-dodge.js`). Either clock running out puts
+  the ball in the other player's hand. The player who was
   hit serves next. First to 5. The first serve comes from a seeded RNG kept in the state.
 - **Tuning** (`DODGE` in `shared/dodge.js`): ball 24 px/tick. Net to far back wall (457 px) takes
   0.30 s; half-centre to half-centre 0.32 s. A flat throw needs only 3 ticks of jump to clear,

@@ -1,5 +1,8 @@
 // Sol & Luna — Dodgeball HUD (drawn on the canvas in world units) and sounds from state changes.
 import { DODGE, ownerOf, DP_READY, DP_PLAY, DP_POINT, DP_OVER } from '/shared/dodge.js';
+
+// a clock is shown, and ticks, only in its last DODGE.clockWarn ticks (5 s)
+export const clockUrgent = (D) => D.phase === DP_PLAY && ownerOf(D) >= 0 && D.clock <= DODGE.clockWarn;
 import { WORLD_W, WORLD_H, SOL, LUNA } from '/shared/sim.js';
 
 const NAME = ['Sol', 'Luna'];
@@ -32,15 +35,16 @@ export function drawDodgeHud(g, S, { online = false, me = SOL, rtt = 0 } = {}) {
     pip(g, cx - w / 2 + 16 + i * 12, y + 28, i < D.score[SOL], SOL);
     pip(g, cx + w / 2 - 16 - i * 12, y + 28, i < D.score[LUNA], LUNA);
   }
-  // whose ball, and the shot clock
+  // whose ball, and in their last 5 s the clocks: "pick it up!" while the ball is loose on
+  // that side, "throw!" while it is in hand
   const own = ownerOf(D);
   if ((D.phase === DP_PLAY || D.phase === DP_READY) && own >= 0) {
     const secs = Math.ceil(D.clock / 60);
-    const urgent = D.phase === DP_PLAY && D.clock <= 180;
     g.font = `600 13px ${FONT}`; g.textAlign = 'center';
     g.fillStyle = INK[own];
     const who = online ? (own === me ? 'Your ball' : `${NAME[own]}'s ball`) : `${NAME[own]}'s ball`;
-    g.fillText(urgent ? `${who} · throw! ${secs}` : who, own === SOL ? cx - 90 : cx + 90, y + h + 14);
+    const what = D.holder === own ? 'throw!' : 'pick it up!';
+    g.fillText(clockUrgent(D) ? `${who} · ${what} ${secs}` : who, own === SOL ? cx - 90 : cx + 90, y + h + 14);
   }
   // corners
   g.font = `500 13px ${FONT}`;
@@ -111,7 +115,7 @@ export function dodgeListen(S, sfx) {
   if (D.turnN > H.turnN) sfx.turnover();
   if (D.phase === DP_PLAY && H.phase === DP_READY) sfx.go();
   if (D.phase === DP_OVER && H.phase !== DP_OVER) sfx.win();
-  const own = ownerOf(D), sec = Math.ceil(D.clock / 60);
-  if (D.phase === DP_PLAY && own >= 0 && D.clock <= 180 && sec !== H.sec) sfx.tock();
-  H = { ...hearOf(D), sec: D.phase === DP_PLAY && own >= 0 && D.clock <= 180 ? sec : -1 };
+  const urgent = clockUrgent(D), sec = Math.ceil(D.clock / 60);
+  if (urgent && sec !== H.sec) sfx.tock();
+  H = { ...hearOf(D), sec: urgent ? sec : -1 };
 }
