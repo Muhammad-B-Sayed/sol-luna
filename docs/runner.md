@@ -19,6 +19,8 @@ Rematch always starts a new course (a new seed).
 | `tools/runner-bot.js` | Search bot over the real runner sim (macro actions, best-first). |
 | `tools/check-runner.js` | The fairness checker (below). |
 | `tools/runner-browser.js` | Real-browser check of local play and an online room, with screenshots. |
+| `tools/plank-predict.js` | Offline check that a client predicts the chain plank it stands on. |
+| `tools/playtest/runner-plank-shots.mjs` | Staged screenshots of the plank and the distance milestones. |
 
 Hooks in shared shell files are small: `sim.js` gained a `tileFn` lookup in `tileAt` and exports
 of `mkPlayer`, `moveY`, `moveEnt`, `stepPlayer` and `checkHazards` (no behaviour change for the
@@ -180,7 +182,7 @@ generator): `docs/img/runner/runner-milestone-{150,200,600}-{before,after}-{1280
 ## Checks
 
 ```bash
-node tools/check-runner.js                           # 50 seeds, course to 1700 tiles (5 to 7 min with 6 jobs)
+node tools/check-runner.js                           # 50 seeds, course to 1700 tiles (8 to 16 min with 6 jobs)
 JOBS=6 PARTS=4 node tools/check-runner.js            # the same, explicit
 SEEDS=11-20 node tools/check-runner.js               # a range of seeds (SEEDS=10 means 1-10)
 SEED=7 V=1 TILES=600 node tools/check-runner.js      # one seed, every chunk printed
@@ -189,7 +191,16 @@ SEED=20 COURSE=0 CHUNKS=80-82 V=1 node tools/check-runner.js   # chunk tests for
 DUMP=/tmp/runner-dumps node tools/check-runner.js    # write the state at each whole-course failure
 PORT=3217 node server/index.js &                     # then:
 PORT=3217 OUT=docs/img/runner node tools/runner-browser.js
+node tools/plank-predict.js                          # does a client predict the plank it stands on? (10 s)
+PORT=3550 node tools/playtest/runner-plank-shots.mjs # plank and milestone screenshots
 ```
+
+`tools/plank-predict.js` replays every plank chunk of seeds 1-10 the way an online client
+predicts: from a server state 6 ticks old, its own keys, the other player's keys held. Result:
+riding and rocking a plank, and tipping it yourself, are predicted exactly (0.00 px). When the
+other player lands on the tip and throws you off, also 0.00 px (their jump is already in flight
+in the snapshot). When they hop on the plank beside you, up to 2.97 px, which the next snapshot
+corrects.
 
 The checker runs work units in worker threads: per seed, the two whole-course runs (Sol, Luna)
 and the chunk tests split into `PARTS` ranges (default 3). `JOBS` caps the threads (default: CPU
@@ -235,45 +246,56 @@ carries people again (at most 150 ticks), so it can wait out a plank the other p
 spinning. For the abuse setups the search heads for a given x
 (`toward`) instead of as far right as it can.
 
-### Latest result (Nov 2026, after the faster opening)
+### Latest result (Nov 2026, the new chain plank)
 
 ```
-Runner check: 50 seeds, 5652 chunks to 1700 tiles (full difficulty at 1100), top scroll speed 2.75 px/tick, 302 s in. 586 s.
-  whole course    100/100 runs (Sol and Luna, every seed) reached 1700 tiles; smallest lead over the left edge at a chunk start: 10.8 tiles (median of per-run minimums 17.3)
-  single chunk    11304/11304 cleared alive from a 12-tile lead; 180 of them slower than the scroll (repaid by later chunks)
-  second arrival  17832/17832 cleared
-  parked partner  4950/4950 cleared
-  spare time at a chunk's exit vs. the scroll (ticks): min -58, median 22
-  time lost by second arrivals vs the deadline (ticks, + = later): median -24, 95% 24, max 132
+Runner check: 50 seeds, 5585 chunks to 1700 tiles (full difficulty at 1100), top scroll speed 2.75 px/tick, 301 s in. 964 s.
+  whole course    100/100 runs (Sol and Luna, every seed) reached 1700 tiles; smallest lead over the left edge at a chunk start: 6.1 tiles (median of per-run minimums 15.8)
+  single chunk    11170/11170 cleared alive from a 12-tile lead; 146 of them slower than the scroll (repaid by later chunks)
+  second arrival  17208/17208 cleared
+  parked partner  4482/4482 cleared (partner standing still in the plank's safe zone: near edge, middle, far edge; still on it when the tested one arrived: 3304; could not be set up: 0)
+  plank abuse     31374/31374 cleared (the other lands on the near tip, the far tip, or hops in the middle, 10/25/40/60/90/130/150 ticks earlier; could not be set up: 0)
+  tip touch       2658 touches: 2.98 to 3.00 turns (allowed 2.5 to 3.5), turns took 21-21, 27-28, 43-43 ticks, at rest (angle exactly 0) at most 105 ticks after the touch; bad: 0, no spin: 0, touched again first: 330
+  spare time at a chunk's exit vs. the scroll (ticks): min -84, median 22
+  time lost by second arrivals vs the deadline (ticks, + = later): median -15, 95% 65, max 180
   kind      chunks  sol avg  luna avg  max |sol-luna|  min spare  top speed
   start         50    6.25s     6.25s           0 t       50 t  1.43
-  gaps         858    2.10s     2.10s           0 t        0 t  2.75
-  steps        465    2.06s     2.06s           2 t      -58 t  2.75
-  flat         218    2.36s     2.36s           0 t        0 t  2.75
-  thorns       509    1.90s     1.90s           0 t      -14 t  2.75
-  shade        365    1.35s     1.35s           0 t       -3 t  2.75
-  twin         496    1.97s     1.95s          39 t        0 t  2.75
-  plank        649    2.40s     2.40s           2 t       -5 t  2.75
-  crumble      494    2.17s     2.17s           0 t      -40 t  2.75
-  eclipse      439    2.67s     2.66s          50 t       -6 t  2.75
-  vent         317    1.99s     1.99s           0 t      -29 t  2.75
-  swing        445    1.80s     1.80s           1 t      -47 t  2.75
-  shards       347    2.73s     2.73s           2 t        1 t  2.75
-  rest after a run  plank  1650 objects, slowest 99 ticks after the last touch, over bound: 0
-  rest after a run  slab   1350 objects, slowest 95 ticks after the last touch, over bound: 0
-  rest after a run  shard  646 objects, slowest 223 ticks after the last touch, over bound: 0, 892 scrolled away first
-  rest after abuse  plank  1331 objects, slowest 99 ticks after the last touch, over bound: 0, 112 scrolled away first
-  rest after abuse  slab   803 objects, slowest 95 ticks after the last touch, over bound: 0, 11 scrolled away first
-  rest after abuse  shard  406 objects, slowest 251 ticks after the last touch, over bound: 0, 1604 scrolled away first
+  gaps         899    2.15s     2.15s           0 t        0 t  2.75
+  steps        434    2.07s     2.07s           2 t       -8 t  2.75
+  flat         213    2.37s     2.37s           0 t        0 t  2.75
+  thorns       528    1.92s     1.92s           0 t      -84 t  2.75
+  shade        361    1.37s     1.37s           0 t       -5 t  2.75
+  twin         512    1.96s     1.97s          40 t        0 t  2.75
+  plank        606    2.63s     2.63s           2 t       -1 t  2.75
+  crumble      492    2.17s     2.17s           0 t      -11 t  2.75
+  eclipse      407    2.64s     2.66s          49 t       -5 t  2.75
+  vent         315    2.00s     2.00s           0 t      -29 t  2.75
+  swing        429    1.80s     1.80s           0 t      -48 t  2.75
+  shards       339    2.73s     2.73s           2 t        0 t  2.75
+  rest after a run  plank  1494 objects, slowest 106 ticks after the last touch, over bound: 0
+  rest after a run  shard  576 objects, slowest 223 ticks after the last touch, over bound: 0, 924 scrolled away first
+  rest after a run  slab   1336 objects, slowest 95 ticks after the last touch, over bound: 0
+  rest after abuse  plank  1382 objects, slowest 107 ticks after the last touch, over bound: 0, 12 scrolled away first
+  rest after abuse  slab   799 objects, slowest 98 ticks after the last touch, over bound: 0, 12 scrolled away first
+  rest after abuse  shard  356 objects, slowest 251 ticks after the last touch, over bound: 0, 1592 scrolled away first
 
 PASS
 ```
 
-That run took 586 s with 6 jobs on a shared 16-core Linux machine with a load average of about 35
-(308 s on a quieter run with the old table). Compared with the old table, the start chunk's
-spare time fell from 133 to 50 ticks (it now scrolls at up to 1.43 px/tick instead of 1.10) and
-the smallest lead at a chunk start rose from 6.5 to 10.8 tiles; everything else is the same or
-within a tick or two.
+That run took 964 s with 6 jobs on a shared 16-core Linux machine with a load average of 25 to
+30 (467 s for the same run at a load of about 12). Compared with the run before the new plank:
+
+- Plank chunks take longer to clear (2.63 s on average, was 2.40 s): the jump lands in the safe
+  zone and then goes on, instead of running along a tilting beam.
+- Second arrivals can lose more time (95% 65 ticks late against the deadline, worst 180 ticks,
+  was 24 and 132): a tip touch just ahead of them means waiting about 1.75 s for the plank to
+  settle. Every one of them cleared the chunk alive.
+- The smallest lead over the left edge at a chunk start in the whole-course runs fell from 10.8
+  to 6.1 tiles (median of the per-run minimums 15.8, was 17.3). The courses differ after the
+  first plank, so this compares different chunks; all 100 runs reached 1700 tiles.
+- New: 4482 parked-partner runs (the partner in the safe zone; in 3304 of them still standing
+  there when the tested one arrived, the rest had stepped or been tipped off), 31374 abuse runs,
+  2658 tip touches (2.98 to 3.00 turns, exactly level at most 105 ticks after the touch).
 
 ### The 1700-tile failures, and why they were the bot
 
