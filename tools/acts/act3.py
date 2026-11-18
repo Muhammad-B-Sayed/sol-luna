@@ -589,11 +589,13 @@ def leapfrog_spire():
     Unrecoverable on purpose: a crate pushed past E1 or E2 into a hole, or anyone who falls down
     the chute after the crate."""
     # PLAN AND PROGRESS (successor: read this first)
-    # - v2 map (Nov 17 2026). FULL gate passes: bot 79 s (floor 76), 22 uses, 11/11 gems, ROOF 0,
+    # - v2 map (Nov 17 2026). FULL gate passes: bot 78 s (floor 76), 22 uses, 11/11 gems, ROOF 0,
     #   neither player can finish alone.
     # - The map strings below were painted by a scratch script; edit them directly now.
     # - Bot script: SCRIPTS[27] in act3.bot.js. Low rooms (5 free rows) are walked, never hopped.
-    # - Done. Thin margins: bot time 79 s against 76 s; Sol visits 16 sectors (needs 16); stone 26%.
+    # - Done. Thin margins: bot time 78 s against 76 s; Sol visits 16 sectors (needs 16); stone 26%.
+    # - Spawn headroom (Nov 17 playtest): each start pen's roof cell over the spawn is open, with a
+    #   one-high bump in the floor above instead (1,21 and 25,20), so both first jumps rise the full 4.1 tiles.
     L = Lv('Leapfrog Spire', 90, 'Each lift is worked from the other side. Same colour, same moment: '
            'when your partner presses, everything of that colour moves. The crate must reach the chute.')
     art(L, [
@@ -616,14 +618,14 @@ def leapfrog_spire():
         '......###.##...#####...#..............',   # 17
         '......#.#......###.....#..............',   # 18
         '......#.#......###s....#..............',   # 19
-        '.......J.......#####...#.......2......',   # 20
-        's......J..3....###.....###WWWW##......',   # 21
-        '##GGG#######...###m....#..######.....m',   # 22
+        '.......J.......#####...##......2......',   # 20
+        '#s.....J..3....###.....#.#WWWW##......',   # 21
+        '.#GGG#######...###m....#..######.....m',   # 22
         '....###.###....#####...#..#.#........#',   # 23
         '........#.#....#.......#..#.#.........',   # 24
         '........#.#....#.......#...Z..........',   # 25
         '.........Y.....#.......#bk.Z.6......m1',   # 26
-        '.a.6.....Y.....#AB.5...#########OOOO##',   # 27
+        'a..6.....Y.....#AB.5...#########OOOO##',   # 27
         '############PPP#####...###############',   # 28
     ], {
         'P': (0, 0, -6), 'Q': (0, 0, -6), 'K': (0, 0, -2),     # purple: W1, W3, Sol's gate on 16
