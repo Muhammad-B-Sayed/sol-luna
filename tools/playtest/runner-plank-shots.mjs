@@ -33,13 +33,15 @@ const stage = (seed, camX) => `(async () => {
   S.sb = 1; S.p.forEach(p => { p.alive = false; p.x = -1e5; });
   while (S.phase === 0) R.stepRunner(L, S, [0, 0]);
   while (S.cam < ${camX}) R.stepRunner(L, S, [0, 0]);
-  // both players standing on the first floor a few tiles into the view
+  // both players standing on the first plain stone floor (no pools) a few tiles into the view
+  const top = (x) => { if (!L.cols[x][29]) return -1; let y = 29; while (y > 0 && L.cols[x][y - 1]) y--; return y; };
+  const plain = (x) => top(x) >= 0 && L.cols[x][top(x)] === 1 && top(x + 1) === top(x) && L.cols[x + 1][top(x)] === 1;
   let x = Math.floor(S.cam / 24) + 4;
-  while (!L.cols[x][29]) x++;
-  let y = 29; while (y > 0 && L.cols[x][y - 1]) y--;
+  while (!plain(x)) x++;
+  const y = top(x);
   S.p.forEach((p, i) => { Object.assign(p, { alive: true, x: x * 24 + 2 + i * 22, y: y * 24 - p.h, vx: 0, vy: 0, gr: true, gref: -1 }); S.dead[i] = -1; S.best[i] = p.x; });
   run.prev = run.capture(S); run.heard = null;
-  window.__R = R;
+  window.__R = R; window.__hold = S.cam;
   return { cam: S.cam };
 })()`;
 const put = (who, x, y, extra = '{}') => `(() => { const S = window.__runner.S, p = S.p[${who}];
@@ -61,42 +63,45 @@ async function plankShots() {
   const st = (expr) => P.eval(`(() => { const S = window.__runner.S, st = S.o[${info.i}]; return ${expr}; })()`);
   const shoot = async (name) => { await P.shot(`${OUT}/${name}.png`); console.log('  screenshot', `${OUT}/${name}.png`); };
   const cam = info.px - 640;
+  // run k frames with the view held still (staging only: nobody is caught by the dusk)
+  const hold = '(window.__runner.S.cam = window.__hold, false)';
+  const run = (k, cond = 'false') => P.frames(k, `${hold} || (${cond})`);
   // at rest, players waiting on the run-up
   await P.eval(stage(5, cam));
   await P.eval(put(0, info.x0 * 24 + 30, info.h0 * 24 - 34, '{ gr: true }'));
   await P.eval(put(1, info.x0 * 24 + 70, info.h0 * 24 - 34, '{ gr: true }'));
-  await P.frames(3);
+  await run(3);
   await shoot('runner-plank-rest');
   check('plank at rest is exactly level', await st('st.s === 0 && st.w === 0'));
   // Sol lands in the safe middle zone: it rocks a little and holds him
   await P.eval(stage(5, cam));
   await P.eval(put(0, info.px - 10 + 14, info.y - 34 - 60));
-  await P.frames(30);
+  await run(30);
   await shoot('runner-plank-middle');
   check('a player in the middle zone stays on', await P.eval(`(() => { const p = window.__runner.S.p[0]; return p.gr && window.__R.oidObj(p.gref) === ${info.i}; })()`));
   // Luna lands past the safe zone: it tips and drops her
   await P.eval(stage(5, cam));
   await P.eval(put(1, info.px - 10 - (info.safe + 14), info.y - 34 - 30));
-  const tilt = await P.frames(80, `(() => { const p = window.__runner.S.p[1]; return p.gr && window.__R.oidObj(p.gref) === ${info.i}; })()`);
-  await P.frames(3);
+  const tilt = await run(80, `(() => { const p = window.__runner.S.p[1]; return p.gr && window.__R.oidObj(p.gref) === ${info.i}; })()`);
+  await run(3);
   await shoot('runner-plank-tipping');
   check('tipping: the plank leans toward her', await st('st.s < -0.1'), JSON.stringify(await st('st')) + ' after ' + tilt);
   // Sol lands on the far tip: three turns
   await P.eval(stage(5, cam));
   await P.eval(put(0, info.px + info.H - 14, info.y - 34 - 30));
-  await P.frames(80, `Math.abs(window.__runner.S.o[${info.i}].w) > 0.3`);
-  await P.frames(8);
+  await run(80, `Math.abs(window.__runner.S.o[${info.i}].w) > 0.3`);
+  await run(8);
   await shoot('runner-plank-spin');
   check('mid-spin after a tip touch', await st('Math.abs(st.w) > 0.25'), JSON.stringify(await st('st')));
-  await P.frames(70);
+  await run(70);
   await shoot('runner-plank-slowing');
-  let n = await P.frames(200, `(() => { const st = window.__runner.S.o[${info.i}]; return st.s === 0 && st.w === 0; })()`);
+  let n = await run(200, `(() => { const st = window.__runner.S.o[${info.i}]; return st.s === 0 && st.w === 0; })()`);
   check('back to exactly level after the spin', await st('st.s === 0 && st.w === 0'), `${78 + n} ticks after the spin was seen`);
   // a crossing: Luna parked in the middle, Sol jumping across her to the far ledge
   await P.eval(stage(5, cam));
   await P.eval(put(1, info.px - 10 - 6, info.y - 34 - 2));
   await P.eval(put(0, info.px - 10 - 70, info.y - 34 - 70, '{ vx: 3.25, vy: -1 }'));
-  await P.frames(14);
+  await run(14);
   await shoot('runner-plank-crossing');
   await P.close();
 }
