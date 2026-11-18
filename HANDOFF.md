@@ -147,25 +147,37 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
 
 ### Netcode
 
-Everything about online play of the runners (cause of the Nov 2026 "he died, then didn't" bug,
-the scheme, numbers, checks) is in `docs/netcode.md`. In short:
+Everything about online play (the Nov 2026 "he died, then didn't" bug in the runners, the
+input rules that co-op and Dodgeball got after it, the numbers, the checks) is in
+`docs/netcode.md`. In short:
 
 - **Server** (`server/index.js`):
-  - Each room runs at 60 Hz using queued inputs per character.
-  - Co-op and dodge: it broadcasts `{t:'s', ack:[seqSol,seqLuna], inp:[bitsSol,bitsLuna], st}`
-    every 2 ticks (30 Hz). A dry queue holds the last input for 10 ticks, then lets go; a queue
-    longer than 12 is cut to 4.
-  - Runner rooms: snapshots every tick, with `d` (held ticks), `q` and `qm` (queue lengths). A dry
-    queue holds the last keys and counts the ticks; late inputs equal to the held keys are then
-    skipped, so every input keeps its tick. The room first waits up to 400 ms for late inputs.
-    `NET_LOG=1` prints holds, skips, late keys and CPU per match.
+  - Each room runs at 60 Hz using queued inputs per character, with the same input rules in
+    every mode: every input keeps its tick. When a player's inputs are late the whole room waits
+    up to 400 ms (in co-op the lifts and crates wait with it), then catches up. Past that, a dry
+    queue holds the last keys and counts the ticks, and the late inputs equal to the held keys
+    are skipped. No queue is cut below 120. After 0.5 s of holding the keys are let go.
+  - Runner rooms (`runnerInput`): snapshots every tick, with `d` (held ticks), `q` and `qm`
+    (queue lengths).
+  - Co-op and dodge rooms (`sharedInput`): snapshots `{t:'s', ack, inp, d, qm, st}` every 2
+    ticks (30 Hz), and only the newest after a catch-up. `qm` counts the ticks the room still
+    owes, so the clients run ahead until the room is back on real time. A player gone for about
+    a second (a hidden tab) is not waited for, and when they come back their backlog is dropped.
+  - Dodge rooms also: the wind-up from each player's round trip and queue, fixed 35 ticks before
+    the ready freeze ends; a standing queue drained between points; the other player's aim
+    withheld from each snapshot (`dodgeViewFor`).
+  - `NET_LOG=1` prints waits, holds, skips, late keys, keys let go and drained inputs per match
+    (and CPU for runners). `NET_TRACE=1` prints every key change a co-op or dodge room applies,
+    with its tick (the harness compares them with the client's).
 - **Runner clients** (`public/js/runner-sync.js`): your own player is predicted; deaths and the
   end of the match come only from the server (the prediction runs with `pred` set and never
   kills); the other player is drawn from snapshots about 150 ms in the past, interpolated,
   extended briefly when snapshots are late, and kept continuous. A stalled tab catches up.
-- **Co-op client** (`main.js`): predicts every tick with its own input and the last known
+- **Co-op and Dodgeball client** (`main.js`): predicts every tick with its own input and the last known
   remote input, and sends `{t:'i', s, b}`. On each snapshot it takes the server state, replays
-  its own unacked inputs, and carries the visual difference as a decaying offset (`app.off`).
+  its own unacked inputs (skipping the ones the server's hold covered, `net-pace.js`), and carries
+  the visual difference as a decaying offset (`app.off`). After a stall it runs the missed ticks
+  (up to 8 a frame, 1 s of backlog), and it runs 3% slower or faster to follow the server's `qm`.
   The partner's correction is carried whole (up to 240 px) and paid back at most 6 px per tick.
   Online the prediction never enters the death or win phase by itself (`predictStep`): those
   come from the server only.
@@ -183,7 +195,7 @@ the scheme, numbers, checks) is in `docs/netcode.md`. In short:
 - **Testing aids:**
   - `LAG_MS=80 npm start` adds artificial one-way latency on the server. `LAG_JITTER=15` and
     `LAG_SPIKE=8` add jitter and spikes (in order, like TCP). `node tools/check-netcode.js` is
-    the network check for the runners (section 5 of `docs/netcode.md`).
+    the network check for the runners, co-op and Dodgeball (sections 5 and 6 of `docs/netcode.md`).
   - `window.__app` is exposed in the browser for Playwright tests (harmless; keep or remove).
 
 ### Rendering
@@ -404,11 +416,12 @@ node tools/check-runner.js               # Runner fairness proof, 50 seeds to 17
   a crate chute in 32, dropping out of 26's control room while the runner is shut in a basin,
   dropping in 29 before the hall above is done. Re-check these after the re-spacing.
 - **Links rely on colour alone.** Add a symbol or a wire to mechanisms.
-- **Input queue backlog (co-op, Runner):** a browser whose first frames are slow leaves 3-5 inputs
-  waiting in the server's queue for the whole session, so the other player sees it 50-83 ms later
-  than needed. Dodgeball rooms drain it between points (section 9). Co-op and Runner could do the
-  same where inputs are ignored (death, results) or by dropping an input equal to the held keys.
-  Found with `tools/dodge-filmstrip.cjs`; `DODGE_LOG=1` prints the depth for dodge rooms.
+- **Input queue backlog:** a browser whose first frames are slow used to leave 3-5 inputs waiting
+  in the server's queue for the whole session. All modes now pace the client from the server's
+  queue report, which works this down at 1.8 ticks a second, and Dodgeball also drains it between
+  points (section 9). Runner rooms still report the raw queue (`qm`); co-op and dodge count the
+  ticks the room owes too (`docs/netcode.md` section 4). Moving runners to that is a small change
+  but needs its own measurement.
 - **Dodgeball wind-up cap:** throws wind up at most 200 ms (`DODGE.windMax` = 12 ticks). Past about 68 ms
   one-way the defender loses the excess (4-5 ticks at 100 ms one-way). Raise it only if players
   on bad links complain; the thrower pays for it.
@@ -522,7 +535,9 @@ A competitive mode on one single-screen court, Sol on the left and Luna on the r
     `server/index.js` sends dodge snapshots per client through it, at the cost of a second encode
     per snapshot in dodge rooms.
   - Server: protocol pings every 500 ms per socket (median of 8); in dodge rooms it drains a
-    standing input queue after a hit and in the ready freeze (`Room.dodgeQueue`).
+    standing input queue after a hit and in the ready freeze, but not in its last 35 ticks
+    (`Room.dodgeQueue`), and fixes the wind-up 35 ticks before the freeze ends. Input rules as
+    in every room (section 3, `docs/netcode.md` section 4).
     `DODGE_WINDUP=off` turns the wind-up off; `DODGE_LOG=1` logs round trips, queue and wind-up.
   - Measured in `docs/dodge-latency.md` against two other fixes (slower ball, rewind), with
     filmstrips in `docs/img/dodgeball/latency/`. Tools: `node tools/dodge-latency.js` (harness),

@@ -10,6 +10,7 @@ import { COURT, createDodge, stepDodge, DP_OVER } from '/shared/dodge.js';
 import { drawDodgeHud, dodgeListen, dodgeHearReset, dodgeHint } from './dodge-ui.js';
 import { RunnerMode } from './runner-app.js';
 import { Runner3DMode } from './runner3d-app.js';
+import { paceRate, unapplied, MAX_TICKS_PER_FRAME, MAX_BACKLOG } from './net-pace.js';
 
 const BUILT = LEVELS.map((raw, i) => buildLevel(raw, i));
 // A level is a co-op index or a versus mode name; each kind brings its own create and step.
@@ -149,7 +150,7 @@ function beginLevel(level, st) {
   app.lift = app.S.p.map(() => 0); app.liftPrev = app.lift.slice();
   app.paused = false;
   app.results = false;
-  app.pending = []; app.remoteBits = 0;
+  app.pending = []; app.remoteBits = 0; app.qm = null;
   app.heard = hearState(app.S);
   R.setLevel(app.L);
   show(null);
@@ -309,9 +310,10 @@ function onSnapshot(m) {
   app.remoteBits = m.inp[1 - app.me] | 0;
   const myAck = m.ack[app.me] | 0;
   app.pending = app.pending.filter(([s]) => s > myAck);
+  if (m.qm) app.qm = m.qm[app.me];   // pacing (net-pace.js)
   if (ns.d) ns.d.wait = 1 - app.me;   // Dodgeball: a hit on the other player waits for the server's word
   const inp = [0, 0];
-  for (const [, b] of app.pending) {
+  for (const [, b] of unapplied(app.pending, m, app.me)) {   // past inputs the server's hold already covered
     inp[app.me] = b; inp[1 - app.me] = app.remoteBits;
     predictStep(app.L, ns, inp);
   }
@@ -362,18 +364,23 @@ let last = performance.now(), acc = 0, fpsT = 0, frames = 0, fps = 60;
 function frame(now) {
   requestAnimationFrame(frame);
   let dt = now - last; last = now;
-  const raw = dt;   // online runners catch up after a stall (runner-sync.js) instead of dropping ticks
+  const raw = dt;   // online play catches up after a stall instead of dropping ticks (runner-sync.js, net-pace.js)
   if (dt > 250) dt = DT;
   frames++; fpsT += dt; if (fpsT > 1000) { fps = Math.round(frames * 1000 / fpsT); frames = 0; fpsT = 0; }
   if (runner.active) { runner.frame(runner.online ? raw : dt, now); return; }
   if (runner3d.active) { runner3d.frame(runner3d.online ? raw : dt, now); return; }
   const playing = app.L && (app.mode === 'local' || (app.mode === 'online' && app.inGame));
-  if (playing) {
+  if (playing && app.mode === 'online') {
+    // every missed tick runs (up to 8 a frame, 1 s of backlog), so the inputs keep their place
+    // in the server's queue, and the pace follows the server's queue report
+    acc = Math.min(acc + raw * paceRate(app.qm), MAX_BACKLOG);
+    for (let n = 0; acc >= DT && n < MAX_TICKS_PER_FRAME; n++) { acc -= DT; tickOnline(); }
+  } else if (playing) {
     acc += dt;
     let n = 0;
     while (acc >= DT && n < 8) {
       acc -= DT; n++;
-      if (app.mode === 'local') tickLocal(); else tickOnline();
+      tickLocal();
     }
     if (n === 8) acc = 0;
   }

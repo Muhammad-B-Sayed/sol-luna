@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, createState, step, PH_WON } from '../shared/sim.js';
-import { COURT, createDodge, stepDodge, windupFor, DP_READY, DP_POINT, DP_OVER, dodgeViewFor } from '../shared/dodge.js';
+import { COURT, DODGE, createDodge, stepDodge, windupFor, DP_READY, DP_POINT, DP_OVER, dodgeViewFor } from '../shared/dodge.js';
 import { buildRunner, createRunnerState, stepRunner, newSeed } from '../shared/runner.js';
 import { buildRunner3d, createRunner3dState, stepRunner3d } from '../shared/runner3d.js';
 
@@ -100,6 +100,7 @@ function send(ws, msg) {
 // the last 8 samples (one every 500 ms) ignores single spikes. Dodgeball sizes the throw wind-up
 // at each player from it (windupFor in shared/dodge.js). DODGE_WINDUP=off turns that off.
 const WINDUP = process.env.DODGE_WINDUP !== 'off';
+const TRACE = !!process.env.NET_TRACE;   // testing aid: print every key change a co-op or dodge room applies, with its tick
 function rttPing(ws) {
   const b = Buffer.alloc(8); b.writeDoubleLE(performance.now());
   const go = () => { if (ws.readyState === 1) ws.ping(b); };
@@ -115,9 +116,12 @@ function rttOf(ws) {
   return a.length ? a[a.length >> 1] : 0;
 }
 
-const RUN_HOLD = 30;     // runner: ticks the last keys are held while no input arrives (0.5 s)
-const RUN_QMAX = 120;    // runner: longest input queue kept
-const RUN_WAIT = 24;     // runner: ticks the room waits for a late player's inputs before it holds their keys (400 ms)
+const RUN_HOLD = 30;     // ticks the last keys are held while no input arrives (0.5 s)
+const RUN_QMAX = 120;    // longest input queue kept
+const RUN_WAIT = 24;     // ticks the room waits for a late player's inputs before it holds their keys (400 ms)
+const BACK_TICKS = 60;   // co-op and dodge: after an absence, ticks during which a long queue is cut to BACK_KEEP
+const BACK_KEEP = 2;
+const DRAIN_STOP = 35;   // dodge: no queue drain and no new wind-up in the last 35 ticks (583 ms) of the ready freeze
 
 class Room {
   constructor(code) {
@@ -134,10 +138,20 @@ class Room {
   resetInputs() {
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
     this.debt = [0, 0]; this.held = [0, 0]; this.qlog = [[], []]; this.due = 0; this.waits = 0; this.waitMax = 0; this.waiting = false;
-    this.nst = [0, 1].map(() => ({ held: 0, skipped: 0, late: 0, released: 0, trimmed: 0 }));   // NET_LOG=1 prints these
+    this.nst = [0, 1].map(() => ({ held: 0, skipped: 0, late: 0, released: 0, trimmed: 0, drained: 0, dropped: 0 }));   // NET_LOG=1 prints these
+    // co-op and dodge: ticks left of a return from an absence, queue length before the input of
+    // the last tick, ticks stepped and the step of the last snapshot sent, key changes applied
+    this.back = [0, 0]; this.qPre = [0, 0]; this.steps = 0; this.sentAt = -2; this.lastB = [-1, -1];
+    this.round = (this.round || 0) + 1; this.logged = false;
   }
   netLog() {
-    if (!process.env.NET_LOG || !this.runner || !this.nst) return;
+    if (!process.env.NET_LOG || !this.nst) return;
+    if (!this.runner) {   // co-op and dodge: once per level or match
+      if (this.logged || !this.S) return;
+      this.logged = true;
+      console.log(`net ${this.code} ${this.mode === 'dodge' ? 'dodge' : 'coop'} tick ${this.S.tick}: waited for late inputs ${this.waits} times (longest ${this.waitMax} ticks); ` + this.nst.map((n, i) => `${['Sol', 'Luna'][i]} held ${n.held} skipped ${n.skipped} late ${n.late} released ${n.released} trimmed ${n.trimmed} drained ${n.drained} dropped ${n.dropped}`).join(' | '));
+      return;
+    }
     const u = process.cpuUsage(), secs = process.uptime();
     console.log(`net cpu: the server used ${((u.user + u.system) / 1e4 / secs).toFixed(1)}% of one core over ${secs.toFixed(0)} s, ${rooms.size} rooms`);
     console.log(`net ${this.code} ${this.mode} tick ${this.S?.tick}: waited for late inputs ${this.waits} times (longest ${this.waitMax} ticks); ` + this.nst.map((n, i) => `${['Sol', 'Luna'][i]} held ${n.held} skipped ${n.skipped} late ${n.late} released ${n.released} trimmed ${n.trimmed}`).join(' | '));
@@ -161,6 +175,36 @@ class Room {
     if (q.length > RUN_QMAX) { n.trimmed += q.length - RUN_QMAX / 2; q.splice(0, q.length - RUN_QMAX / 2); }   // a client far ahead (should not happen)
     if (q.length) {
       const [s, b] = q.shift();
+      this.cur[ch] = b; this.ack[ch] = s; this.starve[ch] = 0;
+    } else if (++this.starve[ch] > RUN_HOLD) { if (this.cur[ch]) n.released++; this.cur[ch] = 0; }
+    else { if (!this.debt[ch]) this.held[ch] = this.cur[ch]; this.debt[ch]++; n.held++; }
+  }
+  // Co-op and Dodgeball rooms take the Runner rooms' rules (runnerInput, advance, inputsReady):
+  // every input keeps its tick, so a jump off a moving lift, a plate held for the partner, a
+  // throw's release and a dodge's jump all happen on the tick the player pressed them, as their
+  // own screen showed. Two additions. A player whose keys were let go (no input for about a
+  // second: a hidden tab) is not waited for (inputsReady), so their partner's game is not held
+  // back; when they come back, their queue is kept short for a second (BACK_TICKS), so the
+  // backlog a stalled tab sends doesn't stay as a long delay. Dodgeball also drains a standing
+  // queue in its free phases (dodgeQueue).
+  sharedInput(ch) {
+    const q = this.q[ch], h = this.qlog[ch], n = this.nst[ch];
+    if (this.starve[ch] > RUN_HOLD && q.length) { this.back[ch] = BACK_TICKS; this.debt[ch] = 0; }   // back after an absence
+    if (this.back[ch] > 0) { this.back[ch]--; if (q.length > BACK_KEEP) { n.dropped += q.length - BACK_KEEP; this.ack[ch] = q[q.length - BACK_KEEP - 1][0]; q.splice(0, q.length - BACK_KEEP); } }
+    // the queue report for pacing counts the ticks the room still owes (due): a room that is behind
+    // real time and steps the moment the late input arrives has no cushion, though the queue
+    // holds that one input, so the clients speed up until the room is back on time and the whole
+    // RUN_WAIT is left for the next spike
+    h.push(q.length - this.due); if (h.length > 60) h.shift();
+    while (this.debt[ch] > 0 && q.length && q[0][1] === this.held[ch]) { this.ack[ch] = q.shift()[0]; this.debt[ch]--; n.skipped++; }
+    if (this.debt[ch] > 0 && q.length) { this.debt[ch] = 0; n.late++; }
+    if (q.length > RUN_QMAX) { n.trimmed += q.length - RUN_QMAX / 2; q.splice(0, q.length - RUN_QMAX / 2); }
+    if (this.L.dodge) this.dodgeQueue(ch);
+    this.qPre[ch] = q.length;
+    if (q.length) {
+      const [s, b] = q.shift();
+      if (TRACE && b !== this.lastB[ch]) console.log(`net trace ${this.code} ${this.round} ${ch} ${s} ${this.S.tick} ${b}`);
+      this.lastB[ch] = b;
       this.cur[ch] = b; this.ack[ch] = s; this.starve[ch] = 0;
     } else if (++this.starve[ch] > RUN_HOLD) { if (this.cur[ch]) n.released++; this.cur[ch] = 0; }
     else { if (!this.debt[ch]) this.held[ch] = this.cur[ch]; this.debt[ch]++; n.held++; }
@@ -213,23 +257,28 @@ class Room {
   // burst of inputs) keeps that many inputs waiting here for the rest of the match, and the other
   // player sees it that much later. Drain the queue while it costs nothing: after a hit, when
   // inputs are ignored, and in the ready freeze, where an input the same as the keys already
-  // held only makes that hold one tick shorter (nobody can throw yet). Then record the depth
-  // that is left, for the wind-up.
+  // held only makes that hold one tick shorter (nobody can throw yet). Only a standing queue is
+  // drained: one that never fell below 2 over the last second (qlog). Draining the cushion that
+  // jitter needs would leave that player's inputs late, and the room waiting for them. Not in the
+  // last DRAIN_STOP ticks of the freeze either: a drain moves every input after it one tick
+  // earlier, and the client, a round trip ahead, has already sent the first inputs of play. The
+  // depth that is left is recorded once per advance() for the wind-up.
   dodgeQueue(ch) {
-    const q = this.q[ch], ph = this.S.d.phase;
-    if (q.length > 1 && (ph === DP_POINT || ph === DP_OVER || (ph === DP_READY && q[0][1] === this.cur[ch]))) this.ack[ch] = q.shift()[0];
-    const h = this.qDepth[ch]; h.push(q.length); if (h.length > 30) h.shift();
+    const q = this.q[ch], ph = this.S.d.phase, h = this.qlog[ch];
+    if (q.length > 1 && h.length >= 30 && Math.min(...h) >= 2 && (ph === DP_POINT || ph === DP_OVER || (ph === DP_READY && this.S.d.t < DODGE.ready - DRAIN_STOP && q[0][1] === this.cur[ch]))) { this.ack[ch] = q.shift()[0]; this.nst[ch].drained++; }
   }
-  // n ticks of wall-clock time have passed. Co-op and dodge rooms step n times. Runner rooms
-  // wait up to RUN_WAIT ticks for a player whose inputs are late (a Wi-Fi spike, a stalled
-  // tab) instead of guessing their keys, then catch up as soon as the inputs arrive. Only past
-  // RUN_WAIT do they step with the held keys. So a key pressed during a spike is still applied
-  // on its tick and nobody dies of their own late packet; the price is that during the wait
-  // the other player sees them (and the world) pause for a moment.
+  // n ticks of wall-clock time have passed. Every room waits up to RUN_WAIT ticks for a player
+  // whose inputs are late (a Wi-Fi spike, a stalled tab) instead of guessing their keys, then
+  // catches up as soon as the inputs arrive. Only past RUN_WAIT does it step with the held keys.
+  // So a key pressed during a spike is still applied on its tick and nobody dies of their own
+  // late packet. The whole room waits: in co-op the lifts, crates and gates wait with it, so a
+  // partner standing on a lift is still on it, at the same spot, when the late jump off it is
+  // applied. The price is that the other player's view of the late one is late (their own
+  // screen keeps going on its prediction).
   advance(n) {
     if (!this.S) return;
-    if (!this.runner) { for (let i = 0; i < n; i++) this.tick(); return; }
     this.due = Math.min((this.due || 0) + n, RUN_WAIT + 60);   // at most a second behind
+    let stepped = 0;
     while (this.due > 0 && this.S) {
       if (this.due <= RUN_WAIT && !this.inputsReady()) {
         if (!this.waiting) { this.waiting = true; this.waits++; }
@@ -239,11 +288,28 @@ class Room {
       this.waiting = false;
       this.due--;
       this.tick();
+      stepped++;
     }
+    if (!this.runner && stepped && this.S) this.afterSteps(stepped);
   }
-  // both players have an input for the next tick (past the late ones a hold already covered)
+  // co-op and dodge, after the ticks of one advance(): the queue depth for the wind-up (once per
+  // call, so a catch-up after a wait counts once, as what is left), and a snapshot every 2 ticks,
+  // or one at the end of a catch-up (only the newest matters)
+  afterSteps(stepped) {
+    if (this.L.dodge) for (let ch = 0; ch < 2; ch++) { const h = this.qDepth[ch]; h.push(this.qPre[ch]); if (h.length > 30) h.shift(); }
+    if (this.steps - this.sentAt < 2 && stepped < 2) return;
+    this.sentAt = this.steps;
+    const qm = this.qlog.map(h => (h.length ? Math.min(...h) : 0));
+    // Dodgeball: each player's snapshot withholds the other player's aim while they hold the
+    // button, so a modified client cannot read the angle before the release.
+    if (this.L.dodge) this.clients.forEach(c => send(c.ws, { t: 's', ack: this.ack, d: this.debt, qm, ...dodgeViewFor(this.S, this.cur, c.char) }));
+    else this.broadcast({ t: 's', ack: this.ack, inp: this.cur, d: this.debt, qm, st: this.S });
+  }
+  // both players have an input for the next tick (past the late ones a hold already covered).
+  // Co-op and dodge don't wait for a player whose keys were let go (absent).
   inputsReady() {
     for (let ch = 0; ch < 2; ch++) {
+      if (!this.runner && this.starve[ch] > RUN_HOLD) continue;
       const q = this.q[ch];
       let k = 0;
       while (k < this.debt[ch] && k < q.length && q[k][1] === this.held[ch]) k++;
@@ -254,38 +320,30 @@ class Room {
   tick() {
     if (!this.S) return;
     for (let ch = 0; ch < 2; ch++) {
-      if (this.runner) { this.runnerInput(ch); continue; }
-      const q = this.q[ch];
-      if (q.length > 12) q.splice(0, q.length - 4); // client ran far ahead: catch up
-      if (this.L.dodge) this.dodgeQueue(ch);
-      if (q.length) {
-        const [s, b] = q.shift();
-        this.cur[ch] = b; this.ack[ch] = s; this.starve[ch] = 0;
-      } else if (++this.starve[ch] > 10) this.cur[ch] = 0; // no input arriving: let go of the keys
+      if (this.runner) this.runnerInput(ch); else this.sharedInput(ch);
     }
+    this.steps++;
     // Dodgeball: the wind-up for throws at each player follows their round trip. It changes
-    // only in the ready freeze at the start of a point, when nobody can throw.
-    if (this.L.dodge && this.S.d.phase === DP_READY) {
+    // only in the ready freeze at the start of a point, when nobody can throw, and not in its last
+    // DRAIN_STOP ticks: a client a round trip ahead is already playing the point, and its throws
+    // must wind up as long on its screen as on the server.
+    if (this.L.dodge && this.S.d.phase === DP_READY && this.S.d.t < DODGE.ready - DRAIN_STOP) {
       const lag = [0, 0];
       const med = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
       if (WINDUP) for (const c of this.clients) lag[c.char] = windupFor(rttOf(c.ws), med(this.qDepth[c.char]));
-      if (process.env.DODGE_LOG && this.S.d.t === 49) console.log(`dodge ${this.code}: rtt ${this.clients.map(c => Math.round(rttOf(c.ws))).join('/')} ms, queue ${this.qDepth.map(med).join('/')}, wind-up at Sol/Luna ${lag.join('/')}`);
+      if (process.env.DODGE_LOG && this.S.d.t === DODGE.ready - DRAIN_STOP - 1) console.log(`dodge ${this.code}: rtt ${this.clients.map(c => Math.round(rttOf(c.ws))).join('/')} ms, queue ${this.qDepth.map(med).join('/')}, wind-up at Sol/Luna ${lag.join('/')}`);
       this.S.d.lag = lag;
     }
     const wasOver = this.S.phase === 2;
     (this.mode === 'runner' ? stepRunner : this.mode === 'runner3d' ? stepRunner3d : this.L.dodge ? stepDodge : step)(this.L, this.S, this.cur);
     if (this.runner && !wasOver && this.S.phase === 2) this.netLog();
+    if (!this.runner && (this.L.dodge ? this.S.d.phase === DP_OVER : this.S.phase === PH_WON)) this.netLog();
     if (this.runner) {
       // runner snapshots are small (about 700 bytes): every tick, with the queue lengths
       const qm = this.qlog.map(h => (h.length ? Math.min(...h) : 0));
       // d: ticks held for each player whose inputs have not arrived yet (the client skips
       // that many of its inputs equal to the held keys when it replays, as the server will)
       this.broadcast({ t: 's', ack: this.ack, inp: this.cur, d: this.debt, q: this.q.map(q => q.length), qm, st: this.S });
-    } else if (this.S.tick % 2 === 0) {
-      // Dodgeball: each player's snapshot withholds the other player's aim while they hold the
-      // button, so a modified client cannot read the angle before the release.
-      if (this.L.dodge) this.clients.forEach(c => send(c.ws, { t: 's', ack: this.ack, ...dodgeViewFor(this.S, this.cur, c.char) }));
-      else this.broadcast({ t: 's', ack: this.ack, inp: this.cur, st: this.S });
     }
   }
 }
@@ -412,7 +470,7 @@ function onMessage(ws, data) {
 function leave(ws) {
   const r = ws.room;
   if (!r) return;
-  if (r.S && r.runner && r.S.phase !== 2) r.netLog();
+  if (r.S && (!r.runner || r.S.phase !== 2)) r.netLog();
   ws.room = null;
   r.clients = r.clients.filter(c => c.ws !== ws);
   if (!r.clients.length) { rooms.delete(r.code); return; }
