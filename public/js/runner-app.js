@@ -264,7 +264,10 @@ export class RunnerMode {
     $('#rrSub').textContent = S.win === DRAW ? 'Both fell on the very same moment.' : `${NAME[S.win]} outlasted ${NAME[1 - S.win]}.`;
     for (const i of [SOL, LUNA]) {
       const k = i === SOL ? 'Sol' : 'Luna';
-      $(`#rr${k}Time`).textContent = fmtTime(survival(S, i));
+      // a winner still running is timed to the moment the match ended, not to when this
+      // client shows the card (which differs by a few predicted ticks between host and guest)
+      const secs = S.p[i].alive ? Math.max(0, S.tick - S.phaseT - COUNT_TICKS) / 60 : survival(S, i);
+      $(`#rr${k}Time`).textContent = fmtTime(secs);
       $(`#rr${k}Dist`).textContent = `${Math.floor(distance(L, S, i))} m`;
       $(`#rr${k}Why`).textContent = S.p[i].alive ? 'still running' : WHY[S.why[i]] || 'lost';
       $(`#rr${k}`).classList.toggle('won', S.win === i);
