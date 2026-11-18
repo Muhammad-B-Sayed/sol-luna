@@ -54,6 +54,10 @@ export const P3 = {
   hw: 0.36, h: 1.4,
   maxSpeed: 3.25 / 24, accel: 0.55 / 24, decel: 0.62 / 24, airAccel: 0.4 / 24, airDecel: 0.1 / 24, turnBoost: 1.7,
   gravity: 0.33 / 24, jumpVel: 8.25 / 24, maxFall: 8.5 / 24, coyote: 5, stepUp: 0.5, jumpBuf: 6,
+  // Mantle: a standing player who walks into a ledge up to this high hops up onto it on their own
+  // (no ledge you can walk into stops you dead), and anyone rising past a ledge face this low
+  // keeps their speed while pressed against it.
+  mantle: 1.5,
 };
 const HW = P3.hw;
 const AIR_TOL = 0.2;      // a falling player whose feet are this far below a top still lands on it
@@ -743,10 +747,14 @@ function support(L, S, who, x, z, lo, hi) {
   return bi < 0 ? null : [best, bi, bs];
 }
 
-// Move along one axis and push out of static walls (tops above the step-up height).
-function moveAxis(L, S, p, ax, dv) {
+// Move along one axis and push out of static walls (tops above the step-up height). dir is the
+// input's sign on this axis; returns the highest top of a wall that stopped a move that way.
+function moveAxis(L, S, p, ax, dv, dir) {
   if (ax === 0) p.x += dv; else p.z += dv;
   const tol = p.y + (p.gr ? P3.stepUp : AIR_TOL);
+  // rising past a low ledge face: keep the speed, so the player carries on over it
+  const keep = !p.gr && p.vy > 0;
+  let hit = -Infinity;
   for (let i = scanFrom(L, S, p.z, HW + 0.5); i < S.hi; i++) {
     const o = L.objs[i];
     if (o.z0 >= p.z + HW) break;
@@ -754,14 +762,17 @@ function moveAxis(L, S, p, ax, dv) {
     const top = o.k === 'pool' ? o.y - POOL_DEP : o.y;
     if (top <= tol || top - o.h >= p.y + P3.h) continue;
     if (p.x + HW <= o.x0 || p.x - HW >= o.x1 || p.z + HW <= o.z0 || p.z - HW >= o.z1) continue;
+    if (dv * dir > 0 && top > hit) hit = top;
+    const stop = !(keep && top - p.y <= P3.mantle + EPS);
     if (ax === 0) {
       const back = dv > 0 || (dv === 0 && p.x < (o.x0 + o.x1) / 2);
-      p.x = back ? o.x0 - HW - EPS : o.x1 + HW + EPS; p.vx = 0;
+      p.x = back ? o.x0 - HW - EPS : o.x1 + HW + EPS; if (stop) p.vx = 0;
     } else {
       const back = dv > 0 || (dv === 0 && p.z < (o.z0 + o.z1) / 2);
-      p.z = back ? o.z0 - HW - EPS : o.z1 + HW + EPS; p.vz = 0;
+      p.z = back ? o.z0 - HW - EPS : o.z1 + HW + EPS; if (stop) p.vz = 0;
     }
   }
+  return hit;
 }
 
 function stepPlayer(L, S, who, bits) {
@@ -785,8 +796,17 @@ function stepPlayer(L, S, who, bits) {
   if (!p.gr) p.vy = Math.max(-P3.maxFall, p.vy - P3.gravity);
   else p.vy = 0;
 
-  moveAxis(L, S, p, 0, p.vx);
-  moveAxis(L, S, p, 1, p.vz);
+  const vx0 = p.vx, vz0 = p.vz;
+  const hx = moveAxis(L, S, p, 0, p.vx, dx), hz = moveAxis(L, S, p, 1, p.vz, dz);
+  // mantle: walked into a ledge too high to step up but low enough to climb: hop up onto it,
+  // keeping the speed (the ledge face holds the player back until their feet are near its top)
+  const ledge = Math.max(hx, hz) - p.y;
+  if (p.gr && ledge > P3.stepUp && ledge <= P3.mantle + EPS) {
+    p.vy = Math.sqrt(2 * P3.gravity * (ledge + 0.1)) + P3.gravity;
+    p.gr = false; p.gref = -1; p.coy = 0;
+    if (hx - p.y > P3.stepUp) p.vx = vx0;
+    if (hz - p.y > P3.stepUp) p.vz = vz0;
+  }
 
   let ny = p.y + p.vy;
   if (p.vy > 0) {   // head against the underside of a static slab

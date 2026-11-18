@@ -29,7 +29,7 @@ const DEBUG_VIEW = new URLSearchParams(location.search).has('r3ddebug');
 // one line the first time each obstacle kind comes up, per player: [Sol's, Luna's] or one for both
 const TIPS = {
   gaps: 'Gaps ahead. Run and jump across.',
-  steps: 'Stairs. Low steps you walk, tall ones you jump.',
+  steps: 'Stairs. Keep running and you climb a low ledge. Jump the tall ones.',
   thorns: 'Thorns! Slip through the opening, or jump the low ones.',
   pools: ['Sun pools are safe for you. Moon and shade pools are not.', 'Moon pools are safe for you. Sun and shade pools are not.'],
   tilt: 'Chained slabs tip toward your weight. Keep to the middle.',
