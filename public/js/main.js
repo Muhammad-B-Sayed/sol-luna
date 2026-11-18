@@ -625,7 +625,7 @@ async function joinOnline(code) {
 $('#btnLocal').onclick = () => { sfx.unlock(); sfx.ui(); app.mode = 'local'; openLevels(); };
 $('#btnHost').onclick = () => { sfx.unlock(); sfx.ui(); hostOnline(); };
 $('#joinForm').onsubmit = (e) => { e.preventDefault(); sfx.unlock(); sfx.ui(); joinOnline($('#joinCode').value); };
-$('#btnHow').onclick = () => { sfx.ui(); show('how'); };
+$('#btnHow').onclick = () => { sfx.ui(); show('how'); $('#how .how').scrollTop = 0; $('#how .how').focus({ preventScroll: true }); };
 // versus modes
 $('#btnDodge').onclick = () => { sfx.unlock(); sfx.ui(); app.mode = 'local'; beginLevel('dodge'); };
 $('#lobbyDodge').onclick = () => { sfx.ui(); net.send({ t: 'start', mode: 'dodge' }); };
@@ -633,8 +633,9 @@ $('#dgRematch').onclick = () => { sfx.ui(); if (app.mode === 'online') net.send(
 $('#dgBack').onclick = () => { sfx.ui(); if (app.mode === 'online') net.send({ t: 'menu' }); else quitToMenu(); };
 $$('[data-back]').forEach(b => b.onclick = () => {
   sfx.ui();
-  if (app.mode === 'online' && app.room) renderLobby();
-  else { app.mode = 'menu'; show('menu'); }
+  const from = document.body.dataset.screen;
+  if (app.mode === 'online' && app.room) { renderLobby(); $('#lobbyPick').focus({ preventScroll: true }); }
+  else { app.mode = 'menu'; show('menu'); (from === 'how' ? $('#btnHow') : $('#btnLocal')).focus({ preventScroll: true }); }
 });
 $('#btnMute').onclick = () => { const m = sfx.toggle(); $('#btnMute').textContent = m ? 'Sound: off' : 'Sound: on'; };
 $('#btnMute').textContent = sfx.muted ? 'Sound: off' : 'Sound: on';
@@ -675,6 +676,9 @@ $('#resLevels').onclick = () => {
 
 window.addEventListener('keydown', (e) => {
   if (e.target.closest && e.target.closest('input, textarea')) return;   // typing, not playing
+  // Esc on a menu screen with a Back button (How to play, Level select) goes back
+  const back = e.code === 'Escape' && !app.L && $(`#${document.body.dataset.screen} [data-back]`);
+  if (back) { e.preventDefault(); back.click(); return; }
   if (e.key === 'Enter' && !$('#chat').hidden && (e.target === document.body || e.target === cv)) {
     e.preventDefault(); chatOpen(true); return;
   }

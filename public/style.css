@@ -46,7 +46,13 @@ button.ghost { background: transparent; }
 
 .how { text-align: left; font-size: 15px; line-height: 1.6; margin-bottom: 18px; }
 .how > div { margin: 4px 0; }
-.how b { display: inline-block; width: 52px; font-family: Cinzel, Georgia, serif; }
+.how > div > b { display: inline-block; width: 52px; font-family: Cinzel, Georgia, serif; }
+.how li b { font-family: Cinzel, Georgia, serif; color: var(--ink); }
+/* How to play: the text scrolls inside the card and Back stays in view at any height */
+#how .card { width: min(560px, 100%); display: flex; flex-direction: column; overflow: hidden; }
+#how .how { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-bottom: 14px; padding-right: 6px; border-radius: 8px; scrollbar-width: thin; scrollbar-color: rgba(214,196,255,0.35) transparent; }
+#how .how:focus-visible { outline: 1px solid var(--edge); outline-offset: 4px; }
+#how h2, #how [data-back] { flex: none; }
 .solc { color: var(--sun); } .lunac { color: var(--moon); }
 .how ul { padding-left: 18px; color: var(--muted); }
 kbd { display: inline-block; min-width: 24px; padding: 1px 6px; margin: 0 2px; border-radius: 6px; border: 1px solid var(--edge); background: rgba(255,255,255,0.08); font: 700 13px Nunito, sans-serif; text-align: center; color: var(--ink); }
