@@ -56,7 +56,7 @@ node tools/gate.js 7                   # the full gate. A level is done when thi
 - Do not run git commands that change anything, and do not commit. Do not start the game
   server, Chrome or `tools/capture.sh`. The planner takes the pictures afterwards.
 - The machine is shared. Run at most two gate processes at once, and never run
-  `tools/check-all.sh` (it is stale anyway). The solo check on a crate level can take 800 MB,
+  `tools/check-all.sh` (it runs the full gate on all 32 levels and the Runner proof). The solo check on a crate level can take 800 MB,
   so run the full gate on crate levels one at a time, and use `FAST=1` while iterating.
 - Each bot search stops after 90 s of wall-clock time. On a loaded machine a gate can fail with
   "gave up after the time limit". Re-run that level alone before changing anything.

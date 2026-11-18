@@ -1,5 +1,5 @@
 // Sol & Luna — app shell: menus, local co-op loop, online prediction/reconciliation.
-import { buildLevel, createState, step, cloneState, PH_PLAY, PH_DEAD, PH_WON, SOL, LUNA, TICK_RATE, WORLD_W, WORLD_H, rankFor } from '/shared/sim.js';
+import { buildLevel, createState, step, cloneState, PH_PLAY, PH_DEAD, PH_WON, SOL, LUNA, TICK_RATE, WORLD_W, WORLD_H, TS, PHYS, rankFor } from '/shared/sim.js';
 import { LEVELS } from '/shared/levels.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
@@ -65,6 +65,7 @@ function fit() {
   const W = wrap.clientWidth, H = wrap.clientHeight;
   const s = Math.min(W / WORLD_W, H / WORLD_H);
   R.resize(Math.floor(WORLD_W * s), Math.floor(WORLD_H * s));
+  if (app.L && !runner.active) placeHint();
 }
 window.addEventListener('resize', fit);
 
@@ -89,8 +90,9 @@ function buildLevelGrid(onPick, highlight = -1) {
     const best = progress.best[i];
     const locked = i > progress.unlocked;
     b.className = 'lvl' + (locked ? ' locked' : '') + (best ? ' done rank-' + best.rank : '') + (i === highlight ? ' current' : '');
-    b.innerHTML = `<span class="n">${i + 1}</span><span class="nm">${L.name}</span>${best ? `<span class="rk">${best.rank}</span>` : ''}`;
+    b.innerHTML = `<span class="n">${i + 1}</span><span class="nm">${L.name}</span>${best ? `<span class="rk">${best.rank}</span>` : ''}${locked ? '<span class="lock" aria-hidden="true"></span>' : ''}`;
     b.disabled = locked;
+    if (locked) b.setAttribute('aria-label', `${i + 1}. ${L.name}, locked`);
     b.title = locked ? 'Locked' : L.name + (best ? ` — best ${best.t.toFixed(1)}s` : '');
     b.onclick = () => { sfx.ui(); onPick(i); };
     grid.appendChild(b);
@@ -129,6 +131,7 @@ function beginLevel(level, st) {
   if (app.L.dodge) { dodgeHearReset(app.S); R.dodgeFx = null; app.L.hint = dodgeHint(app.mode === 'online'); }
   app.prev = capture(app.S);
   app.off = zeroOff(app.S);
+  app.lift = app.S.p.map(() => 0); app.liftPrev = app.lift.slice();
   app.paused = false;
   app.results = false;
   app.pending = []; app.remoteBits = 0;
@@ -137,8 +140,58 @@ function beginLevel(level, st) {
   show(null);
   $('#hint').textContent = app.L.hint || '';
   $('#hint').classList.toggle('on', !!app.L.hint);
+  placeHint();
   clearTimeout(beginLevel.h);
   beginLevel.h = setTimeout(() => $('#hint').classList.remove('on'), 6000);
+}
+
+// The start hint goes where it covers the least of what matters at the start: both players and
+// doors first, then crates, levers, plates and gems, then pools and lifts (what hints talk
+// about). It tries full-width spots from top to bottom of the room, then half-width spots at
+// either side, and prefers the bottom edge, then the top, when several are equally clear.
+// Dodgeball keeps its own spot from style.css.
+function placeHint() {
+  const h = $('#hint');
+  h.removeAttribute('style');
+  const L = app.L, S = app.S;
+  if (!L || L.dodge || !h.classList.contains('on') || !L.doors) return;
+  const cr = cv.getBoundingClientRect(), sr = $('#stage').getBoundingClientRect();
+  const s = cr.width / WORLD_W;
+  if (!s) return;
+  const items = [];   // [x, y, w, h, weight] in world px
+  const pad = (x, y, w, hh, m, wt) => items.push([x - m, y - m, w + 2 * m, hh + 2 * m, wt]);
+  S.p.forEach(p => pad(p.x, p.y, p.w, p.h, 18, 100));   // room to see them move off
+  L.doors.forEach(d => pad(d.cx - 16, d.bottom - 48, 32, 48, 8, 100));
+  S.b.forEach(b => pad(b.x, b.y, b.w || 26, b.h || 26, 2, 30));
+  L.levers.forEach(v => pad(v.x, v.y, TS, TS, 2, 30));
+  L.buttons.forEach(b => pad(b.x, b.floor - 8, b.w, 8, 2, 30));
+  L.gems.forEach(g => pad(g.x - 9, g.y - 9, 18, 18, 0, 20));
+  L.plats.forEach((q, i) => pad(S.pl[i]?.x ?? q.x0, S.pl[i]?.y ?? q.y0, q.w, q.h, 0, 4));
+  for (let i = 0; i < L.tiles.length; i++) if (L.tiles[i] >= 4 && L.tiles[i] <= 6) pad((i % (WORLD_W / TS)) * TS, Math.floor(i / (WORLD_W / TS)) * TS, TS, TS, 0, 2);
+  const cost = (x, y, w, hh) => {
+    let c = 0;
+    for (const [ix, iy, iw, ih, wt] of items) {
+      const ox = Math.min(x + w, ix + iw) - Math.max(x, ix), oy = Math.min(y + hh, iy + ih) - Math.max(y, iy);
+      if (ox > 0 && oy > 0) c += wt * (ox * oy) / (iw * ih);
+    }
+    return c;
+  };
+  const top = 46, gap = 6;   // below the timer plaque; a little off the room's edges
+  let best = null;
+  for (const half of [false, true]) {
+    if (half) h.style.maxWidth = `${Math.floor(cr.width * 0.46)}px`;
+    const w = h.offsetWidth / s, hh = h.offsetHeight / s;
+    const xs = half ? [gap, WORLD_W - gap - w] : [(WORLD_W - w) / 2];
+    for (const x of xs) for (let y = top; y <= WORLD_H - gap - hh; y += 6) {
+      const edge = Math.min(WORLD_H - gap - hh - y, y - top + 3) / WORLD_H;   // bottom edge first, then top
+      const c = cost(x, y, w, hh) + edge * 0.5 + (half ? 0.3 : 0);
+      if (!best || c < best.c) best = { c, x, y, w, half };
+    }
+  }
+  h.style.maxWidth = best.half ? `${Math.floor(cr.width * 0.46)}px` : '';
+  h.style.left = `${cr.left - sr.left + (best.x + best.w / 2) * s}px`;
+  h.style.top = `${cr.top - sr.top + best.y * s}px`;
+  h.style.bottom = 'auto';
 }
 
 function startLocal(level) {
@@ -174,7 +227,9 @@ function tickLocal() {
   if (app.paused || app.results) return;
   const inp = input.local();
   app.prev = capture(app.S);
+  const pb = popBefore(app.S);
   stepAny(app.L, app.S, inp);
+  popAfter(app.S, pb);
   listen(app.S);
   if (app.S.phase === PH_WON && app.S.phaseT >= 45) showResults();
   if (app.S.d && app.S.d.phase === DP_OVER && app.S.d.t >= 40) showDodgeOver();
@@ -191,14 +246,44 @@ function tickOnline() {
   const inp = [0, 0];
   inp[app.me] = bits; inp[1 - app.me] = app.remoteBits;
   app.prev = capture(app.S);
+  const pb = popBefore(app.S);
   stepAny(app.L, app.S, inp);
+  popAfter(app.S, pb);
   listen(app.S);
   decayOff();
 }
 
+// Stepping up (out of a pool, onto a step) lifts a character up to 14 px on top of what their
+// speed explains, in one tick. The renderer draws that extra lift (app.lift, px down) and lets it
+// ease out over a few frames. Only the drawing moves; the simulation is untouched.
+function popBefore(S) { app.liftPrev = app.lift.slice(); return S.p.map(p => ({ y: p.y, vy: p.vy, j: p.jumpN, t: S.tries })); }
+function popAfter(S, before) {
+  const lift = app.lift;
+  S.p.forEach((p, i) => {
+    lift[i] *= 0.55; if (lift[i] < 0.1) lift[i] = 0;
+    const b = before[i];
+    if (!b || b.t !== S.tries || !p.alive) { lift[i] = 0; return; }
+    const vy = p.jumpN !== b.j ? -PHYS.jumpVel : b.vy;
+    const extra = (p.y - b.y) - Math.min(vy + PHYS.gravity, PHYS.maxFall);   // < 0: rose more than speed explains
+    if (extra < -5 && extra > -24) lift[i] = Math.min(20, lift[i] - extra);
+  });
+}
+
+// The partner is predicted from their last known keys, so a jump the client hears about late
+// leaves an error of up to ~RTT worth of motion (90-130 px at 160-300 ms). Their correction is
+// carried whole (cap REMOTE_CAP) and paid back at most REMOTE_EASE px per tick, so their drawn
+// motion stays continuous. Your own character keeps the original short, tight correction.
+const REMOTE_CAP = 240, REMOTE_EASE = 6;
+function easeOff(v) {
+  const m = Math.hypot(v.x, v.y);
+  if (m < 0.05) { v.x = 0; v.y = 0; return; }
+  const k = Math.max(0.8, (m - REMOTE_EASE) / m);
+  v.x *= k; v.y *= k;
+}
 function decayOff() {
   const o = app.off;
-  for (const arr of [o.p, o.b, o.pl]) for (const v of arr) { v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; }
+  o.p.forEach((v, i) => { if (i !== app.me) { easeOff(v); return; } v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; });
+  for (const arr of [o.b, o.pl]) for (const v of arr) { v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; }
   const v = o.ball; v.x *= 0.75; v.y *= 0.75; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0;
 }
 
@@ -217,8 +302,8 @@ function onSnapshot(m) {
   const after = capture(ns);
   // keep visuals continuous: carry the correction as a decaying offset
   if (ns.p.length === app.off.p.length && ns.tries === app.S.tries) {
-    const add = (o, a, b) => { o.x += a.x - b.x; o.y += a.y - b.y; if (Math.hypot(o.x, o.y) > 64) { o.x = 0; o.y = 0; } };
-    before.p.forEach((v, i) => add(app.off.p[i], v, after.p[i]));
+    const add = (o, a, b, cap = 64) => { o.x += a.x - b.x; o.y += a.y - b.y; if (Math.hypot(o.x, o.y) > cap) { o.x = 0; o.y = 0; } };
+    before.p.forEach((v, i) => add(app.off.p[i], v, after.p[i], i === app.me ? 64 : REMOTE_CAP));
     before.b.forEach((v, i) => add(app.off.b[i], v, after.b[i]));
     before.pl.forEach((v, i) => add(app.off.pl[i], v, after.pl[i]));
     if (before.ball) {
@@ -247,8 +332,10 @@ function view(alpha) {
   if (!ok) return null;
   // don't interpolate across teleports (respawn)
   const tp = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) > 40;
+  // the step-up lift is interpolated between ticks like the position it belongs to
+  const lift = (v, i) => { const a = app.liftPrev?.[i] || 0, b = app.lift?.[i] || 0; v.y += a + (b - a) * alpha; return v; };
   return {
-    p: S.p.map((p, i) => tp(P.p[i], p) ? { x: p.x, y: p.y } : lerp(P.p[i], p, O?.p[i])),
+    p: S.p.map((p, i) => tp(P.p[i], p) ? { x: p.x, y: p.y } : lift(lerp(P.p[i], p, O?.p[i]), i)),
     b: S.b.map((b, i) => tp(P.b[i], b) ? { x: b.x, y: b.y } : lerp(P.b[i], b, O?.b[i])),
     pl: S.pl.map((q, i) => lerp(P.pl[i], q, O?.pl[i])),
     ball: S.d && P.ball ? (Math.abs(P.ball.x - S.d.ball.x) + Math.abs(P.ball.y - S.d.ball.y) > 70 ? { x: S.d.ball.x, y: S.d.ball.y } : lerp(P.ball, S.d.ball, O?.ball)) : null,
@@ -274,7 +361,8 @@ function frame(now) {
   }
   if (app.L) {
     const alpha = playing && !app.paused ? Math.min(1, acc / DT) : 1;
-    R.draw(app.L, app.S, view(alpha), now / 1000);
+    const v = app.drawn = view(alpha);   // what was drawn, for the browser checks
+    R.draw(app.L, app.S, v, now / 1000);
     drawHud(now / 1000);
   } else {
     drawAttract(now / 1000);
@@ -286,7 +374,7 @@ function drawHud(time) {
   const g = R.ctx, S = app.S, L = app.L;
   g.setTransform(R.scale, 0, 0, R.scale, 0, 0);
   if (L.dodge) { drawDodgeHud(g, S, { online: app.mode === 'online', me: app.me, rtt: net.rtt }); return; }
-  const secs = S.tick / TICK_RATE;
+  const secs = wonSecs(S);
   const w = 150, x = WORLD_W / 2 - w / 2, y = 4;
   g.fillStyle = 'rgba(18,12,30,0.72)';
   plaque(g, x, y, w, 34, 10); g.fill();
@@ -320,6 +408,9 @@ function drawHud(time) {
     g.fillText(S.deadWho === SOL ? 'Sol was lost…' : 'Luna was lost…', WORLD_W / 2, WORLD_H / 2);
   }
 }
+// The level is won on the tick both doors finish opening; the clock stops there, not after the
+// 45-tick door animation that comes before the results card (S.tick keeps counting through it).
+function wonSecs(S) { return (S.phase === PH_WON ? S.tick - S.phaseT : S.tick) / TICK_RATE; }
 function fmtTime(s) { const m = Math.floor(s / 60), r = s - m * 60; return `${m}:${r < 10 ? '0' : ''}${r.toFixed(1)}`; }
 function plaque(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + w, y); g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r); g.closePath(); }
 function gemIcon(g, x, y, kind) {
@@ -353,7 +444,7 @@ function drawAttract(time) {
 function showResults() {
   app.results = true;
   const S = app.S, L = app.L;
-  const secs = S.tick / TICK_RATE;
+  const secs = wonSecs(S);
   const got = S.gm.reduce((a, b) => a + b, 0), tot = L.gems.length;
   const rank = record(app.level, secs, got, tot);
   $('#resName').textContent = `${app.level + 1}. ${L.name}`;
@@ -558,7 +649,7 @@ async function joinOnline(code) {
 $('#btnLocal').onclick = () => { sfx.unlock(); sfx.ui(); app.mode = 'local'; openLevels(); };
 $('#btnHost').onclick = () => { sfx.unlock(); sfx.ui(); hostOnline(); };
 $('#joinForm').onsubmit = (e) => { e.preventDefault(); sfx.unlock(); sfx.ui(); joinOnline($('#joinCode').value); };
-$('#btnHow').onclick = () => { sfx.ui(); show('how'); };
+$('#btnHow').onclick = () => { sfx.ui(); show('how'); $('#how .how').scrollTop = 0; $('#how .how').focus({ preventScroll: true }); };
 // versus modes
 $('#btnDodge').onclick = () => { sfx.unlock(); sfx.ui(); app.mode = 'local'; beginLevel('dodge'); };
 $('#lobbyDodge').onclick = () => { sfx.ui(); net.send({ t: 'start', mode: 'dodge' }); };
@@ -566,8 +657,9 @@ $('#dgRematch').onclick = () => { sfx.ui(); if (app.mode === 'online') net.send(
 $('#dgBack').onclick = () => { sfx.ui(); if (app.mode === 'online') net.send({ t: 'menu' }); else quitToMenu(); };
 $$('[data-back]').forEach(b => b.onclick = () => {
   sfx.ui();
-  if (app.mode === 'online' && app.room) renderLobby();
-  else { app.mode = 'menu'; show('menu'); }
+  const from = document.body.dataset.screen;
+  if (app.mode === 'online' && app.room) { renderLobby(); $('#lobbyPick').focus({ preventScroll: true }); }
+  else { app.mode = 'menu'; show('menu'); (from === 'how' ? $('#btnHow') : $('#btnLocal')).focus({ preventScroll: true }); }
 });
 $('#btnMute').onclick = () => { const m = sfx.toggle(); $('#btnMute').textContent = m ? 'Sound: off' : 'Sound: on'; };
 $('#btnMute').textContent = sfx.muted ? 'Sound: off' : 'Sound: on';
@@ -608,6 +700,9 @@ $('#resLevels').onclick = () => {
 
 window.addEventListener('keydown', (e) => {
   if (e.target.closest && e.target.closest('input, textarea')) return;   // typing, not playing
+  // Esc on a menu screen with a Back button (How to play, Level select) goes back
+  const back = e.code === 'Escape' && !app.L && $(`#${document.body.dataset.screen} [data-back]`);
+  if (back) { e.preventDefault(); back.click(); return; }
   if (e.key === 'Enter' && !$('#chat').hidden && (e.target === document.body || e.target === cv)) {
     e.preventDefault(); chatOpen(true); return;
   }

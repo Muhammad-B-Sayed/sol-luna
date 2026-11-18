@@ -1,0 +1,712 @@
+// Sol & Luna — app shell: menus, local co-op loop, online prediction/reconciliation.
+import { buildLevel, createState, step, cloneState, PH_PLAY, PH_DEAD, PH_WON, SOL, LUNA, TICK_RATE, WORLD_W, WORLD_H, TS, rankFor } from '/shared/sim.js';
+import { LEVELS } from '/shared/levels.js';
+import { Renderer } from './render.js';
+import { Input } from './input.js';
+import { Net } from './net.js';
+import { sfx } from './audio.js';
+// Dodgeball (versus mode)
+import { COURT, createDodge, stepDodge, DP_OVER } from '/shared/dodge.js';
+import { drawDodgeHud, dodgeListen, dodgeHearReset, dodgeHint } from './dodge-ui.js';
+import { RunnerMode } from './runner-app.js';
+
+const BUILT = LEVELS.map((raw, i) => buildLevel(raw, i));
+// A level is a co-op index or a versus mode name; each kind brings its own create and step.
+const levelOf = (level) => (level === 'dodge' ? COURT : BUILT[level]);
+const newState = (L) => (L.dodge ? createDodge((Math.random() * 2 ** 31) | 0) : createState(L));
+const stepAny = (L, S, inp) => (L.dodge ? stepDodge(L, S, inp) : step(L, S, inp));
+const DT = 1000 / TICK_RATE;
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+
+// ---------------------------------------------------------------------------
+// progress
+
+const PKEY = 'sl.progress.v1';
+let progress = { unlocked: 0, best: {} };
+try { Object.assign(progress, JSON.parse(localStorage.getItem(PKEY) || '{}')); } catch {}
+if (new URLSearchParams(location.search).has('unlock')) progress.unlocked = BUILT.length - 1;
+const saveProgress = () => { try { localStorage.setItem(PKEY, JSON.stringify(progress)); } catch {} };
+const RANK_ORDER = { A: 3, B: 2, C: 1 };
+function record(level, secs, gems, total) {
+  const rank = rankFor(BUILT[level], secs, gems, total);
+  const prev = progress.best[level];
+  if (!prev || RANK_ORDER[rank] > RANK_ORDER[prev.rank] || (rank === prev.rank && secs < prev.t)) progress.best[level] = { t: secs, gems, rank };
+  progress.unlocked = Math.max(progress.unlocked, Math.min(BUILT.length - 1, level + 1));
+  saveProgress();
+  return rank;
+}
+
+// ---------------------------------------------------------------------------
+// state
+
+const cv = $('#game');
+const R = new Renderer(cv);
+const input = new Input();
+const net = new Net();
+let runner = null;   // versus Runner mode (runner-app.js); created once app exists
+
+const app = {
+  mode: 'menu',          // 'menu' | 'local' | 'online'
+  level: 0, L: null, S: null,
+  paused: false,
+  prev: null,            // positions before the latest tick (for interpolation)
+  off: null,             // visual correction offsets (online)
+  results: false,
+  // online
+  room: null, me: SOL, host: false,
+  seq: 0, pending: [], remoteBits: 0, inGame: false,
+  heard: null,
+};
+runner = new RunnerMode({ R, input, net, sfx, app, show: (id) => show(id), toast: (m) => toast(m), quit: () => { attract = null; if (app.mode === 'online') quitToMenu(); else { app.mode = 'menu'; show('menu'); } } });
+
+function fit() {
+  const wrap = $('#stage');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const s = Math.min(W / WORLD_W, H / WORLD_H);
+  R.resize(Math.floor(WORLD_W * s), Math.floor(WORLD_H * s));
+  if (app.L && !runner.active) placeHint();
+}
+window.addEventListener('resize', fit);
+
+// ---------------------------------------------------------------------------
+// screens
+
+function show(id) {
+  $$('.screen').forEach(el => el.classList.toggle('on', el.id === id));
+  document.body.dataset.screen = id || 'game';
+}
+function toast(msg, ms = 2600) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), ms);
+}
+
+function buildLevelGrid(onPick, highlight = -1) {
+  const grid = $('#levelGrid');
+  grid.innerHTML = '';
+  BUILT.forEach((L, i) => {
+    const b = document.createElement('button');
+    const best = progress.best[i];
+    const locked = i > progress.unlocked;
+    b.className = 'lvl' + (locked ? ' locked' : '') + (best ? ' done rank-' + best.rank : '') + (i === highlight ? ' current' : '');
+    b.innerHTML = `<span class="n">${i + 1}</span><span class="nm">${L.name}</span>${best ? `<span class="rk">${best.rank}</span>` : ''}${locked ? '<span class="lock" aria-hidden="true"></span>' : ''}`;
+    b.disabled = locked;
+    if (locked) b.setAttribute('aria-label', `${i + 1}. ${L.name}, locked`);
+    b.title = locked ? 'Locked' : L.name + (best ? ` — best ${best.t.toFixed(1)}s` : '');
+    b.onclick = () => { sfx.ui(); onPick(i); };
+    grid.appendChild(b);
+  });
+}
+
+function openLevels() {
+  if (app.mode === 'online') {
+    $('#levelsTitle').textContent = `Choose a level · Room ${app.room?.code || ''}`;
+    buildLevelGrid((i) => net.send({ t: 'start', level: i }), app.level);
+  } else {
+    $('#levelsTitle').textContent = 'Choose a level';
+    buildLevelGrid((i) => startLocal(i), app.level);
+  }
+  show('levels');
+  const cur = $('#levelGrid .current') || $('#levelGrid .lvl:not(.locked):last-of-type');
+  cur?.focus({ preventScroll: true });
+}
+
+// ---------------------------------------------------------------------------
+// game setup
+
+function capture(S) {
+  return { p: S.p.map(p => ({ x: p.x, y: p.y })), b: S.b.map(b => ({ x: b.x, y: b.y })), pl: S.pl.map(q => ({ x: q.x, y: q.y })),
+    ball: S.d ? { x: S.d.ball.x, y: S.d.ball.y } : null };
+}
+function zeroOff(S) {
+  return { p: S.p.map(() => ({ x: 0, y: 0 })), b: S.b.map(() => ({ x: 0, y: 0 })), pl: S.pl.map(() => ({ x: 0, y: 0 })), ball: { x: 0, y: 0 } };
+}
+
+function beginLevel(level, st) {
+  app.level = level;
+  app.L = levelOf(level);
+  app.S = st ? cloneState(st) : newState(app.L);
+  document.body.classList.toggle('dodge', !!app.L.dodge);
+  if (app.L.dodge) { dodgeHearReset(app.S); R.dodgeFx = null; app.L.hint = dodgeHint(app.mode === 'online'); }
+  app.prev = capture(app.S);
+  app.off = zeroOff(app.S);
+  app.paused = false;
+  app.results = false;
+  app.pending = []; app.remoteBits = 0;
+  app.heard = hearState(app.S);
+  R.setLevel(app.L);
+  show(null);
+  $('#hint').textContent = app.L.hint || '';
+  $('#hint').classList.toggle('on', !!app.L.hint);
+  placeHint();
+  clearTimeout(beginLevel.h);
+  beginLevel.h = setTimeout(() => $('#hint').classList.remove('on'), 6000);
+}
+
+// The start hint goes where it covers the least of what matters at the start: both players and
+// doors first, then crates, levers, plates and gems, then pools and lifts (what hints talk
+// about). It tries full-width spots from top to bottom of the room, then half-width spots at
+// either side, and prefers the bottom edge, then the top, when several are equally clear.
+// Dodgeball keeps its own spot from style.css.
+function placeHint() {
+  const h = $('#hint');
+  h.removeAttribute('style');
+  const L = app.L, S = app.S;
+  if (!L || L.dodge || !h.classList.contains('on') || !L.doors) return;
+  const cr = cv.getBoundingClientRect(), sr = $('#stage').getBoundingClientRect();
+  const s = cr.width / WORLD_W;
+  if (!s) return;
+  const items = [];   // [x, y, w, h, weight] in world px
+  const pad = (x, y, w, hh, m, wt) => items.push([x - m, y - m, w + 2 * m, hh + 2 * m, wt]);
+  S.p.forEach(p => pad(p.x, p.y, p.w, p.h, 18, 100));   // room to see them move off
+  L.doors.forEach(d => pad(d.cx - 16, d.bottom - 48, 32, 48, 8, 100));
+  S.b.forEach(b => pad(b.x, b.y, b.w || 26, b.h || 26, 2, 30));
+  L.levers.forEach(v => pad(v.x, v.y, TS, TS, 2, 30));
+  L.buttons.forEach(b => pad(b.x, b.floor - 8, b.w, 8, 2, 30));
+  L.gems.forEach(g => pad(g.x - 9, g.y - 9, 18, 18, 0, 20));
+  L.plats.forEach((q, i) => pad(S.pl[i]?.x ?? q.x0, S.pl[i]?.y ?? q.y0, q.w, q.h, 0, 4));
+  for (let i = 0; i < L.tiles.length; i++) if (L.tiles[i] >= 4 && L.tiles[i] <= 6) pad((i % (WORLD_W / TS)) * TS, Math.floor(i / (WORLD_W / TS)) * TS, TS, TS, 0, 2);
+  const cost = (x, y, w, hh) => {
+    let c = 0;
+    for (const [ix, iy, iw, ih, wt] of items) {
+      const ox = Math.min(x + w, ix + iw) - Math.max(x, ix), oy = Math.min(y + hh, iy + ih) - Math.max(y, iy);
+      if (ox > 0 && oy > 0) c += wt * (ox * oy) / (iw * ih);
+    }
+    return c;
+  };
+  const top = 46, gap = 6;   // below the timer plaque; a little off the room's edges
+  let best = null;
+  for (const half of [false, true]) {
+    if (half) h.style.maxWidth = `${Math.floor(cr.width * 0.46)}px`;
+    const w = h.offsetWidth / s, hh = h.offsetHeight / s;
+    const xs = half ? [gap, WORLD_W - gap - w] : [(WORLD_W - w) / 2];
+    for (const x of xs) for (let y = top; y <= WORLD_H - gap - hh; y += 6) {
+      const edge = Math.min(WORLD_H - gap - hh - y, y - top + 3) / WORLD_H;   // bottom edge first, then top
+      const c = cost(x, y, w, hh) + edge * 0.5 + (half ? 0.3 : 0);
+      if (!best || c < best.c) best = { c, x, y, w, half };
+    }
+  }
+  h.style.maxWidth = best.half ? `${Math.floor(cr.width * 0.46)}px` : '';
+  h.style.left = `${cr.left - sr.left + (best.x + best.w / 2) * s}px`;
+  h.style.top = `${cr.top - sr.top + best.y * s}px`;
+  h.style.bottom = 'auto';
+}
+
+function startLocal(level) {
+  app.mode = 'local';
+  beginLevel(level);
+}
+
+// ---------------------------------------------------------------------------
+// sounds from state changes (robust to rollback: only plays on forward progress)
+
+function hearState(S) {
+  return { tries: S.tries, jump: S.p.map(p => p.jumpN), gm: S.gm.slice(), btn: S.btn.slice(), lv: S.lv.map(v => v > 0), dead: S.phase === PH_DEAD, won: S.phase === PH_WON, door: S.p.map(p => p.atDoor) };
+}
+function listen(S) {
+  const h = app.heard;
+  if (S.tries !== h.tries) { app.heard = hearState(S); return; }
+  S.p.forEach((p, i) => { if (p.jumpN > h.jump[i]) { sfx.jump(i); h.jump[i] = p.jumpN; } });
+  S.gm.forEach((v, i) => { if (v && !h.gm[i]) { sfx.gem(app.L.gems[i].kind); h.gm[i] = 1; } });
+  S.btn.forEach((v, i) => { if (v && !h.btn[i]) sfx.click(); h.btn[i] = v; });
+  S.lv.forEach((v, i) => { const on = v > 0; if (on !== h.lv[i]) sfx.lever(); h.lv[i] = on; });
+  S.p.forEach((p, i) => { if (p.atDoor && !h.door[i]) sfx.door(); h.door[i] = p.atDoor; });
+  if (S.phase === PH_DEAD && !h.dead) sfx.die();
+  h.dead = S.phase === PH_DEAD;
+  if (S.phase === PH_WON && !h.won) sfx.win();
+  h.won = S.phase === PH_WON;
+  if (S.d) dodgeListen(S, sfx);
+}
+
+// ---------------------------------------------------------------------------
+// loop
+
+function tickLocal() {
+  if (app.paused || app.results) return;
+  const inp = input.local();
+  app.prev = capture(app.S);
+  stepAny(app.L, app.S, inp);
+  listen(app.S);
+  if (app.S.phase === PH_WON && app.S.phaseT >= 45) showResults();
+  if (app.S.d && app.S.d.phase === DP_OVER && app.S.d.t >= 40) showDodgeOver();
+}
+
+function tickOnline() {
+  if (!app.inGame || app.results) return;
+  const overlay = app.paused;
+  const bits = overlay ? 0 : input.any();
+  app.seq++;
+  net.send({ t: 'i', s: app.seq, b: bits });
+  app.pending.push([app.seq, bits]);
+  if (app.pending.length > 240) app.pending.shift();
+  const inp = [0, 0];
+  inp[app.me] = bits; inp[1 - app.me] = app.remoteBits;
+  app.prev = capture(app.S);
+  stepAny(app.L, app.S, inp);
+  listen(app.S);
+  decayOff();
+}
+
+// The partner is predicted from their last known keys, so a jump the client hears about late
+// leaves an error of up to ~RTT worth of motion (90-130 px at 160-300 ms). Their correction is
+// carried whole (cap REMOTE_CAP) and paid back at most REMOTE_EASE px per tick, so their drawn
+// motion stays continuous. Your own character keeps the original short, tight correction.
+const REMOTE_CAP = 240, REMOTE_EASE = 6;
+function easeOff(v) {
+  const m = Math.hypot(v.x, v.y);
+  if (m < 0.05) { v.x = 0; v.y = 0; return; }
+  const k = Math.max(0.8, (m - REMOTE_EASE) / m);
+  v.x *= k; v.y *= k;
+}
+function decayOff() {
+  const o = app.off;
+  o.p.forEach((v, i) => { if (i !== app.me) { easeOff(v); return; } v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; });
+  for (const arr of [o.b, o.pl]) for (const v of arr) { v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; }
+  const v = o.ball; v.x *= 0.75; v.y *= 0.75; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0;
+}
+
+function onSnapshot(m) {
+  if (!app.inGame || !app.L) return;
+  const before = capture(app.S);
+  const ns = m.st;
+  app.remoteBits = m.inp[1 - app.me] | 0;
+  const myAck = m.ack[app.me] | 0;
+  app.pending = app.pending.filter(([s]) => s > myAck);
+  const inp = [0, 0];
+  for (const [, b] of app.pending) {
+    inp[app.me] = b; inp[1 - app.me] = app.remoteBits;
+    stepAny(app.L, ns, inp);
+  }
+  const after = capture(ns);
+  // keep visuals continuous: carry the correction as a decaying offset
+  if (ns.p.length === app.off.p.length && ns.tries === app.S.tries) {
+    const add = (o, a, b, cap = 64) => { o.x += a.x - b.x; o.y += a.y - b.y; if (Math.hypot(o.x, o.y) > cap) { o.x = 0; o.y = 0; } };
+    before.p.forEach((v, i) => add(app.off.p[i], v, after.p[i], i === app.me ? 64 : REMOTE_CAP));
+    before.b.forEach((v, i) => add(app.off.b[i], v, after.b[i]));
+    before.pl.forEach((v, i) => add(app.off.pl[i], v, after.pl[i]));
+    if (before.ball) {
+      // a remote throw shows up a few ticks late: let the ball catch up instead of jumping ahead
+      const o = app.off.ball; o.x += before.ball.x - after.ball.x; o.y += before.ball.y - after.ball.y;
+      if (Math.hypot(o.x, o.y) > 400) { o.x = 0; o.y = 0; }
+      app.prev.ball.x += after.ball.x - before.ball.x; app.prev.ball.y += after.ball.y - before.ball.y;
+    }
+    // prev positions shift with the state so interpolation doesn't double-count
+    app.prev.p.forEach((v, i) => { v.x += after.p[i].x - before.p[i].x; v.y += after.p[i].y - before.p[i].y; });
+    app.prev.b.forEach((v, i) => { v.x += after.b[i].x - before.b[i].x; v.y += after.b[i].y - before.b[i].y; });
+    app.prev.pl.forEach((v, i) => { v.x += after.pl[i].x - before.pl[i].x; v.y += after.pl[i].y - before.pl[i].y; });
+  } else {
+    app.off = zeroOff(ns);
+    app.prev = capture(ns);
+  }
+  app.S = ns;
+  if (m.st.phase === PH_WON && m.st.phaseT >= 45 && !app.results) showResults();
+  if (ns.d && ns.d.phase === DP_OVER && ns.d.t >= 40 && !app.results) showDodgeOver();
+}
+
+function view(alpha) {
+  const S = app.S, P = app.prev, O = app.off;
+  const lerp = (a, b, o) => ({ x: a.x + (b.x - a.x) * alpha + (o ? o.x : 0), y: a.y + (b.y - a.y) * alpha + (o ? o.y : 0) });
+  const ok = P && P.p.length === S.p.length && P.b.length === S.b.length;
+  if (!ok) return null;
+  // don't interpolate across teleports (respawn)
+  const tp = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) > 40;
+  return {
+    p: S.p.map((p, i) => tp(P.p[i], p) ? { x: p.x, y: p.y } : lerp(P.p[i], p, O?.p[i])),
+    b: S.b.map((b, i) => tp(P.b[i], b) ? { x: b.x, y: b.y } : lerp(P.b[i], b, O?.b[i])),
+    pl: S.pl.map((q, i) => lerp(P.pl[i], q, O?.pl[i])),
+    ball: S.d && P.ball ? (Math.abs(P.ball.x - S.d.ball.x) + Math.abs(P.ball.y - S.d.ball.y) > 70 ? { x: S.d.ball.x, y: S.d.ball.y } : lerp(P.ball, S.d.ball, O?.ball)) : null,
+  };
+}
+
+let last = performance.now(), acc = 0, fpsT = 0, frames = 0, fps = 60;
+function frame(now) {
+  requestAnimationFrame(frame);
+  let dt = now - last; last = now;
+  if (dt > 250) dt = DT;
+  frames++; fpsT += dt; if (fpsT > 1000) { fps = Math.round(frames * 1000 / fpsT); frames = 0; fpsT = 0; }
+  if (runner.active) { runner.frame(dt, now); return; }
+  const playing = app.L && (app.mode === 'local' || (app.mode === 'online' && app.inGame));
+  if (playing) {
+    acc += dt;
+    let n = 0;
+    while (acc >= DT && n < 8) {
+      acc -= DT; n++;
+      if (app.mode === 'local') tickLocal(); else tickOnline();
+    }
+    if (n === 8) acc = 0;
+  }
+  if (app.L) {
+    const alpha = playing && !app.paused ? Math.min(1, acc / DT) : 1;
+    const v = app.drawn = view(alpha);   // what was drawn, for the browser checks
+    R.draw(app.L, app.S, v, now / 1000);
+    drawHud(now / 1000);
+  } else {
+    drawAttract(now / 1000);
+  }
+}
+
+// HUD drawn into the canvas in world units (crisp at any resolution)
+function drawHud(time) {
+  const g = R.ctx, S = app.S, L = app.L;
+  g.setTransform(R.scale, 0, 0, R.scale, 0, 0);
+  if (L.dodge) { drawDodgeHud(g, S, { online: app.mode === 'online', me: app.me, rtt: net.rtt }); return; }
+  const secs = wonSecs(S);
+  const w = 150, x = WORLD_W / 2 - w / 2, y = 4;
+  g.fillStyle = 'rgba(18,12,30,0.72)';
+  plaque(g, x, y, w, 34, 10); g.fill();
+  g.strokeStyle = 'rgba(214,196,255,0.35)'; g.lineWidth = 1.5; g.stroke();
+  g.font = '600 20px "Cinzel", Georgia, serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = secs > L.par ? '#ffb4a8' : '#f4ecff';
+  g.fillText(fmtTime(secs), WORLD_W / 2, y + 18);
+  // gem tallies
+  const tally = (kind) => { let got = 0, tot = 0; L.gems.forEach((gm, i) => { if (gm.kind === kind) { tot++; if (S.gm[i]) got++; } }); return [got, tot]; };
+  const [sg, st] = tally(SOL), [mg, mt] = tally(LUNA);
+  g.font = '600 15px "Cinzel", Georgia, serif';
+  g.textAlign = 'right'; g.fillStyle = '#ffd27a';
+  g.fillText(`${sg}/${st}`, x - 10, y + 18);
+  g.textAlign = 'left'; g.fillStyle = '#a9e3ff';
+  g.fillText(`${mg}/${mt}`, x + w + 10, y + 18);
+  gemIcon(g, x - 58, y + 18, SOL); gemIcon(g, x + w + 52, y + 18, LUNA);
+  // level label
+  g.font = '500 13px "Cinzel", Georgia, serif';
+  g.textAlign = 'left'; g.fillStyle = 'rgba(240,230,255,0.75)';
+  g.fillText(`${app.level + 1}. ${L.name}`, 14, 19);
+  if (app.mode === 'online') {
+    g.textAlign = 'right';
+    g.fillStyle = 'rgba(240,230,255,0.6)';
+    g.fillText(`${app.me === SOL ? 'You are Sol' : 'You are Luna'} · ${Math.round(net.rtt)} ms`, WORLD_W - 14, 19);
+  }
+  if (S.phase === PH_DEAD) {
+    g.font = '700 30px "Cinzel", Georgia, serif';
+    g.textAlign = 'center';
+    g.fillStyle = 'rgba(255,240,250,' + Math.min(1, S.phaseT / 20) + ')';
+    g.fillText(S.deadWho === SOL ? 'Sol was lost…' : 'Luna was lost…', WORLD_W / 2, WORLD_H / 2);
+  }
+}
+// The level is won on the tick both doors finish opening; the clock stops there, not after the
+// 45-tick door animation that comes before the results card (S.tick keeps counting through it).
+function wonSecs(S) { return (S.phase === PH_WON ? S.tick - S.phaseT : S.tick) / TICK_RATE; }
+function fmtTime(s) { const m = Math.floor(s / 60), r = s - m * 60; return `${m}:${r < 10 ? '0' : ''}${r.toFixed(1)}`; }
+function plaque(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + w, y); g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r); g.closePath(); }
+function gemIcon(g, x, y, kind) {
+  g.fillStyle = kind === SOL ? '#ffb238' : '#5cc6ff';
+  g.beginPath(); g.moveTo(x, y - 7); g.lineTo(x + 6, y - 1); g.lineTo(x, y + 7); g.lineTo(x - 6, y - 1); g.closePath(); g.fill();
+}
+
+// Title-screen backdrop: a live demo level behind the menu.
+let attract = null;
+function drawAttract(time) {
+  if (!attract) {
+    attract = { L: BUILT[0], S: createState(BUILT[0]) };
+    R.setLevel(attract.L);
+  }
+  // fixed-rate demo regardless of display refresh rate
+  attract.acc = (attract.acc || 0) + Math.min(100, (time - (attract.last || time)) * 1000);
+  attract.last = time;
+  while (attract.acc >= DT) {
+    attract.acc -= DT;
+    const t = attract.S.tick;
+    const bits = [(t % 240 < 120 ? 2 : 1) | (t % 90 === 0 ? 4 : 0), (t % 200 < 100 ? 1 : 2) | (t % 70 === 0 ? 4 : 0)];
+    step(attract.L, attract.S, bits);
+    if (attract.S.phase !== PH_PLAY || t > 1200) attract.S = createState(attract.L);
+  }
+  R.draw(attract.L, attract.S, null, time);
+}
+
+// ---------------------------------------------------------------------------
+// results / pause
+
+function showResults() {
+  app.results = true;
+  const S = app.S, L = app.L;
+  const secs = wonSecs(S);
+  const got = S.gm.reduce((a, b) => a + b, 0), tot = L.gems.length;
+  const rank = record(app.level, secs, got, tot);
+  $('#resName').textContent = `${app.level + 1}. ${L.name}`;
+  $('#resTime').textContent = fmtTime(secs);
+  $('#resPar').textContent = `par ${fmtTime(L.par)}`;
+  $('#resGems').textContent = `${got} / ${tot}`;
+  $('#resRank').textContent = rank;
+  $('#resRank').className = 'rank rank-' + rank;
+  const last = app.level >= BUILT.length - 1;
+  const canDrive = app.mode === 'local' || app.host;
+  $('#resNext').hidden = !canDrive || last;
+  $('#resRetry').hidden = !canDrive;
+  $('#resLevels').hidden = !canDrive;
+  $('#resWait').hidden = canDrive;
+  $('#resFinale').hidden = !last;
+  show('results');
+  $('#resNext').hidden ? $('#resRetry').focus() : $('#resNext').focus();
+}
+
+// Dodgeball winner screen with rematch
+function showDodgeOver() {
+  app.results = true;
+  const D = app.S.d, w = D.winner;
+  const name = (c) => (c === SOL ? 'Sol' : 'Luna');
+  $('#dgWinner').textContent = app.mode === 'online' ? (w === app.me ? 'You win!' : `${name(w)} wins`) : `${name(w)} wins!`;
+  $('#dgWinner').className = w === SOL ? 'solc' : 'lunac';
+  $('#dgSol').textContent = D.score[SOL];
+  $('#dgLuna').textContent = D.score[LUNA];
+  $('#dgBack').textContent = app.mode === 'online' ? 'Back to lobby' : 'Back to title';
+  show('dodgeOver');
+  $('#dgRematch').focus();
+}
+
+function pause(on) {
+  if (!app.L || app.results) return;
+  app.paused = on;
+  if (on) {
+    $('#pauseOnline').hidden = app.mode !== 'online';
+    $('#pRestart').hidden = false;
+    $('#pLevels').hidden = false;
+    const dodge = !!app.L.dodge;
+    $('#pRestart').textContent = dodge ? 'Restart match' : 'Restart level';
+    $('#pLevels').textContent = dodge ? 'Back to lobby' : 'Level select';
+    if (dodge && app.mode === 'local') $('#pLevels').hidden = true;
+    $('#pSwap').hidden = app.mode !== 'online';
+    show('pause');
+    $('#pResume').focus();
+  } else show(null);
+}
+
+function quitToMenu() {
+  runner.stop();
+  if (app.mode === 'online') { net.send({ t: 'leave' }); net.close(); }
+  app.mode = 'menu'; app.L = null; app.S = null; app.inGame = false; app.room = null;
+  chatShow(false);
+  attract = null;
+  show('menu');
+  history.replaceState(null, '', '/');
+}
+
+// ---------------------------------------------------------------------------
+// online
+
+net.on('room', (m) => {
+  chatRoom(m);
+  if (app.room && app.me !== m.you) toast(m.you === SOL ? 'You are Sol now.' : 'You are Luna now.');
+  app.room = m; app.me = m.you; app.host = m.host;
+  history.replaceState(null, '', '/' + m.code);
+  if (!app.inGame) renderLobby();
+});
+net.on('start', (m) => {
+  if (m.mode === 'runner') { runner.onStart(m); return; }
+  app.inGame = true;
+  app.seq = 0;
+  beginLevel(m.mode === 'dodge' ? 'dodge' : m.level, m.st);
+});
+net.on('s', onSnapshot);
+net.on('menu', () => {
+  app.inGame = false; app.L = null; attract = null;
+  renderLobby();
+});
+net.on('peer-left', () => {
+  toast('Your partner left the room.');
+  chatLine('sys', '', 'Your partner left.');
+  app.inGame = false; app.L = null; attract = null;
+  renderLobby();
+});
+net.on('err', (m) => { toast(m.msg); if (!app.room) show('menu'); });
+net.on('close', () => {
+  if (app.mode === 'online') { toast('Disconnected from server.'); quitToMenu(); }
+});
+
+// ---------------------------------------------------------------------------
+// room chat: a button on the right edge opens a small panel. Enter opens it during play,
+// Enter sends and hands the keys back to the game, Esc closes it.
+
+const chat = { open: false, unread: 0, players: 0 };
+const charName = (c) => (c === SOL ? 'Sol' : 'Luna');
+
+function chatRoom(m) {
+  if ($('#chat').hidden) chatShow(true);
+  const n = m.players.length;
+  if (chat.players && n > chat.players) chatLine('sys', '', 'Your partner joined.');
+  chat.players = n;
+}
+function chatShow(on) {
+  $('#chat').hidden = !on;
+  if (!on) { chatOpen(false); $('#chatLog').replaceChildren(); chat.unread = 0; chat.players = 0; chatBadge(); }
+  else if (!$('#chatLog').children.length) chatLine('empty', '', 'Messages here go to your partner.');
+}
+function chatBadge() {
+  const b = $('#chatBadge');
+  b.hidden = !chat.unread;
+  b.textContent = chat.unread > 9 ? '9+' : String(chat.unread);
+}
+function chatOpen(on) {
+  chat.open = on;
+  $('#chatPanel').hidden = !on;
+  const t = $('#chatToggle');
+  t.setAttribute('aria-expanded', String(on));
+  t.setAttribute('aria-label', on ? 'Close chat' : 'Open chat');
+  if (on) {
+    chat.unread = 0; chatBadge();
+    const log = $('#chatLog'); log.scrollTop = log.scrollHeight;
+    $('#chatInput').focus();
+  } else if (document.activeElement && $('#chat').contains(document.activeElement)) {
+    document.activeElement.blur();   // hand the keyboard back to the game
+  }
+}
+function chatLine(cls, who, text) {
+  const log = $('#chatLog');
+  log.querySelector('.empty')?.remove();
+  const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 8;
+  const li = document.createElement('li');
+  li.className = cls;
+  if (who) { const b = document.createElement('b'); b.textContent = who; li.append(b); }
+  li.append(document.createTextNode(text));
+  log.append(li);
+  while (log.children.length > 100) log.firstChild.remove();
+  if (atEnd) log.scrollTop = log.scrollHeight;
+}
+net.on('chat', (m) => {
+  const mine = m.char === app.me;
+  chatLine('c' + m.char, charName(m.char) + (mine ? ' (you)' : ''), m.text);
+  if (!chat.open && !mine) {
+    chat.unread++; chatBadge();
+    toast(`${charName(m.char)}: ${m.text}`, 3500);
+    sfx.ui();
+  }
+});
+$('#chatToggle').onclick = () => chatOpen(!chat.open);
+$('#chatClose').onclick = () => chatOpen(false);
+$('#chatForm').onsubmit = (e) => {
+  e.preventDefault();
+  const box = $('#chatInput');
+  const text = box.value.trim();
+  if (text) { net.send({ t: 'chat', text }); box.value = ''; }
+  if (app.inGame || !text) box.blur();   // mid-level, go straight back to playing
+};
+$('#chatInput').addEventListener('focus', () => input.down.clear());
+$('#chatInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); chatOpen(false); }
+});
+
+function renderLobby() {
+  const r = app.room;
+  if (!r) return;
+  show('lobby');
+  $('#lobbyCode').textContent = r.code;
+  const two = r.players.length === 2;
+  const slots = [SOL, LUNA].map(ch => r.players.find(p => p.char === ch));
+  $('#slotSol').textContent = slots[0] ? (slots[0].char === app.me ? 'You' : 'Partner') : 'Waiting…';
+  $('#slotLuna').textContent = slots[1] ? (slots[1].char === app.me ? 'You' : 'Partner') : 'Waiting…';
+  $('#slotSol').parentElement.classList.toggle('me', app.me === SOL);
+  $('#slotLuna').parentElement.classList.toggle('me', app.me === LUNA);
+  $('#lobbyStatus').textContent = two
+    ? 'Both here! Pick a level to begin. Click a character to play as them.'
+    : 'Share the code (or link) with a friend so they can join.';
+  $('#lobbyPick').hidden = false;
+  $('#lobbyPick').disabled = !two;
+  $$('#lobbyModes button').forEach(b => { b.disabled = !two; });
+}
+
+async function hostOnline() {
+  app.mode = 'online';
+  show('connecting');
+  try { await net.connect(); } catch (e) { toast(e.message); show('menu'); app.mode = 'menu'; return; }
+  net.send({ t: 'create' });
+}
+async function joinOnline(code) {
+  code = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length !== 5) { toast('Room codes are 5 characters.'); return; }
+  app.mode = 'online';
+  show('connecting');
+  try { await net.connect(); } catch (e) { toast(e.message); show('menu'); app.mode = 'menu'; return; }
+  net.send({ t: 'join', code });
+}
+
+// ---------------------------------------------------------------------------
+// wiring
+
+$('#btnLocal').onclick = () => { sfx.unlock(); sfx.ui(); app.mode = 'local'; openLevels(); };
+$('#btnHost').onclick = () => { sfx.unlock(); sfx.ui(); hostOnline(); };
+$('#joinForm').onsubmit = (e) => { e.preventDefault(); sfx.unlock(); sfx.ui(); joinOnline($('#joinCode').value); };
+$('#btnHow').onclick = () => { sfx.ui(); show('how'); $('#how .how').scrollTop = 0; $('#how .how').focus({ preventScroll: true }); };
+// versus modes
+$('#btnDodge').onclick = () => { sfx.unlock(); sfx.ui(); app.mode = 'local'; beginLevel('dodge'); };
+$('#lobbyDodge').onclick = () => { sfx.ui(); net.send({ t: 'start', mode: 'dodge' }); };
+$('#dgRematch').onclick = () => { sfx.ui(); if (app.mode === 'online') net.send({ t: 'start', mode: 'dodge' }); else beginLevel('dodge'); };
+$('#dgBack').onclick = () => { sfx.ui(); if (app.mode === 'online') net.send({ t: 'menu' }); else quitToMenu(); };
+$$('[data-back]').forEach(b => b.onclick = () => {
+  sfx.ui();
+  const from = document.body.dataset.screen;
+  if (app.mode === 'online' && app.room) { renderLobby(); $('#lobbyPick').focus({ preventScroll: true }); }
+  else { app.mode = 'menu'; show('menu'); (from === 'how' ? $('#btnHow') : $('#btnLocal')).focus({ preventScroll: true }); }
+});
+$('#btnMute').onclick = () => { const m = sfx.toggle(); $('#btnMute').textContent = m ? 'Sound: off' : 'Sound: on'; };
+$('#btnMute').textContent = sfx.muted ? 'Sound: off' : 'Sound: on';
+
+$('#lobbySwap').onclick = () => { sfx.ui(); net.send({ t: 'swap' }); };
+$('#slotSol').parentElement.onclick = () => { if (app.me !== SOL) { sfx.ui(); net.send({ t: 'swap', char: SOL }); } };
+$('#slotLuna').parentElement.onclick = () => { if (app.me !== LUNA) { sfx.ui(); net.send({ t: 'swap', char: LUNA }); } };
+$('#pSwap').onclick = () => { sfx.ui(); net.send({ t: 'swap' }); pause(false); };
+$('#lobbyPick').onclick = () => { sfx.ui(); openLevels(); };
+$('#lobbyLeave').onclick = () => { sfx.ui(); quitToMenu(); };
+$('#lobbyCopy').onclick = async () => {
+  const link = `${location.origin}/${app.room.code}`;
+  try { await navigator.clipboard.writeText(link); toast('Invite link copied!'); } catch { toast(link, 6000); }
+};
+
+$('#pResume').onclick = () => pause(false);
+$('#pRestart').onclick = () => {
+  if (app.mode === 'online') { net.send({ t: 'restart' }); pause(false); }
+  else { beginLevel(app.level); }
+};
+$('#pLevels').onclick = () => {
+  if (app.mode === 'online') { net.send({ t: 'menu' }); }
+  else { app.L = null; attract = null; openLevels(); }
+};
+$('#pQuit').onclick = () => quitToMenu();
+
+$('#resNext').onclick = () => {
+  const n = app.level + 1;
+  if (app.mode === 'online') net.send({ t: 'start', level: n }); else startLocal(n);
+};
+$('#resRetry').onclick = () => {
+  if (app.mode === 'online') net.send({ t: 'start', level: app.level }); else startLocal(app.level);
+};
+$('#resLevels').onclick = () => {
+  if (app.mode === 'online') { net.send({ t: 'menu' }); }
+  else { app.L = null; attract = null; openLevels(); }
+};
+
+window.addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea')) return;   // typing, not playing
+  // Esc on a menu screen with a Back button (How to play, Level select) goes back
+  const back = e.code === 'Escape' && !app.L && $(`#${document.body.dataset.screen} [data-back]`);
+  if (back) { e.preventDefault(); back.click(); return; }
+  if (e.key === 'Enter' && !$('#chat').hidden && (e.target === document.body || e.target === cv)) {
+    e.preventDefault(); chatOpen(true); return;
+  }
+  if (e.code === 'Escape' || e.code === 'KeyP') {
+    if (app.L && !app.results) { pause(!app.paused); e.preventDefault(); }
+  }
+  if (e.code === 'KeyR' && app.L && !app.results && document.activeElement?.tagName !== 'INPUT') {
+    if (app.mode === 'local') beginLevel(app.level);
+    else net.send({ t: 'restart' });
+  }
+});
+
+// touch controls (online play on phones/tablets)
+function bindTouch(id, bit) {
+  const el = $(id);
+  const on = (e) => { e.preventDefault(); input.touch |= bit; el.classList.add('down'); };
+  const off = (e) => { e.preventDefault(); input.touch &= ~bit; el.classList.remove('down'); };
+  el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off);
+  el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
+}
+bindTouch('#tLeft', 1); bindTouch('#tRight', 2); bindTouch('#tJump', 4); bindTouch('#tAct', 8);
+if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
+
+// boot
+window.__app = app;
+fit();
+show('menu');
+requestAnimationFrame(frame);
+const deep = location.pathname.slice(1).toUpperCase();
+if (/^[A-Z0-9]{5}$/.test(deep)) { $('#joinCode').value = deep; joinOnline(deep); }

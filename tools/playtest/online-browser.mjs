@@ -1,6 +1,9 @@
 // Online co-op with two browser pages against a local server, real key and mouse events.
 //   node tools/playtest/online-browser.mjs            (starts its own servers on 3456 and, LAG_MS=80, 3457)
 //   -> docs/img/playtest/online/, tools/playtest/out/online.json
+//   PORT=3460 LAGS=80,150 ONLY=lag node tools/playtest/online-browser.mjs
+//     PORT is the first port (the lag runs use PORT+1, PORT+2, ...), LAGS the LAG_MS values to
+//     play level 1 at, ONLY=lag skips the lobby and no-lag section.
 //
 // Lobby: host, join by typed code, join by /<CODE> link, a third client is turned away, swap by
 // clicking a character and by the swap button, chat both ways (and typing WASD in chat moves
@@ -21,6 +24,8 @@ mkdirSync(IMG, { recursive: true }); mkdirSync('tools/playtest/out', { recursive
 const out = { checks: [], plays: [] };
 const check = (name, ok, info = '') => { out.checks.push({ name, ok, info }); console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${info ? ' · ' + info : ''}`); };
 const B = await launch({ name: 'online' });
+const PORT = +(process.env.PORT || 3456);
+const LAGS = (process.env.LAGS || '80').split(',').map(Number);
 const scr = (P) => P.eval('document.body.dataset.screen');
 const waitFor = async (P, expr, ms = 6000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await P.eval(expr).catch(() => false)) return true; await sleep(50); } return false; };
 
@@ -64,17 +69,22 @@ async function play(H, G, level, tag, { lag = false } = {}) {
   const pend = () => Promise.all(C.map(P => P.eval(`[window.__app.pending.length, Math.round(window.__app?.S?.tick || 0), document.body.dataset.screen]`)));
   const sample = (P) => P.eval(`(() => {
     const A = window.__app, R = window.__rec, i = A.me, p = A.S.p[i], o = A.off.p[i];
-    const draw = { x: p.x + o.x, y: p.y + o.y };
+    // what the renderer drew this frame (app.drawn), else state plus correction offset
+    const V = A.drawn && A.drawn.p.length === A.S.p.length ? A.drawn : null;
+    const draw = V ? { x: V.p[i].x, y: V.p[i].y } : { x: p.x + o.x, y: p.y + o.y };
+    // a death resets the level and teleports both players: that is not a correction
+    if (R.tries !== A.S.tries || A.S.tick < (R.tick || 0)) { R.prevDraw = null; R.prevRemote = null; R.tries = A.S.tries; if (R.tick) R.resets++; }
+    R.tick = A.S.tick;
     const mag = Math.hypot(o.x, o.y);
     R.maxOff = Math.max(R.maxOff, mag);
     // backward: correction pulls the drawn player against its own direction of motion
     if (Math.abs(p.vx) > 0.5 && Math.sign(o.x) === Math.sign(p.vx) && Math.abs(o.x) > R.maxBack) R.maxBack = Math.abs(o.x);
-    if (R.prevDraw) { const d = Math.hypot(draw.x - R.prevDraw.x, draw.y - R.prevDraw.y); if (d > 14) R.snaps.push([A.S.tick, +d.toFixed(1)]); }
+    if (R.prevDraw) { const d = Math.hypot(draw.x - R.prevDraw.x, draw.y - R.prevDraw.y); R.maxStep = Math.max(R.maxStep || 0, d); if (d > 14) R.snaps.push([A.S.tick, +d.toFixed(1)]); }
     R.prevDraw = draw; R.frames++;
     // the partner, as this client draws it (predicted from their last known keys, then corrected)
-    const q = A.S.p[1 - i], oq = A.off.p[1 - i], dq = { x: q.x + oq.x, y: q.y + oq.y };
+    const q = A.S.p[1 - i], oq = A.off.p[1 - i], dq = V ? { x: V.p[1 - i].x, y: V.p[1 - i].y } : { x: q.x + oq.x, y: q.y + oq.y };
     R.maxOffRemote = Math.max(R.maxOffRemote || 0, Math.hypot(oq.x, oq.y));
-    if (R.prevRemote) { const d = Math.hypot(dq.x - R.prevRemote.x, dq.y - R.prevRemote.y); if (d > 14) (R.snapsRemote ||= []).push([A.S.tick, +d.toFixed(1)]); }
+    if (R.prevRemote) { const d = Math.hypot(dq.x - R.prevRemote.x, dq.y - R.prevRemote.y); R.maxStepRemote = Math.max(R.maxStepRemote || 0, d); if (d > 14) (R.snapsRemote ||= []).push([A.S.tick, +d.toFixed(1)]); }
     R.prevRemote = dq;
   })()`);
   let ended = false;
@@ -82,7 +92,7 @@ async function play(H, G, level, tag, { lag = false } = {}) {
     // regulate: keep a few unacked inputs (in flight + queued on the server)
     const [p0, p1] = await pend();
     (out.pend ||= []).push([k, p0[0], p1[0], p0[1], p1[1]]);
-    const rttTicks = lag ? 10 : 1;
+    const rttTicks = lag === true ? 10 : lag || 1;
     const target = rttTicks + 8;
     let n = 1;
     if (Math.min(p0[0], p1[0]) < target - 2) n = 2;
@@ -113,7 +123,7 @@ async function play(H, G, level, tag, { lag = false } = {}) {
     const s = await Promise.all(C.map(scr));
     if (s.every(x => x === 'results')) break;
   }
-  const fin = await Promise.all(C.map(P => P.eval(`(() => { const A = window.__app, S = A.S; return { screen: document.body.dataset.screen, me: A.me, tick: S.tick, phase: S.phase, gems: S.gm.reduce((a, b) => a + b, 0), p: S.p.map(p => [+p.x.toFixed(2), +p.y.toFixed(2)]), card: document.body.dataset.screen === 'results' ? { time: resTime.textContent, gems: resGems.textContent, rank: resRank.textContent, next: !resNext.hidden, wait: !resWait.hidden } : null, rec: { maxBack: +window.__rec.maxBack.toFixed(1), maxOff: +window.__rec.maxOff.toFixed(1), maxOffRemote: +(window.__rec.maxOffRemote || 0).toFixed(1), snapsRemote: (window.__rec.snapsRemote || []).slice(0, 10), snaps: window.__rec.snaps.slice(0, 10), nSnaps: window.__rec.snaps.length, frames: window.__rec.frames } }; })()`)));
+  const fin = await Promise.all(C.map(P => P.eval(`(() => { const A = window.__app, S = A.S; return { screen: document.body.dataset.screen, me: A.me, tick: S.tick, phase: S.phase, gems: S.gm.reduce((a, b) => a + b, 0), p: S.p.map(p => [+p.x.toFixed(2), +p.y.toFixed(2)]), card: document.body.dataset.screen === 'results' ? { time: resTime.textContent, gems: resGems.textContent, rank: resRank.textContent, next: !resNext.hidden, wait: !resWait.hidden } : null, rec: { maxBack: +window.__rec.maxBack.toFixed(1), maxOff: +window.__rec.maxOff.toFixed(1), maxOffRemote: +(window.__rec.maxOffRemote || 0).toFixed(1), snapsRemote: (window.__rec.snapsRemote || []).slice(0, 10), nSnapsRemote: (window.__rec.snapsRemote || []).length, maxStep: +(window.__rec.maxStep || 0).toFixed(1), maxStepRemote: +(window.__rec.maxStepRemote || 0).toFixed(1), drawn: !!window.__app.drawn, resets: window.__rec.resets, snaps: window.__rec.snaps.slice(0, 10), nSnaps: window.__rec.snaps.length, frames: window.__rec.frames } }; })()`)));
   await H.shot(`${IMG}/${tag}-host-results.jpg`); await G.shot(`${IMG}/${tag}-guest-results.jpg`);
   const same = JSON.stringify([fin[0].gems, fin[0].p]) === JSON.stringify([fin[1].gems, fin[1].p]) && Math.abs(fin[0].tick - fin[1].tick) <= 2;
   const res = { tag, level, bot: { wonTick: rec.wonTick, gems: rec.gems }, wall: ((Date.now() - t0) / 1000).toFixed(1), frames: frame, fin, same };
@@ -121,14 +131,15 @@ async function play(H, G, level, tag, { lag = false } = {}) {
   check(`${tag}: level ${level} played to the results card on both clients`, fin.every(f => f.screen === 'results'), `host ${JSON.stringify(fin[0].card)} guest ${JSON.stringify(fin[1].card)}; bot won at tick ${rec.wonTick}, server state at results tick ${fin[0].tick}`);
   check(`${tag}: both clients' final state is identical`, same, `host ${JSON.stringify([fin[0].tick, fin[0].gems, fin[0].p])} guest ${JSON.stringify([fin[1].tick, fin[1].gems, fin[1].p])}`);
   check(`${tag}: host can drive the results card, guest waits`, fin[0].card?.next !== undefined && (fin[0].card?.wait === false) && (fin[1].card?.wait === true), '');
+  console.log(`    largest per-frame step of the drawn player: host sees itself ${fin[0].rec.maxStep}px, partner ${fin[0].rec.maxStepRemote}px (${fin[0].rec.nSnapsRemote} steps over 14px); guest sees itself ${fin[1].rec.maxStep}px, partner ${fin[1].rec.maxStepRemote}px (${fin[1].rec.nSnapsRemote} over 14px); measured from ${fin[0].rec.drawn ? 'the drawn view' : 'state + offset'}; level resets ${fin[0].rec.resets}/${fin[1].rec.resets}`);
   console.log(`    corrections: host max offset ${fin[0].rec.maxOff}px, largest backward ${fin[0].rec.maxBack}px, snaps>14px ${fin[0].rec.nSnaps}; guest max offset ${fin[1].rec.maxOff}px, backward ${fin[1].rec.maxBack}px, snaps ${fin[1].rec.nSnaps} ${JSON.stringify(fin[1].rec.snaps)}; partner as drawn: host max offset ${fin[0].rec.maxOffRemote}px snaps ${JSON.stringify(fin[0].rec.snapsRemote)}, guest max offset ${fin[1].rec.maxOffRemote}px snaps ${JSON.stringify(fin[1].rec.snapsRemote)}`);
   for (const P of C) await P.eval('window.__pt.stop()');
   return res;
 }
 
 if (process.env.QUICK) {
-  const srv = await startServer(3456);
-  const { H, G } = await room(3456, 'quick');
+  const srv = await startServer(PORT);
+  const { H, G } = await room(PORT, 'quick');
   for (let i = 0; i < +(process.env.QUICK); i++) {
     out.pend = [];
     const r = await play(H, G, 1, 'quick-l1-' + i);
@@ -142,14 +153,14 @@ if (process.env.QUICK) {
   B.close(); srv.stop(); process.exit(0);
 }
 // ------------------------------------------------------------------ no added latency
-{
-  const srv = await startServer(3456);
-  const { H, G, code } = await room(3456, 'lobby');
+if (process.env.ONLY !== 'lag') {
+  const srv = await startServer(PORT);
+  const { H, G, code } = await room(PORT, 'lobby');
   await H.shot(`${IMG}/lobby-host.jpg`); await G.shot(`${IMG}/lobby-guest.jpg`);
   let r = await Promise.all([H, G].map(P => P.eval('[window.__app.me, window.__app.host]')));
   check('lobby: host is Sol, guest is Luna', r[0][0] === 0 && r[1][0] === 1 && r[0][1] && !r[1][1], JSON.stringify(r));
   // join by link, a third client in a full room
-  const T = await B.page(`http://localhost:3456/${code}`);
+  const T = await B.page(`http://localhost:${PORT}/${code}`);
   await sleep(800);
   const third = await T.eval(`[document.body.dataset.screen, document.querySelector('#toast').textContent]`);
   check('a third client opening the /<CODE> link of a full room is turned away with a message', third[0] === 'menu', JSON.stringify(third));
@@ -219,7 +230,7 @@ if (process.env.QUICK) {
   check('guest leaves the lobby: host sees the empty slot', left.slots.includes('Waiting…'), JSON.stringify(left));
   await H.shot(`${IMG}/host-after-guest-left-lobby.jpg`);
   // rejoin by link, start a level, guest quits mid-level -> host gets peer-left
-  await G.send('Page.navigate', { url: `http://localhost:3456/${code}` });
+  await G.send('Page.navigate', { url: `http://localhost:${PORT}/${code}` });
   await waitFor(G, `window.__app.room?.players.length === 2`, 5000);
   check('guest rejoins by /<CODE> link', (await G.eval('window.__app.room?.players.length')) === 2, await G.eval('location.pathname'));
   await H.click('#lobbyPick'); await sleep(200);
@@ -237,16 +248,16 @@ if (process.env.QUICK) {
   srv.stop();
 }
 
-// ------------------------------------------------------------------ LAG_MS=80 (160 ms round trip)
-{
-  const srv = await startServer(3457, { LAG_MS: '80' });
-  const { H, G } = await room(3457, 'lag80');
-  await play(H, G, 1, 'lag80-l1', { lag: true });
+// ------------------------------------------------------------------ LAG_MS=80 (160 ms round trip) and others
+for (const [j, lag] of LAGS.entries()) {
+  const srv = await startServer(PORT + 1 + j, { LAG_MS: String(lag) });
+  const { H, G } = await room(PORT + 1 + j, `lag${lag}`);
+  await play(H, G, 1, `lag${lag}-l1`, { lag: Math.ceil(lag / 8) });
   await H.close(); await G.close();
   srv.stop();
 }
 
-writeFileSync('tools/playtest/out/online.json', JSON.stringify(out, null, 1));
+writeFileSync(process.env.ONLY === 'lag' ? 'tools/playtest/out/online-lag.json' : 'tools/playtest/out/online.json', JSON.stringify(out, null, 1));
 if (B.pageErrors.length) console.log('page errors:', B.pageErrors.slice(0, 5));
 B.close();
 process.exit(0);

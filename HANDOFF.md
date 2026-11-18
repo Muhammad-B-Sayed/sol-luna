@@ -73,8 +73,7 @@ tools/coop-bot.js    Runs the bot scripts. V=1 prints every phase, NOCACHE=1 ign
 tools/check-headroom.js  Lists route jumps that hit a roof (the gate's ROOF line).
 tools/check-levels.js    One-character reachability search with the real physics. HELP=none / HELP=0,2 limit the partner.
 tools/check-solo.js  Fails if either character can finish a level alone.
-tools/check-deps.js  Old dependency proofs. Stale: see section 5.
-tools/check-all.sh   Old full run (checker, bot, check-deps, solo). Superseded by gate.js.
+tools/check-all.sh   Full run: the gate on every level, check-dodge.js, check-runner.js (section 5).
 tools/calibrate.js   Measures the movement envelope (jump, gaps, climbs) with the real sim.
 tools/check-dodge.js, check-dodge-browser.cjs   Dodgeball checks (section 9).
 tools/check-runner.js, runner-bot.js, runner-browser.js   Runner checks (section 10).
@@ -157,6 +156,12 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
   - Predicts every tick with its own input and the last known remote input, and sends `{t:'i', s, b}`.
   - On each snapshot it takes the server state, replays its own unacked inputs, and carries the
     visual difference as a decaying offset (`app.off`), so there's no visible snap.
+  - The partner is predicted from their last known keys, so a jump heard one round trip late
+    leaves a 60-180 px error. Their offset is carried whole (up to 240 px) and paid back at most
+    6 px per tick; your own character keeps the tight 64 px / 0.8 decay. Same in the Runner
+    (`runner-app.js`). Measured Nov 17 with `tools/playtest/online-browser.mjs` and
+    `runner-online.mjs`: the drawn partner moves at most 13 px per frame at `LAG_MS=80` and 150
+    (was 108-133 px), and your own character's backward correction stays 0 px.
   - It interpolates between ticks for high-refresh displays.
 - **Messages:**
 
@@ -178,6 +183,10 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
 - The background and stone are cached once per level/resize in `buildStatic()`. Liquids, gems,
   doors, mechanisms, characters and particles draw every frame.
 - Sound and particles are triggered by observing state changes, which keeps them robust to rollback.
+- A step-up (out of a pool, onto a step) is drawn as a short ease (`app.lift` in `main.js`), not
+  a one-frame 14 px pop. Rendering only.
+- The start hint is placed per room at run time (`placeHint()`), away from players, doors and
+  mechanisms. `node tools/playtest/hint-overlap.mjs` checks all 32 levels.
 - The HUD is drawn on the canvas; the menus are DOM.
 - The title screen runs a demo of level 1 behind the menu.
 
@@ -319,10 +328,10 @@ node tools/check-runner.js               # Runner fairness proof, 50 seeds to 17
   `check-solo.js` searches 400k (1.5M). A pass is a bounded search, not a proof: a solo route
   deeper than the limit can't be ruled out. On Nov 17 the gate's search hit its limit without a
   solo finish in 12, 14, 15, 19 and 25.
-- **Stale tools.** `check-deps.js` still asserts dependency tables for the first-pass rooms at
-  levels 14, 19 and 26, which are now different levels. Its results mean nothing for the current
-  rooms. `check-all.sh` runs it, plus `check-levels.js` on every level; use the gate instead.
-  Neither was run on Nov 17.
+- **Everything at once.** `./tools/check-all.sh` runs the gate on every level, then
+  `check-dodge.js` and `check-runner.js`. `LEVELS=1,5` limits the gate and `FAST=1` skips its
+  solo check. The old `check-deps.js`, which asserted dependency tables for first-pass rooms that
+  no longer exist, was deleted on Nov 17, 2026 (it is in git history).
 - **Dodgeball and Runner.** See sections 9 and 10.
 - **Online:** tested with two Playwright contexts: host, join by code, play, compare positions.
   Nov 2026: two `ws` clients swapped characters (alone, in the lobby and mid-level) and won
@@ -385,8 +394,6 @@ node tools/check-runner.js               # Runner fairness proof, 50 seeds to 17
 - **Unrecoverable mistakes left in on purpose:** crate B into 28's empty east shaft, falling down
   a crate chute in 32, dropping out of 26's control room while the runner is shut in a basin,
   dropping in 29 before the hall above is done. Re-check these after the re-spacing.
-- **Stale checks:** rewrite or delete `tools/check-deps.js` (it tests rooms that no longer exist)
-  and make `tools/check-all.sh` run the gate instead.
 - **Links rely on colour alone.** Add a symbol or a wire to mechanisms.
 - **Dodgeball online:** the defender sees a remote throw about one round trip late (section 9).
 - **3D Runner:** being built on another branch. Once merged, it is documented in `docs/runner3d.md`.

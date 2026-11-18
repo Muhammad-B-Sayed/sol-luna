@@ -28,10 +28,19 @@ const focus = (P) => P.eval(`(() => { const e = document.activeElement; return e
   // How to play, then Esc
   await P.click('#btnHow'); await sleep(300);
   await P.shot(`${IMG}/03-how-to-play.jpg`);
-  await P.key('Escape', 'keyDown'); await P.key('Escape', 'keyUp'); await sleep(200);
-  check('how to play: Esc goes back', (await scr(P)) === 'menu', `screen after Esc: ${await scr(P)}`);
   const backVis = await P.eval(`(() => { const b = document.querySelector('#how [data-back]').getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), viewport: innerHeight }; })()`);
-  check('how to play: Back button visible without scrolling at 1280x800', backVis.bottom <= backVis.viewport, JSON.stringify(backVis));
+  check('how to play: Back button visible without scrolling at 1280x800', backVis.top > 0 && backVis.bottom <= backVis.viewport, JSON.stringify(backVis));
+  const howOrder = [await focus(P)];
+  for (let k = 0; k < 2; k++) { await P.key('Tab', 'keyDown'); await P.key('Tab', 'keyUp'); howOrder.push(await focus(P)); }
+  check('how to play: focus starts on the text, Tab reaches Back', /How to play|DIV/.test(howOrder[0]) && howOrder.slice(1).some(f => /Back/.test(f)), howOrder.join(' > '));
+  // the text scrolls inside the card; at 1280x700 the Back button must still be on screen
+  await P.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 600, deviceScaleFactor: 1, mobile: false }); await sleep(200);
+  const small = await P.eval(`(() => { const b = document.querySelector('#how [data-back]').getBoundingClientRect(), t = document.querySelector('#how .how'); return { bottom: Math.round(b.bottom), viewport: innerHeight, scrolls: t.scrollHeight > t.clientHeight }; })()`);
+  check('how to play: at 1280x600 the text scrolls and Back stays on screen', small.bottom <= small.viewport && small.scrolls, JSON.stringify(small));
+  await P.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false }); await sleep(200);
+  await P.key('Escape', 'keyDown'); await P.key('Escape', 'keyUp'); await sleep(200);
+  check('how to play: Esc goes back, focus on How to play', (await scr(P)) === 'menu' && (await focus(P)) === 'btnHow', `screen after Esc: ${await scr(P)}, focus ${await focus(P)}`);
+  await P.click('#btnHow'); await sleep(200);
   await P.click('#how [data-back]'); await sleep(200);
   check('how to play: Back returns to title', (await scr(P)) === 'menu');
   // level select, locked
@@ -39,8 +48,10 @@ const focus = (P) => P.eval(`(() => { const e = document.activeElement; return e
   const lv = await P.eval(`({ n: document.querySelectorAll('#levelGrid .lvl').length, locked: document.querySelectorAll('#levelGrid .lvl.locked').length, focus: document.activeElement?.className })`);
   check('level select (fresh): 31 of 32 locked, level 1 focused', lv.n === 32 && lv.locked === 31, JSON.stringify(lv));
   await P.shot(`${IMG}/04-level-select-locked.jpg`);
+  const lock = await P.eval(`(() => { const b = document.querySelector('#levelGrid .lvl:nth-child(2)'); const l = b.querySelector('.lock'); return { lock: !!l && l.getBoundingClientRect().width > 0, label: b.getAttribute('aria-label'), first: !!document.querySelector('#levelGrid .lvl:nth-child(1) .lock') }; })()`);
+  check('level select: locked levels carry a lock mark and say so to screen readers, level 1 has none', lock.lock && /locked/.test(lock.label) && !lock.first, JSON.stringify(lock));
   await P.key('Escape', 'keyDown'); await P.key('Escape', 'keyUp'); await sleep(200);
-  check('level select: Esc goes back', (await scr(P)) === 'menu', `screen after Esc: ${await scr(P)}`);
+  check('level select: Esc goes back, focus on Play together', (await scr(P)) === 'menu' && (await focus(P)) === 'btnLocal', `screen after Esc: ${await scr(P)}, focus ${await focus(P)}`);
   if ((await scr(P)) !== 'menu') await P.click('#levels [data-back]');
   // clicking a locked level does nothing
   await P.click('#btnLocal'); await sleep(200);
