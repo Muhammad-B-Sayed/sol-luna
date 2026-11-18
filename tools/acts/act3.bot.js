@@ -170,7 +170,7 @@ SCRIPTS[27] = () => [
   // 3. green twice: Sol's gate, then W2
   press(LUNA, 32, 20), ...walk(SOL, 10, 6, 21), goto(LUNA, 31, 20), goto(LUNA, 30, 20),   // low rooms: walk, never hop
   ...walk(SOL, 4, 2, 21), grab(SOL, 1, 21), goto(SOL, 3, 21), goto(SOL, 4, 21), press(LUNA, 32, 20), waitPlat(3, 22),
-  goto(SOL, 3, 15), goto(SOL, 2, 15), grab(SOL, 1, 15), ...walk(SOL, 3, 5, 15), goto(SOL, 6, 15), rideWithCrate(27, 21, 28.0, 1),
+  goto(SOL, 3, 15), goto(SOL, 2, 15), grab(SOL, 1, 15), ...walk(SOL, 3, 5, 15), goto(SOL, 6, 15, { tol: 0.12 }), rideWithCrate(27, 21, 28.0, 1),
   // 4. Sol holds white: E2 takes Luna and the crate to floor 15; she hops west over it and pushes it to E3
   press(SOL, 7, 15), waitPlat(27, 21),
   grab(LUNA, 25, 14), pushTo(LUNA, 0, 36, { y: 14, tol: 0.5 }), goto(LUNA, 34, 14),
