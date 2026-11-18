@@ -25,6 +25,7 @@ export { VIEWS };
 
 const MAX_SPEED = R3.P3?.maxSpeed ?? 0.135;
 const ZONE_CLOSE = 12;   // the vignette starts growing when the wall is this close to a player
+const GLOW_C = [col(0xffa040), col(0x6ec0ff), col(0xfff0a0), col(0xd8f4ff)];   // character glows: outer Sol, Luna; inner Sol, Luna
 
 // Renders the scene into the composer's buffer once per viewport (split screen shares one bloom pass).
 class ViewportsPass extends Pass {
@@ -53,7 +54,7 @@ class CamRig {
     this.i = i;
     this.cam = new THREE.PerspectiveCamera(58, 1, 0.1, 700);
     this.cam.layers.enable(1 + i);
-    this.pos = null; this.look = new THREE.Vector3(); this.fov = 58; this.shake = 0; this.y = 0; this.x = 0;
+    this.pos = null; this.look = new THREE.Vector3(); this._t = new THREE.Vector3(); this._l = new THREE.Vector3(); this.fov = 58; this.shake = 0; this.y = 0; this.x = 0;
   }
   // p: interpolated sim position of the followed player; vz sim forward speed; split: tall viewport
   update(p, vz, alive, dt, split, aspect, intro, time) {
@@ -64,8 +65,8 @@ class CamRig {
       this.y = this.pos == null ? ty : this.y + (ty - this.y) * Math.min(1, dt * 3.2);
       this.x = this.pos == null ? p.x : this.x + (p.x * 0.72 - this.x) * Math.min(1, dt * 4.5);
     }
-    const target = new THREE.Vector3(this.x, this.y + up, -(p.z - back));
-    const look = new THREE.Vector3(this.x + (p.x - this.x) * 0.6, this.y + 0.7, -(p.z + ahead + kAhead * 1.5));
+    const target = this._t.set(this.x, this.y + up, -(p.z - back));
+    const look = this._l.set(this.x + (p.x - this.x) * 0.6, this.y + 0.7, -(p.z + ahead + kAhead * 1.5));
     if (intro > 0) {   // countdown: an establishing shot from higher up and to the side, easing in
       const e = intro * intro * (3 - 2 * intro);
       target.x += Math.sin(time * 0.3) * 0 + (this.i ? 1 : -1) * 4.5 * e; target.y += 4 * e; target.z += 5 * e;
@@ -170,7 +171,30 @@ export class Runner3DRenderer {
     this.composer.addPass(new OutputPass());
   }
 
+  // Compile the shaders of every kind's view once, on a throwaway course, so the first thorn
+  // curtain or orb lane of a match doesn't stall a frame while its programs compile.
+  warmUp() {
+    if (this.warm) return;
+    this.warm = true;
+    const Lw = R3.buildRunner3d(1);
+    R3.ensureGenerated(Lw, 900);
+    const tmp = new THREE.Group(), made = [], kinds = new Set();
+    Lw.objs.forEach((o, i) => {
+      const key = o.k + (o.k === 'floor' ? o.skin : '');
+      if (kinds.has(key)) return;
+      kinds.add(key);
+      const obj = viewFor(o.k).make(o, Lw, i);
+      obj.traverse((c) => { c.visible = true; });
+      tmp.add(obj); made.push(obj);
+    });
+    this.scene.add(tmp);
+    try { for (const rg of this.rigs) this.renderer.compile(this.scene, rg.cam); } catch {}
+    this.scene.remove(tmp);
+    for (const obj of made) disposeView(obj);
+  }
+
   reset(L) {
+    this.warmUp();
     this.L = L;
     for (const [, v] of this.views) { this.objRoot.remove(v.obj); disposeView(v.obj); }
     this.views.clear();
@@ -347,10 +371,10 @@ export class Runner3DRenderer {
       const vis = c.root.visible && deadT < 0.6;
       // glow and light
       const gk = deadT >= 0 ? Math.max(0, 1 - deadT * 1.5) : 1;
-      const gc = i ? col(0x6ec0ff) : col(0xffa040);
+      const gc = GLOW_C[i];
       if (gk > 0) {
         this.glow.add(q.x, q.y + 0.8, -q.z, 1.9, gc, (0.16 + 0.03 * Math.sin(time * 3 + i)) * gk);
-        this.glow.add(q.x, q.y + 0.55, -q.z, 0.7, i ? col(0xd8f4ff) : col(0xfff0a0), 0.22 * gk);
+        this.glow.add(q.x, q.y + 0.55, -q.z, 0.7, GLOW_C[2 + i], 0.22 * gk);
       }
       this.plights[i].position.set(q.x, q.y + 0.9, -q.z);
       this.plights[i].intensity = 6 * gk;

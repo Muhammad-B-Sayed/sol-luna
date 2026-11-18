@@ -140,7 +140,7 @@ try {
     if (name === 'leak') { console.log('leak         ', await ev('window.__leak')); continue; }
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(join(OUT, `render-${name}.png`), Buffer.from(shot.data, 'base64'));
-    console.log(`${name.padEnd(12)} ${String(st.calls).padStart(4)} calls ${String(Math.round(st.triangles / 1000)).padStart(5)}k tris  ${st.views} views  ${st.level}  ~${ms.toFixed(0)} ms/frame (software GL)  -> ${join(OUT, `render-${name}.png`)}`);
+    console.log(`${name.padEnd(12)} ${String(st.calls).padStart(4)} calls ${String(Math.round(st.triangles / 1000)).padStart(5)}k tris  ${st.views} views  ${st.level}  ~${ms.toFixed(0)} ms per step  -> ${join(OUT, `render-${name}.png`)}`);
     if (logs.length) console.log('   ', logs.slice(0, 6).join('\n    '));
    } catch (e) { console.log(name, 'FAILED', e.message, logs.slice(0, 6).join(' | ')); failed++; await openPage().catch(() => {}); }
   }

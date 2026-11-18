@@ -4,14 +4,16 @@
 //
 //   PORT=3420 node server/index.js &                       (LAG_MS=80 to test prediction)
 //   PORT=3420 CHROME=/usr/bin/chromium node tools/runner3d-browser.js
-// The play checks run on the 2D debug view (?r3ddebug=1): headless WebGL here is SwiftShader, and
-// the real renderer draws about 0.5 frames a second at 1280x720, far too slow to play a match.
-// A second pass then loads the real renderer, checks it draws without errors and takes the
-// screenshots; that pass fast-forwards the sim inside the page where it needs the match to move.
+// The play checks run on the 2D debug view (?r3ddebug=1), so they pass on a machine without a GPU.
+// A second pass then plays with the real renderer: Chromium gets the GPU with --enable-gpu (the
+// default GL_FLAGS; tools/r3d-glprobe.js shows what a set of flags gets). It plays a local split-screen
+// match and an online match in real time, takes the screenshots mid-match, and checks that both
+// online clients agree and how far prediction corrects (run the server with LAG_MS=80 for that).
+// On software GL (SwiftShader) the real renderer is too slow to play, so that pass fast-forwards the
+// local sim inside the page and takes the online shots during the countdown.
 // Env: OUT (screenshots, default docs/img/runner3d), ONLY=local|online|webgl, RENDER=debug|webgl|both
-// (default both: debug play checks, then the WebGL pass), GL_FLAGS (extra Chromium flags, e.g. "--use-angle=swiftshader --enable-unsafe-swiftshader"
-// where headless has no WebGL; here the default headless build has WebGL2 and those flags drop it
-// to about 12 fps), MAX_VIEW_BACK (units the drawn local player may move backwards, default 0.05).
+// (default both), GL_FLAGS (Chromium GL flags, default --enable-gpu), MAX_VIEW_BACK (units the drawn
+// local player may move backwards, default 0.05), MAX_REMOTE_STEP (units the drawn remote player may move in one frame, default 0.5).
 import { spawn, execSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -28,6 +30,7 @@ const RENDER = process.env.RENDER || 'both';
 const QS = RENDER === 'webgl' ? '' : '?r3ddebug=1';
 const FP = RENDER === 'both' ? 'debug-' : '';   // screenshot prefix of the play checks when the WebGL pass also runs
 const MAX_VIEW_BACK = +(process.env.MAX_VIEW_BACK || 0.05);
+const MAX_REMOTE_STEP = +(process.env.MAX_REMOTE_STEP || 0.5);
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -208,6 +211,8 @@ try {
     await A.shot(FP + 'local-over');
     await A.waitFor(`document.body.dataset.screen === 'r3Results'`, 5000);
     const res = await A.eval(`[...document.querySelectorAll('#r3Title, #r3Sol, #r3Luna')].map(e => e.textContent.trim()).join(' | ')`);
+    const tips = await A.eval('Object.keys(window.__runner3d.tipSeen[0])');
+    check('local: a first-time tip came up for the first obstacle kind', tips.length > 0, tips.join(', '));
     check('local: results card shows the winner, times and distances', /Sol wins/.test(res) && /\d+ m/.test(res) && /dusk/.test(res), res);
     await A.shot(FP + 'results');
     const seedBefore = s5.seed;
@@ -332,6 +337,7 @@ try {
     // ---------------------------------------------------------------- the real renderer
     console.log('WebGL renderer (screenshots)');
     const slow = 60000;
+    let fast = false;
     const FF = (n, bits, toEnd = false) => `(async () => {   // fast-forward the local sim n ticks
       const R = await import('/shared/runner3d.js'); const r = window.__runner3d, f = (${bits});
       for (let k = 0; k < ${n} && (${toEnd} || r.S.phase !== 2); k++) { r.S = R.stepRunner3d(r.L, r.S, f(r.S.tick)); }
@@ -343,11 +349,27 @@ try {
     const loaded = await A.waitFor('window.__runner3d.rendKind !== ""', slow);
     const kind = await A.eval('window.__runner3d.rendKind');
     check('webgl: the title button loads the real renderer', loaded && kind === 'webgl', kind);
-    // Sol runs and hops, Luna runs a little slower
-    await A.eval(FF(330, `(t) => [8 | (t % 70 === 0 ? 4 : 0), t % 3 ? 8 : 0]`));
-    const f0 = await A.eval('window.__runner3d.frames || 0');
-    await A.waitFor(`(window.__runner3d.frames || 0) > ${f0 + 2}`, slow);
-    await A.shot('local-split');
+    const gl = await A.eval(`(() => { const c = document.createElement('canvas').getContext('webgl2'), e = c && c.getExtension('WEBGL_debug_renderer_info'); return e ? c.getParameter(e.UNMASKED_RENDERER_WEBGL) : '?' })()`);
+    // a real GPU draws in real time: then the matches below are played, not fast-forwarded
+    await A.waitFor('window.__runner3d.S.phase === 1', 8000);
+    const fr0 = await A.eval('window.__runner3d.frames || 0'); await sleep(1000);
+    const localFps = (await A.eval('window.__runner3d.frames || 0')) - fr0;
+    fast = localFps >= 30 && !/SwiftShader/i.test(gl);
+    console.log(`    GL: ${gl}; local split screen draws ${localFps} frames a second${fast ? ' (playing in real time)' : ' (fast-forwarding)'}`);
+    if (fast) {
+      await A.hold(['ArrowUp', 'KeyW'], 2500);
+      await A.holdUntil(['ArrowUp', 'KeyW'], 'window.__runner3d.S.p.every(p => p.z > 22)', 6000);
+      await A.shot('local-split');
+      const sp = await A.eval(ST);
+      check('webgl: local split screen plays in real time', sp.p.every(p => p.z > 10), JSON.stringify(sp.p.map(p => p.z)));
+      await A.eval(`(() => { window.__runner3d.prev = window.__runner3d.capture(window.__runner3d.S); })()`);
+    } else {
+      // Sol runs and hops, Luna runs a little slower
+      await A.eval(FF(330, `(t) => [8 | (t % 70 === 0 ? 4 : 0), t % 3 ? 8 : 0]`));
+      const f0 = await A.eval('window.__runner3d.frames || 0');
+      await A.waitFor(`(window.__runner3d.frames || 0) > ${f0 + 2}`, slow);
+      await A.shot('local-split');
+    }
     // Sol keeps running, Luna stops: Luna is caught
     await A.eval(FF(4000, `(t) => [8 | (t % 70 === 0 ? 4 : 0), 0]`));
     await A.eval(FF(68, `() => [0, 0]`, true));   // the results card opens 70 ticks after the end
@@ -367,16 +389,49 @@ try {
     const G = await page(BASE + '/' + code);
     await H.waitFor(`!document.querySelector('#lobbyRunner3d').disabled`, slow);
     await H.shot('lobby');
-    // build the renderers before the match: at this machine's frame rate it would take the whole match
     await Promise.all([H, G].map(P => P.eval('window.__runner3d.loadRenderer().then(() => window.__runner3d.rendKind)')));
     await H.click('#lobbyRunner3d');
-    const ok = await H.waitFor('window.__runner3d.rendKind === "webgl"', slow) && await G.waitFor('window.__runner3d.rendKind === "webgl"', slow);
+    const ok = await H.waitFor('window.__runner3d.rendKind === "webgl" && window.__runner3d.S', slow) && await G.waitFor('window.__runner3d.rendKind === "webgl" && window.__runner3d.S', slow);
     check('webgl: both online clients load the real renderer', ok);
-    // here the clients draw far slower than the server's real-time 60 Hz, so the match can't be
-    // played in this pass: the shots show both views during the server's countdown
-    await Promise.all([H, G].map(P => P.waitFor('(window.__runner3d.frames || 0) > 1', slow)));
-    await H.shot('online-host'); await G.shot('online-guest');
-    console.log('    online shots taken at server tick', await H.eval('window.__runner3d.S?.tick'), '(the countdown is 180)');
+    if (fast) {
+      // real time: both run forward through the start, and the shots are taken mid-match
+      const me = await Promise.all([H, G].map(P => P.eval('window.__app.me')));
+      const OZ = (i) => `window.__runner3d.S.p[${i}].z`;
+      await H.waitFor('window.__runner3d.S.phase === 1', 8000);
+      const f0 = await Promise.all([H, G].map(P => P.eval('window.__runner3d.frames || 0')));
+      const t0 = Date.now();
+      await H.key('ArrowUp', 'keyDown'); await G.key('KeyW', 'keyDown');
+      const ran = await H.waitFor(`${OZ(me[0])} > 16 && ${OZ(me[1])} > 16`, 10000, 30);
+      await H.shot('online-host'); await G.shot('online-guest');
+      const fps = (await Promise.all([H, G].map(P => P.eval('window.__runner3d.frames || 0')))).map((f, i) => (f - f0[i]) / ((Date.now() - t0) / 1000));
+      await H.key('ArrowUp', 'keyUp'); await G.key('KeyW', 'keyUp');
+      console.log(`    online frame rate while running (each client, both on this GPU): ${fps.map(f => f.toFixed(0)).join(' / ')} fps`);
+      check('webgl: both online players ran through the start in real time', ran);
+      for (let k = 0; k < 2; k++) {
+        await H.waitFor('window.__runner3d.S.p.every(p => p.gr)', 5000, 30);
+        await H.tap('Space', 70); await G.tap('Space', 70);
+        await sleep(300);
+      }
+      await H.waitFor('window.__runner3d.S.p.every(p => p.gr && Math.abs(p.vz) < 1e-9)', 5000, 30);
+      await sleep(500);
+      const o2 = await Promise.all([H, G].map(P => P.eval(ST)));
+      const diff = Math.max(...o2[0].p.map((q, i) => Math.abs(q.x - o2[1].p[i].x) + Math.abs(q.y - o2[1].p[i].y) + Math.abs(q.z - o2[1].p[i].z)));
+      check('webgl: both online clients agree on positions and jumps', diff < 0.02 && o2[0].p.every((q, i) => q.jumpN === o2[1].p[i].jumpN), `max diff ${diff.toFixed(4)}, ticks ${o2[0].tick}/${o2[1].tick}`);
+      // the guest runs on alone (its prediction is what we measure), the host stands still and is caught
+      await G.holdUntil(['KeyW'], `${OZ(me[1])} > ${OZ(me[0])} + 4`);
+      await G.waitFor(`document.body.dataset.screen === 'r3Results'`, 40000);
+      await G.shot('online-results');
+      const corr = await Promise.all([H, G].map(P => P.eval('window.__runner3d.corr')));
+      console.log('    prediction (real renderer): ' + corr.map((c, i) => `${i ? 'guest' : 'host'}: own player max correction ${c.max.toFixed(4)}, back ${c.back.toFixed(4)}, drawn back ${c.viewBack.toFixed(4)}; other player's largest drawn step ${c.remoteStep.toFixed(3)}, drawn back ${c.remoteBack.toFixed(4)} over ${c.n} snapshots`).join('\n    '));
+      check('webgl: the local player is never drawn moving backwards', corr.every(c => c.viewBack <= MAX_VIEW_BACK), corr.map(c => c.viewBack.toFixed(4)).join(', '));
+      check('webgl: the other player\'s drawn motion is continuous (no pops)', corr.every(c => c.remoteStep <= MAX_REMOTE_STEP), corr.map(c => c.remoteStep.toFixed(3)).join(', '));
+    } else {
+      // software GL: the clients draw far slower than the server's real-time 60 Hz, so the match
+      // can't be played here; the shots show both views during the server's countdown
+      await Promise.all([H, G].map(P => P.waitFor('(window.__runner3d.frames || 0) > 1', slow)));
+      await H.shot('online-host'); await G.shot('online-guest');
+      console.log('    online shots taken at server tick', await H.eval('window.__runner3d.S?.tick'), '(the countdown is 180)');
+    }
     const oe = await Promise.all([H, G].map(P => P.eval('window.__runner3d.renderErrors')));
     check('webgl: online views draw without renderer errors', oe.every(e => !e.length), oe.flat().slice(0, 2).join(' | '));
     await H.eval(`window.__runner3d.net.send({ t: 'menu' })`);

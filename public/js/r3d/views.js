@@ -10,6 +10,8 @@ import {
 
 export const VIEWS = {};
 
+// scratch objects for per-frame updates (no garbage every frame)
+const _va = new THREE.Vector3(), _vb = new THREE.Vector3(), _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p3 = new THREE.Vector3(), _s3 = new THREE.Vector3();
 const mid = (o) => [(o.x0 + o.x1) / 2, (o.z0 + o.z1) / 2, o.x1 - o.x0, o.z1 - o.z0];
 const _c = new THREE.Color();
 
@@ -272,7 +274,7 @@ VIEWS.tilt = {
     const u = v.userData;
     const ax = pose ? pose.ax : 0, az = pose ? pose.az : 0;
     shearTo(u.slab, o.cx, o.y, o.cz, ax, az);
-    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    const a = _va, b = _vb;
     for (const c of u.chains) {
       const X = o.cx + c.sx * (o.hx - 0.25), Z = o.cz + c.sz * (o.hz - 0.25);
       const Y = o.y + ax * (X - o.cx) + az * (Z - o.cz);
@@ -510,7 +512,7 @@ VIEWS.carousel = {
   },
   update(v, o, st, pose, ctx) {
     const u = v.userData;
-    const a = new THREE.Vector3(o.cx, o.y + 2.5, -o.cz), b = new THREE.Vector3();
+    const a = _va.set(o.cx, o.y + 2.5, -o.cz), b = _vb;
     for (let j = 0; j < u.stones.length; j++) {
       const s = pose && pose.stones[j]; if (!s) continue;
       u.stones[j].position.set(s.x, o.y, -s.z);
@@ -579,7 +581,7 @@ VIEWS.gate = {
   update(v, o, st, pose, ctx) {
     const u = v.userData, gx = pose ? pose.x : o.cx, gw = (pose ? pose.gw : o.gw) + 0.06;
     const segs = [[o.x0, gx - gw], [gx + gw, o.x1]];
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3();
+    const m = _m4, q = _q, e = _e, p = _p3, s = _s3;
     let nt = 0, k = 0;
     segs.forEach(([a, b], si) => {
       const len = b - a;

@@ -53,7 +53,7 @@ export class Runner3DMode {
     this.acc = 0;
     this.RR = null; this.rendKind = '';
     this.renderErrors = [];
-    this.corr = { max: 0, back: 0, viewBack: 0, n: 0 };   // prediction corrections of your own player (units)
+    this.corr = { max: 0, back: 0, viewBack: 0, n: 0, remoteStep: 0, remoteBack: 0 };   // prediction corrections (units)
     this.canvas = $('#game3d');
     this.buildHud();
     this.buildTouch();
@@ -81,7 +81,8 @@ export class Runner3DMode {
     this.pending = []; this.seq = 0; this.remoteBits = 0;
     this.heard = null; this.lastDrawn = null;
     this.tipSeen = [{}, {}]; this.tipShown = [null, null];
-    this.corr = { max: 0, back: 0, viewBack: 0, n: 0 };
+    this.corr = { max: 0, back: 0, viewBack: 0, n: 0, remoteStep: 0, remoteBack: 0 };
+    this.lastRemote = null;
     this.active = true;
     this.input.mode3d = true;
     document.body.classList.add('r3d');
@@ -267,6 +268,18 @@ export class Runner3DMode {
       if (back > this.corr.viewBack && (this.input.any3d() & 8)) this.corr.viewBack = back;   // drawn backwards while holding forward
     }
     this.lastDrawn = v.p[this.app.me]?.z ?? null;
+    // the other player's drawn motion: the largest step between two frames, and the most it moved
+    // backwards in one frame while running forward (a pop or a pull-back would show up here)
+    if (this.online && this.S.phase === R3_PLAY) {
+      const o = 1 - this.app.me, q = v.p[o], rp = this.S.p[o];
+      if (this.lastRemote && rp.alive) {
+        const d = Math.hypot(q.x - this.lastRemote.x, q.y - this.lastRemote.y, q.z - this.lastRemote.z);
+        if (d > this.corr.remoteStep) this.corr.remoteStep = d;
+        const back = this.lastRemote.z - q.z;
+        if ((this.remoteBits & 8) && rp.vz > 0.05 && back > this.corr.remoteBack) this.corr.remoteBack = back;
+      }
+      this.lastRemote = rp.alive ? { x: q.x, y: q.y, z: q.z } : null;
+    }
     this.hud(v);
     if (this.RR) {
       try { this.RR.draw(this.L, this.S, v, now / 1000, { split: !this.online, me: this.online ? this.app.me : 0, paused: this.paused }); this.frames = (this.frames || 0) + 1; }
