@@ -192,6 +192,6 @@ SCRIPTS[27] = () => [
   grab(SOL, 23, 11, K), board(SOL, 21, 16), goto(LUNA, 15, 3, K), grab(SOL, 19, 19, K), waitPlat(21, 28, false),   // step off the sinking counterweight into a niche
   seek(SOL, 'sol on the foot plate, clear of the counterweight', (S, p) => S.act[4] && p.gr && Math.abs(p.vx) < 0.05 && cx(p) > 20.1 && cx(p) < 20.5 && bot(p) > 27.7, { key: 'foot27', keep: true, h: (S, p) => Math.abs(cx(p) - 20.3) * 7 + Math.abs(bot(p) - 28) * 4 }),
   waitPlat(21, 28),
-  goto(LUNA, 18, 15, K), grab(LUNA, 20, 8, K), board(LUNA, 21, 16),
+  mv(LUNA, 18.5), goto(LUNA, 18, 15, K), grab(LUNA, 20, 8, K), board(LUNA, 21, 16),
   goto(SOL, 19, 27, K), door(SOL, K), grab(LUNA, 19, 22, K), door(LUNA, K), win(),
 ];
