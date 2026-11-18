@@ -512,7 +512,7 @@ function dodgeMeter() {
     if (D.hitN > e.hb || (D.ball.st !== B_LIVE && D.ball.pv < 0 && D.wind === 0)) e.hitN = D.hitN;
   };
   M.begin = (me) => { M.me = me; M.round++; M.srv.push({}); M.shown.push({}); };
-  M.snap = (m) => { M.srvD = { phase: m.st.d.phase, t: m.st.d.t, score: m.st.d.score.slice(), round: M.round }; settle(M.srv[M.round], m.st); };
+  M.snap = (m) => { M.srvD = { phase: m.st.d.phase, t: m.st.d.t, score: m.st.d.score.slice(), round: M.round, holder: m.st.d.holder, ball: [m.st.d.ball.st, Math.round(m.st.d.ball.x), Math.round(m.st.d.ball.y)], clock: m.st.d.clock, p: m.st.p.map(p => [Math.round(p.x), Math.round(p.y)]) }; settle(M.srv[M.round], m.st); };
   M.state = (S) => { if (M.round >= 0 && S.d) settle(M.shown[M.round], S); };
   M.frame = () => {};
   M.report = () => {
@@ -538,7 +538,7 @@ function dodgeMeter() {
 
 async function dodgeMatch(seed, port) {
   const meters = [dodgeMeter(), dodgeMeter()];
-  const A = makeClient('dodge', port, seed, 0, dodgeBot(rng(seed * 31 + 1), SOL), meters[0]);
+  const A = makeClient('dodge', port, seed, 0, null, meters[0]);
   const B = makeClient('dodge', port, seed, 1, null, meters[1]);
   await Promise.all([A.open, B.open]);
   const room = new Promise((res) => A.on('room', (m) => { if (m.players.length === 1) res(m.code); }));
@@ -547,8 +547,9 @@ async function dodgeMatch(seed, port) {
   const both = new Promise((res) => A.on('room', (m) => { if (m.players.length === 2) res(); }));
   B.send({ t: 'join', code, name: 'B' });
   await both;
-  B.track = dodgeBot(rng(seed * 31 + 2), B.me);
-  A.track = dodgeBot(rng(seed * 31 + 1), A.me);
+  // each bot learns its character on its first tick (the guest's 'room' message can come late)
+  const lazy = (c, k) => { let bot = null; return () => (bot ||= dodgeBot(rng(seed * 31 + k), c.me))(c); };
+  A.track = lazy(A, 1); B.track = lazy(B, 2);
   A.send({ t: 'start', mode: 'dodge' });
   const t0 = performance.now();
   let asked = -1, matches = 0;
@@ -556,6 +557,7 @@ async function dodgeMatch(seed, port) {
     const iv = setInterval(() => {
       const d = meters[0].srvD;
       if (d && d.phase === DP_OVER && d.t > 90 && asked !== d.round) { asked = d.round; matches++; A.send({ t: 'restart' }); }
+      if (V && Math.round(performance.now() - t0) % 3000 < 100) console.log(`  dodge ${seed}: ${JSON.stringify(meters[0].srvD)}`);
       if (performance.now() - t0 > SECS * 1000) { clearInterval(iv); res(); }
     }, 100);
   });
