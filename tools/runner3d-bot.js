@@ -6,8 +6,8 @@ import { cloneRunner3d, stepRunner3d, STATEFUL, IN_L, IN_R, IN_J, IN_F, IN_B } f
 
 const L_ = IN_L, R_ = IN_R, J_ = IN_J, F_ = IN_F, B_ = IN_B;
 export { L_, R_, J_, F_, B_ };
-// [bits, ticks]; ticks -1 = hold until standing. A timed step that ends in the air keeps
-// holding its bits until the player stands (or dies).
+// [bits, ticks]; ticks -1 = hold until standing. If the last step of a macro ends in the air
+// it keeps holding its bits until the player stands (or dies); earlier steps just hand over.
 const FL = F_ | L_, FR = F_ | R_;
 export const MACROS = [
   [[F_, 6]], [[F_, 16]], [[F_, 2]], [[0, 5]], [[0, 18]], [[B_, 5]],
@@ -29,6 +29,11 @@ export const MACROS = [
   [[FL | J_, 1], [FL, 10], [0, -1]], [[FR | J_, 1], [FR, 10], [0, -1]],
   [[F_ | J_, 1], [F_, 12], [FL, -1]], [[F_ | J_, 1], [F_, 12], [FR, -1]],
   [[L_ | J_, 1], [L_, -1]], [[R_ | J_, 1], [R_, -1]],
+  // diagonal take-off then straight, for zigzags between small stones
+  [[FL | J_, 1], [FL, 6], [F_, -1]], [[FR | J_, 1], [FR, 6], [F_, -1]],
+  [[FL | J_, 1], [FL, 16], [F_, -1]], [[FR | J_, 1], [FR, 16], [F_, -1]],
+  // turn on the spot, for a stone too short to turn while running
+  [[FL, 3]], [[FR, 3]],
 ];
 
 class Heap {
@@ -103,9 +108,10 @@ export function search(L, S0, who, opts) {
         if (!p.alive || S.tick > deadline) res = -1;
         else if (done(S, p)) res = 1;
       };
-      for (const [bits, n] of m) {
+      for (let si = 0; si < m.length; si++) {
+        const [bits, n] = m[si];
         if (n > 0) for (let k = 0; k < n && !res; k++) one(bits);
-        if (n < 0 || !p.gr) for (let k = 0; k < 240 && !res; k++) { one(bits); if (p.gr) break; }
+        if (n < 0 || (!p.gr && si === m.length - 1)) for (let k = 0; k < 240 && !res; k++) { one(bits); if (p.gr) break; }
         if (res) break;
       }
       if (res === 1) return { ok: true, plan: unroll(node, runs), tick: S.tick, S, exp };

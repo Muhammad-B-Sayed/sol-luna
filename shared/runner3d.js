@@ -38,11 +38,13 @@ export const TICK_RATE = 60;
 export const HALF_W = 5;          // nominal half width of the course (units)
 export const FALL_Y = -14;        // below this a player is lost ('fall')
 export const FALL_DEPTH = 9;      // ... and also this far below the last ground they stood on
-// Lead cap. A standing player more than LEAD_MAX ahead of the zone can't walk forward (they
-// stop until the zone closes in; sideways and back still work). In the air nothing is taken
-// away (a jump over a pit is never cut short); you just can't speed up. A standing jump still
-// clears every gap (air control), so being held at the cap at a pit edge costs only time. LEAD_HARD is a hard stop well out
-// of normal reach (a full jump from LEAD_MAX lands well short of it).
+// Lead cap. A player standing on a run-up (floor skin 1: plain safe stone before each
+// feature) more than LEAD_MAX ahead of the zone can't walk forward until the zone closes in
+// (sideways and back still work). Nothing is ever held in the air or inside a feature, so a
+// jump is never cut short and nobody is frozen on a crumbling slab or in a blade's path. A
+// standing jump from the edge of a run-up still clears every gap (air control), so the cap
+// only costs time. LEAD_HARD is how far past the zone objects are always active (a player
+// can be further ahead inside a long feature; the window follows them too).
 export const LEAD_MAX = 32;
 export const LEAD_HARD = LEAD_MAX + 14;
 
@@ -69,12 +71,12 @@ export const WHY3 = {
 // Object kinds. Each sim author keeps this table current; the renderer has one view per kind
 // and draws an unknown kind as a plain box over its footprint.
 export const KIND_DOC = {
-  floor: 'static stone slab, solid on all sides. Top at y, { h } thickness below y. { skin }: 0 plain, 1 run-up, 2 landing. pose: static.',
+  floor: 'static stone slab, solid on all sides. Top at y, { h } thickness below y. { skin }: 0 plain, 1 run-up (where the lead cap holds a player), 2 landing, 3 stepping stone, 4 narrow beam, 5 post or pillar. pose: static.',
   pool: 'liquid set into the floor. { el: 0 sun | 1 moon | 2 shade }. Liquid surface at y; its stone bottom (solid) is POOL_DEP below. Deadly when your feet sink below y - 0.12 over it: sun kills Luna, moon kills Sol, shade both. pose: static.',
   spikes: 'crystal thorns standing on the floor at y, deadly to both. Thorn tips at y + th. pose: static.',
   ramp: 'sloped slab, walkable. Top rises linearly from y at z0 to y1 at z1. { h } thickness. pose: static.',
   tilt: 'chain-hung slab over a pit. Centre (cx, cz), half sizes hx, hz (= the footprint), top y at rest, chains rise to y + chain. Tilts on two axes toward the weight on it and springs back level. { amax } max slope. pose: { x: cx, y, z: cz, ax, az } where the top surface is y + ax*(X-cx) + az*(Z-cz) (ax, az = slopes, |ax|,|az| <= amax).',
-  crumble: 'ember slab over a pit (footprint, top y, 0.5 thick). Cracks for { crack } ticks once stood on, falls away, re-forms. pose: { x, y, z, st: 0 whole | 1 cracking | 2 fallen | 3 re-forming, t: ticks in that state, solid: bool, dy: drop below y to draw it at (falling), shake: 0..1 }.',
+  crumble: 'ember slab over a pit (footprint, top y, 0.5 thick); they come in pairs side by side with a 0.25 seam. Cracks for { crack } ticks once stood on, falls away, re-forms. pose: { x, y, z, st: 0 whole | 1 cracking | 2 fallen | 3 re-forming, t: ticks in that state, solid: bool, dy: drop below y to draw it at (falling), shake: 0..1 }.',
   eclipse: 'eclipse stone over a pit (footprint, top y, 0.5 thick). Solid only for its element { el: 0 sun (Sol stands on it) | 1 moon (Luna) }; the other passes through. pose: static.',
   sweeper: 'thorn arm turning over a floor around a post at (cx, cz). Arm length R from the centre, { arms: 1 one arm | 2 a bar through the centre }, low: deadly from y up to y + bar. One turn every P ticks, { dir: 1 clockwise seen from above (from +z toward +x) | -1 }. pose: { x: cx, y, z: cz, rot } rot = angle in radians of arm 0, measured from +z toward +x (arm points along (sin rot, cos rot) in (x, z)).',
   pendulum: 'blade on a rod swinging sideways across the path. Pivot (px, py, pz), rod length R, blade radius rb, swing in the x-y plane with amplitude A radians, period P. pose: { x, y, z, th } blade centre and rod angle th (0 = hanging straight down, + swings toward +x).',
@@ -387,7 +389,8 @@ const FEAT = {
     g.z = z0 + len;
     g.cx = cx; g.w = Math.max(g.w, off + 1);
   },
-  // Ember slabs: they crack once stood on, fall away and re-form a moment later.
+  // Ember slabs: they crack once stood on, fall away and re-form a moment later. Each slab is
+  // a pair of halves, so one pass leaves a half for the player behind.
   crumble(g, d, intro) {
     const n = intro ? 2 : 2 + (d > 0.4 ? 1 : 0) + (d > 0.75 && g.rand() < 0.5 ? 1 : 0);
     const crack = Math.round(lerp(40, 26, intro ? 0 : d));
@@ -398,8 +401,10 @@ const FEAT = {
       g.z += intro ? 1.5 : g.rf(1.5, Math.min(3.5, maxGap(r, d) - 0.5));
       y += r;
       if (k && d > 0.3) cx = clamp(cx + g.rf(-1, 1), -3, 3);
-      const hx = intro ? 1.5 : g.rf(1, 1.5), hz = intro ? 1.5 : g.rf(1, 1.5);
-      g.obj({ k: 'crumble', x0: cx - hx, x1: cx + hx, z0: g.z, z1: g.z + 2 * hz, y, crack });
+      // two halves side by side: whoever comes second always finds one half the first left whole
+      const hx = intro ? 2 : g.rf(1.5, 2), hz = intro ? 1.5 : g.rf(1, 1.5), seam = 0.125;
+      g.obj({ k: 'crumble', x0: cx - hx, x1: cx - seam, z0: g.z, z1: g.z + 2 * hz, y, crack });
+      g.obj({ k: 'crumble', x0: cx + seam, x1: cx + hx, z0: g.z, z1: g.z + 2 * hz, y, crack });
       g.z += 2 * hz;
     }
     g.z += intro ? 1.5 : g.rf(1.5, Math.min(3.5, maxGap(0, d) - 0.5));
@@ -408,12 +413,15 @@ const FEAT = {
   // Eclipse stones: two lanes of stones over a pit; in every row one is sun (only Sol stands
   // on it) and one is moon (only Luna). Sol's route is the mirror image of Luna's.
   eclipse(g, d, intro) {
-    const s = intro ? 1.1 : g.rf(0.8, 1.1), lg = g.rf(lerp(0.6, 1.0, d), lerp(1.0, 1.8, d));
+    const s = intro ? 1.1 : g.rf(0.9, 1.2), lg = g.rf(lerp(0.6, 1.0, d), lerp(1.0, 1.6, d));
     const cx = clamp(g.cx, -2.5, 2.5), rows = intro ? 3 : g.ri(3, 4 + Math.round(2 * d));
     let a = g.rand() < 0.5 ? 0 : 1;
     const lim = maxGap(0, d) - 1;
     for (let r = 0; r < rows; r++) {
-      let gz = r === 0 ? g.rf(1, 2) : g.rf(lerp(1, 1.5, d), lerp(1.75, 3.25, d));
+      // a lane switch is a diagonal jump from a small stone with no room to turn: keep it shorter
+      const flip = r > 0 && (intro ? r === 2 : g.rand() < 0.5);
+      if (flip) a = 1 - a;
+      let gz = r === 0 ? g.rf(1, 2) : flip ? g.rf(lerp(1, 1.25, d), lerp(1.5, 2.5, d)) : g.rf(lerp(1, 1.5, d), lerp(1.75, 3.25, d));
       while (gz > 1 && Math.sqrt(gz * gz + lg * lg) > lim) gz -= 0.25;
       g.z += gz;
       for (const side of [0, 1]) {
@@ -421,7 +429,6 @@ const FEAT = {
         g.obj({ k: 'eclipse', x0: x - s, x1: x + s, z0: g.z, z1: g.z + 2 * s, y: g.y, el: side ? 1 - a : a });
       }
       g.z += 2 * s;
-      if (intro ? r === 1 : g.rand() < 0.5) a = 1 - a;
     }
     g.z += g.rf(1, Math.min(2, lim));
     g.cx = cx; g.w = Math.max(2.5, 2 * s + lg / 2);
@@ -561,7 +568,7 @@ export function buildRunner3d(seed) {
 
 export const STATEFUL = { tilt: 1, crumble: 1 };
 export const TILT = { load: 0.0035, spring: 0.006, damp: 0.14, slide: 0.05 };
-export const CRUMBLE = { gone: 40, reform: 20 };
+export const CRUMBLE = { gone: 30, reform: 12 };
 // longest time (ticks) a stateful object may take to come back to rest after its last touch
 export function restBound(o) {
   if (o.k === 'tilt') return 150;
@@ -737,10 +744,8 @@ function stepPlayer(L, S, who, bits) {
   const tx = dx * n * P3.maxSpeed;
   let tz = dz * n * P3.maxSpeed;
   p.vx = approach(p.vx, tx, dx ? (p.vx * tx < 0 ? acc * P3.turnBoost : acc) : dec);
-  const lead = p.z - S.zone, vz0 = p.vz;
-  if (lead > LEAD_MAX && p.gr && tz > 0) tz = 0;
+  if (tz > 0 && p.gr && p.z - S.zone > LEAD_MAX && p.gref >= 0 && L.objs[p.gref].skin === 1) tz = 0;
   p.vz = approach(p.vz, tz, dz ? (p.vz * tz < 0 ? acc * P3.turnBoost : acc) : dec);
-  if (lead > LEAD_MAX && !p.gr && p.vz > vz0 && p.vz > 0) p.vz = Math.max(vz0, 0);
 
   // jump: coyote time, a short buffer for early presses, and holding jump re-jumps on landing
   const jd = bits & IN_J;
@@ -755,7 +760,6 @@ function stepPlayer(L, S, who, bits) {
 
   moveAxis(L, S, p, 0, p.vx);
   moveAxis(L, S, p, 1, p.vz);
-  if (p.z > S.zone + LEAD_HARD) { p.z = S.zone + LEAD_HARD; if (p.vz > 0) p.vz = 0; }
 
   let ny = p.y + p.vy;
   if (p.vy > 0) {   // head against the underside of a static slab

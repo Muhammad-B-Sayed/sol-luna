@@ -199,7 +199,6 @@ function checkSeed(seed) {
       kinfo.time[0] += times[0]; kinfo.time[1] += times[1]; kinfo.both++;
       kinfo.maxDiff = Math.max(kinfo.maxDiff, Math.abs(times[0] - times[1]));
     }
-    if (PROF) console.log(JSON.stringify(prof));
     if (V) console.log(`seed ${seed} #${k} ${c.kind}${c.intro ? '*' : ''} z${c.z0.toFixed(1)}-${c.z1.toFixed(1)} d${c.d.toFixed(2)} v${speedAt(c.z1 - ZONE_START).toFixed(3)}  sol ${times[0] ?? 'FAIL'}  luna ${times[1] ?? 'FAIL'}  (allowed ${Tn - Tk})`);
     if (!objs.length) continue;
 
