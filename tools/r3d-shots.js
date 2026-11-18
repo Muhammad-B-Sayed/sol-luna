@@ -49,7 +49,7 @@ const SHOTS = [
 ];
 // two shots per section kind: its easy intro and a hard instance past z 900 (the demo starts on its run-up)
 const SEC_KINDS = ['gaps', 'steps', 'thorns', 'pools', 'tilt', 'stones', 'crumble', 'sweeper', 'eclipse', 'beams', 'pendulum', 'carousel', 'gate', 'orbs'];
-for (const k of SEC_KINDS) SHOTS.push(['kind-' + k, `seed=7&kind=${k}`, 70], ['hard-' + k, `seed=7&kind=${k}&after=900`, 70]);
+for (const k of SEC_KINDS) { const n = k === 'gate' ? 35 : 70; SHOTS.push(['kind-' + k, `seed=7&kind=${k}`, n], ['hard-' + k, `seed=7&kind=${k}&after=900`, n]); }   // the curtain hides once passed: shoot it earlier
 const want = process.argv.slice(2);
 const list = want.length ? SHOTS.filter(s => want.some(w => s[0].includes(w))) : SHOTS;
 const extraKinds = (process.env.KINDS || '').split(',').filter(Boolean);
@@ -62,7 +62,7 @@ if (process.env.NOSERVER !== '1') {
   server = spawn(process.execPath, ['server/index.js'], { env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore' });
   await sleep(700);
 }
-const profile = mkdtempSync('/tmp/sl-r3dshots-');
+const profile = mkdtempSync('/tmp/' + (process.env.PROFILE_PREFIX || 'sl-r3dshots-'));
 const chrome = spawn(CHROME, [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
   '--mute-audio', ...GL_FLAGS,

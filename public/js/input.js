@@ -2,8 +2,13 @@
 const SOL_KEYS = { ArrowLeft: 1, ArrowRight: 2, ArrowUp: 4, ArrowDown: 8 };
 const LUNA_KEYS = { KeyA: 1, KeyD: 2, KeyW: 4, KeyS: 8 };
 // Runner 3D: world-axis movement. Bits: 1 left, 2 right, 4 jump, 8 forward, 16 back.
-const SOL_3D = { ArrowLeft: 1, ArrowRight: 2, ArrowUp: 8, ArrowDown: 16, ShiftRight: 4, Slash: 4, Numpad0: 4 };
+// Same keyboard: Sol moves with the arrows and jumps with Enter or Right Shift (also /, Right Ctrl,
+// Numpad 0); Luna moves with WASD and jumps with Space (also Left Shift).
+const SOL_3D = { ArrowLeft: 1, ArrowRight: 2, ArrowUp: 8, ArrowDown: 16, Enter: 4, NumpadEnter: 4, ShiftRight: 4, Slash: 4, ControlRight: 4, Numpad0: 4 };
 const LUNA_3D = { KeyA: 1, KeyD: 2, KeyW: 8, KeyS: 16, Space: 4, ShiftLeft: 4 };
+// Online either set drives your character and Space jumps; Enter stays the chat key there.
+const ANY_3D = { ...SOL_3D, ...LUNA_3D };
+delete ANY_3D.Enter; delete ANY_3D.NumpadEnter;
 
 // The game reads the keys once per tick, at most a few times a frame, so a whole tap, or a
 // release and a press again, could fall between two reads and be lost: on a slow device a quick
@@ -30,7 +35,10 @@ export class Input {
       if (e.code in SOL_KEYS || e.code in LUNA_KEYS || e.code === 'Space') {
         if (!e.target.closest || !e.target.closest('input')) e.preventDefault();
       }
-      if (this.mode3d && (e.code in SOL_3D || e.code in LUNA_3D)) e.preventDefault();   // Runner 3D only
+      // Runner 3D only (mode3d is 'local' or 'online'): its keys don't scroll the page. Enter on a
+      // focused button (Rematch, Resume) still presses it.
+      const onButton = (e.code === 'Enter' || e.code === 'NumpadEnter') && e.target.closest && e.target.closest('button');
+      if (this.mode3d && !onButton && (e.code in (this.mode3d === 'online' ? ANY_3D : SOL_3D) || e.code in LUNA_3D)) e.preventDefault();
       if (!this.down.has(e.code) && this.rel.has(e.code)) this.gap.set(e.code, now());
       this.down.add(e.code);
     });
@@ -44,7 +52,7 @@ export class Input {
     window.addEventListener('blur', () => this.clear());
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.clear(); });
     this._touch = 0; this.touchSeen = 0; this.touchPulse = 0; this.touchT = 0;
-    this.mode3d = false; this.touch3 = 0;   // Runner 3D (runner3d-app.js sets these)
+    this.mode3d = false; this.touch3 = 0;   // Runner 3D (runner3d-app.js sets these): mode3d false | 'local' | 'online'
   }
   clear() { this.down.clear(); this.pulse.clear(); this.gap.clear(); this.rel.clear(); this.touchPulse = 0; }
   // touch buttons (main.js bindTouch) set and clear bits here; a tap between two reads is latched
@@ -101,5 +109,5 @@ export class Input {
     return (ax < -0.35 || B(14) ? 1 : 0) | (ax > 0.35 || B(15) ? 2 : 0) | (B(0) ? 4 : 0) | (ay < -0.35 || B(12) ? 8 : 0) | (ay > 0.35 || B(13) ? 16 : 0);
   }
   local3d() { return [this.keys(SOL_3D) | this.pad3(0), this.keys(LUNA_3D) | this.pad3(1)]; }
-  any3d() { return this.keys(SOL_3D) | this.keys(LUNA_3D) | this.pad3(0) | this.pad3(1) | this.pad3(2) | this.pad3(3) | this.touch3; }
+  any3d() { return this.keys(ANY_3D) | this.pad3(0) | this.pad3(1) | this.pad3(2) | this.pad3(3) | this.touch3; }
 }

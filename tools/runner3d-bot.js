@@ -86,13 +86,20 @@ export function tick(L, S, who, bits, other, hook) {
 // opts: goalObj (stand on this object index or any later one: the next section's run-up or
 // beyond), or goal (z) and goalY (feet at least this high), deadline (tick, inclusive), other(tick) -> bits,
 // budget (expansions), o0/o1 (object range whose state matters), until(S, p) custom goal test.
+// flow: { min, stop } makes it a never-stop bot. Each tick it owes `min` units of forward progress
+// (world z, carried motion included); falling short adds to a debt, moving faster pays it back.
+// A branch dies once the debt reaches `stop` ticks of standing still. So it can never stand still
+// for longer than `stop` ticks, and over any longer stretch it averages at least `min` per tick:
+// it may slow down, steer, strafe and jump, but not wait (a 15-tick stop needs 5 ticks of full
+// running to pay back before the next one).
+export const FLOW = { min: 0.25 * 0.135, stop: 15 };
 export function search(L, S0, who, opts) {
-  const { goal = -Infinity, goalObj = -1, goalY = -Infinity, deadline = Infinity, other = null, hook = null, budget = 3000, o0 = 0, o1 = 0, until = null, tw = 0.0013 } = opts;
+  const { goal = -Infinity, goalObj = -1, goalY = -Infinity, deadline = Infinity, other = null, hook = null, budget = 3000, o0 = 0, o1 = 0, until = null, tw = 0.0013, flow = null } = opts;
   const t0 = S0.tick;
   const done = until || (goalObj >= 0 ? (S, p) => p.gr && p.gref >= goalObj : (S, p) => p.gr && p.z >= goal && p.y >= goalY - 0.05);
   const heap = new Heap();
   const seen = new Set();
-  heap.push({ S: S0, parent: null, runs: null, pr: 0 });
+  heap.push({ S: S0, parent: null, runs: null, pr: 0, slow: opts.slow0 || 0, maxSlow: 0 });
   let exp = 0;
   while (heap.size && exp < budget) {
     const node = heap.pop(); exp++;
@@ -101,11 +108,14 @@ export function search(L, S0, who, opts) {
       const p = S.p[who];
       const runs = [];
       let res = 0;   // 0 running, 1 goal, -1 dead/late
+      let slow = node.slow, maxSlow = node.maxSlow;
       const one = (bits) => {
+        const z = p.z;
         tick(L, S, who, bits, other, hook);
         const r = runs[runs.length - 1];
         if (r && r[0] === bits) r[1]++; else runs.push([bits, 1]);
-        if (!p.alive || S.tick > deadline) res = -1;
+        if (flow) { slow = Math.max(0, slow + 1 - (p.z - z) / flow.min); if (slow > maxSlow) maxSlow = slow; }
+        if (!p.alive || S.tick > deadline || (flow && slow > flow.stop)) res = -1;
         else if (done(S, p)) res = 1;
       };
       for (let si = 0; si < m.length; si++) {
@@ -114,12 +124,12 @@ export function search(L, S0, who, opts) {
         if (n < 0 || (!p.gr && si === m.length - 1)) for (let k = 0; k < 240 && !res; k++) { one(bits); if (p.gr) break; }
         if (res) break;
       }
-      if (res === 1) return { ok: true, plan: unroll(node, runs), tick: S.tick, S, exp };
+      if (res === 1) return { ok: true, plan: unroll(node, runs), tick: S.tick, S, exp, maxSlow };
       if (res === -1 || !p.gr) continue;
-      const key = `${Math.round(p.x * 3)},${Math.round(p.z * 3)},${Math.round(p.y * 4)},${Math.round(p.vx * 20)},${Math.round(p.vz * 20)},${(S.tick - t0) >> 2}${objKey(L, S, o0, o1)}`;
+      const key = `${Math.round(p.x * 3)},${Math.round(p.z * 3)},${Math.round(p.y * 4)},${Math.round(p.vx * 20)},${Math.round(p.vz * 20)},${(S.tick - t0) >> 2}${objKey(L, S, o0, o1)}${flow ? ',' + Math.floor(slow / 4) : ''}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      heap.push({ S, parent: node, runs, pr: p.z - tw * (S.tick - t0) });
+      heap.push({ S, parent: node, runs, pr: p.z - tw * (S.tick - t0), slow, maxSlow });
     }
   }
   return { ok: false, exp };
@@ -143,7 +153,8 @@ export function solve(L, S, who, opts) {
   for (const t of tries.slice(0, opts.rungs || tries.length)) {
     if (opts.rungBudget) t.budget = opts.rungBudget;
     let S0 = cloneRunner3d(S);
-    const pre = t.pre || [];
+    const pre = (t.pre || []).map(b => (opts.flow ? b | F_ : b));   // a never-stop bot nudges while running
+    if (opts.flow && t.pre && t.pre[0] === B_) continue;
     for (const b of pre) tick(L, S0, who, b, opts.other || null, opts.hook || null);
     if (!S0.p[who].alive || (opts.deadline !== undefined && S0.tick > opts.deadline)) continue;
     const r = search(L, S0, who, { ...opts, tw: t.tw, budget: t.budget });

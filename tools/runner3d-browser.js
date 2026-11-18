@@ -42,7 +42,7 @@ try {
     if (m && m[2].includes(`--user-data-dir=${join(tmpdir(), 'sl-r3d-')}`)) { try { process.kill(+m[1], 'SIGKILL'); } catch {} }
   }
 } catch {}
-const profile = mkdtempSync(join(tmpdir(), 'sl-r3d-'));
+const profile = mkdtempSync(join(tmpdir(), process.env.PROFILE_PREFIX || 'sl-r3d-'));
 const chrome = spawn(CHROME, [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
   '--no-default-browser-check', '--mute-audio', '--disable-background-timer-throttling',
@@ -79,7 +79,7 @@ const cmd = (method, params = {}, sessionId) => new Promise((res, rej) => {
 const KEYS = {
   ArrowLeft: [37, 'ArrowLeft'], ArrowUp: [38, 'ArrowUp'], ArrowRight: [39, 'ArrowRight'], ArrowDown: [40, 'ArrowDown'],
   KeyA: [65, 'a'], KeyD: [68, 'd'], KeyW: [87, 'w'], KeyS: [83, 's'], KeyR: [82, 'r'], KeyP: [80, 'p'],
-  Space: [32, ' '], ShiftLeft: [16, 'Shift', 1], ShiftRight: [16, 'Shift', 2], Slash: [191, '/'], Numpad0: [96, '0', 3],
+  Space: [32, ' '], ShiftLeft: [16, 'Shift', 1], ShiftRight: [16, 'Shift', 2], Slash: [191, '/'], Numpad0: [96, '0', 3], ControlRight: [17, 'Control', 2],
   Escape: [27, 'Escape'], Enter: [13, 'Enter'],
 };
 
@@ -152,8 +152,16 @@ try {
     check('local: Runner 3D starts from the title menu button', s && s.active && !s.online && s.phase === 0 && s.screen === 'game', JSON.stringify({ phase: s?.phase, screen: s?.screen }));
     console.log('    renderer:', s.rend);
     const vis = await A.eval(`(() => ({ g2: getComputedStyle(document.querySelector('#game')).display, g3: getComputedStyle(document.querySelector('#game3d')).display, hud: getComputedStyle(document.querySelector('#r3Hud')).display }))()`);
-    const blk = await A.eval(`[${['Slash', 'ShiftRight', 'Space', 'ArrowDown'].map(c => BLOCKED(c)).join(',')}, ${BLOCKED('Slash', "document.querySelector('#joinCode')")}]`);
-    check('local: / Shift Space arrows are kept from the page while playing, not in a text field', blk.slice(0, 4).every(Boolean) && !blk[4], JSON.stringify(blk));
+    const blk = await A.eval(`[${['Enter', 'Slash', 'ShiftRight', 'Space', 'ArrowDown'].map(c => BLOCKED(c)).join(',')}, ${BLOCKED('Slash', "document.querySelector('#joinCode')")}]`);
+    check('local: Enter / Shift Space arrows are kept from the page while playing, not in a text field', blk.slice(0, 5).every(Boolean) && !blk[5], JSON.stringify(blk));
+    // the countdown shows each player's keys on their own half, and a jump reminder in their box
+    const CARDS = `[...document.querySelectorAll('.r3-keys')].map(e => ({ op: +getComputedStyle(e).opacity, vis: getComputedStyle(e).display !== 'none', text: e.textContent, x: e.getBoundingClientRect().x + e.getBoundingClientRect().width / 2 }))`;
+    const JK = `[...document.querySelectorAll('.r3-jk')].map(e => getComputedStyle(e).display !== 'none' && e.offsetParent ? e.textContent : '')`;
+    const cards = await A.eval(CARDS), jk0 = await A.eval(JK), W = await A.eval('innerWidth');
+    check('local: the countdown shows Sol\'s keys (arrows, Enter) on the left half and Luna\'s (WASD, Space) on the right',
+      cards[0].op > 0.9 && cards[1].op > 0.9 && /Sol/.test(cards[0].text) && /Enter/.test(cards[0].text) && /←/.test(cards[0].text) && /Luna/.test(cards[1].text) && /Space/.test(cards[1].text) && /W/.test(cards[1].text)
+      && cards[0].x < W / 2 && cards[1].x > W / 2, JSON.stringify(cards.map(c => [c.op, c.text, Math.round(c.x)])));
+    check('local: each box shows its jump key until that player jumps', /Enter/.test(jk0[0]) && /Space/.test(jk0[1]), JSON.stringify(jk0));
     check('local: 3D canvas and HUD shown, 2D canvas hidden', vis.g2 === 'none' && vis.g3 === 'block' && vis.hud === 'block', JSON.stringify(vis));
     await sleep(1200);
     await A.shot(FP + 'local-countdown');
@@ -175,7 +183,7 @@ try {
     check('local: ArrowDown / S move back', s3b.p[0].z < s3.p[0].z - 0.3 && s3b.p[1].z < s3.p[1].z - 0.3);
     await A.holdUntil(['ArrowUp', 'KeyW'], `${Z(0)} > 8 && ${Z(1)} > 8`);   // well ahead of the dusk for the jump checks
     // each round taps its keys together; a Sol key must not make Luna jump and the other way round
-    for (const codes of [['ShiftRight', 'Space'], ['Slash', 'ShiftLeft'], ['Numpad0']]) {
+    for (const codes of [['Enter', 'Space'], ['ShiftRight', 'ShiftLeft'], ['Slash'], ['ControlRight'], ['Numpad0']]) {
       await A.waitFor('window.__runner3d.S.p.every(p => p.gr)', 5000, 30);   // land first
       const a = await A.eval(ST);
       for (const c of codes) await A.key(c, 'keyDown');
@@ -189,6 +197,8 @@ try {
           && (otherPressed || b.p[other].jumpN === a.p[other].jumpN), `jumps ${a.p[who].jumpN}→${b.p[who].jumpN}, y ${b.p[who].y}`);
       }
     }
+    const jk1 = await A.eval(JK), cards1 = await A.eval(CARDS);
+    check('local: after the countdown the cards are gone, and after a jump the reminders too', jk1.every(t => !t) && cards1.every(c => c.op < 0.05), JSON.stringify({ jk1, op: cards1.map(c => c.op) }));
     await A.shot(FP + 'local-split');
     // pause and resume
     await A.tap('Escape');
@@ -268,6 +278,12 @@ try {
     const o1 = await Promise.all([H, G].map(P => P.eval(`(() => ({ ...${ST}, me: window.__app.me }))()`)));
     check('online: both clients in the same Runner 3D match', o1.every(s => s.active && s.online) && o1[0].seed === o1[1].seed && o1[0].me !== o1[1].me, JSON.stringify(o1.map(s => ({ seed: s.seed, me: s.me, rend: s.rend }))));
     const hostMe = o1[0].me, guestMe = o1[1].me;
+    // the countdown shows each client its own card only: either set of move keys, Space to jump
+    const OCARDS = `[...document.querySelectorAll('.r3-keys')].map(e => getComputedStyle(e).display !== 'none' && +getComputedStyle(e).opacity > 0.9 ? e.textContent : '')`;
+    const oc = await Promise.all([H, G].map(P => P.eval(OCARDS)));
+    check('online: the countdown shows only your own card, with Space to jump and no Enter',
+      [hostMe, guestMe].every((m, k) => oc[k][m] && !oc[k][1 - m] && /Space/.test(oc[k][m]) && !/Enter/.test(oc[k][m]) && /\(you\)/.test(oc[k][m])), JSON.stringify(oc));
+    await H.shot(FP + 'online-countdown-host'); await G.shot(FP + 'online-countdown-guest');
     await H.waitFor('window.__runner3d.S.phase === 1', 6000);
     await sleep(200);
     const a0 = await H.eval(ST);
@@ -289,6 +305,13 @@ try {
     const jumped = [hostMe, guestMe].every(i => o2[0].p[i].jumpN >= a0.p[i].jumpN + 2);
     const diff = Math.max(...o2[0].p.map((q, i) => Math.abs(q.x - o2[1].p[i].x) + Math.abs(q.y - o2[1].p[i].y) + Math.abs(q.z - o2[1].p[i].z)));
     check('online: both players moved and jumped', moved && jumped, JSON.stringify(o2[0].p));
+    // online Enter is the chat key, not a jump
+    const e0 = await H.eval(ST);
+    await H.tap('Enter'); await sleep(250);
+    const e1 = await H.eval(`({ ...${ST}, chat: !document.querySelector('#chatPanel').hidden })`);
+    check('online: Enter opens the chat and does not jump', e1.chat && e1.p[hostMe].jumpN === e0.p[hostMe].jumpN, JSON.stringify({ chat: e1.chat, jumps: [e0.p[hostMe].jumpN, e1.p[hostMe].jumpN] }));
+    await H.tap('Escape'); await sleep(200);
+    check('online: Esc closes the chat and play goes on', !(await H.eval(`!document.querySelector('#chatPanel').hidden`)) && (await screen(H)) === 'game');
     check('online: both clients agree on positions and jumps', diff < 0.02 && o2[0].p.every((q, i) => q.jumpN === o2[1].p[i].jumpN) && Math.abs(o2[0].tick - o2[1].tick) < 40, `max diff ${diff.toFixed(4)}, ticks ${o2[0].tick}/${o2[1].tick}`);
     // the guest stands still; the host runs on until the guest is caught
     await H.holdUntil(['ArrowUp'], `${OZ(hostMe)} > ${OZ(guestMe)} + 4`);   // a short lead keeps the host on the start floor
@@ -349,6 +372,10 @@ try {
     const kind = await A.eval('window.__runner3d.rendKind');
     check('webgl: the title button loads the real renderer', loaded && kind === 'webgl', kind);
     const gl = await A.eval(`(() => { const c = document.createElement('canvas').getContext('webgl2'), e = c && c.getExtension('WEBGL_debug_renderer_info'); return e ? c.getParameter(e.UNMASKED_RENDERER_WEBGL) : '?' })()`);
+    if ((await A.eval('window.__runner3d.S.phase')) === 0) {
+      await A.waitFor('(window.__runner3d.frames || 0) > 20', 4000);
+      await A.shot('countdown-split');
+    }
     // a real GPU draws in real time: then the matches below are played, not fast-forwarded
     await A.waitFor('window.__runner3d.S.phase === 1', 8000);
     const fr0 = await A.eval('window.__runner3d.frames || 0'); await sleep(1000);
@@ -394,6 +421,10 @@ try {
     await H.click('#lobbyRunner3d');
     const ok = await H.waitFor('window.__runner3d.rendKind === "webgl" && window.__runner3d.S', slow) && await G.waitFor('window.__runner3d.rendKind === "webgl" && window.__runner3d.S', slow);
     check('webgl: both online clients load the real renderer', ok);
+    if ((await H.eval('window.__runner3d.S.phase')) === 0) {
+      await Promise.all([H, G].map(P => P.waitFor('(window.__runner3d.frames || 0) > 20', 4000)));
+      await H.shot('countdown-online-host'); await G.shot('countdown-online-guest');
+    }
     if (fast) {
       // real time: both run forward through the start, and the shots are taken mid-match
       const me = await Promise.all([H, G].map(P => P.eval('window.__app.me')));
@@ -438,6 +469,26 @@ try {
     await H.eval(`window.__runner3d.net.send({ t: 'menu' })`);
     await sleep(500);
     await H.close(); await G.close();
+
+    // players far apart (there is no lead cap): each drawn camera keeps its own surroundings
+    for (const [name, qs, drawn] of [['far-split', 'split=1', [0, 1]], ['far-single', 'me=1', [1]]]) {
+      const D = await page(BASE + `/r3d-demo.html?seed=7&bot=0&hud=0&auto=0&${qs}`);
+      await D.waitFor('window.__r3d && window.__r3d.ready', slow);
+      const far = await D.eval(`(() => { const d = window.__r3d, L = d.L, S = d.S, R3 = d.R3;
+        R3.ensureGenerated(L, 700);
+        const runup = (z) => L.objs.find(o => o.k === 'floor' && o.skin === 1 && o.z0 >= z);
+        [runup(60), runup(420)].forEach((o, i) => Object.assign(S.p[i], { x: (o.x0 + o.x1) / 2, z: o.z0 + 1, y: o.y, fy: o.y, vx: 0, vy: 0, vz: 0, gr: true, alive: true }));
+        S.zone = S.p[0].z - 10;
+        d.step(2); for (let k = 0; k < 40; k++) d.render();
+        const zs = [...d.r.views.keys()].map(i => L.objs[i]);
+        return S.p.map(p => ({ z: +p.z.toFixed(1), around: zs.filter(o => o.z1 > p.z - 5 && o.z0 < p.z + 60).length, ahead: zs.some(o => o.z0 > p.z + 50) })); })()`);
+      await D.shot(name);
+      check(`webgl: ${name}: players ${Math.round(far[1].z - far[0].z)} units apart, each drawn camera has its surroundings`,
+        drawn.every(i => far[i].around >= 8 && far[i].ahead), JSON.stringify(far));
+      const de = await D.eval('window.__r3d.r.stats()');
+      console.log(`    ${name}: ${de.views} object views kept`);
+      await D.close();
+    }
   }
 } catch (e) {
   console.error(e); errors.push(String(e));
