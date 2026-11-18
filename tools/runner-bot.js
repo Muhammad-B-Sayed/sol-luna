@@ -3,6 +3,7 @@
 // past goalX) without dying, optionally before a deadline tick. The other player plays a
 // fixed input track meanwhile. Macro actions always end with the player standing again.
 import { cloneRunner, stepRunner, STATEFUL, oidObj } from '../shared/runner.js';
+import { PHYS } from '../shared/sim.js';
 
 export const L_ = 1, R_ = 2, U_ = 4;
 // [bits, ticks]; ticks -1 = hold until standing. If the last step is timed and ends in the
@@ -79,6 +80,11 @@ export function search(L, S0, who, opts) {
   const { goal, deadline = Infinity, other = null, budget = 3000, o0 = 0, o1 = 0, until = null } = opts;
   const t0 = S0.tick;
   const done = until || ((S, p) => p.gr && p.x >= goal);
+  // with a deadline, drop nodes that can't reach the goal in time even at full running speed
+  // (not with a swing in range: riding one can carry a player faster than that)
+  let vmax = PHYS.maxSpeed + 0.01;
+  for (let i = o0; i < o1; i++) if (L.objs[i].k === 'swing') vmax = Infinity;
+  const late = (S, p) => deadline < Infinity && !until && goal - p.x > (deadline - S.tick) * vmax;
   const heap = new Heap();
   const seen = new Set();
   heap.push({ S: S0, parent: null, runs: null, pr: 0 });
@@ -104,7 +110,7 @@ export function search(L, S0, who, opts) {
         if (res) break;
       }
       if (res === 1) return { ok: true, plan: unroll(node, runs), tick: S.tick, S, exp };
-      if (res === -1 || !p.gr) continue;
+      if (res === -1 || !p.gr || late(S, p)) continue;
       const key = `${Math.round(p.x / 3)},${Math.round(p.y / 3)},${Math.round(p.vx)},${(S.tick - t0) >> 2}${objKey(L, S, o0, o1)}`;
       if (seen.has(key)) continue;
       seen.add(key);

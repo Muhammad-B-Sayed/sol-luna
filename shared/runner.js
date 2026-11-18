@@ -399,8 +399,49 @@ function solidsFor(L, S, who) {
   return out;
 }
 
-function worldFor(L, S, who) {
-  return { L, S, solids: solidsFor(L, S, who), ents: S.p, pinned: false };
+// Both players' solids in one pass (the hot path of the checker's search). Same entries in
+// the same order as solidsFor(L, S, 0) and solidsFor(L, S, 1); shared entries are read-only.
+function worldsFor(L, S) {
+  const a = [], b = [];
+  for (let i = S.lo; i < S.hi; i++) {
+    const o = L.objs[i];
+    switch (o.k) {
+      case 'stone':
+        (o.el === 0 ? a : b).push({ o: { x: o.x, y: o.y }, id: oid(i), w: o.w, h: o.h, box: false });
+        break;
+      case 'slab':
+        if (S.o[i].st <= 1) { const e = { o: { x: o.x, y: o.y }, id: oid(i), w: o.w, h: o.h, box: false }; a.push(e); b.push(e); }
+        break;
+      case 'swing': {
+        const q = swingPos(o, S.tick);
+        const e = { o: { x: q.x, y: q.y }, id: oid(i), w: o.w, h: o.h, box: false };
+        a.push(e); b.push(e);
+        break;
+      }
+      case 'plank': {
+        const s = S.o[i].s;
+        for (let j = 0; j < o.n; j++) {
+          const e = { o: { x: o.x + j * SEG, y: plankSegY(o, s, j) }, id: oid(i, j), w: SEG, h: o.h, box: false };
+          a.push(e); b.push(e);
+        }
+        break;
+      }
+    }
+  }
+  return [{ L, S, solids: a, ents: S.p, pinned: false }, { L, S, solids: b, ents: S.p, pinned: false }];
+}
+// The one solid with this id that player `who` collides with, or null (as findSolid on its list).
+function solidById(L, S, who, id) {
+  const i = oidObj(id);
+  if (i < S.lo || i >= S.hi) return null;
+  const o = L.objs[i], j = id - oid(i);
+  switch (o.k) {
+    case 'stone': return o.el === who && !j ? { o: { x: o.x, y: o.y } } : null;
+    case 'slab': return S.o[i].st <= 1 && !j ? { o: { x: o.x, y: o.y } } : null;
+    case 'swing': { if (j) return null; const q = swingPos(o, S.tick); return { o: { x: q.x, y: q.y } }; }
+    case 'plank': return j < o.n ? { o: { x: o.x + j * SEG, y: plankSegY(o, S.o[i].s, j) } } : null;
+  }
+  return null;
 }
 const findSolid = (W, id) => W.solids.find(s => s.id === id) || null;
 
@@ -489,7 +530,7 @@ export function stepRunner(L, S, inputs) {
   // remember where the part each player stands on is, before anything moves
   const ride = S.p.map((p, i) => {
     if (!p.alive || !p.gr || p.gref < OID0) return null;
-    const s = findSolid(worldFor(L, S, i), p.gref);
+    const s = solidById(L, S, i, p.gref);
     return s && { x: s.o.x, y: s.o.y };
   });
   S.tick++;
@@ -503,7 +544,7 @@ export function stepRunner(L, S, inputs) {
   }
   activate(L, S);
   updateObjects(L, S);
-  const W = [0, 1].map(i => worldFor(L, S, i));
+  const W = worldsFor(L, S);
   for (let i = 0; i < 2; i++) {
     const p = S.p[i];
     if (!p.alive) continue;
