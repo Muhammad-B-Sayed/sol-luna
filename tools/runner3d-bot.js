@@ -160,14 +160,16 @@ function unroll(node, last) {
 export { STATEFUL };
 
 // Goal test for "made it into section k": standing on its run-up, with room to stop on the
-// last piece (at least 1 unit before its end). Landing past the run-up does not count: that
+// last piece (at least 1 unit before its end), safe to stand idle. Landing past the run-up does not count: that
 // can be a doomed state (full speed, right in front of a thorn strip).
 export function sectionGoal(L, k) {
   const sec = L.secs[k];
   const run = [];
   for (let i = sec.o0; i < sec.o1; i++) if (L.objs[i].k === 'floor' && L.objs[i].skin === 1) run.push(i);
   const lastRun = run[run.length - 1];
-  return (S, p) => p.gr && run.includes(p.gref) && (p.gref !== lastRun || p.z <= L.objs[p.gref].z1 - 1);
+  // safe to stand idle: no buffered jump, centre over the slab (any speed stops on it)
+  return (S, p) => p.gr && p.jb === 0 && run.includes(p.gref) && p.x >= L.objs[p.gref].x0 && p.x <= L.objs[p.gref].x1 &&
+    (p.gref !== lastRun || p.z <= L.objs[p.gref].z1 - 1);
 }
 // Standing on the run-up of section k (a safe place to wait)?
 export function onRunup(L, k, p) {
