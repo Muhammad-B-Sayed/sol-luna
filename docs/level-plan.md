@@ -414,7 +414,7 @@ Gravity dropped to 0.33 on Nov 17 and every level was re-spaced for the higher j
 evening of Nov 17 the full gate, solo check included, passed all 32 levels with a fresh bot cache,
 with 0 roof hits on every bot route. The solo search hit its state limit without a solo finish in
 12, 14, 15, 19 and 25, so those five passes are bounded, not proofs. 27 Leapfrog Spire was the
-last to land: bot 79.0 s against a 76 s floor, Sol at exactly 16 sectors, stone 26%.
+last to land: bot 78.3 s against a 76 s floor (after the spawn headroom fix), Sol at exactly 16 sectors, stone 26%.
 The pictures in `docs/img/level-N.jpg` predate the re-spacing.
 
 These margins sit at or near a gate limit. They come from `FAST=1 node tools/gate.js` on Nov 17,
