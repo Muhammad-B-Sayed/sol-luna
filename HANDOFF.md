@@ -550,7 +550,7 @@ PORT=3550 node tools/playtest/runner-plank-shots.mjs   # plank and milestone scr
 - `sim.js` changes for it are additive: `tileAt` checks `L.tileFn`, and five internals are exported.
 - The checker runs seeds in parallel worker threads (`JOBS`, default CPU count minus one, at most 8)
   and splits each seed's chunk tests into `PARTS` units (default 3). The 50-seed, 1700-tile proof
-  is clean (964 s on 6 jobs on a heavily loaded machine, Nov 2026, with the new plank tests).
+  is clean (674 s on 6 jobs on a loaded machine, Nov 2026, with the new plank tests).
 - Chain plank (Nov 2026, after play: its tip-over was far too slow). It is now a beam that turns
   freely on an axle at its middle: the middle rocks and holds you, past the safe zone it tips you
   off, and a touch on the last 18 px of either end spins it three turns (0.35 s, 0.46 s, 0.72 s)
