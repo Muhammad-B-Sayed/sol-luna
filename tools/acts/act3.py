@@ -506,7 +506,7 @@ def tidelock():
     paint(C, 17, 8, 18, 8); paint(C, 23, 8, 24, 8)
     paint(C, 31, 7, 32, 7)                            # the drop into the NE basin
     paint(C, 7, 1, 10, 3, '#'); paint(C, 34, 1, 38, 3, '#')   # roof rocks over floor that is only walked
-    paint(C, 17, 1, 18, 2, '#')                       # and a stalactite over the purple stone
+    paint(C, 31, 1, 33, 1, '#')                       # and a one-row lip past the pit (keeps the band's air <= 120)
     # NW basin (rows 8-13, floor 14): the tide lift arrives at the east, steps climb at the west
     paint(C, 1, 8, 11, 13)
     paint(C, 1, 8, 2, 13, '#'); paint(C, 3, 11, 4, 13, '#')    # step two (top 8), step one (top 11)
