@@ -206,10 +206,10 @@ PORT=3550 node tools/playtest/runner-plank-shots.mjs # plank and milestone scree
 
 `tools/plank-predict.js` replays every plank chunk of seeds 1-10 the way an online client
 predicts: from a server state 6 ticks old, its own keys, the other player's keys held. Result:
-riding and rocking a plank, and tipping it yourself, are predicted exactly (0.00 px). When the
-other player lands on the tip and throws you off, also 0.00 px (their jump is already in flight
-in the snapshot). When they hop on the plank beside you, up to 2.97 px, which the next snapshot
-corrects.
+riding and rocking a plank, and tipping it yourself, are predicted exactly (0.00 px, 112 runs
+each). When the other player moves it under you, their keys reach you late, so the next
+snapshot corrects you: up to 2.97 px when they hop beside you, up to 5.18 px when they land on
+a tip and throw you off. (The online client eases a correction out over a few frames.)
 
 The checker runs work units in worker threads: per seed, the two whole-course runs (Sol, Luna)
 and the chunk tests split into `PARTS` ranges (default 3). `JOBS` caps the threads (default: CPU
