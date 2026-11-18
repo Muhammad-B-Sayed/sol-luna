@@ -8,6 +8,15 @@ Branches: `dodge-latency-study` (from `low-gravity`), `dodge-fix-a-ballspeed`, `
 (both from the study branch), `dodge-fix-c-windup` (from `low-gravity`, which has the study).
 **Decision: fix C ships** (`dodge-fix-c-windup`). See "Fix C" and "Decision" below.
 
+## Nov 2026: the Runner input rules (branch `coop-dodge-inputs`)
+
+Dodgeball rooms now use the input rules of the Runner rooms (every input keeps its tick; the
+room waits up to 400 ms for a late player). The queue drain and the wind-up changed with them:
+see `docs/netcode.md` section 4. Re-measured with `--reps 3`: online equals local at 0, 20, 40
+and 75 ms one-way (0 of 177 trials differ at each), with the same wind-up as before (1, 4, 6
+ticks; 11 at 75 ms). With jitter and spikes (`--jit 15 --spike 8`) at 40 ms, the windows still
+equal local, and 6 of 177 trials differ from local (18 of 173 before). Tables in netcode.md.
+
 ## Nov 2026: the new court and a 36 px/tick ball
 
 The court was narrowed to 768 px with one platform per side, and the ball sped up from 24 to
