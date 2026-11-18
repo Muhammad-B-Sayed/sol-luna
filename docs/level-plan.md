@@ -357,10 +357,13 @@ change one, keep the room's shape and its place on the difficulty curve, and say
     then off the green stone down a hole into the NE basin. Luna's NE gem is the room's one 6-tile
     jump. Luna operates while Sol runs the ring, then they swap. The doors are in the control
     room's two arms, behind gates opened from the latch hall. 13 beats.
-27. **Leapfrog Spire.** Rebuild in progress on another branch. The brief stays as planned: a
-    helix around a central column, the tallest climb in the game, bottom to top and back down the
-    inside of the column to doors at its foot. Every lift's plate is on the other side, and a crate
-    has to come along to hold the last one. 13 beats.
+27. **Leapfrog Spire.** Two 6-row lift stairs around a hollow core, worked in leapfrog: Sol
+    climbs floors 28/22/16/10/4 on the west, Luna 27/21/15/9/4 on the east, and every lift's plate
+    is on the other side. The crate rides Luna's 4-wide lifts and goes down a chute onto the socket
+    that holds Sol's last lift. The pair then go down the core on a lift and a counterweight to the
+    doors at its foot. The landings have 5 free rows, so they are walked. The new jump appears in
+    the column (ledge climbs of 4 and 3), in a climb of 4 up Luna's open shaft, and in crate hops
+    where the shaft overhead is open. 13 beats.
 28. **The Vault.** Shape: a vault in the centre with three hatches sealing the shaft above it,
     and a small room in three corners; the fourth corner, bottom left, is the start. Each corner
     room opens one hatch for good. The players go into the vault from the sides, through gates
@@ -407,11 +410,11 @@ change one, keep the room's shape and its place on the difficulty curve, and say
 ## Status and thin margins (Nov 17, 2026)
 
 Gravity dropped to 0.33 on Nov 17 and every level was re-spaced for the higher jump. On the
-evening of Nov 17 the full gate, solo check included, passed all 31 levels other than 27, with
-0 roof hits on every bot route. The solo search hit its state limit without a solo finish in 12,
-14, 15, 19 and 25. 27 Leapfrog
-Spire is being rebuilt on another branch; on this branch it fails the ROOF line (7 hits) and the
-time floor (bot 58.8 s against 76 s). The pictures in `docs/img/level-N.jpg` predate the re-spacing.
+evening of Nov 17 the full gate, solo check included, passed all 32 levels with a fresh bot cache,
+with 0 roof hits on every bot route. The solo search hit its state limit without a solo finish in
+12, 14, 15, 19 and 25, so those five passes are bounded, not proofs. 27 Leapfrog Spire was the
+last to land: bot 79.0 s against a 76 s floor, Sol at exactly 16 sectors, stone 26%.
+The pictures in `docs/img/level-N.jpg` predate the re-spacing.
 
 These margins sit at or near a gate limit. They come from `FAST=1 node tools/gate.js` on Nov 17,
 replaying cached bot runs. A level change, a `PHYS` change or a `NOCACHE=1` run re-searches and
