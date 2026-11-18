@@ -136,3 +136,48 @@ export class Old3D extends OldBase {
     };
   }
 }
+
+// Online co-op, the state part of public/js/main.js tickOnline / onSnapshot (offsets and
+// drawing left out). neverKill: the fix (main.js predictStep), where the prediction never
+// enters the death or win phase by itself; without it, the pre-fix client.
+import { step, cloneState, PH_PLAY, PH_DEAD, PH_WON } from '../shared/sim.js';
+export class Coop {
+  constructor(L, st, me, send, { neverKill = false } = {}) {
+    this.L = L; this.me = me; this.send = send; this.neverKill = neverKill;
+    this.S = cloneState(st); this.pending = []; this.seq = 0; this.remoteBits = 0; this.acc = 0; this.corr = [];
+  }
+  predictStep(S, inp) {
+    if (!this.neverKill) { step(this.L, S, inp); return; }
+    const ph = S.phase, phT = S.phaseT, who = S.deadWho;
+    step(this.L, S, inp);
+    if (ph === PH_PLAY && S.phase === PH_DEAD) { S.p[S.deadWho].alive = true; S.phase = ph; S.phaseT = phT; S.deadWho = who; }
+    else if (ph === PH_PLAY && S.phase === PH_WON) { S.phase = ph; S.phaseT = phT; }
+  }
+  frame(dt, readBits) {
+    if (dt > 250) dt = DT;
+    this.acc += dt;
+    let n = 0;
+    while (this.acc >= DT && n < 8) { this.acc -= DT; n++; this.tick(readBits()); }
+    if (n === 8) this.acc = 0;
+    return n;
+  }
+  predTick() { return this.S.tick; }
+  tick(bits) {
+    this.seq++;
+    this.send({ t: 'i', s: this.seq, b: bits });
+    this.pending.push([this.seq, bits]);
+    if (this.pending.length > 240) this.pending.shift();
+    const inp = [0, 0]; inp[this.me] = bits; inp[1 - this.me] = this.remoteBits;
+    this.predictStep(this.S, inp);
+  }
+  onSnapshot(m) {
+    if (!m.st || m.st.mode) return;   // co-op states have no mode
+    const ns = m.st, me = this.me;
+    this.remoteBits = m.inp[1 - me] | 0;
+    this.pending = this.pending.filter(([s]) => s > (m.ack[me] | 0));
+    const inp = [0, 0];
+    for (const [, b] of this.pending) { inp[me] = b; inp[1 - me] = this.remoteBits; this.predictStep(ns, inp); }
+    this.S = ns;
+  }
+  draw() { return { S: this.S, v: null, T: this.S.tick, alpha: 1, results: false }; }
+}

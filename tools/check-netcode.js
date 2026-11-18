@@ -8,6 +8,9 @@
 //   CPU=10 node tools/check-netcode.js                server under a 10% CPU quota (systemd-run)
 //   SERVER_ROOT=dir ...                                run the server from another checkout (the baseline)
 //   JSON=out.json ...                                  also write every match as JSON
+//   KIND=coop SEEDS=1,2 node tools/check-netcode.js   online co-op levels 1 and 2 with the recorded bot
+//                                                     inputs (node tools/playtest/record-bot.mjs 1,2):
+//                                                     counts deaths and wins shown and then taken back
 //
 // Network model, per client link (both directions): one-way delay BASE ms (40) plus uniform
 // jitter of +-JIT ms (15) per message, delivered in order (TCP). Spikes: on average every SPIKE
@@ -39,7 +42,9 @@ import WebSocket from 'ws';
 import * as R2 from '../shared/runner.js';
 import * as R3 from '../shared/runner3d.js';
 import { pairTracks } from './net-bots.js';
-import { Old2D, Old3D } from './net-old-clients.js';
+import { Old2D, Old3D, Coop } from './net-old-clients.js';
+import { LEVELS } from '../shared/levels.js';
+import { buildLevel } from '../shared/sim.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const env = process.env;
@@ -58,6 +63,7 @@ const CONC = +(env.CONC || 3);
 const JSON_OUT = env.JSON || '';
 const DT = 1000 / 60;
 const V = !!env.V;
+const PH_DEAD_ = 1;   // co-op death phase (shared/sim.js PH_DEAD)
 
 // thresholds (2D in px, 3D in units; 1 unit = 24 px)
 const TH = {
@@ -150,6 +156,12 @@ function makeClient(kind, port, seed, idx, track, meter) {
   c.on = (t, f) => (c.handlers[t] ||= []).push(f);
   c.open = new Promise((res) => ws.on('open', res));
   c.begin = (m) => {
+    if (kind === 'coop') {
+      c.sync = new Coop(buildLevel(LEVELS[m.level], m.level), m.st, c.me, c.send, { neverKill: SCHEME !== 'old' });
+      meter.begin(c.me);
+      c.loop();
+      return;
+    }
     const L = SIM[kind].build(m.seed);
     if (SCHEME === 'old') c.sync = new (kind === '2d' ? Old2D : Old3D)(L, m.st, c.me, c.send);
     else { c.sync = Sync.createSync(kind === '2d' ? Sync.SIM2D : Sync.SIM3D, { L, st: m.st, me: c.me, send: c.send, now: performance.now() }); c.sync.debug = V; }
@@ -307,7 +319,50 @@ function makeMeter(kind) {
 // ---------------------------------------------------------------------------
 // one match
 
+// co-op: the recorded bot inputs of one level; count deaths and wins shown and then taken back
+// (the death or win phase, then play again on the same attempt)
+async function coopMatch(level, port) {
+  const rec = JSON.parse(fs.readFileSync(path.join(ROOT, `tools/playtest/inputs/level-${level}.json`), 'utf8'));
+  const bits = [];
+  for (const [a, b, k] of rec.rle) for (let i = 0; i < k; i++) bits.push([a, b]);
+  const tracks = [bits.map(x => x[0]), bits.map(x => x[1])];
+  const meters = [0, 1].map(() => {
+    const M = { undoDead: 0, undoWon: 0, deadShown: 0, prev: null, srv: null, snap() {}, begin() {} };
+    M.frame = (d) => {
+      const S = d.S, cur = { ph: S.phase, tries: S.tries };
+      if (M.prev && M.prev.tries === cur.tries) {
+        if (M.prev.ph === PH_DEAD_ && cur.ph === 0) M.undoDead++;
+        if (M.prev.ph === 2 && cur.ph === 0) M.undoWon++;
+      }
+      if (cur.ph === PH_DEAD_ && (!M.prev || M.prev.ph !== PH_DEAD_)) M.deadShown++;
+      M.prev = cur;
+    };
+    M.snap = (m) => { M.srv = { phase: m.st.phase, tries: m.st.tries, tick: m.st.tick }; };
+    return M;
+  });
+  const A = makeClient('coop', port, level, 0, tracks[0], meters[0]);
+  const B = makeClient('coop', port, level, 1, tracks[1], meters[1]);
+  await Promise.all([A.open, B.open]);
+  const room = new Promise((res) => A.on('room', (m) => { if (m.players.length === 1) res(m.code); }));
+  A.send({ t: 'create', name: 'A' });
+  const code = await room;
+  const both = new Promise((res) => A.on('room', (m) => { if (m.players.length === 2) res(); }));
+  B.send({ t: 'join', code, name: 'B' });
+  await both;
+  A.send({ t: 'start', level: level - 1 });
+  const t0 = performance.now();
+  await new Promise((res) => {
+    const iv = setInterval(() => {
+      const s = meters[0].srv, el = performance.now() - t0;
+      if ((s && s.phase === 2 && el > 3000) || el > (bits.length / 60 + 20) * 1000) { clearInterval(iv); setTimeout(res, 1500); }
+    }, 100);
+  });
+  A.close(); B.close();
+  return { kind: 'coop', seed: level, scheme: SCHEME, server: meters[0].srv, clients: [A, B].map((c, i) => ({ who: c.me ? 'Luna' : 'Sol', undoDead: meters[i].undoDead, undoWon: meters[i].undoWon, deathsShown: meters[i].deadShown, stalls: c.stalls, spikes: c.ln.spikes })) };
+}
+
 async function match(kind, seed, port) {
+  if (kind === 'coop') return coopMatch(seed, port);
   const tEnd = 180 + SECS * 60;
   const plan = pairTracks(kind, seed, tEnd);
   const meters = [makeMeter(kind), makeMeter(kind)];
@@ -342,6 +397,8 @@ async function match(kind, seed, port) {
 // ---------------------------------------------------------------------------
 
 function line(r) {
+  if (r.kind === 'coop') return `coop level ${r.seed} [${r.scheme}]: server ${r.server?.phase === 2 ? 'won' : 'not won'} (attempt ${r.server?.tries}, tick ${r.server?.tick})\n` +
+    r.clients.map(c => `    ${c.who.padEnd(4)}: deaths shown ${c.deathsShown}, of them taken back ${c.undoDead}; wins taken back ${c.undoWon}; stalls ${c.stalls} spikes ${c.spikes}`).join('\n');
   const s = r.server;
   const head = `${r.kind} seed ${r.seed} [${r.scheme}]: server ${s.phase === 2 ? `over at ${s.tick} (${['Sol', 'Luna', 'draw'][s.win] || '?'} wins${s.lostEarly ? `, ${s.dead.map((d, i) => d >= 0 ? ['Sol', 'Luna'][i] : null).filter(Boolean).join('+')} died before the plan's end ${r.planEnd}` : ''})` : `still running at ${s.tick}`}`;
   const u = TH[r.kind].unit;
@@ -352,6 +409,7 @@ function line(r) {
 
 // pass or fail (SCHEME=new)
 function verdict(r) {
+  if (r.kind === 'coop') return r.clients.flatMap(c => (c.undoDead || c.undoWon ? [`${c.who}: a death or win shown and taken back`] : []));
   const th = TH[r.kind], bad = [];
   if (r.server.lostEarly) bad.push(`server: a player died before the plan's end (inputs applied off their tick)`);
   for (const c of r.clients) {
@@ -374,7 +432,7 @@ const results = [];
 const jobs = [];
 for (const kind of KINDS) for (const seed of SEEDS) jobs.push([kind, seed]);
 // plan first (cached), so planning never stalls a running match
-for (const [kind, seed] of jobs) pairTracks(kind, seed, 180 + SECS * 60, { log: V ? console.log : () => {} });
+for (const [kind, seed] of jobs) if (kind !== 'coop') pairTracks(kind, seed, 180 + SECS * 60, { log: V ? console.log : () => {} });
 console.log(`check-netcode: scheme ${SCHEME}, one-way ${NET.base}±${NET.jit} ms, spikes every ~${NET.spike} s of ${NET.spikeMin}-${NET.spikeMax} ms, client stalls every ~${NET.stall} s of ${NET.stallMin}-${NET.stallMax} ms${CPU ? `, server CPU quota ${CPU}%` : ''}, ${SECS} s matches`);
 let next = 0, fails = 0;
 await Promise.all(Array.from({ length: Math.min(CONC, jobs.length) }, async () => {
