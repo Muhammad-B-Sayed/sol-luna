@@ -106,11 +106,14 @@ function link(r, cfg) {
 function startServer(port) {
   const args = ['server/index.js'];
   const cmd = CPU ? 'systemd-run' : process.execPath;
-  const argv = CPU ? ['--user', '--scope', '-q', '-p', `CPUQuota=${CPU}%`, process.execPath, ...args] : args;
-  const p = spawn(cmd, argv, { cwd: ROOT, env: { ...env, PORT: String(port), LAG_MS: '0', TEST_SEED: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  const argv = CPU ? ['--user', '--scope', '-q', '-p', `CPUQuota=${CPU}%`, '-p', 'CPUWeight=10000', process.execPath, ...args] : args;
+  const p = spawn(cmd, argv, { cwd: ROOT, env: { ...env, PORT: String(port), LAG_MS: '0', TEST_SEED: '1', NET_LOG: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
   return new Promise((resolve, reject) => {
     let buf = '';
-    p.stdout.on('data', (d) => { buf += d; if (buf.includes('listening')) resolve(p); });
+    p.stdout.on('data', (d) => {
+      buf += d; if (buf.includes('listening')) resolve(p);
+      for (const ln of String(d).split('\n')) if (ln.startsWith('net ')) serverLog.push(ln);
+    });
     p.on('exit', (c) => reject(new Error('server exited ' + c)));
     setTimeout(() => reject(new Error('server did not start')), 8000);
   });
@@ -119,6 +122,7 @@ function startServer(port) {
 // ---------------------------------------------------------------------------
 // one client: socket over the modelled link, a 60 Hz frame loop, the sync code, a meter
 
+const serverLog = [];   // the server's NET_LOG lines (input holds, skips, late keys per match)
 let Sync = null;   // public/js/runner-sync.js, loaded for SCHEME=new
 async function loadSync() {
   if (SCHEME === 'old' || Sync) return;
@@ -342,6 +346,7 @@ function line(r) {
 // pass or fail (SCHEME=new)
 function verdict(r) {
   const th = TH[r.kind], bad = [];
+  if (r.server.lostEarly) bad.push(`server: a player died before the plan's end (inputs applied off their tick)`);
   for (const c of r.clients) {
     if (c.falseDeaths || c.falseResults || c.undo.dead[0] || c.undo.dead[1] || c.undo.over) bad.push(`${c.who}: false deaths`);
     if (c.remote.maxPop > th.pop) bad.push(`${c.who}: remote pop ${c.remote.maxPop}`);
@@ -377,6 +382,7 @@ await Promise.all(Array.from({ length: Math.min(CONC, jobs.length) }, async () =
   }
 }));
 srv.kill();
+if (V || env.NETLOG) for (const l of serverLog) console.log(l);
 console.log(`harness event loop: longest delay ${Math.round(loopLag.max)} ms, ${loopLag.over50} over 50 ms`);
 if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify(results, null, 1));
 if (SCHEME !== 'old') console.log(fails ? `${fails} of ${jobs.length} matches FAILED` : `All ${jobs.length} matches passed.`);

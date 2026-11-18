@@ -93,14 +93,15 @@ export class RunnerSync {
     this.snaps = [{ tick: st.tick, t: now, st }];
     this.arr = [];                      // [arrival ms, arrival - tick * DT] for the playback clock
     this.P = this.predictFrom(st);
-    this.pending = []; this.seq = 0; this.remoteBits = 0;
+    this.pending = []; this.seq = 0; this.remoteBits = 0; this.qm = null;
     this.acc = 0; this.alpha = 1;
     this.prev = this.capture();
     this.off = this.zero();             // your own player's visual correction
     this.roff = this.zero();            // the other player's, when late snapshots replace an extension
     this.predR = new Map();             // the other player in the prediction, by tick (to extend late snapshots)
     this.pb = null;                     // playback tick of the other player (fractional)
-    this.lastR = null;                  // { T, raw } what was drawn for the other player last frame
+    this.lastR = null;                  // { T } the other player's playback tick last frame
+    this.lastRide = null;               // { key, v } the moving part they stood on last frame, and its offset
     this.overAt = -1; this.frozen = null;
     this.stats = { corr: [], held: 0, released: 0, extrap: 0, delay: 0 };
   }
@@ -124,7 +125,11 @@ export class RunnerSync {
   // ticks
 
   frame(dt, readBits, now) {
-    this.acc = Math.min(this.acc + dt, MAX_BACKLOG);
+    // pacing: the server reports the smallest length of your input queue over the last second
+    // (qm). Keep it between 1 and 3 ticks by running 3% slower or faster: enough cushion that
+    // jitter never starves it, and no more delay than that.
+    const rate = this.qm === null ? 1 : this.qm > 3 ? 0.97 : this.qm < 1 ? 1.03 : 1;
+    this.acc = Math.min(this.acc + dt * rate, MAX_BACKLOG);
     let n = 0;
     while (this.acc >= DT && n < MAX_TICKS_PER_FRAME) { this.acc -= DT; n++; this.tick(readBits()); }
     this.alpha = Math.min(1, this.acc / DT);
@@ -173,11 +178,18 @@ export class RunnerSync {
     // replay your unapplied inputs on the server's state
     const before = this.pos(this.P.p[me]), scroll0 = sim.scroll(this.P);
     this.remoteBits = m.inp[o] | 0;
+    if (m.qm) this.qm = m.qm[me];
     this.pending = this.pending.filter(([s]) => s > (m.ack[me] | 0));
     const P = this.predictFrom(st);
     this.predR = new Map();
+    // the server held your last keys for m.d[me] ticks while your inputs were late: it will skip
+    // the ones equal to those keys (the hold already applied them), so the replay does too
+    let k = 0;
+    const held = m.d ? m.d[me] | 0 : 0, hv = m.inp[me] | 0;
+    while (k < held && k < this.pending.length && this.pending[k][1] === hv) k++;
     const inp = [0, 0];
-    for (const [, b] of this.pending) {
+    for (let j = k; j < this.pending.length; j++) {
+      const b = this.pending[j][1];
       inp[me] = b; inp[o] = this.remoteBits;
       sim.step(this.L, P, inp);
       this.predR.set(P.tick, this.pos(P.p[o]));
@@ -284,9 +296,12 @@ export class RunnerSync {
     const sa = this.snapAt(T);
     let theirs = this.remoteRaw(T);
     if (!shownDead[o]) {
-      for (const k of sim.dims) theirs[k] += this.roff[k];
-      const ride = sim.ride(this.L, P, tNow, sa.st, T, sa.st.p[o]);
-      if (ride) for (const k of sim.dims) theirs[k] += ride[k];
+      const ride = sim.ride(this.L, P, tNow, sa.st, T, sa.st.p[o]) || this.zero();
+      // stepping on or off a moving part: carry the change as an easing offset, not a pop
+      const key = sa.st.p[o].gr ? sa.st.p[o].gref : -1;
+      if (this.lastRide && this.lastRide.key !== key) for (const k of sim.dims) this.roff[k] += this.lastRide.v[k] - ride[k];
+      this.lastRide = { key, v: ride };
+      for (const k of sim.dims) theirs[k] += ride[k] + this.roff[k];
       if (A.p[o].alive || T < A.dead[o]) sim.front(sa.st.p[o], theirs, scroll);
     }
     this.lastR = { T };
