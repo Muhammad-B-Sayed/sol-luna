@@ -145,9 +145,10 @@ function prepSeed(seed) {
   return { L, chunks, ghost, T, snap };
 }
 
-function emptyRes(seed, chunks) {
-  return { seed, chunks: 0, nChunks: chunks.length, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [],
-    lost: [], slack: [], kinds: {}, course: [], courseFail: [], rest: {}, abuse: {}, speed: 0, tMax: 0 };
+function emptyRes(seed, chunks, T = []) {
+  const n = chunks.length;
+  return { seed, chunks: 0, nChunks: n, speed: n ? speedAt(chunks[n - 1].x0 * TS) : 0, tMax: n ? T[n - 1] : 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [],
+    lost: [], slack: [], kinds: {}, course: [], courseFail: [], rest: {}, abuse: {} };
 }
 
 // The whole course in one go, for one character: wait on a start ledge only when more than
@@ -163,7 +164,7 @@ function checkCourse(seed, who) {
       stepRunner(L, S, [0, 0]);
     }
   }
-  const res = emptyRes(seed, chunks);
+  const res = emptyRes(seed, chunks, T);
   {
     let S = createRunnerState(L, { sandbox: true });
     park(S, 1 - who);
@@ -191,10 +192,9 @@ function checkCourse(seed, who) {
 // Tests 2 to 6 for chunks [ka, kb) of one seed.
 function checkChunks(seed, ka, kb) {
   const { L, chunks, T, snap } = prepSeed(seed);
-  const res = emptyRes(seed, chunks);
+  const res = emptyRes(seed, chunks, T);
   kb = Math.min(kb, chunks.length);
   res.chunks = Math.max(0, kb - ka);
-  res.speed = speedAt(chunks[chunks.length - 1].x0 * TS); res.tMax = T[chunks.length - 1];
   for (let k = ka; k < kb; k++) {
     const c = chunks[k], next = L.chunks[k + 1];
     const goal = next.x0 * TS, Tk = T[k], Tn = T[k + 1];
@@ -300,6 +300,9 @@ function checkChunks(seed, ka, kb) {
 
 function merge(all) {
   const tot = { course: [], courseFail: [], seeds: new Set(all.map(r => r.seed)).size, chunks: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, tMax: 0 };
+  const nChunks = new Map();
+  for (const r of all) nChunks.set(r.seed, r.nChunks);
+  tot.courseChunks = [...nChunks.values()].reduce((a, b) => a + b, 0);
   for (const r of all) {
     tot.chunks += r.chunks; tot.first += r.first; tot.second += r.second; tot.parked += r.parked;
     tot.firstFail.push(...r.firstFail); tot.secondFail.push(...r.secondFail); tot.parkedFail.push(...r.parkedFail);
@@ -324,9 +327,10 @@ const pct = (arr, q) => { if (!arr.length) return 0; const a = [...arr].sort((x,
 function report(t, secs) {
   const ok = !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length &&
     Object.values(t.rest).every(v => !v.fail) && Object.values(t.abuse).every(v => !v.fail);
-  console.log(`\nRunner check: ${t.seeds} seeds, ${t.chunks} chunks to ${TILES} tiles (full difficulty at ${1100}), top scroll speed ${t.speed.toFixed(2)} px/tick, ${(t.tMax / 60).toFixed(0)} s in. ${secs.toFixed(0)} s.`);
+  console.log(`\nRunner check: ${t.seeds} seeds, ${t.chunks || t.courseChunks} chunks to ${TILES} tiles (full difficulty at ${1100}), top scroll speed ${t.speed.toFixed(2)} px/tick, ${(t.tMax / 60).toFixed(0)} s in. ${secs.toFixed(0)} s.`);
   const leads = t.course.map(r => r.minLead / TS);
-  console.log(`  whole course    ${t.course.length - new Set(t.courseFail.map(f => f.seed * 2 + f.who)).size}/${t.course.length} runs (Sol and Luna, every seed) reached ${TILES} tiles; smallest lead over the left edge at a chunk start: ${Math.min(...leads).toFixed(1)} tiles (median of per-run minimums ${pct(leads, 0.5).toFixed(1)})`);
+  if (!t.course.length) console.log('  whole course    skipped (COURSE=0)');
+  else console.log(`  whole course    ${t.course.length - new Set(t.courseFail.map(f => f.seed * 2 + f.who)).size}/${t.course.length} runs (Sol and Luna, every seed) reached ${TILES} tiles; smallest lead over the left edge at a chunk start: ${Math.min(...leads).toFixed(1)} tiles (median of per-run minimums ${pct(leads, 0.5).toFixed(1)})`);
   console.log(`  single chunk    ${t.first - t.firstFail.length}/${t.first} cleared alive from a ${BUF / TS}-tile lead; ${t.slack.filter(x => x < 0).length} of them slower than the scroll (repaid by later chunks)`);
   console.log(`  second arrival  ${t.second - t.secondFail.length}/${t.second} cleared`);
   console.log(`  parked partner  ${t.parked - t.parkedFail.length}/${t.parked} cleared`);

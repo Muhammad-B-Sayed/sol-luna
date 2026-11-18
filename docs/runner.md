@@ -89,11 +89,21 @@ return to rest and can't be wedged, (4) both characters face equal difficulty.
 ## Checks
 
 ```bash
-node tools/check-runner.js                        # 50 seeds, course to 1700 tiles (~20 min, JOBS=3)
-SEED=7 V=1 TILES=600 node tools/check-runner.js   # one seed, every chunk printed
-PORT=3217 node server/index.js &                  # then:
+node tools/check-runner.js                           # 50 seeds, course to 1700 tiles (about 7 min with 6 jobs)
+JOBS=6 PARTS=4 node tools/check-runner.js            # the same, explicit
+SEEDS=11-20 node tools/check-runner.js               # a range of seeds (SEEDS=10 means 1-10)
+SEED=7 V=1 TILES=600 node tools/check-runner.js      # one seed, every chunk printed
+PARTS=0 node tools/check-runner.js                   # whole-course runs only (about 1 min for 50 seeds)
+SEED=20 COURSE=0 CHUNKS=80-82 V=1 node tools/check-runner.js   # chunk tests for a few chunks
+DUMP=/tmp/runner-dumps node tools/check-runner.js    # write the state at each whole-course failure
+PORT=3217 node server/index.js &                     # then:
 PORT=3217 OUT=docs/img/runner node tools/runner-browser.js
 ```
+
+The checker runs work units in worker threads: per seed, the two whole-course runs (Sol, Luna)
+and the chunk tests split into `PARTS` ranges (default 3). `JOBS` caps the threads (default: CPU
+cores minus one, at most 8). Late chunks cost the most, so more parts balance the load better.
+Two machines can share the 50 seeds with `SEEDS=1-25` and `SEEDS=26-50`; the summaries add up.
 
 `check-runner.js` uses the real sim:
 
@@ -110,3 +120,80 @@ PORT=3217 OUT=docs/img/runner node tools/runner-browser.js
 5. **Back to rest**: after every run and after random abuse (hopping, standing on ends, falling
    off), every plank, slab and shard must be back at rest within a bound.
 6. **Equal difficulty**: average clear time per kind for Sol and for Luna.
+
+Only "cleared alive" counts as a pass. Whether a chunk is cleared before the scroll catches up is
+a statistic (one search at the normal budget, no retry); the whole-course run shows that the lead
+lost on slow chunks is made up again.
+
+### The bot
+
+`runner-bot.js` is a best-first search over macro actions (run, wait, brake, and jumps that hold
+or let go of right at set times), all in the real sim. A macro's steps run as written, and only
+the last one is stretched until the player stands. With a deadline, it drops any node that could
+not reach the goal in time even at full running speed (not on swing chunks, where riding the
+lantern can be faster than running).
+
+### Latest result (Nov 2026)
+
+```
+Runner check: 50 seeds, 5652 chunks to 1700 tiles (full difficulty at 1100), top scroll speed 2.75 px/tick, 314 s in. 434 s.
+  whole course    100/100 runs (Sol and Luna, every seed) reached 1700 tiles; smallest lead over the left edge at a chunk start: 6.5 tiles (median of per-run minimums 17.5)
+  single chunk    11304/11304 cleared alive from a 12-tile lead; 186 of them slower than the scroll (repaid by later chunks)
+  second arrival  17832/17832 cleared
+  parked partner  4950/4950 cleared
+  spare time at a chunk's exit vs. the scroll (ticks): min -58, median 23
+  time lost by second arrivals vs the deadline (ticks, + = later): median -24, 95% 24, max 132
+  kind      chunks  sol avg  luna avg  max |sol-luna|  min spare  top speed
+  start         50    6.25s     6.25s           0 t      133 t  1.10
+  gaps         858    2.10s     2.10s           0 t        0 t  2.75
+  steps        465    2.06s     2.06s           2 t      -58 t  2.75
+  flat         218    2.36s     2.36s           0 t        0 t  2.75
+  thorns       509    1.91s     1.91s           0 t      -14 t  2.75
+  shade        365    1.35s     1.35s           0 t       -3 t  2.75
+  twin         496    1.97s     1.95s          39 t        0 t  2.75
+  plank        649    2.40s     2.40s           2 t       -5 t  2.75
+  crumble      494    2.17s     2.17s           0 t      -40 t  2.75
+  eclipse      439    2.67s     2.66s          50 t       -6 t  2.75
+  vent         317    1.99s     1.99s           0 t      -29 t  2.75
+  swing        445    1.80s     1.80s           0 t      -48 t  2.75
+  shards       347    2.73s     2.73s           2 t        1 t  2.75
+  rest after a run  plank  1650 objects, slowest 99 ticks after the last touch, over bound: 0
+  rest after a run  slab   1350 objects, slowest 95 ticks after the last touch, over bound: 0
+  rest after a run  shard  646 objects, slowest 223 ticks after the last touch, over bound: 0, 892 scrolled away first
+  rest after abuse  plank  1334 objects, slowest 99 ticks after the last touch, over bound: 0, 113 scrolled away first
+  rest after abuse  slab   805 objects, slowest 95 ticks after the last touch, over bound: 0, 11 scrolled away first
+  rest after abuse  shard  405 objects, slowest 251 ticks after the last touch, over bound: 0, 1602 scrolled away first
+
+PASS
+```
+
+That run took 434 s with 6 jobs on a shared 16-core Linux machine.
+
+### The 1700-tile failures, and why they were the bot
+
+When the course was first extended to 1700 tiles, 10 whole-course runs over 7 seeds (4, 7, 8, 14,
+18, 19, 20) failed on a crumble, eclipse, gaps or thorns chunk. The single-chunk tests on the same
+chunks passed. In every failure the player began the chunk at the last pixel of its run-up, at
+full speed: the jump before had landed late, which is normal at full difficulty, because a running
+jump carries about 6.75 tiles and run-ups are 3 to 4 tiles. From there the next jump has to be
+shortened in the air. The bot could not do that. A timed macro step that ended in the air was held
+until landing, so "jump, then let go of right" really held right for the whole jump. Sol and Luna
+take the same line on most chunks, which is why both failed the same crumble chunk.
+
+With that fixed, the bot clears all ten states. A person can too, with room to spare. From each
+state, jumping on tick d and then letting go of right after n ticks clears the chunk for these
+pairs:
+
+| Failure | Jump on tick | Let go after | Narrowest let-go window, any jump tick |
+| --- | --- | --- | --- |
+| seed 20 crumble (2-wide slab) | 0-4 (coyote time) | 0-22 ticks | 18 ticks (0.30 s) |
+| seed 18 crumble | 0-5 | 0-40 | 27 |
+| seed 19 crumble | 0-4 | 0-37 | 28 |
+| seed 4 gaps | 0-4 | 3-35 | 24 |
+| seed 14 eclipse | 0-4 | 4-32 | 22 |
+| seed 7 eclipse | 0-4 | 3-31 | 23 |
+| seed 8 thorns (thorn at the run-up's edge) | 0-1 | 0-28 | 28 |
+
+The thorn case leaves only 2 ticks to jump, because the bot had run right up to a thorn. That
+is a situation the player creates, like any thorn they run into. Nothing in the generator was
+changed.

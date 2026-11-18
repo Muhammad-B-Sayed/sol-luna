@@ -424,7 +424,7 @@ Everything is in `docs/runner.md`: files, the hooks in the shell files, the diff
 obstacles and how each meets the fairness rules, and the checks.
 
 ```bash
-node tools/check-runner.js                  # fairness proof over 50 seeds with the real sim (~20 min)
+node tools/check-runner.js                  # fairness proof, 50 seeds to 1700 tiles, real sim (~7 min, 6 jobs)
 PORT=3217 node server/index.js & PORT=3217 OUT=docs/img/runner node tools/runner-browser.js
 ```
 
