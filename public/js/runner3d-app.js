@@ -128,6 +128,12 @@ export class Runner3DMode {
     return this.rendP;
   }
 
+  // warm the module cache before a match so the countdown isn't spent downloading three.js
+  prefetch() {
+    if (this.pre || new URLSearchParams(location.search).has('r3ddebug')) return;
+    this.pre = import('/js/r3d/renderer.js').catch(() => {});
+  }
+
   useDebug() {
     // a canvas that already holds a WebGL context cannot give a 2D one: swap in a fresh one
     if (this.RR) { try { this.RR.dispose(); } catch {} }
@@ -233,7 +239,7 @@ export class Runner3DMode {
     this.lastDrawn = v.p[this.app.me]?.z ?? null;
     this.hud(v);
     if (this.RR) {
-      try { this.RR.draw(this.L, this.S, v, now / 1000, { split: !this.online, me: this.online ? this.app.me : 0, paused: this.paused }); }
+      try { this.RR.draw(this.L, this.S, v, now / 1000, { split: !this.online, me: this.online ? this.app.me : 0, paused: this.paused }); this.frames = (this.frames || 0) + 1; }
       catch (e) {
         this.renderErrors.push(String(e?.stack || e));
         console.error('Runner 3D: renderer failed, switching to the debug view.', e);
@@ -403,7 +409,8 @@ export class Runner3DMode {
   wire() {
     $('#btnRunner3d').onclick = () => { this.sfx.unlock(); this.sfx.ui(); this.startLocal(); };
     $('#lobbyRunner3d').onclick = () => { this.sfx.ui(); this.net.send({ t: 'start', mode: 'runner3d' }); };
-    this.net.on('room', (m) => { $('#lobbyRunner3d').disabled = m.players.length < 2; });
+    this.net.on('room', (m) => { $('#lobbyRunner3d').disabled = m.players.length < 2; if (m.players.length === 2) this.prefetch(); });
+    for (const ev of ['pointerenter', 'focus']) $('#btnRunner3d').addEventListener(ev, () => this.prefetch());
     this.net.on('s', (m) => this.onSnapshot(m));
     this.net.on('start', (m) => { if (m.mode !== 'runner3d') this.stop(); });
     this.net.on('menu', () => this.stop());
