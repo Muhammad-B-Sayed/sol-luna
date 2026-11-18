@@ -37,7 +37,7 @@ export function stoneSlab(o, idx, { h = o.h ?? 1, inlay = true, runes = true, gl
     m.position.z = (hash(idx, 9) - 0.5) * Math.max(0, d - size - 1);
     grp.add(m); grp.userData.geos.push(m.geometry);
   }
-  if (runes && w >= 1.5 && h >= 0.4) {
+  if (runes && w >= 2 && d >= 2.5 && h >= 0.4) {
     const rh = Math.min(0.3, h * 0.4);
     const r = runeBand(w * 0.86, rh);
     r.position.set(0, -rh - 0.08, d / 2 + 0.012);
