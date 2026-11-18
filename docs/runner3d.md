@@ -254,6 +254,13 @@ The first full runs failed, and each failure was traced to either the course or 
 - **Course: thorn curtains and pendulum rows.** Several curtains or blades on unrelated clocks
   drained the lead at top speed (one row of curtains cost 6.5 units of a 20-unit lead). They
   now share a clock phased by running time.
+- **Bot, November 2026 (spinning slab branch).** The new slab draws different random numbers, so
+  the courses after it changed. One new pendulum row (seed 3, z 995: three blades on a 2-wide
+  bridge after a 3.5-unit run-up) failed the flow test at one arrival time with any wait allowed.
+  A runner easing to three-quarter speed for 48 ticks clears it with 0.4 ticks of debt, so the
+  route was there: the best-first search always expanded the faster branches and never came back
+  to the slow one. The bot now also retries from a start that eases off for 24 or 48 ticks
+  (forward 2 ticks, coast 2), and that start counts toward the flow debt like any other tick.
 - **Bot.** Braking and steering jumps never braked (an early macro step that ended in the air
   kept its bits until landing). Its section goal accepted doomed states (full speed just in
   front of thorns past a short run-up, or a buffered jump at a run-up's edge). It now has
@@ -546,7 +553,8 @@ trust.
 ```bash
 PORT=3470 node server/index.js &                     # LAG_MS=80 to test prediction
 PORT=3470 node tools/runner3d-browser.js             # local, online, other modes, WebGL pass, screenshots
-JOBS=8 node tools/check-runner3d.js                  # fairness proof (about 2 minutes); QUICK=1 for 4 seeds
+JOBS=8 node tools/check-runner3d.js                  # fairness proof (see section 4 for the time); QUICK=1 for 4 seeds
+node tools/r3d-slab.js                               # spinning slab: touches, crossings, prediction
 NOSERVER=1 PORT=3470 node tools/r3d-shots.js [names] # renderer screenshots (docs/img/runner3d/render-*.png)
 PORT=3470 node tools/r3d-perf.js                     # frame times; SECS, SIZES, ZS, VIEWS, Q
 PORT=3470 node tools/r3d-eval.js "seed=7&kind=gate" "__r3d.S.tick"   # run expressions in the demo
@@ -610,6 +618,9 @@ node tools/r3d-far.js                                # sim tick time and state s
 - Online: the other player's correction eases out instead of snapping (no pops at 80 ms lag).
   The browser test plays the WebGL pass in real time and checks tips and remote motion.
 - Folded `runner3d-app.md` and `runner3d-render.md` into this file; HANDOFF section 11.
+- Branch `runner3d-slab` from `low-gravity` (4be5032), after the owner found the chain slab's
+  tip far too slow: the spinning slab (sim, generator, view, debug boxes, checker tests, bot
+  retries, `tools/r3d-slab.js`), the netcode ride and the renderer's shadows use `tiltTop`.
 - Branch `r3d-flow` from `runner-3d` (d52cb57), after the owner played it: removed the lead cap
   and everything that showed it; per-player object windows in the sim and the renderer;
   the mantle; a slower, wider thorn curtain; a never-stop flow test and a reactive curtain runner
