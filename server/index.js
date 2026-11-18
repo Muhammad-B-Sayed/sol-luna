@@ -112,11 +112,11 @@ class Room {
   get host() { return this.clients[0]; }
   resetInputs() {
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
-    this.debt = [0, 0]; this.held = [0, 0]; this.qlog = [[], []]; this.due = 0; this.waited = 0;
+    this.debt = [0, 0]; this.held = [0, 0]; this.qlog = [[], []]; this.due = 0; this.waits = 0; this.waitMax = 0; this.waiting = false;
     this.nst = [0, 1].map(() => ({ held: 0, skipped: 0, late: 0, released: 0, trimmed: 0 }));   // NET_LOG=1 prints these
   }
   netLog() {
-    if (process.env.NET_LOG && this.runner && this.nst) console.log(`net ${this.code} ${this.mode} tick ${this.S?.tick}, waited ${this.waited} ticks: ` + this.nst.map((n, i) => `${['Sol', 'Luna'][i]} held ${n.held} skipped ${n.skipped} late ${n.late} released ${n.released} trimmed ${n.trimmed}`).join(' | '));
+    if (process.env.NET_LOG && this.runner && this.nst) console.log(`net ${this.code} ${this.mode} tick ${this.S?.tick}: waited for late inputs ${this.waits} times (longest ${this.waitMax} ticks); ` + this.nst.map((n, i) => `${['Sol', 'Luna'][i]} held ${n.held} skipped ${n.skipped} late ${n.late} released ${n.released} trimmed ${n.trimmed}`).join(' | '));
   }
   get runner() { return this.mode === 'runner' || this.mode === 'runner3d'; }
   // Runner rooms (docs/netcode.md). Each client predicts its own player from its own inputs, one
@@ -207,7 +207,12 @@ class Room {
     if (!this.runner) { for (let i = 0; i < n; i++) this.tick(); return; }
     this.due = Math.min((this.due || 0) + n, RUN_WAIT + 60);   // at most a second behind
     while (this.due > 0 && this.S) {
-      if (this.due <= RUN_WAIT && !this.inputsReady()) { this.waited = (this.waited || 0) + 1; break; }
+      if (this.due <= RUN_WAIT && !this.inputsReady()) {
+        if (!this.waiting) { this.waiting = true; this.waits++; }
+        this.waitMax = Math.max(this.waitMax, this.due);
+        break;
+      }
+      this.waiting = false;
       this.due--;
       this.tick();
     }
@@ -380,6 +385,7 @@ function onMessage(ws, data) {
 function leave(ws) {
   const r = ws.room;
   if (!r) return;
+  if (r.S && r.runner && r.S.phase !== 2) r.netLog();
   ws.room = null;
   r.clients = r.clients.filter(c => c.ws !== ws);
   if (!r.clients.length) { rooms.delete(r.code); return; }

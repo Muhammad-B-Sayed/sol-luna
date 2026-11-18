@@ -16,6 +16,18 @@ const BUILT = LEVELS.map((raw, i) => buildLevel(raw, i));
 const levelOf = (level) => (level === 'dodge' ? COURT : BUILT[level]);
 const newState = (L) => (L.dodge ? createDodge((Math.random() * 2 ** 31) | 0) : createState(L));
 const stepAny = (L, S, inp) => (L.dodge ? stepDodge(L, S, inp) : step(L, S, inp));
+// Online co-op: the prediction never kills anyone and never wins the level. Those come only from
+// the server's snapshot. The partner is predicted from their last known keys, so a jump heard
+// late used to walk them into a pool here: "Luna was lost…", the death sound, then the next
+// snapshot took it back (docs/netcode.md). A death or win the prediction runs into is undone for
+// that tick; the character carries on (sinking into the pool) until the server says.
+function predictStep(L, S, inp) {
+  if (L.dodge) { stepDodge(L, S, inp); return; }
+  const ph = S.phase, phT = S.phaseT, who = S.deadWho;
+  step(L, S, inp);
+  if (ph === PH_PLAY && S.phase === PH_DEAD) { S.p[S.deadWho].alive = true; S.phase = ph; S.phaseT = phT; S.deadWho = who; }
+  else if (ph === PH_PLAY && S.phase === PH_WON) { S.phase = ph; S.phaseT = phT; }
+}
 const DT = 1000 / TICK_RATE;
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -250,7 +262,7 @@ function tickOnline() {
   inp[app.me] = bits; inp[1 - app.me] = app.remoteBits;
   app.prev = capture(app.S);
   const pb = popBefore(app.S);
-  stepAny(app.L, app.S, inp);
+  predictStep(app.L, app.S, inp);
   popAfter(app.S, pb);
   listen(app.S);
   decayOff();
@@ -301,7 +313,7 @@ function onSnapshot(m) {
   const inp = [0, 0];
   for (const [, b] of app.pending) {
     inp[app.me] = b; inp[1 - app.me] = app.remoteBits;
-    stepAny(app.L, ns, inp);
+    predictStep(app.L, ns, inp);
   }
   const after = capture(ns);
   // keep visuals continuous: carry the correction as a decaying offset
