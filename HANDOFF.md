@@ -462,4 +462,30 @@ PORT=3217 node server/index.js & PORT=3217 OUT=docs/img/runner node tools/runner
   and splits each seed's chunk tests into `PARTS` units (default 3). The 50-seed, 1700-tile proof
   is clean and took 308 s on 6 jobs on a busy machine.
 
-A 3D Runner is being built on another branch. Once merged, it is documented in `docs/runner3d.md`.
+The 3D runner is section 11.
+
+---
+
+## 11. Runner 3D (versus mode, Nov 2026)
+
+A third-person race for two through an endless twilight temple, chased by a wall of dusk that
+speeds up. Local split screen on one keyboard and online rooms (server authoritative, client
+prediction), with a Three.js renderer. Everything is in `docs/runner3d.md`: rules and controls,
+the speed and difficulty table, the obstacles and how each meets the fairness rules, the checker
+and its numbers, the files and the hooks in the shell files (file and line), rendering notes,
+readability cues, how to run each tool, and known issues.
+
+```bash
+JOBS=8 node tools/check-runner3d.js             # fairness proof, 50 seeds to z 1700, real sim (~2 min)
+PORT=3470 node server/index.js &                # LAG_MS=80 to test prediction
+PORT=3470 node tools/runner3d-browser.js        # local, online, other modes, real renderer, screenshots
+NOSERVER=1 PORT=3470 node tools/r3d-shots.js    # renderer screenshots; open /r3d-demo.html?boxes=1 to see collision
+PORT=3470 node tools/r3d-perf.js                # frame times on this machine's GPU
+```
+
+- Keep `stepRunner3d` and the generator free of `Math.sin`/`cos`/`pow`/`random`. Rotation and
+  swinging go through `trig()` and `wave()`.
+- Headless Chromium reaches the GPU with `--enable-gpu` (the tools pass it by default). Without it
+  WebGL is SwiftShader and the real renderer is far too slow to play.
+- When an obstacle's art changes, check it against `?boxes=1`: the red lines are what kills.
+

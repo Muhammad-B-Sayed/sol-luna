@@ -15,8 +15,9 @@ const PORT = process.env.PORT || 3410;
 const BASE = `http://localhost:${PORT}`;
 const OUT = process.env.OUT || 'docs/img/runner3d';
 const W = +(process.env.W || 960), H = +(process.env.H || 540);
-// Extra Chromium flags. Default headless Chromium here already has WebGL2; swiftshader flags make it slower.
-const GL_FLAGS = (process.env.GL_FLAGS || '').split(' ').filter(Boolean);
+// Chromium GL flags. --enable-gpu gives headless Chromium the real GPU here (tools/r3d-glprobe.js shows
+// which renderer a set of flags gets); without a GPU it falls back to SwiftShader by itself.
+const GL_FLAGS = (process.env.GL_FLAGS ?? '--enable-gpu').split(' ').filter(Boolean);
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const T0 = Date.now();
@@ -36,7 +37,9 @@ const SHOTS = [
   ['spikes', 'seed=7&kind=spikes', 60],
   ['low', 'seed=7&z=140&q=low', 150],
   // deaths and the victory pose (set directly in the state; the renderer reacts to the change)
-  ['death-spike', 'seed=7&z=30', 14, `__r3d.step(60); __r3d.render(); const S = __r3d.S; S.p[0].alive = false; S.dead[0] = S.tick; S.why[0] = 'spike';`],
+  // one per cause of loss (WHY3): Sol is lost, the camera is Sol's
+  ...['spike', 'sweep', 'gate', 'blade', 'orb', 'pool', 'fall'].map((why) => ['death-' + why, 'seed=7&z=30&bot=0', 16,
+    `__r3d.step(30); __r3d.render(); const S = __r3d.S; S.p[0].alive = false; S.dead[0] = S.tick; S.why[0] = '${why}';`]),
   ['death-zone', 'seed=7&z=30&me=1', 30, `__r3d.step(60); __r3d.render(); const S = __r3d.S; S.p[1].alive = false; S.dead[1] = S.tick; S.why[1] = 'zone'; S.zone = S.p[1].z - 0.2;`],
   ['victory', 'seed=7&z=30&cam=0.6,1.3,3.6', 40, `__r3d.step(60); const S = __r3d.S; S.phase = __r3d.R3.R3_OVER; S.win = 0; S.p[1].alive = false; S.dead[1] = S.tick; S.why[1] = 'fall';`],
   ['leak', 'seed=7&z=200', 6, `window.__leak = JSON.stringify(__r3d.leakCheck(6)); console.warn('leak check [geometries, textures, views] per reset: ' + window.__leak);`],
@@ -44,12 +47,15 @@ const SHOTS = [
   ['chars-run', 'seed=7&z=20&cam=2.6,1.0,1.2', 60],
   ['chars-luna', 'seed=7&count=1&me=1&cam=-0.9,1.1,3.4', 30],
 ];
-// one shot per obstacle kind (the demo starts a few units before the first object of that kind)
-for (const k of ['ramp', 'tilt', 'crumble', 'eclipse', 'sweeper', 'pendulum', 'carousel', 'gate', 'orb']) SHOTS.push(['kind-' + k, `seed=7&kind=${k}`, 60]);
+// two shots per section kind: its easy intro and a hard instance past z 900 (the demo starts on its run-up)
+const SEC_KINDS = ['gaps', 'steps', 'thorns', 'pools', 'tilt', 'stones', 'crumble', 'sweeper', 'eclipse', 'beams', 'pendulum', 'carousel', 'gate', 'orbs'];
+for (const k of SEC_KINDS) SHOTS.push(['kind-' + k, `seed=7&kind=${k}`, 70], ['hard-' + k, `seed=7&kind=${k}&after=900`, 70]);
 const want = process.argv.slice(2);
 const list = want.length ? SHOTS.filter(s => want.some(w => s[0].includes(w))) : SHOTS;
 const extraKinds = (process.env.KINDS || '').split(',').filter(Boolean);
 for (const k of extraKinds) list.push(['kind-' + k, `seed=7&kind=${k}`, 60]);
+// ad hoc shots: ADHOC='[["name", "demo query", steps, "optional page-side setup"], ...]'
+if (process.env.ADHOC) for (const s of JSON.parse(process.env.ADHOC)) list.push(s);
 
 let server = null;
 if (process.env.NOSERVER !== '1') {
@@ -136,7 +142,7 @@ try {
     if (name === 'leak') { console.log('leak         ', await ev('window.__leak')); continue; }
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(join(OUT, `render-${name}.png`), Buffer.from(shot.data, 'base64'));
-    console.log(`${name.padEnd(12)} ${String(st.calls).padStart(4)} calls ${String(Math.round(st.triangles / 1000)).padStart(5)}k tris  ${st.views} views  ${st.level}  ~${ms.toFixed(0)} ms/frame (software GL)  -> ${join(OUT, `render-${name}.png`)}`);
+    console.log(`${name.padEnd(12)} ${String(st.calls).padStart(4)} calls ${String(Math.round(st.triangles / 1000)).padStart(5)}k tris  ${st.views} views  ${st.level}  ~${ms.toFixed(0)} ms per step  -> ${join(OUT, `render-${name}.png`)}`);
     if (logs.length) console.log('   ', logs.slice(0, 6).join('\n    '));
    } catch (e) { console.log(name, 'FAILED', e.message, logs.slice(0, 6).join(' | ')); failed++; await openPage().catch(() => {}); }
   }

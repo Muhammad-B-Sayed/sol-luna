@@ -27,12 +27,13 @@ export const U = {
   uEmberCol: { value: col(PAL.ember).multiplyScalar(1.4) },
   uGlowCol: { value: col(PAL.trim) },
   uPtScale: { value: 400 },        // point-sprite scale: viewport height / (2 tan(fov/2))
+  uCreep: { value: 6 },            // how far the dusk's shadow creeps over the floor ahead of the wall (units)
 };
 
 // ---------------------------------------------------------------------------
 // Material patching: world position varying, the dusk swallowing everything behind the wall,
 // an optional per-vertex glow (aGlow) and an optional fresnel rim.
-export function patchWorld(mat, { glow = false, rim = null, additive = false, dissolve = null, key = '' } = {}) {
+export function patchWorld(mat, { glow = false, rim = null, additive = false, dissolve = null, key = '', creep = true } = {}) {
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
     if (rim) sh.uniforms.uRim = { value: rim };
@@ -48,7 +49,7 @@ export function patchWorld(mat, { glow = false, rim = null, additive = false, di
         ${glow ? 'vGlow = aGlow;' : ''}`);
     let fs = sh.fragmentShader.replace('#include <common>', `#include <common>
       varying vec3 vWPos;
-      uniform float uTime; uniform float uZone; uniform vec3 uDuskCol; uniform vec3 uEmberCol; uniform vec3 uGlowCol;
+      uniform float uTime; uniform float uZone; uniform vec3 uDuskCol; uniform vec3 uEmberCol; uniform vec3 uGlowCol; uniform float uCreep;
       ${glow ? 'varying float vGlow;' : ''}
       ${rim ? 'uniform vec3 uRim;' : ''}
       ${dissolve ? 'uniform float uDissolve; uniform vec3 uDissolveCol; uniform float uDark;' : ''}
@@ -65,16 +66,24 @@ export function patchWorld(mat, { glow = false, rim = null, additive = false, di
         ${dissolve ? `totalEmissiveRadiance += uDissolveCol * smoothstep(uDissolve + 0.12, uDissolve, dn) * step(0.001, uDissolve);
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.03, 0.01, 0.06), uDark); totalEmissiveRadiance *= 1.0 - uDark * 0.8;` : ''}`);
     }
+    // behind the wall everything sinks into the dusk; ahead of it a wavering shadow creeps over
+    // the floor (uCreep units), with a faint ember line at its front, so the dusk shows up in the
+    // frame before the wall itself does
     fs = fs.replace('#include <tonemapping_fragment>', `
-      float behind = smoothstep(-0.5, 5.0, vWPos.z - uZone);
-      float edgeE = exp(-abs(vWPos.z - uZone - 0.3) * 2.2) * (0.6 + 0.4 * sin(uTime * 5.0 + vWPos.x * 2.0));
+      float dzw = vWPos.z - uZone;
+      float behind = smoothstep(-0.5, 5.0, dzw);
+      float edgeE = exp(-abs(dzw - 0.3) * 2.2) * (0.6 + 0.4 * sin(uTime * 5.0 + vWPos.x * 2.0));
+      float wob = sin(vWPos.x * 1.3 + uTime * 1.1) * 0.7 + sin(vWPos.x * 0.47 - uTime * 0.6) * 1.1 + sin(vWPos.x * 3.1 + uTime * 2.3) * 0.25;
+      float front = -uCreep + wob;
+      float creep = ${creep ? 'smoothstep(front - 0.4, front + 3.5, dzw)' : '0.0'};
+      float frontE = exp(-abs(dzw - front) * 3.0) * step(dzw, 0.0);
       ${additive
-        ? 'gl_FragColor.rgb *= 1.0 - behind;'
-        : 'gl_FragColor.rgb = mix(gl_FragColor.rgb, uDuskCol, behind * 0.92) + uEmberCol * edgeE * 0.35;'}
+        ? 'gl_FragColor.rgb *= (1.0 - behind) * (1.0 - creep * 0.5);'
+        : 'gl_FragColor.rgb = mix(gl_FragColor.rgb, uDuskCol, max(behind * 0.92, creep * 0.62)) + uEmberCol * (edgeE * 0.35 + frontE * 0.07);'}
       #include <tonemapping_fragment>`);
     sh.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => `pw${glow ? 1 : 0}${rim ? 1 : 0}${additive ? 1 : 0}${dissolve ? 1 : 0}${key}`;
+  mat.customProgramCacheKey = () => `pw${glow ? 1 : 0}${rim ? 1 : 0}${additive ? 1 : 0}${dissolve ? 1 : 0}${creep ? 1 : 0}${key}`;
   return mat;
 }
 
@@ -126,12 +135,18 @@ export function textures() {
       }
     }
   }, { repeat: true });
-  // Soft round glow (additive sprites, blob shadows).
+  // Soft round glow for the additive sprites (read from the red channel). Opaque grey on black:
+  // a transparent canvas uploads its near-zero-alpha pixels as full white in rgb, which showed the
+  // sprite's square edge. The falloff reaches exactly 0 a few pixels inside the edge.
   _tex.glow = canvasTex(128, 128, (g, W) => {
-    const r = g.createRadialGradient(W / 2, W / 2, 0, W / 2, W / 2, W / 2);
-    r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.25, 'rgba(255,255,255,0.55)');
-    r.addColorStop(0.6, 'rgba(255,255,255,0.12)'); r.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = r; g.fillRect(0, 0, W, W);
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, W);
+    const img = g.getImageData(0, 0, W, W), d = img.data;
+    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+      const r = Math.hypot(x + 0.5 - W / 2, y + 0.5 - W / 2) / (W / 2 - 3);
+      const v = r >= 1 ? 0 : Math.pow(1 - r, 2.2) * 0.75 + Math.pow(1 - r, 8) * 0.25;
+      const i = (y * W + x) * 4; d[i] = d[i + 1] = d[i + 2] = Math.round(255 * v); d[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
   }, { srgb: false });
   _tex.shadow = canvasTex(128, 128, (g, W) => {
     const r = g.createRadialGradient(W / 2, W / 2, 0, W / 2, W / 2, W / 2);

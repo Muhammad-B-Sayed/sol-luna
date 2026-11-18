@@ -6,7 +6,7 @@
 //   r.dispose();
 //
 // Everything visual is derived from L, S and changes between frames (never mutated), so it stays
-// correct under network rollback. Quality: r.setQuality('auto' | 'high' | 'low') (default auto).
+// correct under network rollback. Quality: r.setQuality('auto' | 'high' | 'mid' | 'low') (default auto).
 import * as THREE from './three.js';
 import { EffectComposer } from '../../vendor/three/addons/postprocessing/EffectComposer.js';
 import { Pass } from '../../vendor/three/addons/postprocessing/Pass.js';
@@ -15,15 +15,17 @@ import { OutputPass } from '../../vendor/three/addons/postprocessing/OutputPass.
 import { U, PAL, col, GlowField, textures, LIQ3 } from './kit.js';
 import { Character } from './characters.js';
 import { makeSky, makeAbyss, makeMotes, makeMist, WorldDeco } from './world.js';
-import { DuskZone, makeVignette, BEND } from './zone.js';
+import { DuskZone, makeVignette, BEND, LeadVeil } from './zone.js';
 import { FX } from './fx.js';
 import { viewFor, disposeView, VIEWS } from './views.js';
 import * as R3 from '/shared/runner3d.js';
+import { SimBoxes } from './boxes.js';
 
 export { VIEWS };
 
 const MAX_SPEED = R3.P3?.maxSpeed ?? 0.135;
 const ZONE_CLOSE = 12;   // the vignette starts growing when the wall is this close to a player
+const GLOW_C = [col(0xffa040), col(0x6ec0ff), col(0xfff0a0), col(0xd8f4ff)];   // character glows: outer Sol, Luna; inner Sol, Luna
 
 // Renders the scene into the composer's buffer once per viewport (split screen shares one bloom pass).
 class ViewportsPass extends Pass {
@@ -52,7 +54,7 @@ class CamRig {
     this.i = i;
     this.cam = new THREE.PerspectiveCamera(58, 1, 0.1, 700);
     this.cam.layers.enable(1 + i);
-    this.pos = null; this.look = new THREE.Vector3(); this.fov = 58; this.shake = 0; this.y = 0; this.x = 0;
+    this.pos = null; this.look = new THREE.Vector3(); this._t = new THREE.Vector3(); this._l = new THREE.Vector3(); this.fov = 58; this.shake = 0; this.y = 0; this.x = 0;
   }
   // p: interpolated sim position of the followed player; vz sim forward speed; split: tall viewport
   update(p, vz, alive, dt, split, aspect, intro, time) {
@@ -63,17 +65,21 @@ class CamRig {
       this.y = this.pos == null ? ty : this.y + (ty - this.y) * Math.min(1, dt * 3.2);
       this.x = this.pos == null ? p.x : this.x + (p.x * 0.72 - this.x) * Math.min(1, dt * 4.5);
     }
-    const target = new THREE.Vector3(this.x, this.y + up, -(p.z - back));
-    const look = new THREE.Vector3(this.x + (p.x - this.x) * 0.6, this.y + 0.7, -(p.z + ahead + kAhead * 1.5));
+    const target = this._t.set(this.x, this.y + up, -(p.z - back));
+    const look = this._l.set(this.x + (p.x - this.x) * 0.6, this.y + 0.7, -(p.z + ahead + kAhead * 1.5));
     if (intro > 0) {   // countdown: an establishing shot from higher up and to the side, easing in
       const e = intro * intro * (3 - 2 * intro);
       target.x += Math.sin(time * 0.3) * 0 + (this.i ? 1 : -1) * 4.5 * e; target.y += 4 * e; target.z += 5 * e;
     }
     if (!alive) { target.y += 1.2; look.set(p.x, Math.max(p.y, this.y - 4), -p.z); }
-    if (this.override) {   // debug close-ups (demo ?cam=dx,dy,dz): offset from the player in sim units, looking at them
-      const [dx, dy, dz] = this.override;
-      target.set(p.x + dx, p.y + dy, -(p.z + dz)); look.set(p.x, p.y + 0.75, -p.z);
+    if (this.override) {   // debug close-ups (demo ?cam=dx,dy,dz[,ahead[,side]]): offset from the player in sim units, looking at them (or ahead of them)
+      const [dx, dy, dz, ah = 0, sd = 0] = this.override;
+      target.set(p.x + dx, p.y + dy, -(p.z + dz)); look.set(p.x + sd, p.y + 0.75, -(p.z + ah));
       this.pos = null;
+    }
+    if (this.fixed) {   // debug: a fixed camera { eye: [x,y,z], at: [x,y,z] } in sim units
+      const { eye: e, at: a } = this.fixed;
+      target.set(e[0], e[1], -e[2]); look.set(a[0], a[1], -a[2]); this.pos = null;
     }
     if (this.pos == null) { this.pos = target.clone(); this.look.copy(look); }
     const kp = Math.min(1, dt * (alive ? 9 : 2)), kl = Math.min(1, dt * (alive ? 10 : 3));
@@ -99,7 +105,7 @@ export class Runner3DRenderer {
     r.toneMappingExposure = 0.95;
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.autoClear = false;
-    this.quality = 'auto'; this.level = 'high';
+    this.quality = 'auto'; this.level = 'high'; this.picked = false;   // level: 'high' | 'mid' | 'low' (auto picks it from the canvas size on the first frame, then steps down)
     this.cssW = canvas.clientWidth || 960; this.cssH = canvas.clientHeight || 540; this.dpr = 1;
 
     const scene = this.scene = new THREE.Scene();
@@ -119,6 +125,8 @@ export class Runner3DRenderer {
     this.mist = [makeMist(0), makeMist(1)]; for (const m of this.mist) scene.add(m);
     this.deco = new WorldDeco(scene);
     this.zoneFx = new DuskZone(); scene.add(this.zoneFx.group);
+    this.veils = [new LeadVeil(), new LeadVeil()]; for (const v of this.veils) scene.add(v.mesh);
+    this.held = [0, 0];
     this.glow = new GlowField(700); scene.add(this.glow.mesh);
     this.fx = new FX(scene);
     this.objRoot = new THREE.Group(); scene.add(this.objRoot);
@@ -142,11 +150,21 @@ export class Runner3DRenderer {
     this.resize(this.cssW, this.cssH, window.devicePixelRatio || 1);
   }
 
+  // debug overlay of the sim's collision shapes (demo ?boxes=1)
+  setDebugBoxes(on) {
+    if (on && !this.boxes) { this.boxes = new SimBoxes(); this.scene.add(this.boxes.lines); }
+    else if (!on && this.boxes) { this.scene.remove(this.boxes.lines); this.boxes.dispose(); this.boxes = null; }
+  }
+
   setQuality(q) {
     this.quality = q;
     const lvl = q === 'auto' ? this.level : q;
     if (lvl !== this.appliedLevel) { this.level = lvl; this.resize(this.cssW, this.cssH, this.dpr); }
   }
+
+  // Quality levels. high: bloom, 4x MSAA, pixel ratio up to 1.5. mid: bloom at a lower resolution,
+  // no MSAA, pixel ratio 1. low: no bloom, straight to the (antialiased) canvas, pixel ratio 1.
+  // Measured on an AMD 780M (tools/r3d-perf.js): high holds 60 fps at 1280x720, not at 1920x1080.
 
   buildComposer() {
     const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 });
@@ -157,7 +175,30 @@ export class Runner3DRenderer {
     this.composer.addPass(new OutputPass());
   }
 
+  // Compile the shaders of every kind's view once, on a throwaway course, so the first thorn
+  // curtain or orb lane of a match doesn't stall a frame while its programs compile.
+  warmUp() {
+    if (this.warm) return;
+    this.warm = true;
+    const Lw = R3.buildRunner3d(1);
+    R3.ensureGenerated(Lw, 900);
+    const tmp = new THREE.Group(), made = [], kinds = new Set();
+    Lw.objs.forEach((o, i) => {
+      const key = o.k + (o.k === 'floor' ? o.skin : '');
+      if (kinds.has(key)) return;
+      kinds.add(key);
+      const obj = viewFor(o.k).make(o, Lw, i);
+      obj.traverse((c) => { c.visible = true; });
+      tmp.add(obj); made.push(obj);
+    });
+    this.scene.add(tmp);
+    try { for (const rg of this.rigs) this.renderer.compile(this.scene, rg.cam); } catch {}
+    this.scene.remove(tmp);
+    for (const obj of made) disposeView(obj);
+  }
+
   reset(L) {
+    this.warmUp();
     this.L = L;
     for (const [, v] of this.views) { this.objRoot.remove(v.obj); disposeView(v.obj); }
     this.views.clear();
@@ -174,9 +215,12 @@ export class Runner3DRenderer {
     const pr = Math.min(this.dpr, high ? 1.5 : 1);
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(this.cssW, this.cssH, false);
+    const samples = high ? 4 : 0;
+    for (const rt of [this.composer.renderTarget1, this.composer.renderTarget2]) if (rt.samples !== samples) { rt.samples = samples; rt.dispose(); }
     this.composer.setPixelRatio(pr);
     this.composer.setSize(this.cssW, this.cssH);
-    this.bloom.resolution.set(this.cssW * pr / 2, this.cssH * pr / 2);
+    const bk = high ? 2 : 3;
+    this.bloom.resolution.set(this.cssW * pr / bk, this.cssH * pr / bk);
     this.appliedLevel = this.level;
   }
 
@@ -225,6 +269,7 @@ export class Runner3DRenderer {
     const L = this.L, objs = L.objs;
     while (this.lo < objs.length && objs[this.lo].z1 < zMin && objs[this.lo].z0 < zMin - 80) this.lo++;
     const seen = new Set();
+    this.occ = [];
     const poseFn = R3.objPose || R3.poseOf || R3.pose3 || null;
     for (let i = this.lo; i < objs.length; i++) {
       const o = objs[i];
@@ -243,6 +288,7 @@ export class Runner3DRenderer {
       let pose = null;
       if (poseFn) { try { pose = poseFn(L, S, i, ctx.tick); } catch { pose = null; } }
       v.def.update(v.obj, o, S.o ? S.o[i] : undefined, pose, ctx, v);
+      if (v.obj.userData.occ) this.occ.push(v.obj.userData.occ);
     }
     for (const [i, v] of this.views) if (!seen.has(i)) { this.objRoot.remove(v.obj); disposeView(v.obj); this.views.delete(i); }
   }
@@ -303,6 +349,10 @@ export class Runner3DRenderer {
     const realDt = dt;
     this.lastTime = time;
     if (paused) dt = 0;
+    if (!this.picked) {   // auto starts at high on canvases up to about 1.25 million device pixels, at mid above that
+      this.picked = true;
+      if (this.quality === 'auto') { this.level = this.cssW * this.cssH * this.dpr * this.dpr > 1.25e6 ? 'mid' : 'high'; this.resize(this.cssW, this.cssH, this.dpr); }
+    }
     this.autoQuality(realDt);
 
     U.uTime.value = time;
@@ -315,8 +365,9 @@ export class Runner3DRenderer {
     // fractional tick of this frame: the view's zone lags S.zone by (1 - alpha) ticks of zone travel
     const alpha = S.v > 1e-6 ? Math.max(0, Math.min(1, 1 - (S.zone - view.zone) / S.v)) : 1;
     const ctx = { time, dt, S, L, fx: this.fx, glow: this.glow, idx: 0, alpha, tick: S.tick - 1 + alpha };
-    this.S = S; this.tick = ctx.tick;
+    this.S = S; this.tick = ctx.tick; this.viewP = view.p;
     this.streamViews(S, zMin, zMax, ctx);
+    if (this.boxes) this.boxes.update(L, S, ctx.tick);
 
     // characters
     const over = S.phase === (R3.R3_OVER ?? 2);
@@ -331,10 +382,10 @@ export class Runner3DRenderer {
       const vis = c.root.visible && deadT < 0.6;
       // glow and light
       const gk = deadT >= 0 ? Math.max(0, 1 - deadT * 1.5) : 1;
-      const gc = i ? col(0x6ec0ff) : col(0xffa040);
+      const gc = GLOW_C[i];
       if (gk > 0) {
         this.glow.add(q.x, q.y + 0.8, -q.z, 1.9, gc, (0.16 + 0.03 * Math.sin(time * 3 + i)) * gk);
-        this.glow.add(q.x, q.y + 0.55, -q.z, 0.7, i ? col(0xd8f4ff) : col(0xfff0a0), 0.22 * gk);
+        this.glow.add(q.x, q.y + 0.55, -q.z, 0.7, GLOW_C[2 + i], 0.22 * gk);
       }
       this.plights[i].position.set(q.x, q.y + 0.9, -q.z);
       this.plights[i].intensity = 6 * gk;
@@ -356,7 +407,20 @@ export class Runner3DRenderer {
     // lanterns and keystones glow
     for (const l of this.deco.lanterns) this.glow.add(l.x, l.y, l.z, 1.5, l.c, 0.32 + 0.05 * Math.sin(time * 4 + l.z));
 
+    // lead cap: a veil across the run-up where the cap holds a player (see LEAD_MAX in the sim)
+    for (let i = 0; i < 2; i++) {
+      const p = S.p[i], q = view.p[i], lead = q.z - view.zone;
+      const o = p.alive && p.gr && p.gref >= 0 ? L.objs[p.gref] : null;
+      const on = o && o.skin === 1 && lead > R3.LEAD_MAX - 3;
+      const k = on ? Math.min(1, (lead - (R3.LEAD_MAX - 3)) / 2.5) : 0;
+      // held: at the cap and not moving forward
+      const h = on && lead > R3.LEAD_MAX - 0.2 && p.vz < 0.02 ? 1 : 0;
+      this.held[i] += (h - this.held[i]) * Math.min(1, realDt * 8);
+      this.veils[i].set(o ? o.x0 : 0, o ? o.x1 : 1, o ? o.y : 0, view.zone + R3.LEAD_MAX + 0.95, k, this.held[i]);
+    }
+
     // dusk zone
+    U.uCreep.value = 4 + S.v * 40;
     const zy = this.courseY(view.zone + 2);
     this.zoneFx.update(view.zone, zy);
     if (dt > 0) {
@@ -393,6 +457,9 @@ export class Runner3DRenderer {
   // called per viewport (by the pass, or directly without bloom)
   renderView(vp, pxH) {
     const rg = this.rigs[vp.i], cam = rg.cam;
+    // tall walls (thorn curtains) that this camera's player has passed would block the view: hide them
+    const pz = this.viewP ? this.viewP[vp.i].z : 0;
+    for (const oc of this.occ || []) oc.wall.visible = !(oc.z < pz - 0.1 && oc.z > pz - 12);
     this.sky.position.copy(cam.position);
     this.abyss.position.set(cam.position.x, this.lastCourseY - 34, cam.position.z - 150);
     this.mist.forEach((m, k) => { m.position.set(cam.position.x, this.lastCourseY - 5 - k * 7, cam.position.z - 120); m.material.uniforms.uCam.value.copy(cam.position); });
@@ -403,7 +470,7 @@ export class Runner3DRenderer {
 
   render(split) {
     const r = this.renderer;
-    if (this.level === 'high') {
+    if (this.level !== 'low') {
       this.composer.render();
     } else {
       r.setRenderTarget(null);
@@ -431,9 +498,11 @@ export class Runner3DRenderer {
     this.ft.push(dt);
     this.ftAcc += dt;
     if (this.ftAcc < 3) return;
+    // step down when more than 1 frame in 10 took over 20 ms (a missed 60 Hz frame), or the median is long
     const sorted = this.ft.slice().sort((a, b) => a - b), med = sorted[sorted.length >> 1];
+    const slow = this.ft.filter(d => d > 0.02).length / this.ft.length;
     this.ft = []; this.ftAcc = 0;
-    if (this.level === 'high' && med > 1 / 42) { this.level = 'low'; this.resize(this.cssW, this.cssH, this.dpr); }
+    if (this.level !== 'low' && (slow > 0.1 || med > 1 / 42)) { this.level = this.level === 'high' ? 'mid' : 'low'; this.resize(this.cssW, this.cssH, this.dpr); }
   }
 
   // per-frame renderer counters for the perf report (draw calls and triangles of the last frame)

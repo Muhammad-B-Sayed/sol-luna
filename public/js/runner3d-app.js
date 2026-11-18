@@ -7,7 +7,7 @@
 // loaded on first use; without it, or with ?r3ddebug=1, the 2D debug view draws instead.
 // The HUD is DOM over that canvas.
 import {
-  buildRunner3d, createRunner3dState, stepRunner3d, cloneRunner3d, ensureGenerated, newSeed, survival, distance, speedAt,
+  buildRunner3d, createRunner3dState, stepRunner3d, cloneRunner3d, ensureGenerated, newSeed, survival, distance, speedAt, sectionAt,
   WHY3, R3_COUNT, R3_PLAY, R3_OVER, COUNT_TICKS, DRAW, LEAD_MAX,
 } from '/shared/runner3d.js';
 import { Runner3DDebugRenderer } from './runner3d-debug.js';
@@ -18,10 +18,34 @@ const $ = (s) => document.querySelector(s);
 const NAME = ['Sol', 'Luna'];
 const RESULT_DELAY = 70;   // ticks of the final moment before the results card
 const TELEPORT = 2;        // units: don't interpolate across a jump this big
-const OFF_MAX = 3;         // units: drop a visual correction bigger than this
+const OFF_MAX = 3;         // units: drop a visual correction of your own player bigger than this
+// The other player's input reaches you a round trip late, so a jump or a stop of theirs can be
+// mispredicted by 3 to 4 units at 80 ms of lag. Their correction eases out at most this fast
+// (units per tick) instead of snapping, and is only dropped beyond OFF_MAX_REMOTE.
+const REMOTE_EASE = 0.3, OFF_MAX_REMOTE = 8;
 const URGENT = 8, CRITICAL = 4;   // units between a player and the dusk
 // read once at load: joining a room rewrites the URL to /CODE and drops the query
 const DEBUG_VIEW = new URLSearchParams(location.search).has('r3ddebug');
+// one line the first time each obstacle kind comes up, per player: [Sol's, Luna's] or one for both
+const TIPS = {
+  gaps: 'Gaps ahead. Run and jump across.',
+  steps: 'Stairs. Low steps you walk, tall ones you jump.',
+  thorns: 'Thorns! Slip through the opening, or jump the low ones.',
+  pools: ['Sun pools are safe for you. Moon and shade pools are not.', 'Moon pools are safe for you. Sun and shade pools are not.'],
+  tilt: 'Chained slabs tip toward your weight. Keep to the middle.',
+  stones: 'Stepping stones. Pick a lane and keep hopping.',
+  crumble: 'Ember slabs crack under your feet. Keep moving!',
+  sweeper: 'A thorn arm sweeps the floor. Jump it, or slip in behind it.',
+  eclipse: ['Only the gold stones hold you. The blue ones are Luna\'s.', 'Only the blue stones hold you. The gold ones are Sol\'s.'],
+  beams: 'Narrow beams over the abyss. Steady now.',
+  pendulum: 'Blades swing across the bridge. Time your run.',
+  carousel: 'Stones circle the pillar. Hop on as one passes, off on the far side.',
+  gate: 'The gap in the thorn curtain slides. Run through the gap.',
+  orbs: 'Orbs roll your way. Step into another lane, or jump them.',
+};
+const TIP_AHEAD = 9;      // units: a section's tip shows when its start is this close ahead
+const TIP_TICKS = 240;    // how long a tip stays up
+const HELD_TIP = 'Too far ahead. The twilight holds you until the dusk comes closer.';
 
 export class Runner3DMode {
   // ctx: { input, net, sfx, show(id), toast(msg), app, quit() }
@@ -33,7 +57,7 @@ export class Runner3DMode {
     this.acc = 0;
     this.RR = null; this.rendKind = '';
     this.renderErrors = [];
-    this.corr = { max: 0, back: 0, viewBack: 0, n: 0 };   // prediction corrections of your own player (units)
+    this.corr = { max: 0, back: 0, viewBack: 0, n: 0, remoteStep: 0, remoteBack: 0 };   // prediction corrections (units)
     this.canvas = $('#game3d');
     this.buildHud();
     this.buildTouch();
@@ -60,7 +84,9 @@ export class Runner3DMode {
     this.results = false; this.paused = false; this.acc = 0;
     this.pending = []; this.seq = 0; this.remoteBits = 0;
     this.heard = null; this.lastDrawn = null;
-    this.corr = { max: 0, back: 0, viewBack: 0, n: 0 };
+    this.tipSeen = [{}, {}]; this.tipShown = [null, null];
+    this.corr = { max: 0, back: 0, viewBack: 0, n: 0, remoteStep: 0, remoteBack: 0 };
+    this.lastRemote = null;
     this.active = true;
     this.input.mode3d = true;
     document.body.classList.add('r3d');
@@ -175,15 +201,17 @@ export class Runner3DMode {
     stepRunner3d(this.L, this.S, inp);
     this.listen();
     this.off.forEach((v, i) => {
-      for (const k of ['x', 'y', 'z']) {
-        let d = v[k] * 0.2;
+      const d = { x: v.x * 0.2, y: v.y * 0.2, z: v.z * 0.2 };
+      if (i === this.app.me) {
         // drawn ahead of the corrected state while running forward: pay the difference off
         // slower than the run itself, so a late correction slows you instead of pulling you back
         const vz = this.S.p[i].vz;
-        if (k === 'z' && d > 0 && vz > 0.02) d = Math.min(d, 0.6 * vz);
-        v[k] -= d;
-        if (Math.abs(v[k]) < 0.002) v[k] = 0;
+        if (d.z > 0 && vz > 0.02) d.z = Math.min(d.z, 0.6 * vz);
+      } else {
+        const m = Math.hypot(d.x, d.y, d.z);
+        if (m > REMOTE_EASE) { d.x *= REMOTE_EASE / m; d.y *= REMOTE_EASE / m; d.z *= REMOTE_EASE / m; }
       }
+      for (const k of ['x', 'y', 'z']) { v[k] -= d[k]; if (Math.abs(v[k]) < 0.002) v[k] = 0; }
     });
   }
 
@@ -200,7 +228,7 @@ export class Runner3DMode {
     before.p.forEach((v, i) => {
       const o = this.off[i], a = after.p[i];
       o.x += v.x - a.x; o.y += v.y - a.y; o.z += v.z - a.z;
-      if (Math.hypot(o.x, o.y, o.z) > OFF_MAX) { o.x = 0; o.y = 0; o.z = 0; }
+      if (Math.hypot(o.x, o.y, o.z) > (i === me ? OFF_MAX : OFF_MAX_REMOTE)) { o.x = 0; o.y = 0; o.z = 0; }
       this.prev.p[i].x += a.x - v.x; this.prev.p[i].y += a.y - v.y; this.prev.p[i].z += a.z - v.z;
     });
     const mb = before.p[me], ma = after.p[me], err = Math.hypot(mb.x - ma.x, mb.y - ma.y, mb.z - ma.z);
@@ -246,6 +274,18 @@ export class Runner3DMode {
       if (back > this.corr.viewBack && (this.input.any3d() & 8)) this.corr.viewBack = back;   // drawn backwards while holding forward
     }
     this.lastDrawn = v.p[this.app.me]?.z ?? null;
+    // the other player's drawn motion: the largest step between two frames (per tick), and the most it moved
+    // backwards in one frame while running forward (a pop or a pull-back would show up here)
+    if (this.online && this.S.phase === R3_PLAY) {
+      const o = 1 - this.app.me, q = v.p[o], rp = this.S.p[o];
+      if (this.lastRemote && rp.alive) {
+        const d = Math.hypot(q.x - this.lastRemote.x, q.y - this.lastRemote.y, q.z - this.lastRemote.z) / Math.max(1, n);   // per tick
+        if (d > this.corr.remoteStep) this.corr.remoteStep = d;
+        const back = this.lastRemote.z - q.z;
+        if ((this.remoteBits & 8) && rp.vz > 0.05 && back > this.corr.remoteBack) this.corr.remoteBack = back;
+      }
+      this.lastRemote = rp.alive ? { x: q.x, y: q.y, z: q.z } : null;
+    }
     this.hud(v);
     if (this.RR) {
       try { this.RR.draw(this.L, this.S, v, now / 1000, { split: !this.online, me: this.online ? this.app.me : 0, paused: this.paused }); this.frames = (this.frames || 0) + 1; }
@@ -268,6 +308,23 @@ export class Runner3DMode {
     if (cur.cd && cur.cd !== h.cd) sfx.click();
     if (cur.phase === R3_PLAY && h.phase === R3_COUNT) sfx.door();
     if (cur.alive.some((a, i) => !a && h.alive[i])) sfx.die();
+    if (cur.phase === R3_PLAY) {
+      const mine = this.online ? [this.app.me] : [0, 1];
+      // the dusk closing in: a tick that quickens as it nears your player
+      const gap = Math.min(...mine.map(i => (S.p[i].alive ? S.p[i].z - S.zone : 1e9)));
+      if (gap < URGENT) {
+        const every = Math.round(12 + (gap / URGENT) * 30);
+        if (!this.duskT || cur.tick - this.duskT >= every || cur.tick < this.duskT) { this.duskT = cur.tick; sfx.tock(); }
+      }
+      // an ember slab cracking under one of your players
+      for (const i of mine) {
+        const p = S.p[i], o = p.alive && p.gr && p.gref >= 0 ? S.o[p.gref] : null;
+        if (o && o.st === 1 && o.t === 0) sfx.lever();
+        const held = this.isHeld(i);
+        if (held && !this.wasHeld?.[i]) sfx.click();
+        (this.wasHeld ||= [false, false])[i] = held;
+      }
+    }
     if (cur.phase === R3_OVER && h.phase !== R3_OVER) setTimeout(() => (S.win === DRAW ? sfx.door() : sfx.win()), 500);
   }
 
@@ -278,7 +335,7 @@ export class Runner3DMode {
     const el = document.createElement('div');
     el.id = 'r3Hud'; el.hidden = true; el.setAttribute('aria-hidden', 'true');
     const pl = (k) => `<div class="r3-pl ${k}"><div class="r3-name"></div><div class="r3-dist"></div>`
-      + `<div class="r3-meter"><i></i><span></span></div></div><div class="r3-edge ${k}"></div>`;
+      + `<div class="r3-meter"><i></i><span></span></div><div class="r3-held">held by the twilight</div></div><div class="r3-edge ${k}"></div><div class="r3-tip ${k}"></div>`;
     el.innerHTML = `<div class="r3-split"></div><div class="r3-top"><b class="r3-time"></b><span class="r3-pace"></span><span class="r3-ping"></span></div>`
       + pl('sol') + pl('luna') + '<div class="r3-count"></div><div class="r3-banner"></div>';
     this.canvas.after(el);
@@ -289,6 +346,7 @@ export class Runner3DMode {
       pl: ['sol', 'luna'].map(k => ({
         box: q(`.r3-pl.${k}`), name: q(`.r3-pl.${k} .r3-name`), dist: q(`.r3-pl.${k} .r3-dist`),
         meter: q(`.r3-pl.${k} .r3-meter`), fill: q(`.r3-pl.${k} .r3-meter i`), gap: q(`.r3-pl.${k} .r3-meter span`), edge: q(`.r3-edge.${k}`),
+        tip: q(`.r3-tip.${k}`), held: q(`.r3-pl.${k} .r3-held`),
       })),
     };
     this.hudCache = new Map();
@@ -326,6 +384,13 @@ export class Runner3DMode {
       const warn = p.alive && mine && S.phase === R3_PLAY ? Math.max(0, Math.min(1, (URGENT + 2 - gap) / (URGENT + 2 - CRITICAL / 2))) : 0;
       this.set(e.edge, 'opacity', warn.toFixed(2));
       this.set(e.edge, 'class', `r3-edge ${i ? 'luna' : 'sol'}${warn > 0.6 ? ' pulse' : ''}`);
+      // held by the lead cap: standing on a run-up more than LEAD_MAX ahead of the dusk
+      const held = this.isHeld(i);
+      this.set(e.held, 'opacity', held ? '1' : '0');
+      // a one-line tip the first time each obstacle kind comes up
+      const tip = mine && p.alive && S.phase === R3_PLAY ? this.tipFor(i) : null;
+      this.set(e.tip, 'text', tip || '');
+      this.set(e.tip, 'opacity', tip ? '1' : '0');
     }
     // countdown, then "Run!"
     let txt = '', op = 0, sc = 1;
@@ -343,6 +408,26 @@ export class Runner3DMode {
     this.set(H.banner, 'text', over ? (S.win === DRAW ? 'A draw!' : `${NAME[S.win]} wins!`) : '');
     this.set(H.banner, 'class', `r3-banner ${S.win === SOL ? 'solc' : S.win === LUNA ? 'lunac' : ''}`);
     this.set(H.banner, 'opacity', over ? Math.min(1, S.phaseT / 20).toFixed(2) : '0');
+  }
+
+  isHeld(i) {
+    const S = this.S, p = S.p[i], o = p.alive && p.gr && p.gref >= 0 ? this.L.objs[p.gref] : null;
+    return !!o && o.skin === 1 && p.z - S.zone > LEAD_MAX - 0.3 && S.phase === R3_PLAY;
+  }
+
+  // the tip player i should see now (or null): the next section's kind the first time it comes up,
+  // or the lead-cap note the first time the cap holds them
+  tipFor(i) {
+    const S = this.S, p = S.p[i], seen = this.tipSeen[i], cur = this.tipShown[i];
+    if (cur && S.tick < cur.until && S.tick >= cur.from) return cur.text;
+    const sec = sectionAt(this.L, p.z + TIP_AHEAD);
+    let text = null, key = null;
+    if (this.isHeld(i) && !seen.held) { key = 'held'; text = HELD_TIP; }
+    else if (sec && TIPS[sec.kind] && !seen[sec.kind] && sec.z0 > p.z - 2) { key = sec.kind; const t = TIPS[sec.kind]; text = Array.isArray(t) ? t[i] : t; }
+    if (!key) return null;
+    seen[key] = 1;
+    this.tipShown[i] = { text, from: S.tick, until: S.tick + TIP_TICKS };
+    return text;
   }
 
   // touch: a left-thumb pad for 8-way movement and a jump button (touch devices only)

@@ -16,7 +16,7 @@
 <canvas id="c"></canvas>
 <div id="hud"></div>
 <div id="help">Bots run both players. Take over Sol: arrows + Enter (jump). Luna: WASD + Space.
-?seed= ?split=1 ?me=1 ?z= ?kind= ?q=high|low ?count=1 ?bot=0 ?hud=0 ?auto=0 ?cam=dx,dy,dz</div>
+?seed= ?split=1 ?me=1 ?z= ?kind= ?q=high|mid|low ?count=1 ?bot=0 ?hud=0 ?auto=0 ?cam=dx,dy,dz ?boxes=1</div>
 <script type="module">
 import * as R3 from '/shared/runner3d.js';
 import { Runner3DRenderer } from '/js/r3d/renderer.js';
@@ -61,12 +61,19 @@ function placeAt(z, cx = null) {
   R3.stepRunner3d(L, S, [0, 0]);
 }
 if (Q.has('kind')) {
-  const kind = Q.get('kind');
-  let found = null;
-  for (let zz = 100; zz < 4000 && !found; zz += 100) { R3.ensureGenerated(L, zz); found = L.objs.find(o => o.k === kind); }
-  // start on the run-up of the section that holds it
-  const fi = L.objs.indexOf(found), sec = found && L.secs.find(s => fi >= s.o0 && fi < s.o1);
-  if (sec) placeAt(sec.sz, sec.sx); else if (found) placeAt(Math.max(0, found.z0 - 7)); else console.warn('no object of kind', kind);
+  // a section kind (gaps, steps, thorns, pools, tilt, stones, crumble, sweeper, eclipse, beams, pendulum,
+  // carousel, gate, orbs) or an object kind (pool, spikes, ramp, orb...); &after=Z picks the first one at or past Z
+  const kind = Q.get('kind'), after = num('after', 0), isSec = R3.KINDS.some(k => k[0] === kind);
+  let sec = null, found = null;
+  for (let zz = Math.max(100, after + 100); zz < after + 6000 && !sec && !found; zz += 100) {
+    R3.ensureGenerated(L, zz);
+    if (isSec) sec = L.secs.find(s => s.kind === kind && s.z0 >= after) || null;
+    else found = L.objs.find(o => o.k === kind && o.z0 >= after) || null;
+  }
+  if (found) { const fi = L.objs.indexOf(found); sec = L.secs.find(s => fi >= s.o0 && fi < s.o1); }
+  // start on the run-up of that section
+  window.__sec = sec;
+  if (sec) placeAt(sec.sz, sec.sx); else console.warn('no section or object of kind', kind);
 } else if (Q.has('z')) placeAt(num('z', 0));
 
 // --- input: bots by default; pressing a player's keys hands that player to the keyboard
@@ -104,6 +111,7 @@ function botBits(i) {
 // --- loop: fixed 60 Hz sim, interpolated view
 const r = new Runner3DRenderer(canvas);
 if (Q.has('q')) r.setQuality(Q.get('q'));
+if (Q.get('boxes') === '1') r.setDebugBoxes(true);
 if (Q.has('cam')) { const c = Q.get('cam').split(',').map(Number); for (const rg of r.rigs) rg.override = c; }
 r.reset(L);
 const fit = () => r.resize(innerWidth, innerHeight, devicePixelRatio || 1);
@@ -132,11 +140,16 @@ function view(alpha) {
   return { zone: lerp(prev.zone, S.zone, alpha), p: S.p.map((q, i) => ({ x: lerp(prev.p[i].x, q.x, alpha), y: lerp(prev.p[i].y, q.y, alpha), z: lerp(prev.p[i].z, q.z, alpha) })) };
 }
 let fpsT = 0, fpsN = 0, fps = 0;
+// ?perf=1: record every frame's interval, JS draw time and renderer counters (tools/r3d-perf.js reads them)
+const perf = Q.get('perf') === '1' ? { dt: [], js: [], calls: [], tris: [], level: [] } : null;
 function frame(now) {
-  const dt = Math.min(0.25, (now - last) / 1000); last = now;
+  const rawDt = (now - last) / 1000;
+  const dt = Math.min(0.25, rawDt); last = now;
   if (!frozen) { acc += dt; simTime += dt; while (acc >= 1 / 60) { stepOnce(); acc -= 1 / 60; } }
   r.renderer.info.reset();
+  const t0 = performance.now();
   r.draw(L, S, view(frozen ? 1 : acc * 60), simTime, { split, me, paused: frozen });
+  if (perf) { const st = r.stats(); perf.dt.push(rawDt * 1000); perf.js.push(performance.now() - t0); perf.calls.push(st.calls); perf.tris.push(st.triangles); perf.level.push(st.level); }
   fpsN++; fpsT += dt; if (fpsT > 0.5) { fps = fpsN / fpsT; fpsN = 0; fpsT = 0; }
   if (hud.style.display !== 'none') {
     const st = r.stats();
@@ -155,7 +168,14 @@ window.__r3d = {
   freeze(v = true) { frozen = v; },
   step(n = 1) { for (let k = 0; k < n; k++) { stepOnce(); simTime += 1 / 60; } },
   render() { r.renderer.info.reset(); r.draw(L, S, view(1), simTime, { split, me, paused: false }); return r.stats(); },
-  place: placeAt, manual, ready: true,
+  place: placeAt, manual, ready: true, perf,
+  // debug: index of the k-th object of a kind in the shown section (or anywhere past it)
+  obj(kind, k = 0) { const s = window.__sec, o0 = s ? s.o0 : 0; let n = 0; for (let i = o0; i < L.objs.length; i++) if (L.objs[i].k === kind && n++ === k) return i; return -1; },
+  // debug: fix both cameras on object i: eye = its centre + d, looking at its centre + a (sim units)
+  aim(i, d, a = [0, 0, 0]) {
+    const o = L.objs[i], c = [(o.cx ?? (o.x0 + o.x1) / 2), o.y, (o.cz ?? (o.z0 + o.z1) / 2)];
+    for (const rg of r.rigs) rg.fixed = { eye: [c[0] + d[0], c[1] + d[1], c[2] + d[2]], at: [c[0] + a[0], c[1] + a[1], c[2] + a[2]] };
+  },
   // reset the renderer n times (rendering a few frames each) and report its GPU memory counts
   leakCheck(n = 5) {
     const out = [];

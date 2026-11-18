@@ -10,6 +10,8 @@ import {
 
 export const VIEWS = {};
 
+// scratch objects for per-frame updates (no garbage every frame)
+const _va = new THREE.Vector3(), _vb = new THREE.Vector3(), _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p3 = new THREE.Vector3(), _s3 = new THREE.Vector3();
 const mid = (o) => [(o.x0 + o.x1) / 2, (o.z0 + o.z1) / 2, o.x1 - o.x0, o.z1 - o.z0];
 const _c = new THREE.Color();
 
@@ -122,6 +124,21 @@ VIEWS.ramp = {
   update() {},
 };
 
+// A flat frame just inside a w x d rectangle (three space, centred, in the x-z plane), band width b.
+function frameGeometry(w, d, b) {
+  const g = [];
+  const q = (x0, z0, x1, z1) => g.push(new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, 0, (z0 + z1) / 2));
+  const X = w / 2, Z = d / 2;
+  q(-X, -Z, X, -Z + b); q(-X, Z - b, X, Z); q(-X, -Z + b, -X + b, Z - b); q(X - b, -Z + b, X, Z - b);
+  return THREE.mergeGeometries(g);
+}
+let _hostile = null, _hostileT = -1;
+function hostileMat() {
+  if (!_hostile) _hostile = patchWorld(new THREE.MeshBasicMaterial({ color: 0xff4070, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -3 }), { additive: true, key: 'host' });
+  return _hostile;
+}
+
 // Pools: animated glowing liquid in a shallow stone basin, with glow and the odd bubble.
 VIEWS.pool = {
   make(o, L, idx) {
@@ -137,12 +154,20 @@ VIEWS.pool = {
     const geos = [surf];
     const basin = slabGeometry(w, d, 0.6, { top: col(0x3a2f58), side: col(0x3a2f58), deep: col(0x150f24), glow: 0, bevel: 0.02, ring: 0.02 });
     const bm = new THREE.Mesh(basin, materials().stone); bm.position.y = -0.4; grp.add(bm); geos.push(basin);
+    // a pulsing rim seen only by the player this pool kills (camera layer 1 = Sol, 2 = Luna):
+    // sun pools kill Luna, moon pools kill Sol, shade kills both
+    const rimG = frameGeometry(w - 0.06, d - 0.06, 0.13);
+    for (const who of el === 2 ? [0, 1] : [el === 0 ? 1 : 0]) {
+      const r = new THREE.Mesh(rimG, hostileMat()); r.position.y = 0.03; r.layers.set(1 + who); grp.add(r);
+    }
+    geos.push(rimG);
     grp.userData = { geos, el, w, d, bub: 0 };
     void idx;
     return grp;
   },
   update(v, o, st, pose, ctx) {
     const u = v.userData, L3 = LIQ3[u.el] || LIQ3[0];
+    if (_hostileT !== ctx.time) { _hostileT = ctx.time; _hostile.color.setHex(0xff3a8a).multiplyScalar(1.3 + 1.2 * (0.5 + 0.5 * Math.sin(ctx.time * 5))); }
     const c = _c.setHex(L3.glow);
     const n = Math.max(1, Math.min(3, Math.round(u.w * u.d / 10)));
     for (let k = 0; k < n; k++) {
@@ -249,7 +274,7 @@ VIEWS.tilt = {
     const u = v.userData;
     const ax = pose ? pose.ax : 0, az = pose ? pose.az : 0;
     shearTo(u.slab, o.cx, o.y, o.cz, ax, az);
-    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    const a = _va, b = _vb;
     for (const c of u.chains) {
       const X = o.cx + c.sx * (o.hx - 0.25), Z = o.cz + c.sz * (o.hz - 0.25);
       const Y = o.y + ax * (X - o.cx) + az * (Z - o.cz);
@@ -281,42 +306,56 @@ function crumbleTex() {
   _crumbleTex.wrapS = _crumbleTex.wrapT = THREE.RepeatWrapping;
   return _crumbleTex;
 }
+// Each half: a dark ember stone with glowing cracks. States from the sim's pose: 0 whole (a slow
+// ember pulse), 1 cracking (shakes, the cracks flare and sparks rise: it is about to drop), 2 fallen
+// (drops away and fades), 3 re-forming (NOT solid yet: drawn as a see-through outline that fills in).
+let _emberGhost = null;
 VIEWS.crumble = {
   make(o, L, idx) {
-    const [, , w, d] = mid(o);
-    const mat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, map: materials().stone.map, roughness: 0.85,
-      emissive: 0xff6a20, emissiveMap: crumbleTex(), emissiveIntensity: 0.6 }), { glow: true, key: 'crum' });
-    const grp = stoneSlab(o, idx, { h: 0.5, inlay: false, runes: false, glow: 0.4, top: col(0x7a5a6e), side: col(0x3e2238), mat });
-    grp.userData.mats = [mat];
+    const [cx, cz, w, d] = mid(o);
+    const mat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, map: materials().stone.map, roughness: 0.9,
+      emissive: 0xff5a14, emissiveMap: crumbleTex(), emissiveIntensity: 1.1 }), { glow: true, key: 'crum' });
+    const grp = stoneSlab(o, idx, { h: 0.5, inlay: false, runes: false, glow: 0.25, top: col(0x5a3440), side: col(0x341a26), mat });
+    const solid = new THREE.Group(); solid.add(...grp.children); grp.add(solid);
+    if (!_emberGhost) _emberGhost = patchWorld(new THREE.MeshBasicMaterial({ color: col(0xff8a3a).multiplyScalar(0.7), transparent: true, opacity: 0.25,
+      blending: THREE.AdditiveBlending, depthWrite: false }), { additive: true, key: 'eg' });
+    const gG = new THREE.BoxGeometry(w * 0.98, 0.48, d * 0.98).translate(0, -0.24, 0), eG = new THREE.EdgesGeometry(gG);
+    const ghost = new THREE.Group(); ghost.add(new THREE.Mesh(gG, _emberGhost));
+    const eMat = new THREE.LineBasicMaterial({ color: col(0xffb070).multiplyScalar(1.4), transparent: true, opacity: 0.8 });
+    ghost.add(new THREE.LineSegments(eG, eMat)); ghost.visible = false; grp.add(ghost);
+    grp.userData.geos.push(gG, eG);
+    grp.userData.mats = [mat, eMat];
     grp.userData.base = grp.position.clone();
-    grp.userData.w = w; grp.userData.d = d; grp.userData.lastSt = 0;
+    Object.assign(grp.userData, { w, d, lastSt: 0, solid, ghost, cx, cz });
     return grp;
   },
   update(v, o, st, pose, ctx) {
     const u = v.userData, p = pose || { st: 0, t: 0, dy: 0, shake: 0 };
     const m = u.mats[0];
-    let sx = 0, sz = 0, scale = 1, vis = true;
+    let sx = 0, sz = 0, vis = true, gk = 0;
     if (p.st === 1) {
       const k = p.shake;
-      sx = Math.sin(ctx.time * 61 + ctx.idx) * 0.05 * k; sz = Math.sin(ctx.time * 53) * 0.05 * k;
-      m.emissiveIntensity = 0.8 + k * 3.5;
+      sx = Math.sin(ctx.time * 61 + ctx.idx) * 0.06 * k; sz = Math.sin(ctx.time * 53) * 0.06 * k;
+      m.emissiveIntensity = 1.4 + k * 5;
+      if (ctx.fx && Math.random() < ctx.dt * (6 + 30 * k)) ctx.fx.add.spawn(u.base.x + (Math.random() - 0.5) * u.w, u.base.y + 0.05, u.base.z + (Math.random() - 0.5) * u.d,
+        0, 0.6 + Math.random(), 0, 0.6, 0.07, 0.02, ctx.fx.cols.sun[1], 1, -0.5, 1);
     } else if (p.st === 2) {
-      m.emissiveIntensity = Math.max(0, 3 - p.t * 0.12);
+      m.emissiveIntensity = Math.max(0, 4 - p.t * 0.15);
       vis = p.dy < 5.9;
     } else if (p.st === 3) {
-      const k = Math.min(1, p.t / 20);
-      scale = 0.4 + 0.6 * k * k * (3 - 2 * k);
-      m.emissiveIntensity = 2.5 * (1 - k) + 0.6;
-    } else m.emissiveIntensity = 0.6 + 0.15 * Math.sin(ctx.time * 2 + ctx.idx);
-    v.visible = vis;
+      gk = Math.min(1, (p.t + 1) / 12);
+      m.emissiveIntensity = 1.1;
+    } else m.emissiveIntensity = 1.0 + 0.25 * Math.sin(ctx.time * 2.2 + ctx.idx);
+    u.solid.visible = vis && p.st !== 3;
+    u.ghost.visible = p.st === 3;
+    if (p.st === 3) { u.ghost.children[0].material.opacity = 0.12 + 0.2 * gk; u.mats[1].opacity = 0.35 + 0.5 * gk * (0.7 + 0.3 * Math.sin(ctx.time * 14)); }
     v.position.set(u.base.x + sx, u.base.y - p.dy, u.base.z + sz);
-    v.scale.set(scale, scale, scale);
     if (u.lastSt !== p.st && ctx.fx) {
       if (p.st === 2) ctx.fx.burst(u.base.x, u.base.y, u.base.z, ctx.fx.cols.sun, 26, 2.5, 0.9, 0.09, 6);
-      if (p.st === 3) ctx.fx.burst(u.base.x, u.base.y + 0.2, u.base.z, ctx.fx.cols.sun, 12, 1.2, 0.6, 0.07, -1);
+      if (p.st === 0 && u.lastSt === 3) ctx.fx.burst(u.base.x, u.base.y + 0.1, u.base.z, ctx.fx.cols.sun, 10, 1.2, 0.5, 0.07, -1);
     }
     u.lastSt = p.st;
-    if (vis) ctx.glow.add(v.position.x, v.position.y + 0.1, v.position.z, Math.max(u.w, u.d) * 1.1, 0xff7a30, Math.min(0.5, m.emissiveIntensity * 0.12));
+    if (u.solid.visible) ctx.glow.add(v.position.x, v.position.y + 0.1, v.position.z, Math.max(u.w, u.d) * 1.2, 0xff6a20, Math.min(0.55, 0.1 + m.emissiveIntensity * 0.06));
   },
 };
 
@@ -363,21 +402,24 @@ VIEWS.sweeper = {
     const rot = new THREE.Group(); root.add(rot);
     const bar = o.bar ?? 0.55, R = o.R, arms = o.arms === 2 ? 2 : 1;
     const len = arms === 2 ? 2 * R : R, off = arms === 2 ? 0 : -R / 2;   // local -z = arm 0
-    const beamG = new THREE.BoxGeometry(0.34, 0.3, len).translate(0, bar * 0.55, off);
+    // The sim's arm is 0.15 thick on each side of its line and deadly from the floor up to y + bar,
+    // so the art stays inside that: a beam 0.26 wide from 0.06 to 0.4 high, thorn tips no higher
+    // than the bar and no further out than 0.17 from the line.
+    const beamG = new THREE.BoxGeometry(0.26, 0.34, len).translate(0, 0.23, off);
     rot.add(new THREE.Mesh(beamG, materials().gold));
-    // thorns along the beam, pointing out both sides and up
-    const n = Math.round(len / 0.26) * 3;
+    const spineG = new THREE.BoxGeometry(0.1, 0.05, len).translate(0, 0.41, off);
+    rot.add(new THREE.Mesh(spineG, glowMat(0xff6ad0, 1.6)));
+    const n = Math.round(len / 0.22) * 3;
     const im = new THREE.InstancedMesh(_thornGeo, _thornMat, n);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3();
     let k = 0;
     for (let j = 0; j < n / 3; j++) {
       const z = off - len / 2 + (j + 0.5) * len / (n / 3);
-      void 0;
       if (Math.abs(z) < 0.5) continue;
-      for (const a of [-1.35, 0, 1.35]) {
+      for (const a of [-0.55, 0, 0.55]) {
         const r = hash(idx * 5 + j, a + 3);
-        e.set(0, 0, -a + (r - 0.5) * 0.3); q.setFromEuler(e);
-        p.set(0, bar * 0.55, z); s.set(0.1, 0.34 + r * 0.16, 0.1);
+        e.set(0, 0, -a + (r - 0.5) * 0.2); q.setFromEuler(e);
+        p.set(Math.sin(a) * 0.1, 0.38, z); s.set(0.06, bar - 0.38 - (a ? 0.02 : 0) - r * 0.04, 0.06);
         m.compose(p, q, s); im.setMatrixAt(k++, m);
       }
     }
@@ -389,7 +431,7 @@ VIEWS.sweeper = {
     // a faint circle on the floor showing the swept area
     const ringG = new THREE.RingGeometry(R - 0.06, R, 48).rotateX(-Math.PI / 2).translate(0, 0.015, 0);
     root.add(new THREE.Mesh(ringG, glowMat(0xff6ad0, 0.5, { additive: true })));
-    root.userData = { geos: [beamG, hubG, ringG], insts: [im], rot, R, arms, off };
+    root.userData = { geos: [beamG, spineG, hubG, ringG], insts: [im], rot, R, arms, off };
     return root;
   },
   update(v, o, st, pose, ctx) {
@@ -404,21 +446,28 @@ VIEWS.sweeper = {
   },
 };
 
-// Pendulum: a crescent blade on a rod, swinging in the x-y plane from a pivot on a stone yoke.
+// Pendulum: a disc blade on a rod, swinging in the x-y plane from a pivot on a stone yoke.
+let _bladeMat = null;
+function bladeMat() {
+  if (!_bladeMat) _bladeMat = patchWorld(new THREE.MeshStandardMaterial({ color: 0x9a8cc4, roughness: 0.3, metalness: 0.85, flatShading: true,
+    emissive: 0x501844, emissiveIntensity: 0.9 }), { rim: col(0xff9ae8).multiplyScalar(0.9), key: 'blade' });
+  return _bladeMat;
+}
 VIEWS.pendulum = {
   make(o, L, idx) {
     const root = new THREE.Group();
     const piv = new THREE.Group(); piv.position.set(o.px, o.py, -o.pz); root.add(piv);
     const rodG = new THREE.CylinderGeometry(0.05, 0.05, o.R, 6).translate(0, -o.R / 2, 0);
     piv.add(new THREE.Mesh(rodG, materials().metal));
-    // blade: a crescent disc with a sharp glowing edge
-    const sh = new THREE.Shape();
-    const rb = o.rb;
-    sh.absarc(0, 0, rb, Math.PI * 0.05, Math.PI * 0.95, true);
-    sh.absarc(0, rb * 0.55, rb * 0.72, Math.PI * 0.98, Math.PI * 0.02, false);
-    const bladeG = new THREE.ExtrudeGeometry(sh, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.05, bevelSegments: 1, curveSegments: 18 }).translate(0, 0, -0.04);
-    const blade = new THREE.Mesh(bladeG, materials().metal); blade.position.y = -o.R; piv.add(blade);
-    const edgeG = new THREE.TorusGeometry(rb + 0.02, 0.03, 4, 28, Math.PI * 0.9).rotateZ(Math.PI * 1.05);
+    // blade: a round disc, as deadly all the way round as the sim's (radius rb against the player
+    // box shrunk 0.06, so rb - 0.06 against the drawn character; 0.14 deep on each side of its plane).
+    // A lens: 0.28 thick at the hub, thinning to a glowing edge.
+    const rb = o.rb - 0.06;
+    const prof = [new THREE.Vector2(0, -0.14), new THREE.Vector2(0.16, -0.14), new THREE.Vector2(rb * 0.82, -0.07), new THREE.Vector2(rb, -0.015),
+      new THREE.Vector2(rb, 0.015), new THREE.Vector2(rb * 0.82, 0.07), new THREE.Vector2(0.16, 0.14), new THREE.Vector2(0, 0.14)];
+    const bladeG = new THREE.LatheGeometry(prof, 24).rotateX(Math.PI / 2);   // disc in the x-y plane, thickness along z
+    const blade = new THREE.Mesh(bladeG, bladeMat()); blade.position.y = -o.R; piv.add(blade);
+    const edgeG = new THREE.TorusGeometry(rb - 0.015, 0.03, 4, 32);
     const edge = new THREE.Mesh(edgeG, glowMat(0xff8ae0, 2.2)); edge.position.y = -o.R; piv.add(edge);
     const hubG = new THREE.SphereGeometry(0.16, 10, 8);
     const hub = new THREE.Mesh(hubG, materials().gold); hub.position.y = -o.R; piv.add(hub);
@@ -463,7 +512,7 @@ VIEWS.carousel = {
   },
   update(v, o, st, pose, ctx) {
     const u = v.userData;
-    const a = new THREE.Vector3(o.cx, o.y + 2.5, -o.cz), b = new THREE.Vector3();
+    const a = _va.set(o.cx, o.y + 2.5, -o.cz), b = _vb;
     for (let j = 0; j < u.stones.length; j++) {
       const s = pose && pose.stones[j]; if (!s) continue;
       u.stones[j].position.set(s.x, o.y, -s.z);
@@ -475,96 +524,152 @@ VIEWS.carousel = {
   },
 };
 
-// Gate: a thorn curtain between two stone posts with a lintel; the opening slides along it.
-// Thorn columns are re-spaced every frame to fill [x0, gap left] and [gap right, x1].
-const GATE_COLS = 9, GATE_ROWS = 7;
+// Gate: a bramble curtain between two stone posts with a lintel; the opening slides along it.
+// The sim kills a player whose box (shrunk 0.06) leaves [gx - gw, gx + gw] inside the curtain's
+// depth (0.5, shrunk 0.05 each side), so the wall is drawn from x0 to gx - gw - 0.06 and from
+// gx + gw + 0.06 to x1, 0.4 deep with its thorns: fixed 0.5-wide tiles, re-laid every frame.
+const GATE_TILE = 0.5;
+let _brambleMat = null, _brambleGeo = null;
+function brambleTex() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1c0c26'; g.fillRect(0, 0, 64, 512);
+  // vines that wrap left-right, so tiles join without seams
+  for (let k = 0; k < 14; k++) {
+    const y0 = hash(k, 21) * 512, amp = 20 + hash(k, 22) * 40, ph = hash(k, 23) * 6.28, lw = 3 + hash(k, 24) * 5;
+    g.strokeStyle = k % 3 ? '#3e1c4e' : '#5a2a66'; g.lineWidth = lw; g.beginPath();
+    for (let x = -4; x <= 68; x += 4) { const y = y0 + Math.sin(x / 64 * Math.PI * 2 + ph) * amp; x < 0 ? g.moveTo(x, y) : g.lineTo(x, y); }
+    g.stroke();
+  }
+  for (let k = 0; k < 40; k++) {   // glowing thorn buds
+    const x = hash(k, 31) * 64, y = hash(k, 32) * 512;
+    g.fillStyle = k % 4 ? 'rgba(255,120,220,0.9)' : 'rgba(255,220,250,1)';
+    g.beginPath(); g.arc(x, y, 1.5 + hash(k, 33) * 2, 0, 6.29); g.fill();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
 VIEWS.gate = {
   make(o, L, idx) {
     thornAssets();
+    if (!_brambleMat) {
+      const tex = brambleTex();
+      _brambleMat = patchWorld(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, emissive: 0xff70d0, emissiveMap: tex, emissiveIntensity: 0.35 }), { key: 'bramble' });
+      _brambleGeo = new THREE.BoxGeometry(GATE_TILE, 1, 0.24).translate(GATE_TILE / 2, 0.5, 0);
+    }
     const root = new THREE.Group();
     const [, cz, w] = mid(o), zc = -cz, th = o.th ?? 4.6;
-    const im = new THREE.InstancedMesh(_thornGeo, _thornMat, 2 * GATE_COLS * GATE_ROWS * 2);
-    im.frustumCulled = false;
-    root.add(im);
-    // vines: two thin dark bars per side that stretch with the curtain
-    const vineG = new THREE.BoxGeometry(1, th, 0.12).translate(0.5, th / 2, 0);
-    const vineMat = patchWorld(new THREE.MeshStandardMaterial({ color: 0x2a1238, emissive: 0x4a1048, emissiveIntensity: 0.8, roughness: 0.7, transparent: true, opacity: 0.75 }), { key: 'vine' });
-    const vines = [0, 1].map(() => { const m = new THREE.Mesh(vineG, vineMat); m.position.set(0, o.y, zc); root.add(m); return m; });
+    const maxTiles = Math.ceil((o.x1 - o.x0) / GATE_TILE) + 4;
+    // the wall itself sits in its own group: the renderer hides it for a camera whose player has
+    // passed it, so it never stands between that camera and its player
+    const wall = new THREE.Group(); root.add(wall);
+    const tiles = new THREE.InstancedMesh(_brambleGeo, _brambleMat, maxTiles); tiles.frustumCulled = false; wall.add(tiles);
+    const rows = Math.round(th / 0.42);
+    const im = new THREE.InstancedMesh(_thornGeo, _thornMat, maxTiles * rows * 2 * 2); im.frustumCulled = false; wall.add(im);
     const postG = new THREE.BoxGeometry(0.7, th + 0.8, 0.9).translate(0, (th + 0.8) / 2 - 0.4, 0);
     for (const x of [o.x0 - 0.35, o.x1 + 0.35]) { const p = new THREE.Mesh(postG, materials().stonePlain); p.position.set(x, o.y, zc); root.add(p); }
     const lintG = slabGeometry(w + 1.6, 0.9, 0.6, { glow: 0.5 });
     const lint = new THREE.Mesh(lintG, materials().stone); lint.position.set((o.x0 + o.x1) / 2, o.y + th + 0.6, zc); root.add(lint);
-    // glowing edges of the opening
-    const edgeG = new THREE.BoxGeometry(0.06, th, 0.06).translate(0, th / 2, 0);
-    const edges = [0, 1].map(() => { const m = new THREE.Mesh(edgeG, glowMat(0x9dffb9, 1.6)); m.position.set(0, o.y, zc); root.add(m); return m; });
-    root.userData = { geos: [vineG, postG, lintG, edgeG], mats: [vineMat], insts: [im], im, vines, edges, zc, th, seed: idx };
+    // glowing edges of the opening, and a pale strip on the floor through it (the safe way)
+    const edgeG = new THREE.BoxGeometry(0.07, th, 0.42).translate(0, th / 2, 0);
+    const edges = [0, 1].map(() => { const m = new THREE.Mesh(edgeG, glowMat(0x9dffb9, 1.5)); m.position.set(0, o.y, zc); wall.add(m); return m; });
+    const laneG = new THREE.PlaneGeometry(1, 2.4).rotateX(-Math.PI / 2);
+    const lane = new THREE.Mesh(laneG, glowMat(0x60ff9a, 0.16, { additive: true })); lane.position.set(0, o.y + 0.02, zc); wall.add(lane);
+    root.userData = { geos: [postG, lintG, edgeG, laneG], insts: [tiles, im], tiles, im, edges, lane, zc, th, rows, seed: idx, occ: { z: cz, wall } };
     return root;
   },
   update(v, o, st, pose, ctx) {
-    const u = v.userData, gx = pose ? pose.x : o.cx, gw = pose ? pose.gw : o.gw;
+    const u = v.userData, gx = pose ? pose.x : o.cx, gw = (pose ? pose.gw : o.gw) + 0.06;
     const segs = [[o.x0, gx - gw], [gx + gw, o.x1]];
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3();
-    let k = 0;
+    const m = _m4, q = _q, e = _e, p = _p3, s = _s3;
+    let nt = 0, k = 0;
     segs.forEach(([a, b], si) => {
-      const len = Math.max(0, b - a);
-      u.vines[si].visible = len > 0.02;
-      u.vines[si].position.x = a; u.vines[si].scale.x = Math.max(0.001, len);
-      if (len < 0.05) return;
-      const nc = Math.max(1, Math.min(GATE_COLS, Math.round(len / 0.45)));
-      for (let c = 0; c < nc; c++) for (let r = 0; r < GATE_ROWS; r++) for (const side of [-1, 1]) {
-        const hr = hash(u.seed * 3 + c * 11 + si, r * 7 + side);
-        p.set(a + (c + 0.5) * len / nc, o.y + (r + 0.5) * u.th / GATE_ROWS, u.zc + side * 0.06);
-        e.set(side * (1.2 + hr * 0.4), 0, (hr - 0.5) * 0.8); q.setFromEuler(e);
-        s.set(0.08, 0.28 + hr * 0.16, 0.08);
-        m.compose(p, q, s); u.im.setMatrixAt(k++, m);
+      const len = b - a;
+      if (len < 0.01) return;
+      const n = Math.ceil(len / GATE_TILE - 1e-6);
+      for (let c = 0; c < n; c++) {
+        // tiles are laid from the opening outwards, so the ones that move with it keep their look
+        const x0 = si ? a + c * GATE_TILE : b - (c + 1) * GATE_TILE, wx = Math.min(GATE_TILE, si ? b - x0 : x0 + GATE_TILE - a);
+        const xs = si ? x0 : Math.max(a, x0);
+        p.set(xs, o.y, u.zc); q.identity(); s.set(wx / GATE_TILE, u.th, 1);
+        m.compose(p, q, s); u.tiles.setMatrixAt(nt++, m);
+        // thorns on both faces, pointing out of the wall; tips stay within 0.2 of its middle
+        for (let r = 0; r < u.rows; r++) for (const side of [-1, 1]) {
+          const hr = hash(u.seed * 3 + c * 11 + si * 5, r * 7 + side);
+          if (hr < 0.25) continue;
+          // lying along the face (so they can be long and still stay inside the deadly depth),
+          // tipped a little outwards
+          const tx = xs + wx * (0.2 + 0.6 * hash(c + si * 9, r + side * 3 + u.seed));
+          p.set(tx, o.y + (r + 0.5) * u.th / u.rows, u.zc + side * 0.135);
+          const ang = (hr < 0.62 ? 1 : -1) * (0.7 + hr * 1.6);
+          e.set(side * 0.25, 0, ang); q.setFromEuler(e);
+          s.set(0.06, 0.3, 0.06);
+          m.compose(p, q, s); u.im.setMatrixAt(k++, m);
+        }
       }
     });
+    u.tiles.count = nt; u.tiles.instanceMatrix.needsUpdate = true;
     u.im.count = k; u.im.instanceMatrix.needsUpdate = true;
     u.edges[0].position.x = gx - gw; u.edges[1].position.x = gx + gw;
+    u.lane.position.x = gx; u.lane.scale.x = 2 * gw;
     for (const x of [gx - gw, gx + gw]) for (const h of [0.6, 1.8, 3.0]) ctx.glow.add(x, o.y + h, u.zc, 0.7, 0x60ff9a, 0.25);
   },
 };
 
-// Orbs: rolling stone spheres with a glowing band, along a carved lane.
-let _orbGeo = null, _orbMat = null;
+// Orbs: rolling stone spheres with glowing bands, along a carved lane. The sim's orb is full size
+// from the moment it appears at zs until it vanishes at ze, and it touches the player box (shrunk
+// 0.05) within r - 0.05: drawn at r - 0.08 (flat faces, the bands stand out to r - 0.03). Orbs roll
+// out of a dark archway at the far end and drop into a socket at the near end.
+let _orbGeo = null, _orbMat = null, _sockMat = null;
 VIEWS.orb = {
   make(o, L, idx) {
     if (!_orbGeo) {
       _orbGeo = new THREE.IcosahedronGeometry(1, 2);
-      _orbMat = patchWorld(new THREE.MeshStandardMaterial({ color: 0x6e5f96, roughness: 0.75, flatShading: true, emissive: 0x1a0c2a }), { rim: col(0xb89cff).multiplyScalar(0.6), key: 'orb' });
+      _orbMat = patchWorld(new THREE.MeshStandardMaterial({ color: 0x8a78c0, roughness: 0.7, flatShading: true, emissive: 0x2c1446 }), { rim: col(0xc8acff).multiplyScalar(0.7), key: 'orb' });
+      _sockMat = patchWorld(new THREE.MeshBasicMaterial({ color: 0x1e0e30 }), { key: 'sock' });
     }
     const root = new THREE.Group();
+    const R = o.r - 0.08;
     const maxN = Math.ceil((o.zs - o.ze) / Math.max(0.01, o.vo * o.P)) + 1;
-    const bandG = new THREE.TorusGeometry(1.0, 0.07, 4, 24).rotateY(Math.PI / 2);
+    const bandG = new THREE.TorusGeometry(1.0, 0.05, 4, 28).rotateY(Math.PI / 2);
     const balls = [];
     for (let k = 0; k < maxN; k++) {
       const b = new THREE.Group();
-      const s = new THREE.Mesh(_orbGeo, _orbMat); b.add(s);
+      b.add(new THREE.Mesh(_orbGeo, _orbMat));
       const band = new THREE.Mesh(bandG, glowMat(0xff9ae8, 1.8)); b.add(band);
       const band2 = new THREE.Mesh(bandG, glowMat(0xff9ae8, 1.8)); band2.rotation.z = Math.PI / 2; b.add(band2);
-      b.scale.setScalar(o.r); b.visible = false; root.add(b); balls.push(b);
+      b.scale.setScalar(R); b.visible = false; root.add(b); balls.push(b);
     }
-    // lane groove on the floor and a launch arch at the far end
-    const laneG = new THREE.PlaneGeometry(o.r * 1.3, o.zs - o.ze + 2 * o.r).rotateX(-Math.PI / 2);
+    // lane groove on the floor
+    const laneG = new THREE.PlaneGeometry(o.r * 1.3, o.zs - o.ze).rotateX(-Math.PI / 2);
     const lane = new THREE.Mesh(laneG, glowMat(0x2a1640, 1, { opacity: 0.65 })); lane.position.set(o.lx, o.y + 0.012, -(o.zs + o.ze) / 2); root.add(lane);
-    const lineG = new THREE.PlaneGeometry(0.05, o.zs - o.ze + 2 * o.r).rotateX(-Math.PI / 2);
+    const lineG = new THREE.PlaneGeometry(0.05, o.zs - o.ze).rotateX(-Math.PI / 2);
     for (const sx of [-1, 1]) { const l = new THREE.Mesh(lineG, glowMat(0xc070ff, 1.2, { additive: true })); l.position.set(o.lx + sx * o.r * 0.65, o.y + 0.016, -(o.zs + o.ze) / 2); root.add(l); }
-    root.userData = { geos: [bandG, laneG, lineG], balls };
+    // socket where they drop away (near end) and an archway where they come from (far end)
+    const sockG = new THREE.CircleGeometry(o.r * 0.75, 20).rotateX(-Math.PI / 2);
+    const sock = new THREE.Mesh(sockG, _sockMat); sock.position.set(o.lx, o.y + 0.018, -(o.ze - o.r * 0.4)); root.add(sock);
+    const rimG = new THREE.RingGeometry(o.r * 0.75, o.r * 0.85, 20).rotateX(-Math.PI / 2);
+    const rim = new THREE.Mesh(rimG, glowMat(0xc070ff, 1.2, { additive: true })); rim.position.copy(sock.position); rim.position.y += 0.002; root.add(rim);
+    const archG = new THREE.TorusGeometry(o.r + 0.25, 0.22, 6, 16, Math.PI);
+    const arch = new THREE.Mesh(archG, materials().stonePlain); arch.position.set(o.lx, o.y, -(o.zs + o.r * 0.6)); root.add(arch);
+    const voidG = new THREE.CircleGeometry(o.r + 0.05, 16, 0, Math.PI);
+    const vd = new THREE.Mesh(voidG, _sockMat); vd.position.set(o.lx, o.y + 0.01, -(o.zs + o.r * 0.6) - 0.05); root.add(vd);
+    root.userData = { geos: [bandG, laneG, lineG, sockG, rimG, archG, voidG], balls, R, n: 0 };
     void idx;
     return root;
   },
   update(v, o, st, pose, ctx) {
     const u = v.userData, list = pose ? pose.balls : [];
+    // an orb reached the socket: a puff where it dropped
+    if (list.length < u.n && ctx.fx && ctx.dt > 0) ctx.fx.burst(o.lx, o.y + 0.2, -o.ze, ctx.fx.cols.thorn, 14, 2, 0.5, 0.07, 3);
+    u.n = list.length;
     for (let k = 0; k < u.balls.length; k++) {
       const b = u.balls[k], q = list[k];
       b.visible = !!q;
       if (!q) continue;
-      // grow in at the launch end, sink out at the near end
-      const g = Math.min(1, (o.zs - q.z) / (o.r * 1.5) + 0.25, (q.z - o.ze) / (o.r * 1.5) + 0.25);
-      b.scale.setScalar(o.r * Math.max(0.05, g));
-      b.position.set(q.x, o.y + o.r * Math.max(0.05, g), -q.z);
-      b.rotation.set(q.roll, 0, 0);
-      ctx.glow.add(q.x, o.y + 0.05, -q.z, o.r * 2.6, 0xff6ad0, 0.18 * g);
+      b.position.set(q.x, q.y, -q.z);
+      b.rotation.set(q.roll, 0, 0);   // rolling toward three +z
+      ctx.glow.add(q.x, o.y + 0.05, -q.z, o.r * 2.6, 0xff6ad0, 0.18);
     }
   },
 };
