@@ -55,7 +55,7 @@ class CamRig {
   }
   // p: interpolated sim position of the followed player; vz sim forward speed; split: tall viewport
   update(p, vz, alive, dt, split, aspect, intro, time) {
-    const back = split ? 6.6 : 6.0, up = split ? 3.7 : 3.2, ahead = split ? 6.5 : 5.5;
+    const back = split ? 6.0 : 5.3, up = split ? 3.3 : 2.75, ahead = split ? 6.5 : 5.5;
     const kAhead = Math.max(0, vz / MAX_SPEED);
     if (alive || this.pos == null) {
       const ty = p.y;
@@ -90,7 +90,7 @@ export class Runner3DRenderer {
     this.canvas = canvas;
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false });
     r.toneMapping = THREE.ACESFilmicToneMapping;
-    r.toneMappingExposure = 1.05;
+    r.toneMappingExposure = 0.95;
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.autoClear = false;
     this.quality = 'auto'; this.level = 'high';
@@ -101,8 +101,8 @@ export class Runner3DRenderer {
     textures();
 
     // lights: soft key from behind the camera, warm (sun) and cool (moon) rims from ahead
-    scene.add(new THREE.HemisphereLight(0x8f7cc8, 0x1a1028, 1.1));
-    const key = new THREE.DirectionalLight(0xe8dcff, 1.5); key.position.set(-3, 10, 8); scene.add(key); scene.add(key.target);
+    scene.add(new THREE.HemisphereLight(0x6a58a8, 0x140c22, 0.75));
+    const key = new THREE.DirectionalLight(0xd8c8ff, 1.15); key.position.set(-3, 10, 8); scene.add(key); scene.add(key.target);
     const warm = new THREE.DirectionalLight(0xffa860, 1.6); warm.position.set(-8, 3, -6); scene.add(warm);
     const cool = new THREE.DirectionalLight(0x70b8ff, 1.5); cool.position.set(8, 4, -6); scene.add(cool);
     this.dirLights = [key, warm, cool];
@@ -144,7 +144,7 @@ export class Runner3DRenderer {
     const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 });
     this.composer = new EffectComposer(this.renderer, rt);
     this.composer.addPass(new ViewportsPass(this));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.45, 0.82);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.4, 0.86);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
   }
@@ -322,8 +322,8 @@ export class Runner3DRenderer {
       const gk = deadT >= 0 ? Math.max(0, 1 - deadT * 1.5) : 1;
       const gc = i ? col(0x6ec0ff) : col(0xffa040);
       if (gk > 0) {
-        this.glow.add(q.x, q.y + 0.75, -q.z, 2.6, gc, (0.33 + 0.05 * Math.sin(time * 3 + i)) * gk);
-        this.glow.add(q.x, q.y + 1.05, -q.z, 1.1, i ? col(0xd8f4ff) : col(0xfff0a0), 0.3 * gk);
+        this.glow.add(q.x, q.y + 0.8, -q.z, 1.9, gc, (0.16 + 0.03 * Math.sin(time * 3 + i)) * gk);
+        this.glow.add(q.x, q.y + 0.55, -q.z, 0.7, i ? col(0xd8f4ff) : col(0xfff0a0), 0.22 * gk);
       }
       this.plights[i].position.set(q.x, q.y + 0.9, -q.z);
       this.plights[i].intensity = 6 * gk;
@@ -343,7 +343,7 @@ export class Runner3DRenderer {
     }
 
     // lanterns and keystones glow
-    for (const l of this.deco.lanterns) this.glow.add(l.x, l.y, l.z, 2.2, l.c, 0.55 + 0.08 * Math.sin(time * 4 + l.z));
+    for (const l of this.deco.lanterns) this.glow.add(l.x, l.y, l.z, 1.5, l.c, 0.32 + 0.05 * Math.sin(time * 4 + l.z));
 
     // dusk zone
     const zy = this.courseY(view.zone + 2);

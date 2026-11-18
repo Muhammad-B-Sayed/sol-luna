@@ -36,6 +36,8 @@ const SHOTS = [
   ['spikes', 'seed=7&kind=spikes', 60],
   ['low', 'seed=7&z=140&q=low', 150],
 ];
+// one shot per obstacle kind (the demo starts a few units before the first object of that kind)
+for (const k of ['ramp', 'tilt', 'crumble', 'eclipse', 'sweeper', 'pendulum', 'carousel', 'gate', 'orb']) SHOTS.push(['kind-' + k, `seed=7&kind=${k}`, 60]);
 const want = process.argv.slice(2);
 const list = want.length ? SHOTS.filter(s => want.some(w => s[0].includes(w))) : SHOTS;
 const extraKinds = (process.env.KINDS || '').split(',').filter(Boolean);
