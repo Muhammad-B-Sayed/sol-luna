@@ -39,20 +39,22 @@ function topAt(x, z) {
   let best = null;
   for (const o of L.objs) {
     if (o.z0 > z + 1) break;
-    if (o.k === 'spikes' || o.k === 'pool') continue;
-    if (x >= o.x0 && x <= o.x1 && z >= o.z0 && z <= o.z1 && (best == null || o.y > best)) best = o.y;
+    if (o.k !== 'floor' && o.k !== 'ramp') continue;
+    const y = o.k === 'ramp' ? o.y + (o.y1 - o.y) * (z - o.z0) / (o.z1 - o.z0) : o.y;
+    if (x >= o.x0 && x <= o.x1 && z >= o.z0 && z <= o.z1 && (best == null || y > best)) best = y;
   }
   return best;
 }
-function placeAt(z) {
+function placeAt(z, cx = null) {
   R3.ensureGenerated(L, z + 200);
   S.zone = z - 9;
   S.lo = 0;
   for (let i = 0; i < 2; i++) {
     const p = S.p[i];
+    if (cx != null) p.x = cx + (i ? 0.7 : -0.7);
     let zz = z;
     for (let k = 0; k < 80 && topAt(p.x, zz) == null; k++) zz += 0.5;
-    p.z = zz; p.y = topAt(p.x, zz) ?? 0; p.vx = p.vy = p.vz = 0; p.gr = true; p.alive = true;
+    p.z = zz; p.y = topAt(p.x, zz) ?? 0; p.fy = p.y; p.vx = p.vy = p.vz = 0; p.gr = true; p.alive = true;
     S.dead[i] = -1; S.why[i] = '';
   }
   S.best = [S.p[0].z, S.p[1].z];
@@ -64,7 +66,7 @@ if (Q.has('kind')) {
   for (let zz = 100; zz < 4000 && !found; zz += 100) { R3.ensureGenerated(L, zz); found = L.objs.find(o => o.k === kind); }
   // start on the run-up of the section that holds it
   const fi = L.objs.indexOf(found), sec = found && L.secs.find(s => fi >= s.o0 && fi < s.o1);
-  if (sec) placeAt(Math.max(0, sec.sz - 3)); else if (found) placeAt(Math.max(0, found.z0 - 7)); else console.warn('no object of kind', kind);
+  if (sec) placeAt(sec.sz, sec.sx); else if (found) placeAt(Math.max(0, found.z0 - 7)); else console.warn('no object of kind', kind);
 } else if (Q.has('z')) placeAt(num('z', 0));
 
 // --- input: bots by default; pressing a player's keys hands that player to the keyboard
