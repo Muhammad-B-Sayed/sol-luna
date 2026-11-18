@@ -6,14 +6,9 @@ import { LEVELS } from '/shared/levels.js';
 import { buildLevel, createState, step, TS } from '/shared/sim.js';
 const q = new URLSearchParams(location.search);
 const n = +q.get('level'), k = q.has('state') ? +q.get('state') : -1;
-const LABELS = {
-  14: [[8, 27.3, 'E1', 0], [26.5, 26.3, 'P1', 0], [36.5, 27.3, 'S1', 1], [25.5, 13.3, 'L1', 1], [16.5, 19.0, 'P2', 2],
-       [21.5, 5.3, 'G2', 2], [15, 10.9, 'bridge', 2], [3.5, 7.3, 'L2', 2], [26.9, 15.0, 'T1', -1], [32.5, 13.0, 'T2', -1], [26.9, 11.0, 'T3', -1]],
-  19: [[5, 27.3, 'E0', 0], [25.5, 26.3, 'P0', 0], [28.5, 26.3, 'P1', 1], [7.5, 16.3, 'P0b', 0], [18.5, 13.3, 'G1', 1],
-       [25, 17.0, 'P2', 1], [31.5, 13.3, 'G2', 1], [11, 12.9, 'ledge', -1]],
-  26: [[11.5, 7.3, 'B', 1], [17.5, 7.3, 'A', 0], [21.5, 5.3, 'GW', 2], [33.5, 7.3, 'LR', 3], [27.5, 13.3, 'PF', 2],
-       [32, 21.0, 'E', 1], [34.5, 11.8, 'GX', 3], [12, 23.6, 'bridge 1', 0], [23.5, 23.6, 'bridge 2', 0], [17.5, 24.8, 'refuge', -1]],
-};
+// Optional tags per room: LABELS[n] = [[x, y, text, group], ...] in tiles (group -1 = grey).
+// The first-pass tags for rooms 14, 19 and 26 were removed on Nov 17, 2026: those rooms were rebuilt.
+const LABELS = {};
 const L = buildLevel(LEVELS[n - 1], n - 1);
 if (q.has('grid')) {
   const all = await (await fetch('/_cap/states.json')).json();

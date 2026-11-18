@@ -191,11 +191,8 @@ Luna starts between B and A, and the levers are placed so that any accidental fl
 
 The solo checker confirms every gem in all three rooms can be reached.
 
-Four moments from each bot run:
-
-![Helper's Way Out, solution steps](img/level-14-steps.jpg)
-![Carry the Weight, solution steps](img/level-19-steps.jpg)
-![Operator, solution steps](img/level-26-steps.jpg)
+The pictures of four moments from each bot run were deleted on Nov 17, 2026, because they showed
+rooms that no longer exist.
 
 ## 4. Second pass: no level can be finished alone
 

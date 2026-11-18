@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Renders docs/img/level-N.jpg (labelled start) and level-N-steps.jpg (four solution
-# moments) for the rooms in tools/capture/record-states.js, using the real renderer
+# Renders docs/img/level-N.jpg (the room at its start, with any LABELS from
+# tools/capture/index.html) for the rooms in tools/capture/record-states.js, and
+# level-N-steps.jpg for rooms that list solution states there (none do now), using the real renderer
 # in headless Chrome. macOS: needs Google Chrome and `sips`. Elsewhere: set CHROME (for example
 # CHROME=/usr/bin/chromium) and have ImageMagick's `magick`; CHROME_FLAGS adds flags such as
 # --user-data-dir=/tmp/some-profile so a running browser profile is left alone.
