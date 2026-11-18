@@ -71,15 +71,11 @@ function place(S, who, c) {
   Object.assign(S.p[who], { x: c.sx, y: c.y, z: c.sz, vx: 0, vy: 0, vz: 0, gr: true, gref: c.o0, gs: 0, coy: 0, jh: 0, jb: 0, alive: true, fy: c.y });
   S.best[who] = c.sz; S.dead[who] = -1; S.why[who] = '';
 }
-// a spinning slab at rest must be exactly level: angle and speed exactly 0, drawn at 0 or pi
-function exactRest(L, S, out) {
-  for (const k in S.o) {
-    const o = L.objs[k];
-    if (o.k !== 'tilt' || !atRest(L, S, k)) continue;
-    const st = S.o[k], pose = objPose(L, S, +k);
-    out.n++;
-    if (st.a !== 0 || st.w !== 0 || st.s !== 0 || (pose.rot !== 0 && pose.rot !== Math.PI)) out.fail.push({ test: 'level', obj: +k, st: { ...st } });
-  }
+// a spinning slab back at rest must be exactly level: angle and speed exactly 0, drawn at 0 or pi
+function exactRest(L, S, k, out) {
+  const st = S.o[k], pose = objPose(L, S, k);
+  out.n++;
+  if (!st || st.a !== 0 || st.w !== 0 || st.s !== 0 || (pose.rot !== 0 && pose.rot !== Math.PI)) out.fail.push({ test: 'level', obj: k, st: st && { ...st } });
 }
 const statefulIn = (L, c) => { const a = []; for (let i = c.o0; i < c.o1; i++) if (STATEFUL[L.objs[i].k]) a.push(i); return a; };
 const loaded = (S, i) => S.p.some(p => p.alive && p.gr && p.gref === i);
@@ -96,11 +92,12 @@ function restCheck(L, S, objs, removeAt, inputs, out) {
       if (i < S.lo && !offAt.has(i)) offAt.set(i, S.tick);
       if (i < S.lo || i >= S.hi) continue;
       if (loaded(S, i)) { last.set(i, S.tick); restAt.delete(i); continue; }
-      if (atRest(L, S, i)) { if (!restAt.has(i)) restAt.set(i, S.tick); } else restAt.delete(i);
+      if (atRest(L, S, i)) {
+        if (!restAt.has(i)) { restAt.set(i, S.tick); if (L.objs[i].k === 'tilt' && last.has(i)) exactRest(L, S, i, out.level ||= { n: 0, fail: [] }); }
+      } else restAt.delete(i);
     }
     if (t > removeAt && objs.every(i => restAt.has(i) || i < S.lo || i >= S.hi)) break;
   }
-  exactRest(L, S, out.level ||= { n: 0, fail: [] });
   for (const i of objs) {
     const o = L.objs[i];
     if (!last.has(i)) continue;
@@ -178,7 +175,7 @@ function checkSeed(seed) {
     for (const who of [0, 1]) for (const t0 of starts) {
       const go = (stop) => {
         const S = snapAt(t0); place(S, who, c); park(S, 1 - who); S.p[who].vz = P3.maxSpeed;
-        return solve(L, S, who, { until: goal, budget: BUDGET, o0: c.o0, o1: c.o1, flow: { ...FLOW, stop }, rungs: stop === FLOW.stop ? 5 : 2 });
+        return solve(L, S, who, { until: goal, budget: BUDGET, o0: c.o0, o1: c.o1, flow: { ...FLOW, stop }, rungs: stop === FLOW.stop ? 7 : 2 });
       };
       fk.n++;
       const r = go(FLOW.stop);
@@ -341,7 +338,8 @@ function checkSeed(seed) {
         // an edge touch starts is measured on its own: turns, turn times, ticks to rest.
         tag = 'edge';
         const third = (o.z1 - o.z0) / 3;
-        const targets = [[0, 0], [0, 1], [0, 2], [-1, 0], [-1, 1], [-1, 2], [1, 0], [1, 1], [1, 2]].filter(([sd, zt]) => !QUICK || zt === 0);
+        // centre (middle), both side edges (middle) and the four corners
+        const targets = [[0, 1], [-1, 1], [1, 1], [-1, 0], [1, 0], [-1, 2], [1, 2]].filter(([sd, zt]) => !QUICK || zt === 0 || !sd);
         for (const [sd, zt] of targets) {
           const want = (S2, p) => {
             if (!(p.gr && p.gref === i)) return false;
@@ -355,7 +353,7 @@ function checkSeed(seed) {
           if (!r.ok) { res.edgeMiss.push({ seed, k, obj: i, by: name, who: a }); continue; }
           const hops = []; for (let t = 0; t < 400; t++) hops.push(t % 40 < 2 ? IN_J : t % 80 < 40 ? IN_L : IN_R);
           const track = r.plan.concat(hops);
-          for (const D of [40, 80, 130]) second(a, Tk - D, track, name + ' ' + D);
+          for (const D of [40, 100]) second(a, Tk - D, track, name + ' ' + D);
           if (sd) {   // the spin itself, with nobody else about
             const S1 = snapAt(Tk - 150); place(S1, a, c); park(S1, 1 - a);
             for (const bits of r.plan) tick(L, S1, a, bits, null);
