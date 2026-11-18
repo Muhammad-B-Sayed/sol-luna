@@ -131,7 +131,7 @@ function beginLevel(level, st) {
   app.L = levelOf(level);
   app.S = st ? cloneState(st) : newState(app.L);
   document.body.classList.toggle('dodge', !!app.L.dodge);
-  if (app.L.dodge) { dodgeHearReset(app.S); R.dodgeFx = null; app.L.hint = dodgeHint(app.mode === 'online'); }
+  if (app.L.dodge) { R.dodgeMe = app.mode === 'online' ? app.me : -1; dodgeHearReset(app.S, R.dodgeMe); R.dodgeFx = null; app.L.hint = dodgeHint(app.mode === 'online'); }
   app.prev = capture(app.S);
   app.off = zeroOff(app.S);
   app.lift = app.S.p.map(() => 0); app.liftPrev = app.lift.slice();
@@ -297,6 +297,7 @@ function onSnapshot(m) {
   app.remoteBits = m.inp[1 - app.me] | 0;
   const myAck = m.ack[app.me] | 0;
   app.pending = app.pending.filter(([s]) => s > myAck);
+  if (ns.d) ns.d.wait = 1 - app.me;   // Dodgeball: a hit on the other player waits for the server's word
   const inp = [0, 0];
   for (const [, b] of app.pending) {
     inp[app.me] = b; inp[1 - app.me] = app.remoteBits;

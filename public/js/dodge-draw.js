@@ -41,10 +41,32 @@ export function drawDodgeCourt(R, g, S, time) {
 // ---------------------------------------------------------------------------
 // ball, trail, aim and effects (drawn after the players)
 
+// Online wind-up (fix C): how far the throw has wound up on this screen, 0..1, or -1 when no
+// throw is winding up or this screen should not show it. Only the thrower's own screen shows the
+// wind-up; the other player sees the plain aim until the launch, as in local play, so it gives
+// them no extra warning. R.dodgeMe is the viewer online, -1 in local play (no wind-up there).
+function windOf(R, D) {
+  if (!(D.wind > 0) || D.holder < 0 || !D.windN) return -1;
+  const me = R.dodgeMe ?? -1;
+  if (me >= 0 && me !== D.holder) return -1;
+  return 1 - (D.wind - 1) / D.windN;
+}
+const ease = (f) => 1 - (1 - f) * (1 - f);
+
+// The thrower leans back while the throw winds up (radians, applied at the feet by drawPlayer).
+export function dodgePose(R, S, i) {
+  const D = S.d;
+  if (D.holder !== i) return 0;
+  const f = windOf(R, D);
+  return f < 0 ? 0 : -towardNet(i) * 0.2 * ease(f);
+}
+
 export function drawDodge(R, g, S, view, time) {
   const D = S.d, b = D.ball, F = fx(R);
-  const bx = view?.ball ? view.ball.x : b.x, by = view?.ball ? view.ball.y : b.y;
+  let bx = view?.ball ? view.ball.x : b.x, by = view?.ball ? view.ball.y : b.y;
   const r = DODGE.r;
+  const wf = windOf(R, D);
+  if (wf >= 0) { const e = ease(wf), dir = towardNet(D.holder); bx -= dir * 8 * e; by -= 6 * e; }   // drawn back over the shoulder
   observe(R, F, S, bx, by);
 
   // which element the ball shows: the holder's, the thrower's while flying, the side's at rest
@@ -67,8 +89,11 @@ export function drawDodge(R, g, S, view, time) {
   if (F.look < 0.999) drawTrail(g, T, bx, by, r, maxLen, FIRE_TRAIL, (1 - F.look) * k);
   if (F.look > 0.001) drawTrail(g, T, bx, by, r, maxLen, MOON_TRAIL, F.look * k);
 
-  // aim arrow while the holder charges (both players see it)
-  if (D.holder >= 0 && D.aim[D.holder] >= 0) drawAim(g, D, bx, by, time);
+  // aim arrow while the holder charges (both players see it); a winding-up throw keeps its
+  // aim, and on the thrower's screen the arrow fills from the hand out until the ball goes
+  if (D.holder >= 0 && D.aim[D.holder] >= 0) drawAim(g, D, bx, by, time, aimSlope(D.aim[D.holder]), -1);
+  else if (D.holder >= 0 && D.wind > 0) drawAim(g, D, bx, by, time, D.windSlope, wf);
+  if (wf >= 0) drawCharge(g, D, bx, by, r, wf, time);
 
   // the ball itself (cross-fades between the two elements)
   if (F.look < 0.999) drawFire(g, bx, by, r, b.vx, b.vy, time, 1 - F.look, k);
@@ -84,6 +109,11 @@ export function drawDodge(R, g, S, view, time) {
     g.lineWidth = 2.2;
     g.beginPath(); g.arc(bx, by, r * 2.1, -Math.PI / 2, -Math.PI / 2 + TAU * f); g.stroke();
   }
+
+  // the thrower's screen waits for the server's word on a ball that reached the other player:
+  // an impact flare, so the short stop reads as the ball striking
+  if (b.pv >= 0) drawImpact(g, bx, by, r, D.ball.by, time, F);
+  else F.impact = 0;
 
   // victim flash after a hit
   if (D.phase === DP_POINT && D.lastHit && D.t < 36 && (D.t >> 2) % 2 === 0) {
@@ -329,17 +359,20 @@ function emit(R, b, x, y, look, speed) {
 const EMBER = ['#ffd166', '#ff9a2e', '#ff5a1a', '#fff0b0'];
 const DUST = ['#eef3ff', '#c3b4ff', '#9fd6ff', '#ffffff'];
 
-// aim: a dotted line along the throw direction, in the holder's colour
-function drawAim(g, D, bx, by, time) {
-  const who = D.holder, s = aimSlope(D.aim[who]), dir = towardNet(who);
+// aim: a dotted line along the throw direction, in the holder's colour. charge (0..1, or -1)
+// lights the dots from the hand out while a throw winds up.
+function drawAim(g, D, bx, by, time, s, charge) {
+  const who = D.holder, dir = towardNet(who);
   const n = 1 / Math.sqrt(1 + s * s), ux = dir * n, uy = -s * n;
   const sun = who === SOL;
   g.save();
   g.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 7; i++) {
     const d = 22 + i * 13, f = 1 - i / 7;
-    g.fillStyle = sun ? `rgba(255,${190 + i * 6},${90 + i * 10},${0.85 * f})` : `rgba(${170 + i * 8},${200 + i * 5},255,${0.85 * f})`;
-    g.beginPath(); g.arc(bx + ux * d, by + uy * d, 2.6 * f + 0.8, 0, TAU); g.fill();
+    const lit = charge >= 0 && i < charge * 7 + 0.5;
+    g.fillStyle = lit ? 'rgba(255,250,235,0.95)'
+      : sun ? `rgba(255,${190 + i * 6},${90 + i * 10},${0.85 * f})` : `rgba(${170 + i * 8},${200 + i * 5},255,${0.85 * f})`;
+    g.beginPath(); g.arc(bx + ux * d, by + uy * d, (lit ? 3.4 : 2.6 * f + 0.8), 0, TAU); g.fill();
   }
   // chevron
   const d = 22 + 7 * 13, cx = bx + ux * d, cy = by + uy * d, px = -uy, py = ux;
@@ -348,6 +381,36 @@ function drawAim(g, D, bx, by, time) {
   g.beginPath();
   g.moveTo(cx - ux * 7 + px * 6, cy - uy * 7 + py * 6); g.lineTo(cx, cy); g.lineTo(cx - ux * 7 - px * 6, cy - uy * 7 - py * 6);
   g.stroke();
+  g.restore();
+}
+
+// wind-up: a ring closing in on the ball and a hot core, brightest just before the launch
+function drawCharge(g, D, x, y, r, f, time) {
+  const sun = D.holder === SOL, c = sun ? '255,190,90' : '170,190,255';
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  const glow = g.createRadialGradient(x, y, 1, x, y, r * (2.2 + 1.4 * f));
+  glow.addColorStop(0, `rgba(255,255,245,${0.35 + 0.5 * f})`);
+  glow.addColorStop(1, `rgba(${c},0)`);
+  g.fillStyle = glow; g.beginPath(); g.arc(x, y, r * (2.2 + 1.4 * f), 0, TAU); g.fill();
+  const rr = r * (3.4 - 2.1 * ease(f));
+  g.strokeStyle = `rgba(${c},${0.35 + 0.6 * f})`; g.lineWidth = 1.5 + 2 * f;
+  g.beginPath(); g.arc(x, y, rr, time * 8, time * 8 + TAU * (0.35 + 0.65 * f)); g.stroke();
+  g.restore();
+}
+
+// the ball pressed into a player while the thrower's screen waits for the server
+function drawImpact(g, x, y, r, by, time, F) {
+  F.impact = (F.impact || 0) + 1;
+  const k = Math.min(1, F.impact / 4), sun = by === SOL;
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  const R0 = r * (1.6 + 1.2 * k + 0.25 * Math.sin(time * 40));
+  const h = g.createRadialGradient(x, y, 1, x, y, R0);
+  h.addColorStop(0, 'rgba(255,255,255,0.85)');
+  h.addColorStop(0.5, sun ? 'rgba(255,190,90,0.45)' : 'rgba(180,195,255,0.45)');
+  h.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = h; g.beginPath(); g.arc(x, y, R0, 0, TAU); g.fill();
   g.restore();
 }
 

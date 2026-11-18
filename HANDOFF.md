@@ -85,7 +85,8 @@ public/js/main.js    App shell: menus, local loop, online prediction/reconciliat
 public/js/render.js  Canvas renderer (vector, DPR-aware, cached static layer, particles).
 public/js/dodge-draw.js, dodge-ui.js     Dodgeball drawing, HUD and sounds.
 public/js/runner-app.js, runner-render.js  Runner loop, prediction, HUD and scrolling renderer.
-public/js/input.js   Keyboard/gamepad/touch → input bits (1=left, 2=right, 4=jump, 8=action).
+public/js/input.js   Keyboard/gamepad/touch → input bits (1=left, 2=right, 4=jump, 8=action). local()/any() latch a
+                     tap or release that falls between two reads (tools/check-input.js).
 public/js/net.js     WebSocket client wrapper.
 public/js/audio.js   Procedural WebAudio SFX (no audio files).
 render.yaml          Render Blueprint (alternative way to deploy).
@@ -395,7 +396,14 @@ node tools/check-runner.js               # Runner fairness proof, 50 seeds to 17
   a crate chute in 32, dropping out of 26's control room while the runner is shut in a basin,
   dropping in 29 before the hall above is done. Re-check these after the re-spacing.
 - **Links rely on colour alone.** Add a symbol or a wire to mechanisms.
-- **Dodgeball online:** the defender sees a remote throw about one round trip late (section 9).
+- **Input queue backlog (co-op, Runner):** a browser whose first frames are slow leaves 3-5 inputs
+  waiting in the server's queue for the whole session, so the other player sees it 50-83 ms later
+  than needed. Dodgeball rooms drain it between points (section 9). Co-op and Runner could do the
+  same where inputs are ignored (death, results) or by dropping an input equal to the held keys.
+  Found with `tools/dodge-filmstrip.cjs`; `DODGE_LOG=1` prints the depth for dodge rooms.
+- **Dodgeball wind-up cap:** throws wind up at most 150 ms (`DODGE.windMax`). Past about 68 ms
+  one-way the defender loses the excess (4-5 ticks at 100 ms one-way). Raise it only if players
+  on bad links complain; the thrower pays for it.
 - **3D Runner:** being built on another branch. Once merged, it is documented in `docs/runner3d.md`.
 - **Level select:** a nicer level map (currently an 8x4 grid, one row per chapter, with no chapter names). Per-level gem and time stats are
   already stored.
@@ -432,12 +440,29 @@ A competitive mode on one single-screen court, Sol on the left and Luna on the r
   so a jump at 0.2 s reaction dodges only from the back third of the court and a 0.25 s jump only
   from the back wall. Closer than about 340 px you have to read the throw.
 - **Checks.** `node tools/check-dodge.js` (~5 s): speed, dodge window table, settling bound and
-  reachability, possession, scoring, determinism. `tools/check-dodge-browser.cjs` drives local
+  reachability, possession, scoring, determinism, the online wind-up. `tools/check-dodge-browser.cjs` drives local
   and online play in Chrome and writes screenshots (see `docs/img/dodgeball/`).
-- **Known issue.** Online, the defender sees a remote throw about one round trip late (at 100 ms
-  RTT a spawn-to-spawn throw is visible for ~4 frames instead of 14). The drawn ball catches up
-  smoothly, but dodging online is harder than local. Options: slow the ball by measured RTT per
-  room, or rewind the victim on the server (lag compensation).
+- **Online: the wind-up (Nov 2026).** Online, a player sees the other's throw about one round
+  trip late, so dodging used to be much harder than local (at 100 ms one-way a spawn-to-spawn
+  throw was never on screen before it hit). Now a throw waits in the thrower's hand for the
+  target's lag before it flies (`windupFor` in `shared/dodge.js`: 1.1 x the server-measured round
+  trip plus the target's queued inputs, at most 9 ticks = 150 ms; `D.lag` per target, set by the
+  server in the ready freeze). The release reaches the target's screen during the wind-up, so
+  they see the launch on time and the whole 24 px/tick flight: the dodge window equals local up
+  to about 68 ms one-way. During the wind-up the thrower is planted (keys ignored) and the aim is
+  locked, so the launch follows from the state at the release; the shot clock waits.
+  - Thrower's screen: the wind-up shows on the release frame (lean back, ball drawn back over the
+    shoulder, aim arrow fills, rising hum; `dodge-draw.js` `dodgePose`/`drawCharge`, `audio.js`
+    `charge`). HUD: "your throws wind up N ms". A ball reaching the other player waits for the
+    server's word (`D.wait`, set in `main.js` `onSnapshot`, prediction only) under an impact
+    flare, so a late dodge never shows as a hit that is taken back.
+  - Target's screen: the wind-up isn't drawn; they see the plain aim until the launch.
+  - Server: protocol pings every 500 ms per socket (median of 8); in dodge rooms it drains a
+    standing input queue after a hit and in the ready freeze (`Room.dodgeQueue`).
+    `DODGE_WINDUP=off` turns the wind-up off; `DODGE_LOG=1` logs round trips, queue and wind-up.
+  - Measured in `docs/dodge-latency.md` against two other fixes (slower ball, rewind), with
+    filmstrips in `docs/img/dodgeball/latency/`. Tools: `node tools/dodge-latency.js` (harness),
+    `tools/dodge-filmstrip.cjs` (both screens frame by frame in Chromium).
 
 ---
 

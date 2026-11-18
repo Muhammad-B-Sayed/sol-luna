@@ -14,7 +14,12 @@
 //   5. Possession: miss -> the side it stops on; pickup; shot-clock turnover; own-side throw
 //      keeps the clock running; hit -> score, victim serves; first to 5 wins.
 //   6. Determinism: same seed and inputs give identical states; seeded first serve is ~50/50.
-import { COURT, DODGE, NET, createDodge, stepDodge, aimSlope, sideOf, ownerOf,
+//   7. Online wind-up (fix C): its size from round trip and queue; a throw at a player with
+//      wind-up k leaves the hand exactly k ticks after the release, from where the planted
+//      thrower stands, with the aim it was released with, and then flies exactly like the local
+//      throw; the shot clock waits; the dodge window from the launch equals local; a hit on the
+//      player the screen waits for stops the ball without scoring; determinism mid wind-up.
+import { COURT, DODGE, NET, createDodge, stepDodge, aimSlope, sideOf, ownerOf, windupFor, handPos,
   DP_READY, DP_PLAY, DP_POINT, DP_OVER, B_HELD, B_LIVE, B_DEAD, B_REST } from '../shared/dodge.js';
 import { cloneState, SOL, LUNA, TS, PHYS, TICK_RATE, IN_ACT, T_SOLID, COLS } from '../shared/sim.js';
 import { explore } from './check-levels.js';
@@ -324,6 +329,81 @@ console.log('\n6. Determinism');
   let sol = 0; for (let sd = 1; sd <= 1000; sd++) if (createDodge(sd).d.serve === SOL) sol++;
   ok(sol > 430 && sol < 570, `first serve is random by seed (Sol ${sol}/1000)`);
   ok(createDodge(7).d.serve === createDodge(7).d.serve, 'and fixed for a given seed');
+}
+
+// 7. online wind-up
+console.log('\n7. Online wind-up (fix C)');
+{
+  ok(windupFor(0) === 0 && windupFor(undefined) === 0 && windupFor(0, 0) === 0, 'no round trip, no wind-up (local play is unchanged)');
+  ok(windupFor(40) === 3 && windupFor(80) === 5 && windupFor(80, 1) === 6 && windupFor(150) === 9 && windupFor(400, 5) === DODGE.windMax,
+    `wind-up = 1.1 round trips + queue, in ticks, capped at ${DODGE.windMax} (${windupFor(40)}/${windupFor(80)}/${windupFor(80, 1)}/${windupFor(150)}/${windupFor(400, 5)} at 40/80/80+1/150/400+5 ms)`);
+  const tp = { x: FLOOR[SOL].lo + 60, y: FLOOR[SOL].y }, vp = { x: FLOOR[LUNA].hi, y: FLOOR[LUNA].y };
+  // one throw: hold `hold` ticks, release, then thrower input `tIn(t)` and victim input `vIn(t)` t ticks after the release
+  const run = (k, hold, tIn = () => 0, vIn = () => 0, wait = -1) => {
+    const S = setup(SOL, tp, vp); S.d.lag = [0, k]; S.d.wait = wait;
+    for (let i = 0; i <= hold; i++) stepDodge(COURT, S, [ACT, 0]);
+    const rec = [];
+    for (let t = 1; t <= 120; t++) {
+      const before = { x: S.p[SOL].x, held: S.d.holder === SOL };
+      stepDodge(COURT, S, [tIn(t), vIn(t)]);
+      const b = S.d.ball;
+      rec.push({ t, st: b.st, x: b.x, y: b.y, throwN: S.d.throwN, hitN: S.d.hitN, px: S.p[SOL].x, before, wind: S.d.wind, clock: S.d.clock, pv: b.pv });
+      if (S.d.throwN && (b.st !== B_LIVE || S.d.phase !== DP_PLAY || b.pv >= 0) && t > k + 2) break;
+    }
+    return { S, rec };
+  };
+  const launchAt = (rec) => rec.find(r => r.throwN > 0).t;
+  for (const k of [1, 5, 9]) {
+    const { rec } = run(k, 0);
+    ok(launchAt(rec) === k + 1, `wind-up ${k}: the ball leaves the hand ${k} ticks after the release (local: on the release tick)`);
+  }
+  ok(launchAt(run(0, 0).rec) === 1, 'wind-up 0 throws on the release tick, as before');
+  // the flight after the wind-up is the local flight, shifted by k ticks
+  for (const hold of [0, 30]) {
+    const local = run(0, hold).rec.filter(r => r.throwN > 0), wound = run(6, hold).rec.filter(r => r.throwN > 0);
+    const same = local.length === wound.length && local.every((r, i) => r.x === wound[i].x && r.y === wound[i].y && r.hitN === wound[i].hitN);
+    ok(same, `${hold ? 'an aimed' : 'a flat'} throw after a 6-tick wind-up flies the same path as the local throw (${local.length} ticks, ${local.at(-1).hitN ? 'hit' : 'miss'} both)`);
+  }
+  // the thrower is planted: running keys during the wind-up (from the tick after the release;
+  // the release tick's own keys still count, and the other screen gets them with the release) change nothing
+  const still = run(6, 0, (t) => (t >= 2 ? RIGHT : 0)).rec, idle = run(6, 0).rec;
+  ok(still.slice(0, 6).every((r, i) => r.px === idle[i].px) && still.find(r => r.throwN).x === idle.find(r => r.throwN).x,
+    'during the wind-up the thrower\'s keys are ignored (same position and launch point as standing still)');
+  const fire = run(6, 0, (t) => (t >= 2 && t <= 5 ? ACT | JUMP : 0)).rec;
+  ok(fire.find(r => r.throwN).y === idle.find(r => r.throwN).y && fire.filter(r => r.throwN > 1).length === 0, 'pressing throw or jump again during the wind-up does nothing');
+  // aim locked at the release
+  const aimed = run(6, 40).rec.find(r => r.throwN), aimedLocal = run(0, 40).rec.find(r => r.throwN);
+  const slope = (q, h) => (q.y - h.y);
+  ok(Math.abs(slope(aimed, handPos(setup(SOL, tp, vp).p[SOL], SOL)) - slope(aimedLocal, handPos(setup(SOL, tp, vp).p[SOL], SOL))) < 1e-9, `an aimed throw keeps the aim it was released with (slope ${aimSlope(40).toFixed(2)})`);
+  // shot clock waits, and a release at the last clock tick still throws
+  {
+    const S = setup(SOL, tp, vp); S.d.lag = [0, 9]; S.d.clock = 2;
+    stepDodge(COURT, S, [ACT, 0]); stepDodge(COURT, S, [0, 0]);
+    const c0 = S.d.clock; for (let i = 0; i < 9; i++) stepDodge(COURT, S, [0, 0]);
+    ok(S.d.throwN === 1 && S.d.turnN === 0 && c0 > 0, 'the shot clock waits for a winding-up throw (released at the last tick, it still flies)');
+  }
+  // dodge window measured from the launch is the local one
+  const window = (k) => { const out = []; for (let r = 1; r <= 40; r++) { const { rec } = run(k, 0, () => 0, (t) => (t - k >= r ? JUMP : 0)); if (!rec.at(-1).hitN && rec.some(x => x.throwN)) out.push(r); } return out; };
+  const w0 = window(0), w6 = window(6);
+  ok(JSON.stringify(w0) === JSON.stringify(w6), `jumping r ticks after the launch dodges for the same r with or without a wind-up (r ${w0[0]}-${w0.at(-1)})`);
+  // the screen that waits for the server: a hit on that player stops the ball and scores nothing
+  {
+    const { S, rec } = run(0, 0, () => 0, () => 0, LUNA);
+    const stop = rec.at(-1);
+    ok(stop.pv === LUNA && S.d.hitN === 0 && S.d.phase === DP_PLAY, 'with wait set, a ball reaching that player stops in them and scores nothing');
+    const x = S.d.ball.x; for (let i = 0; i < 20; i++) stepDodge(COURT, S, [0, 0]);
+    ok(S.d.ball.x === x && S.d.hitN === 0, 'and stays there until the server\'s state replaces the prediction');
+    const { S: S2 } = run(0, 0);
+    ok(S2.d.hitN === 1, 'without wait (the server, local play) the same throw scores');
+  }
+  // determinism through a wind-up, resumed from JSON mid wind-up
+  {
+    const a = setup(SOL, tp, vp); a.d.lag = [0, 7];
+    stepDodge(COURT, a, [ACT, 0]); stepDodge(COURT, a, [0, 0]); stepDodge(COURT, a, [0, 0]);
+    const mid = JSON.parse(JSON.stringify(a));
+    for (let i = 0; i < 60; i++) { stepDodge(COURT, a, [RIGHT, i === 20 ? JUMP : 0]); stepDodge(COURT, mid, [RIGHT, i === 20 ? JUMP : 0]); }
+    ok(JSON.stringify(a) === JSON.stringify(mid) && a.d.throwN === 1, 'a state saved mid wind-up and resumed gives the same result');
+  }
 }
 
 console.log(failed ? `\n${failed} check(s) FAILED` : '\nAll dodgeball checks passed.');
