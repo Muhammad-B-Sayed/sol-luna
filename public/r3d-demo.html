@@ -16,7 +16,7 @@
 <canvas id="c"></canvas>
 <div id="hud"></div>
 <div id="help">Bots run both players. Take over Sol: arrows + Enter (jump). Luna: WASD + Space.
-?seed= ?split=1 ?me=1 ?z= ?kind= ?q=high|low ?count=1 ?bot=0 ?hud=0 ?auto=0</div>
+?seed= ?split=1 ?me=1 ?z= ?kind= ?q=high|low ?count=1 ?bot=0 ?hud=0 ?auto=0 ?cam=dx,dy,dz</div>
 <script type="module">
 import * as R3 from '/shared/runner3d.js';
 import { Runner3DRenderer } from '/js/r3d/renderer.js';
@@ -86,7 +86,8 @@ function botBits(i) {
   for (let dx = -4; dx <= 4; dx += 0.5) {
     const x = p.x + dx; let s = 0;
     for (let a = 1; a <= 6; a++) if (safe(x, p.z + a)) s++;
-    s -= Math.abs(dx) * 0.15 + Math.abs(x) * 0.05;
+    const o = S.p[1 - i];
+    s -= Math.abs(dx) * 0.15 + Math.abs(x) * 0.05 + (o.alive && Math.abs(x - o.x) < 1.2 && Math.abs(o.z - p.z) < 3 ? 2.5 : 0) + (i ? (x < o.x ? 0.6 : 0) : (x > o.x ? 0.6 : 0));
     if (s > bestScore) { bestScore = s; tx = x; }
   }
   if (tx < p.x - 0.2) b |= R3.IN_L; else if (tx > p.x + 0.2) b |= R3.IN_R;
@@ -99,6 +100,7 @@ function botBits(i) {
 // --- loop: fixed 60 Hz sim, interpolated view
 const r = new Runner3DRenderer(canvas);
 if (Q.has('q')) r.setQuality(Q.get('q'));
+if (Q.has('cam')) { const c = Q.get('cam').split(',').map(Number); for (const rg of r.rigs) rg.override = c; }
 r.reset(L);
 const fit = () => r.resize(innerWidth, innerHeight, devicePixelRatio || 1);
 addEventListener('resize', fit); fit();

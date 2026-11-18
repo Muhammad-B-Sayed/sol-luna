@@ -144,10 +144,10 @@ VIEWS.pool = {
   update(v, o, st, pose, ctx) {
     const u = v.userData, L3 = LIQ3[u.el] || LIQ3[0];
     const c = _c.setHex(L3.glow);
-    const n = Math.max(1, Math.min(4, Math.round(u.w * u.d / 8)));
+    const n = Math.max(1, Math.min(3, Math.round(u.w * u.d / 10)));
     for (let k = 0; k < n; k++) {
-      const gx = v.position.x + (hash(ctx.idx, k) - 0.5) * u.w * 0.7, gz = v.position.z + (hash(k, ctx.idx) - 0.5) * u.d * 0.7;
-      ctx.glow.add(gx, v.position.y + 0.2, gz, Math.min(4.5, Math.max(u.w, u.d)) * 1.2, c, (u.el === 2 ? 0.2 : 0.28) + 0.06 * Math.sin(ctx.time * 2 + k));
+      const gx = v.position.x + (hash(ctx.idx, k) - 0.5) * u.w * 0.6, gz = v.position.z + (hash(k, ctx.idx) - 0.5) * u.d * 0.6;
+      ctx.glow.add(gx, v.position.y + 0.7, gz, Math.min(2.4, Math.min(u.w, u.d) + 0.6), c, (u.el === 2 ? 0.1 : 0.13) + 0.03 * Math.sin(ctx.time * 2 + k));
     }
     u.bub -= ctx.dt;
     if (u.bub < 0 && ctx.fx) {
@@ -208,7 +208,7 @@ VIEWS.spikes = {
   update(v, o, st, pose, ctx) {
     const u = v.userData;
     const tw = 0.5 + 0.5 * Math.sin(ctx.time * 3 + ctx.idx);
-    ctx.glow.add(v.position.x, v.position.y + u.th * 0.6, v.position.z, Math.max(u.w, u.d) * 0.8 + 0.8, 0xff5ad0, 0.2 + 0.08 * tw);
+    ctx.glow.add(v.position.x, v.position.y + u.th * 0.5, v.position.z, Math.min(2.2, Math.min(u.w, u.d) + 0.6), 0xff5ad0, 0.08 + 0.04 * tw);
     if (Math.random() < ctx.dt * 1.5) {
       ctx.glow.add(v.position.x + (Math.random() - 0.5) * u.w, v.position.y + u.th, v.position.z + (Math.random() - 0.5) * u.d, 0.6, 0xffffff, 0.9);
     }
@@ -278,6 +278,7 @@ function crumbleTex() {
     g.stroke();
   }
   _crumbleTex = new THREE.CanvasTexture(c);
+  _crumbleTex.wrapS = _crumbleTex.wrapT = THREE.RepeatWrapping;
   return _crumbleTex;
 }
 VIEWS.crumble = {
@@ -285,7 +286,7 @@ VIEWS.crumble = {
     const [, , w, d] = mid(o);
     const mat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, map: materials().stone.map, roughness: 0.85,
       emissive: 0xff6a20, emissiveMap: crumbleTex(), emissiveIntensity: 0.6 }), { glow: true, key: 'crum' });
-    const grp = stoneSlab(o, idx, { h: 0.5, inlay: false, runes: false, glow: 0.4, top: col(0x8a6f8e), side: col(0x4a3048), mat });
+    const grp = stoneSlab(o, idx, { h: 0.5, inlay: false, runes: false, glow: 0.4, top: col(0x7a5a6e), side: col(0x3e2238), mat });
     grp.userData.mats = [mat];
     grp.userData.base = grp.position.clone();
     grp.userData.w = w; grp.userData.d = d; grp.userData.lastSt = 0;
@@ -349,7 +350,7 @@ VIEWS.eclipse = {
   },
   update(v, o, st, pose, ctx) {
     const u = v.userData;
-    ctx.glow.add(u.cx, o.y + 0.05, -u.cz, Math.max(u.w, u.d) * 1.6, u.el ? 0x70c8ff : 0xffa040, 0.24 + 0.05 * Math.sin(ctx.time * 2.5 + ctx.idx));
+    ctx.glow.add(u.cx, o.y + 0.05, -u.cz, Math.max(u.w, u.d) * 1.05, u.el ? 0x70c8ff : 0xffa040, 0.12 + 0.03 * Math.sin(ctx.time * 2.5 + ctx.idx));
     v.children[1].children[0].material.opacity = 0.22 + 0.1 * Math.sin(ctx.time * 3 + ctx.idx);
   },
 };
@@ -362,20 +363,21 @@ VIEWS.sweeper = {
     const rot = new THREE.Group(); root.add(rot);
     const bar = o.bar ?? 0.55, R = o.R, arms = o.arms === 2 ? 2 : 1;
     const len = arms === 2 ? 2 * R : R, off = arms === 2 ? 0 : -R / 2;   // local -z = arm 0
-    const beamG = new THREE.BoxGeometry(0.26, 0.22, len).translate(0, bar * 0.55, off);
+    const beamG = new THREE.BoxGeometry(0.34, 0.3, len).translate(0, bar * 0.55, off);
     rot.add(new THREE.Mesh(beamG, materials().gold));
     // thorns along the beam, pointing out both sides and up
-    const n = Math.round(len / 0.32) * 3;
+    const n = Math.round(len / 0.26) * 3;
     const im = new THREE.InstancedMesh(_thornGeo, _thornMat, n);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3();
     let k = 0;
     for (let j = 0; j < n / 3; j++) {
       const z = off - len / 2 + (j + 0.5) * len / (n / 3);
+      void 0;
       if (Math.abs(z) < 0.5) continue;
       for (const a of [-1.35, 0, 1.35]) {
         const r = hash(idx * 5 + j, a + 3);
         e.set(0, 0, -a + (r - 0.5) * 0.3); q.setFromEuler(e);
-        p.set(0, bar * 0.55, z); s.set(0.07, 0.24 + r * 0.12, 0.07);
+        p.set(0, bar * 0.55, z); s.set(0.1, 0.34 + r * 0.16, 0.1);
         m.compose(p, q, s); im.setMatrixAt(k++, m);
       }
     }
@@ -421,7 +423,7 @@ VIEWS.pendulum = {
     const hubG = new THREE.SphereGeometry(0.16, 10, 8);
     const hub = new THREE.Mesh(hubG, materials().gold); hub.position.y = -o.R; piv.add(hub);
     // yoke: a stone lintel over the path with two legs on the floor edges
-    const span = Math.max(2.4, (o.x1 - o.x0) * 0.55);
+    const span = (o.x1 - o.x0) + 1.6;   // legs stand outside the whole swing
     const lintG = slabGeometry(span, 0.6, 0.5, { glow: 0.35 });
     const lint = new THREE.Mesh(lintG, materials().stone); lint.position.set(o.px, o.py + 0.45, -o.pz);
     root.add(lint);
@@ -429,7 +431,7 @@ VIEWS.pendulum = {
     const cap = new THREE.Mesh(capG, materials().gold); cap.position.set(o.px, o.py, -o.pz); root.add(cap);
     const legH = o.py + 0.45 + 30;
     const legG = new THREE.CylinderGeometry(0.22, 0.28, legH, 8).translate(0, -legH / 2, 0);
-    for (const sx of [-1, 1]) { const l = new THREE.Mesh(legG, materials().stoneFlat); l.position.set(o.px + sx * span / 2, o.py + 0.3, -o.pz); root.add(l); }
+    for (const sx of [-1, 1]) { const l = new THREE.Mesh(legG, materials().stonePlain); l.position.set(o.px + sx * span / 2, o.py + 0.3, -o.pz); root.add(l); }
     root.userData = { geos: [rodG, bladeG, edgeG, hubG, lintG, capG, legG], piv };
     void idx;
     return root;
@@ -489,7 +491,7 @@ VIEWS.gate = {
     const vineMat = patchWorld(new THREE.MeshStandardMaterial({ color: 0x2a1238, emissive: 0x4a1048, emissiveIntensity: 0.8, roughness: 0.7, transparent: true, opacity: 0.75 }), { key: 'vine' });
     const vines = [0, 1].map(() => { const m = new THREE.Mesh(vineG, vineMat); m.position.set(0, o.y, zc); root.add(m); return m; });
     const postG = new THREE.BoxGeometry(0.7, th + 0.8, 0.9).translate(0, (th + 0.8) / 2 - 0.4, 0);
-    for (const x of [o.x0 - 0.35, o.x1 + 0.35]) { const p = new THREE.Mesh(postG, materials().stoneFlat); p.position.set(x, o.y, zc); root.add(p); }
+    for (const x of [o.x0 - 0.35, o.x1 + 0.35]) { const p = new THREE.Mesh(postG, materials().stonePlain); p.position.set(x, o.y, zc); root.add(p); }
     const lintG = slabGeometry(w + 1.6, 0.9, 0.6, { glow: 0.5 });
     const lint = new THREE.Mesh(lintG, materials().stone); lint.position.set((o.x0 + o.x1) / 2, o.y + th + 0.6, zc); root.add(lint);
     // glowing edges of the opening
@@ -519,8 +521,7 @@ VIEWS.gate = {
     });
     u.im.count = k; u.im.instanceMatrix.needsUpdate = true;
     u.edges[0].position.x = gx - gw; u.edges[1].position.x = gx + gw;
-    for (const x of [gx - gw, gx + gw]) ctx.glow.add(x, o.y + 1.2, u.zc, 1.6, 0x60ff9a, 0.35);
-    ctx.glow.add(gx, o.y + 0.9, u.zc, gw * 2.4, 0x9dffb9, 0.12);
+    for (const x of [gx - gw, gx + gw]) for (const h of [0.6, 1.8, 3.0]) ctx.glow.add(x, o.y + h, u.zc, 0.7, 0x60ff9a, 0.25);
   },
 };
 

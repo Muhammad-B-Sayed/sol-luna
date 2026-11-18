@@ -28,13 +28,16 @@ const SHOTS = [
   ['run', 'seed=7&z=140', 150],
   ['jump', 'seed=7&z=60', 0, `__r3d.step(200); for (let k = 0; k < 400; k++) { const p = __r3d.S.p[0]; if (!p.gr && p.vy > 0 && p.vy < 0.1) break; __r3d.step(1); }`],
   ['split', 'seed=11&split=1&z=90', 140],
-  ['zone-close', 'seed=7&z=40', 90, `__r3d.S.zone = __r3d.S.p[0].z - 2.2;`],
+  ['zone-close', 'seed=7&z=40', 12, `__r3d.step(80); for (let k = 0; k < 40; k++) { __r3d.step(1); if (k % 3 === 0) __r3d.render(); } __r3d.S.zone = Math.min(__r3d.S.p[0].z, __r3d.S.p[1].z) - 2.4;`],
   ['far', 'seed=3&z=900', 140],
   ['luna', 'seed=5&z=30&me=1', 120],
   ['countdown', 'seed=7&count=1', 40],
   ['pool', 'seed=7&kind=pool', 60],
   ['spikes', 'seed=7&kind=spikes', 60],
   ['low', 'seed=7&z=140&q=low', 150],
+  ['chars-front', 'seed=7&count=1&cam=0.9,1.1,3.4', 30],
+  ['chars-run', 'seed=7&z=20&cam=2.6,1.0,1.2', 60],
+  ['chars-luna', 'seed=7&count=1&me=1&cam=-0.9,1.1,3.4', 30],
 ];
 // one shot per obstacle kind (the demo starts a few units before the first object of that kind)
 for (const k of ['ramp', 'tilt', 'crumble', 'eclipse', 'sweeper', 'pendulum', 'carousel', 'gate', 'orb']) SHOTS.push(['kind-' + k, `seed=7&kind=${k}`, 60]);
@@ -83,21 +86,29 @@ const cmd = (method, params = {}, sessionId) => new Promise((res, rej) => {
   ws.send(JSON.stringify({ id: i, method, params, sessionId }));
 });
 
-const { targetId } = await cmd('Target.createTarget', { url: 'about:blank' });
-const { sessionId: s } = await cmd('Target.attachToTarget', { targetId, flatten: true });
+let targetId, s;
 const send = (m, p) => cmd(m, p, s);
-const ev = async (expr) => {
-  const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
+async function openPage() {   // a fresh tab (also after a page that stopped answering)
+  if (targetId) await cmd('Target.closeTarget', { targetId }).catch(() => {});
+  ({ targetId } = await cmd('Target.createTarget', { url: 'about:blank' }));
+  ({ sessionId: s } = await cmd('Target.attachToTarget', { targetId, flatten: true }));
+  await send('Page.enable'); await send('Runtime.enable');
+  await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
+}
+const ev = async (expr, ms = +(process.env.EVAL_MS || 90000)) => {
+  let tm;
+  const r = await Promise.race([send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }),
+    new Promise((_, rej) => { tm = setTimeout(() => rej(new Error('page did not answer in ' + ms + ' ms')), ms); })]).finally(() => clearTimeout(tm));
   if (r.exceptionDetails) throw new Error('page: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text));
   return r.result.value;
 };
-await send('Page.enable'); await send('Runtime.enable');
+await openPage();
 log('page ready');
-await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
 
 let failed = 0;
 try {
   for (const [name, q, steps, setup] of list) {
+   try {
     logs.length = 0;
     await send('Page.navigate', { url: `${BASE}/r3d-demo.html?hud=0&auto=0&${q}` });
     let ok = false;
@@ -110,7 +121,10 @@ try {
     // render every EVERY-th step (cameras ease by sim time, so they settle the same)
     const EVERY = +(process.env.EVERY || 3);
     log(name, 'loaded, stepping', steps);
-    for (let k = 0; k < steps; k += 12) await ev(`for (let j = 0; j < ${Math.min(12, steps - k)}; j++) { __r3d.step(1); if ((${k} + j) % ${EVERY} === 0) __r3d.render(); }`);
+    for (let k = 0; k < steps; k += 12) {
+      if (k % 36 === 0) log(name, 'step', k);
+      await ev(`for (let j = 0; j < ${Math.min(12, steps - k)}; j++) { __r3d.step(1); if ((${k} + j) % ${EVERY} === 0) __r3d.render(); }`);
+    }
     const st = await ev('__r3d.render()');
     const ms = steps ? (Date.now() - t0) / steps : 0;
     await sleep(50);
@@ -118,6 +132,7 @@ try {
     writeFileSync(join(OUT, `render-${name}.png`), Buffer.from(shot.data, 'base64'));
     console.log(`${name.padEnd(12)} ${String(st.calls).padStart(4)} calls ${String(Math.round(st.triangles / 1000)).padStart(5)}k tris  ${st.views} views  ${st.level}  ~${ms.toFixed(0)} ms/frame (software GL)  -> ${join(OUT, `render-${name}.png`)}`);
     if (logs.length) console.log('   ', logs.slice(0, 6).join('\n    '));
+   } catch (e) { console.log(name, 'FAILED', e.message, logs.slice(0, 6).join(' | ')); failed++; await openPage().catch(() => {}); }
   }
 } catch (e) { console.error(e); failed++; }
 await cmd('Target.closeTarget', { targetId }).catch(() => {});

@@ -78,7 +78,7 @@ export function makeAbyss() {
         float n = vn(p + uTime * 0.03) * 0.6 + vn(p * 2.3 - uTime * 0.05) * 0.4;
         float vein = smoothstep(0.47, 0.5, n) * smoothstep(0.53, 0.5, n);
         float cx = exp(-abs(vW.x) * 0.05);
-        vec3 c = vec3(0.09, 0.045, 0.17) * (0.6 + 0.6 * cx) + vec3(0.35, 0.15, 0.55) * vein * 0.5 * cx;
+        vec3 c = vec3(0.03, 0.016, 0.06) * (0.7 + 0.9 * cx) + vec3(0.32, 0.12, 0.5) * vein * 0.45 * cx;
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -212,7 +212,7 @@ export class WorldDeco {
     this.pillarMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, flatShading: true }), { key: 'pil' });
     this.archMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, flatShading: true, map: null }), { key: 'arc' });
     this.silMat = new THREE.MeshBasicMaterial({ color: 0x1a1230, fog: true });
-    this.silMat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n float ff = smoothstep(fogNear, fogFar, vFogDepth) * 0.55;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, ff);\n#endif'); };
+    this.silMat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n float ff = 0.35 + smoothstep(fogNear, fogFar * 1.6, vFogDepth) * 0.5;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.16, 0.1, 0.25), ff);\n#endif'); };
     this.silMat.customProgramCacheKey = () => 'sil';
     this.winMats = [new THREE.MeshBasicMaterial({ color: col(0xffb860).multiplyScalar(1.6), fog: false }), new THREE.MeshBasicMaterial({ color: col(0x8fd0ff).multiplyScalar(1.4), fog: false })];
     this.pillarG = pillarGeometry();
