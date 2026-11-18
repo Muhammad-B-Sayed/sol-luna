@@ -133,6 +133,7 @@ export class RunnerSync {
     let n = 0;
     while (this.acc >= DT && n < MAX_TICKS_PER_FRAME) { this.acc -= DT; n++; this.tick(readBits()); }
     this.alpha = Math.min(1, this.acc / DT);
+    this.frameDt = dt;
     this.clock(now, dt);
     this.ease(dt);
     return n;
@@ -239,7 +240,7 @@ export class RunnerSync {
     for (const [, e] of this.arr) if (e < base) base = e;
     const lat = this.arr.map(([, e]) => e - base).sort((a, b) => a - b);
     const jit = lat[Math.floor(lat.length * 0.9)] || 0;
-    const delay = clamp(jit / DT + 1.5, 2.5, 9);
+    const delay = clamp(jit / DT + 1.5, 3, 9);
     this.stats.delay = delay;
     const target = (now - base) / DT - delay;
     const newest = this.auth.tick;
@@ -268,7 +269,10 @@ export class RunnerSync {
       const k = Math.min(Math.ceil(T), this.P.tick);
       const q = this.predR.get(k);
       if (!q || k <= a.tick || !a.st.p[o].alive) return A;
-      B = Object.assign({}, q); tb = k;
+      // half the predicted motion: if they stopped or turned, a short extension stays behind
+      // them (made up forward at once) rather than ahead (which could only be paid back slowly)
+      B = {}; for (const d of this.sim.dims) B[d] = A[d] + (q[d] - A[d]) * 0.5;
+      tb = k;
       const f = this.sim.fwd;
       if (B[f] < A[f]) B[f] = A[f];   // an extension never moves them back along the run
     }
@@ -327,10 +331,16 @@ export class RunnerSync {
       this.lastRide = { key, v: ride };
       for (const k of sim.dims) theirs[k] += ride[k] + this.roff[k];
       if (A.p[o].alive || T < A.dead[o]) sim.front(sa.st.p[o], theirs, scroll);
-      // drawn past the newest snapshot: never back along the run
-      const f = sim.fwd;
-      if (T > A.tick && this.lastTheirs && theirs[f] < this.lastTheirs[f]) theirs[f] = this.lastTheirs[f];
-    }
+      // never drawn moving back along the run faster than the server's own path did (plus the
+      // slow pay-back, sim.creep); what is held back stays in the offset
+      const f = sim.fwd, rawF = theirs[f] - this.roff[f];
+      if (this.lastTheirs && this.lastRawF !== undefined) {
+        const w = Math.min(2, Math.max(1, (this.frameDt || DT) / DT));
+        const floor = this.lastTheirs[f] + Math.min(0, rawF - this.lastRawF) - sim.creep * w;
+        if (theirs[f] < floor) { this.roff[f] += floor - theirs[f]; theirs[f] = floor; }
+      }
+      this.lastRawF = rawF;
+    } else this.lastRawF = undefined;
     this.lastTheirs = theirs;
     this.lastR = { T };
     // once the end is shown, everyone stays where they were drawn
