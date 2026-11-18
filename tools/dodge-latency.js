@@ -7,6 +7,9 @@
 //   --out f.json  also write every trial as JSON
 //   --maxr 30     sweep reactions up to 30 ticks online (default: local latest + 2)
 //   --reps 3      repeat every trial (network timing jitters)
+//   --asym 10,100 fairness run: no server lag; one client has 10 ms one-way, the other 100 ms
+//                 (the clients delay their own traffic and protocol pongs). Rows for the
+//                 low-ping player defending (T100/D10) and the high-ping one (T10/D100).
 //
 // Method (real server, modelled clients):
 //   - For each latency it starts the real server (`node server/index.js`) with LAG_MS set, so the
@@ -134,17 +137,19 @@ function summarize(T, Dd, hit) {
 // ---------------------------------------------------------------------------
 // online: two ws clients that predict like main.js
 
-function client(port) {
-  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
-  const c = { ws, me: -1, S: null, seq: 0, pending: [], remoteBits: 0, snap: null, lastSnap: 0, handlers: {} };
-  c.send = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
-  ws.on('message', (data) => {
+function client(port, lag = 0) {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { autoPong: !lag });
+  const c = { ws, lag, me: -1, S: null, seq: 0, pending: [], remoteBits: 0, snap: null, lastSnap: 0, handlers: {} };
+  const later = (f) => (lag ? setTimeout(f, lag) : f());
+  c.send = (m) => { const s = JSON.stringify(m); later(() => { if (ws.readyState === 1) ws.send(s); }); };
+  if (lag) ws.on('ping', (d) => setTimeout(() => { if (ws.readyState === 1) ws.pong(d); }, 2 * lag));
+  ws.on('message', (data) => later(() => {
     const m = JSON.parse(data);
     if (m.t === 'room') c.me = m.you;
     if (m.t === 'start') { c.S = m.st; c.seq = 0; c.pending = []; c.remoteBits = 0; }
     if (m.t === 's' && c.S) onSnapshot(c, m);
     (c.handlers[m.t] || []).forEach(f => f(m));
-  });
+  }));
   c.open = new Promise((res, rej) => { ws.on('open', res); ws.on('error', rej); });
   c.once = (t) => new Promise(res => { (c.handlers[t] ||= []).push(res); });
   return c;
@@ -198,8 +203,8 @@ const clock = setInterval(() => {
 }, 1);
 clock.unref();
 
-async function onlineTrial(port, spot, react) {
-  const A = client(port), B = client(port);
+async function onlineTrial(port, spot, react, lags = [0, 0], want = -1) {
+  const A = client(port, lags[0]), B = client(port, lags[1]);
   await A.open; await B.open;
   A.send({ t: 'create', name: 'A' });
   const room = await A.once('room');
@@ -210,6 +215,10 @@ async function onlineTrial(port, spot, react) {
   const [m] = await started;
   const serve = m.st.d.serve;
   const [T, Dd] = A.me === serve ? [A, B] : [B, A];
+  if (want >= 0 && T.lag !== want) {   // asym runs: wrong player serves, try again
+    A.send({ t: 'leave' }); B.send({ t: 'leave' }); setTimeout(() => { A.ws.close(); B.ws.close(); }, 2 * Math.max(...lags) + 50);
+    return onlineTrial(port, spot, react, lags, want);
+  }
   T.bot = bot(T.me, 'T', spot, 0); Dd.bot = bot(Dd.me, 'D', spot, react);
   live.add(T); live.add(Dd);
   const t0 = Date.now();
@@ -299,7 +308,18 @@ const localLines = report(local);
 all.push(...localLines);
 const MAXR = arg('maxr', null);   // default: the local latest dodge + 2 (online never beats local)
 const maxR = Object.fromEntries(localLines.map(l => [l.spot, MAXR ? +MAXR : Math.min(45, Math.round(l.latestMs / DT) + 2)]));
-if (!ONLY_LOCAL) {
+const ASYM = arg('asym', null);
+if (ASYM) {
+  const [lo, hi] = ASYM.split(',').map(Number);
+  const srv = await runServer(PORT0, 0);
+  try {
+    for (const [tl, dl] of [[hi, lo], [lo, hi]]) {
+      const res = await measure(`T${tl}/D${dl}`, (spot, r) => onlineTrial(PORT0, spot, r, [tl, dl], tl), maxR);
+      all.push(...report(res)); raws.push(res);
+      console.error(`done T${tl}/D${dl}`);
+    }
+  } finally { srv.kill(); }
+} else if (!ONLY_LOCAL) {
   for (const [i, lag] of LATS.entries()) {
     const port = PORT0 + i;
     const srv = await runServer(port, lag);
