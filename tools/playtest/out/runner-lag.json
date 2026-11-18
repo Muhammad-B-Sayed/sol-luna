@@ -2,68 +2,34 @@
  {
   "mode": "runner",
   "lag": "60±20 ms, spikes ~6 s",
-  "frames": 1530,
-  "secs": 25.5,
+  "frames": 1320,
+  "secs": 22.9,
   "clients": [
    {
     "who": "Sol",
-    "card": "Sol wins! | Sol0:20.788 mstill running | Luna0:20.789 mtouched a hostile pool",
+    "card": "Sol wins! | Sol0:15.373 mstill running | Luna0:15.373 mtouched a hostile pool",
     "undo": [],
-    "pop": 4.093,
+    "pop": 4.652,
     "back": 0,
     "maxBack": 0,
-    "step": 12.846,
+    "step": 94.1,
     "ownBack": 0,
-    "fps": 59,
+    "fps": 12,
     "corrBack": 0,
-    "frames": 1522
+    "frames": 275
    },
    {
     "who": "Luna",
-    "card": "Sol wins! | Sol0:20.788 mstill running | Luna0:20.789 mtouched a hostile pool",
+    "card": "Sol wins! | Sol0:15.373 mstill running | Luna0:15.373 mtouched a hostile pool",
     "undo": [],
-    "pop": 4.289,
+    "pop": 4.151,
     "back": 0,
     "maxBack": 0,
-    "step": 16.033,
+    "step": 85.043,
     "ownBack": 0,
-    "fps": 59,
-    "corrBack": 0,
-    "frames": 1522
-   }
-  ]
- },
- {
-  "mode": "runner3d",
-  "lag": "60±20 ms, spikes ~6 s",
-  "frames": 630,
-  "secs": 10.5,
-  "clients": [
-   {
-    "who": "Sol",
-    "card": "Sol wins! | Sol0:05.740 mstill running | Luna0:05.738 mfell into the abyss",
-    "undo": [],
-    "pop": 0.182,
-    "back": 0,
-    "maxBack": 0,
-    "step": 0.422,
-    "ownBack": 0,
-    "fps": 59,
-    "corrBack": 0,
-    "frames": 633
-   },
-   {
-    "who": "Luna",
-    "card": "Sol wins! | Sol0:05.740 mstill running | Luna0:05.738 mfell into the abyss",
-    "undo": [],
-    "pop": 0.205,
-    "back": 0,
-    "maxBack": 0,
-    "step": 0.422,
-    "ownBack": 0,
-    "fps": 59,
-    "corrBack": 0,
-    "frames": 633
+    "fps": 13,
+    "corrBack": 42.25,
+    "frames": 304
    }
   ]
  }

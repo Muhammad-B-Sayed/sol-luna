@@ -237,7 +237,8 @@ Two machines can share the 50 seeds with `SEEDS=1-25` and `SEEDS=26-50`; the sum
    exactly level (`s === 0`).
 7. **Back to rest**: after every run and after random abuse (hopping, standing on ends, falling
    off), every plank, slab and shard must be back at rest within a bound (planks: 120 ticks,
-   exactly level and still).
+   exactly level and still). A slab never re-forms inside a player, so its bound runs from the
+   later of the last touch and the moment its space is clear.
 8. **Equal difficulty**: average clear time per kind for Sol and for Luna.
 
 Only "cleared alive" counts as a pass. Whether a chunk is cleared before the scroll catches up is

@@ -82,12 +82,14 @@ function restBound(o) {
 }
 
 // Replay a track, then remove the players and measure how long each stateful object of the
-// chunk takes to come back to rest after it was last loaded.
+// chunk takes to come back to rest after it was last loaded. A slab never re-forms inside a
+// player (so it can't trap anyone): it must be back within its timers after the last touch, or
+// within 4 ticks after the last tick a player was inside its space, whichever is later.
 function restCheck(L, S, c, removeAt, inputs, out) {
   const objs = [];
   for (let i = c.o0; i < c.o1; i++) if (STATEFUL[L.objs[i].k]) objs.push(i);
   if (!objs.length) return;
-  const last = new Map(), restAt = new Map(), offAt = new Map();
+  const last = new Map(), restAt = new Map(), offAt = new Map(), inside = new Map();
   for (let t = 0; t < removeAt + 900; t++) {
     if (t === removeAt) { park(S, 0); park(S, 1); }
     const inp = t < removeAt ? inputs(S.tick) : [0, 0];
@@ -96,6 +98,8 @@ function restCheck(L, S, c, removeAt, inputs, out) {
       if (i < S.lo && !offAt.has(i)) offAt.set(i, S.tick);
       if (i < S.lo || i >= S.hi) continue;
       if (loaded(L, S, i)) { last.set(i, S.tick); restAt.delete(i); continue; }
+      const o = L.objs[i];
+      if (o.k === 'slab' && S.p.some(p => p.alive && p.x < o.x + o.w && p.x + p.w > o.x && p.y < o.y + o.h && p.y + p.h > o.y)) inside.set(i, S.tick);
       if (atRest(S.o[i], L.objs[i].k)) { if (!restAt.has(i)) restAt.set(i, S.tick); }
       else restAt.delete(i);
     }
@@ -108,8 +112,10 @@ function restCheck(L, S, c, removeAt, inputs, out) {
     // scrolled off the left of the screen (and dropped from the state) while still moving
     if (!restAt.has(i) && offAt.has(i) && offAt.get(i) - last.get(i) < restBound(o)) { rec.off++; continue; }
     const r = restAt.has(i) ? restAt.get(i) - last.get(i) : Infinity;
+    const late = inside.has(i) ? Math.max(0, inside.get(i) + 4 - (last.get(i) + restBound(o))) : 0;
     rec.n++; rec.max = Math.max(rec.max, r);
-    if (r > restBound(o)) { rec.fail++; (rec.list ||= []).push({ seed: L.seed, x0: Math.floor(o.x / TS), kind: o.k, ticks: r }); }
+    if (late) rec.waited = (rec.waited || 0) + 1;
+    if (r > restBound(o) + late) { rec.fail++; (rec.list ||= []).push({ seed: L.seed, x0: Math.floor(o.x / TS), kind: o.k, ticks: r }); }
   }
 }
 
@@ -390,7 +396,7 @@ function merge(all) {
     }
     for (const key of ['rest', 'abuse']) for (const [k, v] of Object.entries(r[key])) {
       const t = tot[key][k] ||= { n: 0, max: 0, fail: 0, off: 0 };
-      t.n += v.n; t.max = Math.max(t.max, v.max); t.fail += v.fail; t.off += v.off;
+      t.n += v.n; t.max = Math.max(t.max, v.max); t.fail += v.fail; t.off += v.off; t.waited = (t.waited || 0) + (v.waited || 0);
       if (v.list) (t.list ||= []).push(...v.list);
     }
   }
@@ -419,7 +425,7 @@ function report(t, secs) {
     console.log(`  ${k.padEnd(9)} ${String(v.n).padStart(6)}  ${(v.time[0] / v.n / 60).toFixed(2).padStart(6)}s  ${(v.time[1] / v.n / 60).toFixed(2).padStart(7)}s  ${String(v.maxDiff).padStart(10)} t  ${String(v.minSlack).padStart(7)} t  ${v.v.toFixed(2)}`);
   }
   for (const key of ['rest', 'abuse']) for (const [k, v] of Object.entries(t[key])) {
-    console.log(`  ${key === 'rest' ? 'rest after a run' : 'rest after abuse'}  ${k.padEnd(6)} ${v.n} objects, slowest ${v.max} ticks after the last touch, over bound: ${v.fail}${v.off ? `, ${v.off} scrolled away first` : ''}`);
+    console.log(`  ${key === 'rest' ? 'rest after a run' : 'rest after abuse'}  ${k.padEnd(6)} ${v.n} objects, slowest ${v.max} ticks after the last touch, over bound: ${v.fail}${v.off ? `, ${v.off} scrolled away first` : ''}${v.waited ? `, ${v.waited} waited for a player to leave its space` : ''}`);
     for (const f of (v.list || []).slice(0, 5)) console.log('  FAIL rest', JSON.stringify(f));
   }
   for (const f of [...t.courseFail, ...t.firstFail, ...t.secondFail, ...t.parkedFail, ...t.abusedFail, ...sp.fail].slice(0, 40)) console.log('  FAIL', JSON.stringify(f));
