@@ -114,12 +114,13 @@ export class Character {
 
   makeEmblem(who, M) {
     const g = new THREE.Group();
-    if (who === SOL) {
-      g.add(new THREE.Mesh(new THREE.CircleGeometry(0.06, 14), M.core));
+    if (who === SOL) {   // one merged geometry: a disc and eight rays
+      const parts = [new THREE.CircleGeometry(0.06, 14)];
       for (let k = 0; k < 8; k++) {
-        const r = new THREE.Mesh(new THREE.PlaneGeometry(0.022, 0.05), M.core);
-        const a = k * Math.PI / 4; r.position.set(Math.cos(a) * 0.095, Math.sin(a) * 0.095, 0); r.rotation.z = a - Math.PI / 2; g.add(r);
+        const a = k * Math.PI / 4;
+        parts.push(new THREE.PlaneGeometry(0.022, 0.05).rotateZ(a - Math.PI / 2).translate(Math.cos(a) * 0.095, Math.sin(a) * 0.095, 0));
       }
+      g.add(new THREE.Mesh(THREE.mergeGeometries(parts), M.core));
     } else {
       const s = new THREE.Shape();
       s.absarc(0, 0, 0.085, Math.PI * 0.3, Math.PI * 1.7, false);
@@ -135,15 +136,15 @@ export class Character {
     this.rays = [];
     const rayG = grad(new THREE.ConeGeometry(0.075, 1, 4).translate(0, 0.5, 0), 0, 1, 0xff7a1a, 0xffe27a);
     const n = 13;
+    // all rays in one instanced mesh; each frame sets every ray's length
+    this.rayIM = new THREE.InstancedMesh(rayG, M.ray, n); this.rayIM.frustumCulled = false; head.add(this.rayIM);
     for (let k = 0; k < n; k++) {
       const a = -Math.PI * 0.62 + (k / (n - 1)) * Math.PI * 1.24;   // fan over the top, from left side to right side
-      const piv = new THREE.Group();
-      piv.rotation.z = -a; piv.position.set(Math.sin(a) * 0.3, Math.cos(a) * 0.3, 0.06);
-      piv.rotation.x = 0.22;   // lean back a little so the ring frames the head from behind
-      const r = new THREE.Mesh(rayG, M.ray);
-      r.scale.set(1, 0.2, 1); piv.add(r); head.add(piv);
-      this.rays.push({ piv, r, a, base: k % 2 ? 0.17 : 0.24, ph: k * 1.9 });
+      // lean back a little (x 0.22) so the ring frames the head from behind
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.22, 0, -a));
+      this.rays.push({ q, p: new THREE.Vector3(Math.sin(a) * 0.3, Math.cos(a) * 0.3, 0.06), a, base: k % 2 ? 0.17 : 0.24, ph: k * 1.9 });
     }
+    this._rm = new THREE.Matrix4(); this._rs = new THREE.Vector3();
     // flame tuft
     const tuftG = grad(new THREE.ConeGeometry(0.11, 0.34, 7).translate(0, 0.17, 0), 0, 0.34, 0xff8a2a, 0xfff2b0);
     this.tuft = new THREE.Mesh(tuftG, M.ray); this.tuft.position.set(0, 0.31, -0.04); this.tuft.rotation.x = 0.35;
@@ -257,10 +258,11 @@ export class Character {
 
     // motif animation
     if (this.rays) {
-      for (const r of this.rays) {
+      this.rays.forEach((r, k) => {
         const L = r.base * (1 + 0.28 * Math.sin(time * 9 + r.ph) + 0.12 * Math.sin(time * 23 + r.ph * 2)) * (1 + sp01 * 0.25);
-        r.r.scale.set(1, L, 1);
-      }
+        this.rayIM.setMatrixAt(k, this._rm.compose(r.p, r.q, this._rs.set(1, L, 1)));
+      });
+      this.rayIM.instanceMatrix.needsUpdate = true;
       this.tuft.scale.set(1, 1 + 0.25 * Math.sin(time * 12), 1);
       this.tuft.rotation.x = 0.35 + this.lean * 1.5 + Math.sin(time * 7) * 0.08;
     } else {

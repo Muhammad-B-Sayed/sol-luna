@@ -144,10 +144,10 @@ VIEWS.pool = {
   update(v, o, st, pose, ctx) {
     const u = v.userData, L3 = LIQ3[u.el] || LIQ3[0];
     const c = _c.setHex(L3.glow);
-    const n = Math.max(1, Math.min(4, Math.round(u.w * u.d / 8)));
+    const n = Math.max(1, Math.min(3, Math.round(u.w * u.d / 10)));
     for (let k = 0; k < n; k++) {
-      const gx = v.position.x + (hash(ctx.idx, k) - 0.5) * u.w * 0.7, gz = v.position.z + (hash(k, ctx.idx) - 0.5) * u.d * 0.7;
-      ctx.glow.add(gx, v.position.y + 0.2, gz, Math.min(4.5, Math.max(u.w, u.d)) * 1.2, c, (u.el === 2 ? 0.2 : 0.28) + 0.06 * Math.sin(ctx.time * 2 + k));
+      const gx = v.position.x + (hash(ctx.idx, k) - 0.5) * u.w * 0.6, gz = v.position.z + (hash(k, ctx.idx) - 0.5) * u.d * 0.6;
+      ctx.glow.add(gx, v.position.y + 0.7, gz, Math.min(2.4, Math.min(u.w, u.d) + 0.6), c, (u.el === 2 ? 0.1 : 0.13) + 0.03 * Math.sin(ctx.time * 2 + k));
     }
     u.bub -= ctx.dt;
     if (u.bub < 0 && ctx.fx) {

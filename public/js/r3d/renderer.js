@@ -103,7 +103,7 @@ export class Runner3DRenderer {
     this.cssW = canvas.clientWidth || 960; this.cssH = canvas.clientHeight || 540; this.dpr = 1;
 
     const scene = this.scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(PAL.fog, 38, 150);
+    scene.fog = new THREE.Fog(PAL.fog, 34, 125);
     textures();
 
     // lights: soft key from behind the camera, warm (sun) and cool (moon) rims from ahead
@@ -308,7 +308,7 @@ export class Runner3DRenderer {
     const land = this.observe(L, S, view);
 
     const pz = Math.max(view.p[0].z, view.p[1].z);
-    const zMin = view.zone - 30, zMax = pz + 160;
+    const zMin = view.zone - 30, zMax = pz + 125;
     this.glow.begin();
     // fractional tick of this frame: the view's zone lags S.zone by (1 - alpha) ticks of zone travel
     const alpha = S.v > 1e-6 ? Math.max(0, Math.min(1, 1 - (S.zone - view.zone) / S.v)) : 1;
@@ -366,7 +366,7 @@ export class Runner3DRenderer {
     }
 
     // world deco
-    this.deco.update(view.zone - 30, pz + 170, (z) => this.courseY(z), time);
+    this.deco.update(view.zone - 30, pz + 135, (z) => this.courseY(z), time);
     this.glow.end();
     if (dt > 0) this.fx.update(dt);
 

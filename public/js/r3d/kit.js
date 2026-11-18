@@ -430,7 +430,7 @@ export function liquidMaterial(el) {
         w = w * 0.5 + 0.5;
         vec3 c = mix(cB, cA, smoothstep(0.15, 0.75, w));
         c = mix(c, cHi, smoothstep(0.78, 0.98, w));
-        float glowK = uEl > 1.5 ? 0.9 : 1.6;
+        float glowK = uEl > 1.5 ? 0.85 : 0.95;
         gl_FragColor = vec4(c * glowK, 0.92);
         float behind = smoothstep(-0.5, 5.0, vW.z - uZone);
         gl_FragColor.rgb = mix(gl_FragColor.rgb, uDuskCol, behind * 0.92);
