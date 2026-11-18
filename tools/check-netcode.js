@@ -1,8 +1,9 @@
-// Online Runner over a realistic network: the real server, two clients running the real client
+// Online play over a realistic network: the real server, two clients running the real client
 // sync code (public/js/runner-sync.js; SCHEME=old runs the pre-fix copies in net-old-clients.js),
 // driven by bot input tracks that survive together for about 90 s (tools/net-bots.js).
 //
-//   node tools/check-netcode.js                       2D and 3D, 3 seeds each, pass or fail
+//   node tools/check-netcode.js                       2D and 3D (3 seeds each), co-op (levels 1, 4, 10,
+//                                                     22) and Dodgeball (3 seeds), pass or fail
 //   KIND=3d SEEDS=1 node tools/check-netcode.js       one runner, one seed
 //   SCHEME=old node tools/check-netcode.js            the baseline (no pass or fail)
 //   CPU=10 node tools/check-netcode.js                server under a 10% CPU quota (systemd-run)
@@ -37,7 +38,7 @@
 //   end           both clients show the server's winner and deaths.
 //   server        snapshots per second, the longest gap between two, deaths the bot plan did not
 //                 have (the server applied inputs differently from the client's prediction).
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -53,8 +54,9 @@ import { COURT, DODGE, DP_PLAY, DP_OVER, B_LIVE, B_DEAD, B_REST, sideOf } from '
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const env = process.env;
-const KINDS = (env.KIND || '2d,3d').split(',');
+const KINDS = (env.KIND || '2d,3d,coop,dodge').split(',');
 const SEEDS = (env.SEEDS || '1,2,3').split(',').map(Number);
+const COOP_LEVELS = (env.SEEDS || '1,4,10,22').split(',').map(Number);   // co-op: level numbers
 const SCHEME = env.SCHEME || 'new';
 const SECS = +(env.SECS || 90);
 const NET = {
@@ -686,7 +688,12 @@ const srv = await startServer(PORT);
 const tStart = performance.now();
 const results = [];
 const jobs = [];
-for (const kind of KINDS) for (const seed of SEEDS) jobs.push([kind, seed]);
+for (const kind of KINDS) for (const seed of kind === 'coop' ? COOP_LEVELS : SEEDS) jobs.push([kind, seed]);
+// co-op plays the recorded bot inputs: record the missing ones first
+{
+  const miss = [...new Set(jobs.filter(([k, n]) => k === 'coop' && !fs.existsSync(path.join(ROOT, `tools/playtest/inputs/level-${n}.json`))).map(([, n]) => n))];
+  if (miss.length) { console.log(`recording bot inputs for levels ${miss.join(',')}`); execFileSync(process.execPath, ['tools/playtest/record-bot.mjs', miss.join(',')], { cwd: ROOT, stdio: 'ignore' }); }
+}
 // plan first (cached), so planning never stalls a running match
 for (const [kind, seed] of jobs) if (kind !== 'coop' && kind !== 'dodge') pairTracks(kind, seed, 180 + SECS * 60, { log: V ? console.log : () => {} });
 console.log(`check-netcode: scheme ${SCHEME}, one-way ${NET.base}±${NET.jit} ms, spikes every ~${NET.spike} s of ${NET.spikeMin}-${NET.spikeMax} ms, client stalls every ~${NET.stall} s of ${NET.stallMin}-${NET.stallMax} ms${CPU ? `, server CPU quota ${CPU}%` : ''}, ${SECS} s matches`);
