@@ -31,6 +31,10 @@
 //   per kind are listed in KIND_DOC after "pose:". tick may be fractional (smooth drawing of
 //   clocked kinds); stateful kinds read S.o[i] (rest pose when it is not in the window).
 // trig(a) -> [sin a, cos a] with the same polynomial the sim uses (any a in radians).
+// firstFrom(L, z) -> the first object index whose footprint may reach z (a binary search on
+//   L.zmx): scan from there while objs[i].z0 is below your far end to visit the objects near z.
+// No lead cap: nothing stops a player holding forward. P3.mantle: a standing player who walks into
+//   a ledge up to that high hops up onto it.
 // =======================================================================================
 
 export const SOL = 0, LUNA = 1, DRAW = 2;
