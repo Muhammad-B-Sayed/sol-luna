@@ -29,14 +29,24 @@
 //   thr seen  thrower: ticks they see their own ball fly before it reaches the defender
 //   thr gap   thrower: on the thrower's screen, ticks from release to the defender's jump, for
 //             the latest dodge (what the thrower sees as the defender's reaction)
-//   phantom   thrower: dodges the thrower first saw as a hit (out of all dodges)
+//   phantom   thrower: dodges the thrower first saw as a hit, or (fix B) saw the ball stop in
+//             the defender as if hit, out of all dodges
+//   thr stop  thrower (fix B): ticks the ball stays stopped in the defender on the thrower's
+//             screen before the hit shows (median over hits)
+//   speed     ball speed of the throw (px/tick; fix A changes it)
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
-import { COURT, createDodge, stepDodge, DP_PLAY, B_LIVE } from '../shared/dodge.js';
-import { SOL, LUNA, IN_ACT } from '../shared/sim.js';
+import * as DG from '../shared/dodge.js';
+import { SOL, LUNA, IN_ACT, cloneState } from '../shared/sim.js';
+const { COURT, createDodge, stepDodge, DP_PLAY, B_LIVE } = DG;
+// Fix B (dodge-fix-b-rewind) adds lag compensation helpers; with them the modelled clients do
+// what public/js/main.js does on that branch: draw a ball thrown at them behind time
+// (ballView), move their own jump back in time (backdateTicks) and leave hits on the other
+// player to the server (d.wait). On other branches these are absent and nothing changes.
+const LAGCOMP = typeof DG.backdateTicks === 'function';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i < 0 ? d : process.argv[i + 1]; };
@@ -63,12 +73,14 @@ const moveBits = (who, where) => (where === 'back' ? (who === SOL ? LEFT : RIGHT
 // A scripted player. decide(S, n) is called once per tick with the state the player sees.
 function bot(me, role, spot, react) {
   const [, tMove, dMove] = spot;
-  const st = { role, n: 0, fs: -1, fsT: 0, hitSeen: -1, rel: -1, jumpSeen: -1, sawHit: false, jump0: -1 };
+  const st = { role, n: 0, fs: -1, fsT: 0, hitSeen: -1, rel: -1, jumpSeen: -1, sawHit: false, jump0: -1, stopSeen: -1, speed: 0 };
   st.decide = (S) => {
     const n = st.n++, D = S.d, other = 1 - me;
     if (st.jump0 < 0) st.jump0 = S.p[other].jumpN;
     if (role === 'T') {
       if (st.rel >= 0 && D.hitN > 0) { st.sawHit = true; if (st.hitSeen < 0) st.hitSeen = n; }
+      if (st.rel >= 0 && st.stopSeen < 0 && D.ball.pv >= 0) st.stopSeen = n;
+      if (st.rel >= 0 && !st.speed) st.speed = Math.hypot(D.ball.vx, D.ball.vy);
       if (st.rel >= 0 && st.jumpSeen < 0 && S.p[other].jumpN > st.jump0) st.jumpSeen = n;
       if (st.rel < 0 && D.throwN > 0) st.rel = n;     // first tick that sees its own ball in flight
       if (n < 100) return moveBits(me, tMove);
@@ -76,8 +88,9 @@ function bot(me, role, spot, react) {
       return 0;
     }
     // defender
-    const live = D.ball.st === B_LIVE && D.ball.by === other;
-    if (st.fs < 0 && live) { st.fs = n; st.fsT = D.ball.t; }
+    const vis = DG.ballView ? DG.ballView(D, me) : { age: D.ball.t };   // what this screen draws
+    const live = D.ball.st === B_LIVE && D.ball.by === other && vis.age >= 1;
+    if (st.fs < 0 && live) { st.fs = n; st.fsT = vis.age; }
     if (st.fs >= 0 && D.hitN > 0 && st.hitSeen < 0) st.hitSeen = n;
     if (st.fs >= 0 && react > 0 && n >= st.fs + react - 1) return JUMP;
     return n < 100 ? moveBits(me, dMove) : 0;
@@ -112,7 +125,9 @@ function summarize(T, Dd, hit) {
     late: Dd.fs >= 0 ? Dd.fsT - 1 : null,
     thrSeen: T.rel >= 0 && T.hitSeen >= 0 ? T.hitSeen - T.rel : null,
     thrGap: T.rel >= 0 && T.jumpSeen >= 0 ? T.jumpSeen - T.rel : null,
-    phantom: !hit && T.sawHit,
+    phantom: !hit && (T.sawHit || T.stopSeen >= 0),
+    thrStop: hit && T.stopSeen >= 0 && T.hitSeen >= 0 ? T.hitSeen - T.stopSeen : null,
+    speed: T.speed ? +T.speed.toFixed(2) : null,
   };
 }
 
@@ -138,6 +153,7 @@ function client(port) {
 function onSnapshot(c, m) {   // public/js/main.js onSnapshot, state part only
   c.snap = JSON.parse(JSON.stringify(m.st.d));   // the server's word, before our own replay
   const ns = m.st;
+  if (LAGCOMP) { ns.d.wait = 1 - c.me; c.base = cloneState(ns); }
   c.remoteBits = m.inp[1 - c.me] | 0;
   const myAck = m.ack[c.me] | 0;
   c.pending = c.pending.filter(([s]) => s > myAck);
@@ -155,6 +171,17 @@ function tickClient(c) {      // public/js/main.js tickOnline
   c.send({ t: 'i', s: c.seq, b: bits });
   c.pending.push([c.seq, bits]);
   if (c.pending.length > 240) c.pending.shift();
+  if (LAGCOMP && c.base && (bits & 4) && !(c.lastBits & 4)) {   // main.js tickOnline, fix B
+    const g = Math.min(DG.backdateTicks(c.S.d, c.me), c.pending.length - 1);
+    if (g > 0) {
+      for (let i = c.pending.length - 1 - g; i < c.pending.length - 1; i++) c.pending[i][1] |= 4;
+      const ns = cloneState(c.base), rin = [0, 0];
+      for (const [, b] of c.pending.slice(0, -1)) { rin[c.me] = b; rin[1 - c.me] = c.remoteBits; stepDodge(COURT, ns, rin); }
+      ns.d.bd = ns.d.throwN;
+      c.S = ns;
+    }
+  }
+  c.lastBits = bits;
   const inp = [0, 0];
   inp[c.me] = bits; inp[1 - c.me] = c.remoteBits;
   stepDodge(COURT, c.S, inp);
@@ -243,16 +270,17 @@ function report({ label, rows }) {
     const latest = dodges.filter(t => t.r === maxR);
     const gap = med(latest.map(t => t.thrGap));
     const phantom = dodges.filter(t => t.phantom).length;
+    const thrStop = med(ok.filter(t => t.hit).map(t => t.thrStop)), speed = med(ok.map(t => t.speed));
     const holes = rs.length ? Array.from({ length: maxR - rs[0] + 1 }, (_, i) => rs[0] + i).filter(r => !rs.includes(r)) : [];
     lines.push({ label, spot, seen, late, dodge: rs.length ? `r ${rs[0]}-${maxR}${holes.length ? ` (not ${holes.join(',')})` : ''}` : 'none', latestMs: rs.length ? MS(maxR) : 0,
-      thrSeen, thrGap: gap, phantom: `${phantom}/${dodges.length}`, failed: trials.length - ok.length });
+      thrSeen, thrGap: gap, phantom: `${phantom}/${dodges.length}`, thrStop, speed, failed: trials.length - ok.length });
   }
   return lines;
 }
 
 function printTable(lines) {
-  const cols = [['label', 8], ['spot', 15], ['seen', 5], ['late', 5], ['dodge', 16], ['latestMs', 9], ['thrSeen', 8], ['thrGap', 7], ['phantom', 8]];
-  const head = { label: 'latency', spot: 'spot', seen: 'seen', late: 'late', dodge: 'dodge r', latestMs: 'latest', thrSeen: 'thr seen', thrGap: 'thr gap', phantom: 'phantom' };
+  const cols = [['label', 8], ['spot', 15], ['speed', 6], ['seen', 5], ['late', 5], ['dodge', 16], ['latestMs', 9], ['thrSeen', 8], ['thrGap', 7], ['phantom', 8], ['thrStop', 8]];
+  const head = { label: 'latency', spot: 'spot', speed: 'speed', seen: 'seen', late: 'late', dodge: 'dodge r', latestMs: 'latest', thrSeen: 'thr seen', thrGap: 'thr gap', phantom: 'phantom', thrStop: 'thr stop' };
   const fmt = (o) => cols.map(([k, w]) => String(o[k] ?? '-').padEnd(w)).join(' ');
   console.log(fmt(head));
   for (const l of lines) console.log(fmt({ ...l, latestMs: l.latestMs + ' ms' }) + (l.failed ? `  (${l.failed} trials failed)` : ''));
