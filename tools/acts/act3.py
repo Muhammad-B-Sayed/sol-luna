@@ -556,75 +556,81 @@ def tidelock():
 
 @level(27)
 def leapfrog_spire():
-    """Leapfrog Spire. A spire: a hollow central column with landings stacked on each side, Sol's
-    west landings on floors 28, 21, 14, 7 and Luna's east landings offset on 26, 19, 12, 5, so the
-    two climbs interleave like a helix up the full height of the screen (re-spaced Nov 2026: every
-    landing has 6 free rows, and each lift climbs one whole landing). Every lift's plate is on the
-    other side, so whoever is lower holds the plate while the other rides, then they swap. Luna's
-    lifts are 4 wide and carry the crate too. Then both go back down inside the column to the doors.
+    """Leapfrog Spire. A spire: a solid central column with a staircase of lifts on each side and a
+    hollow core. Sol's west landings are floors 28/22/16/10/4, Luna's east landings 27/21/15/9/4, so
+    the two climbs interleave like a helix up the whole screen (re-spaced Nov 2026 for the higher
+    jump: each lift rises 6 rows, landings are walked, never jumped). Every lift's plate is on the
+    other side, so whoever is lower holds the plate while the other rides, then they swap. Lifts
+    pair up by colour: W1+W3 purple, W2+W4 green, E1+E3 orange, E2+E4 white. Luna's lifts are 4 wide
+    and carry the crate. Because E1 and E3 share a colour (and E2 and E4), the shaft over the lift
+    she rides is open while it is up: that is where she hops over the crate to turn it round.
 
-    1. Luna on her bottom landing holds the purple plate: Sol rides W1 up to his second landing.
-       Gate G21 bars it; Luna holds the yellow plate at the far end of her landing and he passes.
-    2. Sol holds the white plate: Luna and the crate ride E1 up. Luna pushes the crate west to E2.
-    3. Luna parks the crate at gate G19 and holds the green plate: Sol rides W2 up. Gate G14 bars
-       his landing: she holds the orange plate and he passes. He holds the yellow plate: G19 opens
-       and she pushes the crate through to E2.
-    4. Sol holds the pink plate: Luna and the crate ride E2 up; she pushes it east to gate G12.
-       Sol holds the yellow plate on his landing: she pushes it through onto E3. Sol holds the
-       second white plate: E3 carries them to the top.
-    5. Sol stands on his last lift W3, whose purple plate is in a socket on Luna's third landing,
-       which nobody can stand on now. Luna pushes the crate along the top and down the chute: it
-       lands in the socket and holds the plate, and Sol rides up.
-    6. Sol walks out to the west end of his top and back through the yellow lever: the top hatch of
-       the column slides away, and the gates stay open.
-    7. Luna holds the orange plate at her top: the lower hatch opens and Sol drops down the column
-       to its foot, steering onto ledges for gems. He holds the orange plate there, and she drops."""
-    L = Lv('Leapfrog Spire', 90, 'Each lift is worked from the other side. The crate never climbs: it rides.')
-    rock(L)
-    for f in (28, 21, 14, 7):                              # Sol's landings, x 1-15
-        L.clear(1, f - 6, 15, f - 1)
-    for f in (26, 19, 12, 5):                              # Luna's landings, x 24-38
-        L.clear(24, max(1, f - 6), 38, f - 1)
-    L.clear(16, 1, 23, 4)                                  # the crossing over the column's top (floor 5)
-    L.r(8, 1, 11, 2).r(28, 1, 30, 2).r(38, 1, 38, 4)       # roof rocks over the tops, where nobody jumps
-    for x0, y0, x1 in ((5, 22, 10), (4, 15, 9), (1, 8, 4)):
-        L.r(x0, y0, x1, y0 + 1)                            # stalactites over floor that is only walked
-    # Sol's lifts (3 wide) and Luna's (4 wide), each one landing high
-    lifts = ((13, 28, 0), (1, 21, 1), (13, 14, 0), (31, 26, 3), (24, 19, 4), (31, 12, 3))
-    for x0, f, g in lifts:
-        w = 3 if x0 < 16 else 4
-        L.clear(x0, f, x0 + w - 1, f).clear(x0, f - 7, x0 + w - 1, f - 7)
-        L.plat(x0, f, w, 1, 0, -7, g)
-    # two gates, each held open from the other side: G21 on Sol's second landing, G12 on Luna's third
-    L.r(11, 15, 11, 16); pgate(L, 11, 19, 20, 5)            # G21 (yellow)
-    L.r(30, 6, 30, 7); pgate(L, 30, 10, 11, 5)             # G12 (yellow)
-    L.r(29, 13, 29, 14); pgate(L, 29, 17, 18, 5)           # G19 (yellow), on Luna's second landing
-    L.r(5, 8, 5, 9); pgate(L, 5, 12, 13, 2)                # G14 (orange), on Sol's third landing
-    L.plate(35, 18, 2)                                     # G14's plate, Luna's second landing
-    L.plate(38, 25, 5)                                     # G21's plate, Luna's bottom landing
-    L.plate(11, 13, 5)                                     # G12's and G19's plate (yellow), Sol's third landing
-    # plates: Luna's lifts are worked from Sol's landings, Sol's from Luna's
-    L.plate(25, 25, 0)                                     # W1 (purple), Luna's bottom landing
-    L.plate(5, 20, 3)                                      # E1 (white), Sol's second landing
-    L.plate(38, 18, 1)                                     # W2 (green), Luna's second landing
-    L.plate(9, 13, 4).plate(7, 13, 3)                      # E2 (pink) and E3 (white), Sol's third landing
-    # W3's socket on Luna's third landing, fed by a chute from her top
-    L.clear(36, 5, 37, 5).clear(36, 12, 37, 12).plate(36, 12, 0).plate(37, 12, 0).r(36, 13, 37, 13)
-    L.lever(3, 6, 5)                                       # yellow: the column's top hatch (Sol's top), and both gates for good
-    L.plate(27, 4, 2)                                      # orange: holds the lower hatch open (Luna's top)
-    # the column: descent shaft with ledges, the door chamber at its foot
-    L.clear(18, 6, 21, 27).clear(19, 5, 20, 5)
-    for x, y in ((18, 12), (21, 15), (18, 19), (21, 22), (18, 9), (21, 18), (18, 23), (21, 10)):
-        L.set(x, y, '#')
-    L.clear(16, 16, 18, 16)                                # the lower hatch slides into the wall
-    L.clear(21, 5, 23, 5)                                  # and the top hatch into the crossing's floor
-    L.plate(20, 27, 2)                                     # orange plate at the foot: holds the lower hatch open from below
-    L.p(18, 27, 'A').p(21, 27, 'B')
-    L.plat(19, 5, 2, 1, 2, 0, 5)                           # the hatch over the shaft (Sol's yellow lever)
-    L.plat(19, 16, 2, 1, -3, 0, 2)                         # the lower hatch (orange plates, top and foot)
-    for x, y in ((1, 23), (12, 16), (11, 9), (5, 1), (21, 14), (15, 9)):
-        L.p(x, y, 's')
-    for x, y in ((38, 21), (26, 14), (26, 7), (18, 8), (18, 22), (36, 14)):
-        L.p(x, y, 'm')
-    L.p(3, 27, 'a').p(36, 25, 'b').p(30, 25, 'k')
+    0. Split start: Sol stands on his yellow plate, Luna shoves the crate through her yellow gate
+       and stands on her own plate beyond it, so Sol's gate opens. He steps onto W1.
+    1. Luna pushes the crate onto E1, hops over it (the shaft above is open), climbs 4 up the shaft
+       to a moon gem and holds purple: Sol rides W1 to floor 22. She pushes the crate back west.
+    2. Sol holds orange: E1 carries Luna and the crate to floor 21. She pushes it west onto E2.
+    3. Luna holds green: Sol's green gate opens, but W2 rises empty. She lets go, Sol steps on,
+       she holds it again: Sol rides W2 to floor 16.
+    4. Sol holds white: E2 carries Luna and the crate to floor 15. She hops west over the crate
+       (E4 is up too, so that shaft is open) and pushes it east onto E3 against the socket block.
+    5. Luna holds purple twice the same way (gate, then W3): Sol rides to floor 10.
+    6. Sol walks west through the orange lever and back onto W4: E3 locks up with Luna and the crate.
+    7. Luna pushes the crate off E3 down the chute: it lands on the green socket and holds W4 up,
+       so Sol rides to the top. (Without the crate whoever holds W4's plate is stranded below.)
+    8. Luna holds yellow on floor 9: Sol's floor gate on the top sinks. Sol holds white at the
+       middle of the top: E4 brings Luna up; she fetches the gem at the east end.
+    9. Luna holds pink: Sol rides the core lift D1 down while the counterweight D2 rises to meet
+       it. Core gems: a climb of 4 to a ledge, then 3 (moon). Luna lets go: D2 sinks with Sol, and
+       he steps off into a niche for a gem on the way. He holds pink at the foot: Luna walks off
+       the top into the core, D2 comes up for her, and she steps off into the lower niche.
+       Both walk to the doors at the foot of the column.
+
+    Unrecoverable on purpose: a crate pushed past E1 or E2 into a hole, or anyone who falls down
+    the chute after the crate."""
+    # PLAN AND PROGRESS (successor: read this first)
+    # - v2 map (Nov 17 2026). FULL gate passes: bot 79 s (floor 76), 22 uses, 11/11 gems, ROOF 0,
+    #   neither player can finish alone.
+    # - The map strings below were painted by a scratch script; edit them directly now.
+    # - Bot script: SCRIPTS[27] in act3.bot.js. Low rooms (5 free rows) are walked, never hopped.
+    # - Done. Thin margins: bot time 79 s against 76 s; Sol visits 16 sectors (needs 16); stone 26%.
+    L = Lv('Leapfrog Spire', 90, 'Each lift is worked from the other side. Same colour, same moment: '
+           'when your partner presses, everything of that colour moves. The crate must reach the chute.')
+    art(L, [
+        '######################################',   # 1
+        '.........T............................',   # 2
+        's........T..5...........4............m',   # 3
+        '##...####.######DDD#######....########',   # 4
+        '......###.#....#.......#.......######.',   # 5
+        '...............#.......#..............',   # 6
+        '...............#.......#..............',   # 7
+        '...............#...m...#......6.......',   # 8
+        '.$.............#...#...#..VVVV##......',   # 9
+        '##HHH#######...#.......#......##......',   # 10
+        '.....##.###....#......s#......##......',   # 11
+        '........#.#....#.....###..............',   # 12
+        '........#.#....#.......#............22',   # 13
+        '.........K.....#.......#m.....1.....##',   # 14
+        's.....4..K.....#.......###....##RRRR##',   # 15
+        '##...#######QQQ#...#EEE#......##......',   # 16
+        '......###.##...#####...#..............',   # 17
+        '......#.#......###.....#..............',   # 18
+        '......#.#......###s....#..............',   # 19
+        '.......J.......#####...#.......2......',   # 20
+        's......J..3....###.....###WWWW##......',   # 21
+        '##GGG#######...###m....#..######.....m',   # 22
+        '....###.###....#####...#..#.#........#',   # 23
+        '........#.#....#.......#..#.#.........',   # 24
+        '........#.#....#.......#...Z..........',   # 25
+        '.........Y.....#.......#bk.Z.6......m1',   # 26
+        '.a.6.....Y.....#AB.5...#########OOOO##',   # 27
+        '############PPP#####...###############',   # 28
+    ], {
+        'P': (0, 0, -6), 'Q': (0, 0, -6), 'K': (0, 0, -2),     # purple: W1, W3, Sol's gate on 16
+        'G': (1, 0, -6), 'H': (1, 0, -6), 'J': (1, 0, -2),     # green: W2, W4, Sol's gate on 22
+        'O': (2, 0, -6), 'R': (2, 0, -6),                      # orange: E1, E3
+        'W': (3, 0, -6), 'V': (3, 0, -5),                      # white: E2, E4
+        'D': (4, 0, 12), 'E': (4, 0, 12, True),                # pink: core lift D1 and counterweight D2
+        'Y': (5, 0, -2), 'Z': (5, 0, -2), 'T': (5, 0, 2),      # yellow: the two start gates, the floor gate on top
+    })
     return L
