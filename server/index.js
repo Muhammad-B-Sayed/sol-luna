@@ -8,6 +8,7 @@ import { LEVELS } from '../shared/levels.js';
 import { buildLevel, createState, step, PH_WON } from '../shared/sim.js';
 import { COURT, createDodge, stepDodge } from '../shared/dodge.js';
 import { buildRunner, createRunnerState, stepRunner, newSeed } from '../shared/runner.js';
+import { buildRunner3d, createRunner3dState, stepRunner3d } from '../shared/runner3d.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -110,8 +111,18 @@ class Room {
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
     this.broadcast(this.startMsg());
   }
-  restartGame() { if (this.mode === 'runner') this.startRunner(); else this.start(this.level, this.mode); }
+  // versus Runner 3D: same scheme, its own sim
+  startRunner3d() {
+    this.mode = 'runner3d'; this.level = -1;
+    this.seed = newSeed();
+    this.L = buildRunner3d(this.seed);
+    this.S = createRunner3dState(this.L);
+    this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
+    this.broadcast(this.startMsg());
+  }
+  restartGame() { if (this.mode === 'runner') this.startRunner(); else if (this.mode === 'runner3d') this.startRunner3d(); else this.start(this.level, this.mode); }
   startMsg() {
+    if (this.mode === 'runner3d') return { t: 'start', mode: 'runner3d', seed: this.seed, st: this.S };
     return this.mode === 'runner' ? { t: 'start', mode: 'runner', seed: this.seed, st: this.S } : { t: 'start', level: this.level, mode: this.mode, st: this.S };
   }
   stop() {
@@ -128,7 +139,7 @@ class Room {
         this.cur[ch] = b; this.ack[ch] = s; this.starve[ch] = 0;
       } else if (++this.starve[ch] > 10) this.cur[ch] = 0; // no input arriving: let go of the keys
     }
-    (this.mode === 'runner' ? stepRunner : this.L.dodge ? stepDodge : step)(this.L, this.S, this.cur);
+    (this.mode === 'runner' ? stepRunner : this.mode === 'runner3d' ? stepRunner3d : this.L.dodge ? stepDodge : step)(this.L, this.S, this.cur);
     if (this.S.tick % 2 === 0) {
       this.broadcast({ t: 's', ack: this.ack, inp: this.cur, st: this.S });
     }
@@ -156,7 +167,7 @@ function onMessage(ws, data) {
         if (!room || !room.S) return;
         const me = room.clients.find(c => c.ws === ws);
         if (!me) return;
-        room.q[me.char].push([m.s | 0, m.b & 15]);
+        room.q[me.char].push([m.s | 0, m.b & 31]);   // bit 16 is Runner 3D's "back"; other sims ignore it
         return;
       }
       case 'ping': send(ws, { t: 'pong', c: m.c }); return;
@@ -205,6 +216,11 @@ function onMessage(ws, data) {
         if (m.mode === 'runner') {
           if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
           room.startRunner();
+          return;
+        }
+        if (m.mode === 'runner3d') {
+          if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
+          room.startRunner3d();
           return;
         }
         const lv = m.level | 0;

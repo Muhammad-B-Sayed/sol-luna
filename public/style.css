@@ -141,3 +141,47 @@ body.dodge #hint { bottom: auto; top: 20%; }   /* keep the floor, where the acti
 .rr-card small { color: var(--muted); font-size: 12px; }
 .rr-card.won { border-color: rgba(214,196,255,0.6); background: rgba(255,255,255,0.08); }
 #rrTitle.solc { color: var(--sun); } #rrTitle.lunac { color: var(--moon); }
+
+/* Runner 3D (versus): its own full-stage canvas, a DOM HUD over it, a thumb pad on touch */
+#game3d, #r3Hud, #r3Touch { display: none; }
+body.r3d #game { display: none; }
+body.r3d #game3d { display: block; position: absolute; inset: 0; width: 100%; height: 100%; background: #120e1d; }
+body.r3d #r3Hud:not([hidden]) { display: block; position: absolute; inset: 0; pointer-events: none; font-family: Nunito, system-ui, sans-serif; }
+body.r3d #touch { display: none !important; }
+.r3-split { display: none; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: rgba(214,196,255,0.35); }
+#r3Hud.split .r3-split { display: block; }
+.r3-top { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: 2px; z-index: 1; }
+.r3-time { font: 600 22px Cinzel, Georgia, serif; color: var(--ink); background: rgba(18,12,30,0.72); border: 1px solid rgba(214,196,255,0.35); border-top: 0; border-radius: 0 0 12px 12px; padding: 4px 22px 6px; min-width: 130px; text-align: center; }
+.r3-pace, .r3-ping { font: 600 12px Nunito, system-ui, sans-serif; color: rgba(240,230,255,0.65); }
+.r3-pl { position: absolute; top: 12px; display: grid; gap: 3px; min-width: 170px; padding: 8px 12px; border-radius: 12px; background: rgba(18,12,30,0.62); border: 1px solid rgba(214,196,255,0.25); }
+.r3-pl.sol { left: 14px; } .r3-pl.luna { right: 14px; text-align: right; }
+.r3-name { font: 700 17px Cinzel, Georgia, serif; }
+.r3-pl.sol .r3-name { color: #ffd27a; } .r3-pl.luna .r3-name { color: #a9e3ff; }
+.r3-dist { font: 700 14px Nunito, system-ui, sans-serif; color: rgba(240,230,255,0.85); }
+.r3-meter { position: relative; height: 16px; border-radius: 8px; background: rgba(0,0,0,0.45); overflow: hidden; }
+.r3-meter i { position: absolute; top: 0; bottom: 0; left: 0; background: linear-gradient(90deg, #6a3fa0, #b07cff); transition: background 0.2s; }
+.r3-pl.luna .r3-meter i { left: auto; right: 0; background: linear-gradient(270deg, #6a3fa0, #b07cff); }
+.r3-meter span { position: relative; display: block; font: 700 11px/16px Nunito, system-ui, sans-serif; padding: 0 8px; color: #f4ecff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+.r3-pl.urgent .r3-meter i { background: linear-gradient(90deg, #b0306a, #ff8a5c); }
+.r3-pl.critical .r3-meter i { background: #ff4f6a; animation: r3pulse 0.5s ease-in-out infinite alternate; }
+.r3-pl.critical { border-color: rgba(255,90,120,0.7); }
+.r3-pl.lost { opacity: 0.55; } .r3-pl.lost .r3-name { color: rgba(240,230,255,0.5); }
+.r3-edge { position: absolute; bottom: 0; height: 28%; opacity: 0; background: linear-gradient(to top, rgba(150,30,110,0.75), rgba(150,30,110,0)); box-shadow: inset 0 -6px 0 rgba(255,80,130,0.6); transition: opacity 0.15s; }
+#r3Hud.split .r3-edge.sol { left: 0; right: 50%; } #r3Hud.split .r3-edge.luna { left: 50%; right: 0; }
+#r3Hud.single .r3-edge { left: 0; right: 0; }
+#r3Hud.single[data-me="0"] .r3-edge.luna, #r3Hud.single[data-me="1"] .r3-edge.sol { display: none; }
+.r3-edge.pulse { animation: r3pulse 0.45s ease-in-out infinite alternate; }
+@keyframes r3pulse { from { filter: brightness(0.8); } to { filter: brightness(1.35); } }
+.r3-count { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); font: 700 96px Cinzel, Georgia, serif; background: linear-gradient(90deg, #ffd27a, #fff 50%, #a9e3ff); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 3px 0 rgba(18,12,30,0.8)); }
+.r3-banner { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); white-space: nowrap; font: 700 52px Cinzel, Georgia, serif; color: #f4ecff; text-shadow: 0 3px 0 rgba(18,12,30,0.85), 0 0 24px rgba(0,0,0,0.6); opacity: 0; }
+.r3-banner.solc { color: var(--sun); } .r3-banner.lunac { color: var(--moon); }
+body.touch.r3d[data-screen="game"] #r3Touch { display: flex; position: absolute; inset: auto 0 0 0; justify-content: space-between; align-items: flex-end; padding: 12px 18px calc(14px + env(safe-area-inset-bottom)); pointer-events: none; }
+.r3-stick { pointer-events: auto; position: relative; width: 132px; height: 132px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid var(--edge); touch-action: none; }
+.r3-stick i { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px; border-radius: 50%; background: rgba(255,255,255,0.22); }
+.r3-jump { pointer-events: auto; width: 84px; height: 84px; border-radius: 50%; font-size: 28px; background: rgba(255,255,255,0.1); touch-action: none; user-select: none; -webkit-user-select: none; }
+.r3-jump.down { background: rgba(255,255,255,0.28); }
+@media (max-width: 760px) {
+  .r3-pl { min-width: 0; width: calc(50% - 90px); padding: 6px 8px; } .r3-name { font-size: 14px; }
+  .r3-time { font-size: 18px; min-width: 96px; padding: 3px 12px 5px; }
+  .r3-count { font-size: 72px; } .r3-banner { font-size: 34px; }
+}
