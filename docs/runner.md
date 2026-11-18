@@ -112,7 +112,7 @@ The rule, in plain words:
 
 - **Near the middle it rocks.** Each player standing on it pushes with a torque that grows with
   their distance from the middle: gently inside the safe zone (about 30 px each side, 36 on the
-  intro plank, marked by the glowing runes and the bronze bands), ten times as hard beyond it. A
+  intro plank, marked by the glowing runes and the bronze bands), 12.5 times as hard beyond it. A
   stiff, well damped spring holds it toward level, so in the safe zone it leans at most about
   5 degrees and holds you.
 - **Past the safe zone it tips you off.** It leans past the stand limit within a few ticks and

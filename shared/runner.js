@@ -423,7 +423,7 @@ function turnPlank(s, w) {
   return c2 < 0 ? -s2 : s2;
 }
 // One tick of a plank with these riders on it. Each rider pushes with a torque that grows with
-// their distance from the middle, gently inside the safe zone and ten times as hard beyond it.
+// their distance from the middle, gently inside the safe zone and over ten times as hard beyond.
 // A rider on the tip sets it spinning at PLANK.kick. With too little speed to pass upright it is
 // held toward level by a stiff, well damped spring (it rocks and settles); with more it spins
 // under a weak pull toward level and light damping, slowing turn by turn until it is caught.

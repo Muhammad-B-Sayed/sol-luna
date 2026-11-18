@@ -126,7 +126,7 @@ function spinCheck(L, S0, c, a, i, track, out) {
     stepRunner(L, S, inp);
     const st = S.o[i];
     if (!st) break;
-    if (kick < 0) { if (Math.abs(st.w) === PLANK.kick) { kick = S.tick; last = S.tick; ang = st.w; } continue; }
+    if (kick < 0) { if (Math.abs(st.w) > 0.9 * PLANK.kick) { kick = S.tick; last = S.tick; ang = st.w; } continue; }   // set spinning by the touch
     if (loaded(L, S, i)) { out.reload++; return; }      // touched again before it settled: not a clean measurement
     ang += st.w;
     if (Math.abs(ang) >= (times.length + 1) * 2 * Math.PI) { times.push(S.tick - last); last = S.tick; }
