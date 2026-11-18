@@ -318,7 +318,9 @@ change one, keep the room's shape and its place on the difficulty curve, and say
 20. **Undertow.** Shape: an interleaved maze of low pool tunnels. Sol's sun tunnels and
     Luna's moon tunnels cross at shared junction chambers. Start in opposite corners, doors
     in the centre. Each junction needs the other player to have done something in their own
-    tunnels first. 10 beats.
+    tunnels first. 10 beats. Luna's alcove is under the outer wall, so she starts in a 2-wide pit
+    in its floor (x 33-34, floor row 7), with six free rows over her and her first jump the full
+    99 px; she climbs out east to her plate and west to her gate.
 21. **Pendulum.** The one open room. Shape: a tall atrium with a shade floor, split by a
     shade-topped pillar, between two side walls of rooms on floors 28, 21, 14 and 7. Three ferries
     hang at three heights and swing from wall to wall while their plate is held. Each ferry rests
@@ -334,7 +336,9 @@ change one, keep the room's shape and its place on the difficulty curve, and say
     end cell. The players start apart: Luna runs first, Sol operates. Then the roles swap, with
     one thing different: Sol can't wade the moon pool, so the bridges must be switched twice.
     Sol's shelf sits seven rows above the end cell and is reached only by falling onto it. Luna
-    finishes with a six-wide leap over the well mouth into her alcove. 11 beats.
+    finishes with a six-wide leap over the well mouth into her alcove. 11 beats. A 2-wide
+    skylight in the booth's roof (x 29-30, rows 1-4) is over Sol's start, so his first jump rises
+    the full 99 px.
 23. **Eclipse.** Shape: a butterfly. The left wing (sun pools) is Sol's and mirrors Luna's
     right wing (moon pools), down to the levers: Sol's switches when he walks east through it,
     Luna's when she walks west. A body splits them, with a locked tunnel through its middle band. The wings fold into
