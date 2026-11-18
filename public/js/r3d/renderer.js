@@ -14,7 +14,7 @@ import { UnrealBloomPass } from '../../vendor/three/addons/postprocessing/Unreal
 import { OutputPass } from '../../vendor/three/addons/postprocessing/OutputPass.js';
 import { U, PAL, col, GlowField, textures, LIQ3 } from './kit.js';
 import { Character } from './characters.js';
-import { makeSky, makeAbyss, makeMotes, WorldDeco } from './world.js';
+import { makeSky, makeAbyss, makeMotes, makeMist, WorldDeco } from './world.js';
 import { DuskZone, makeVignette, BEND } from './zone.js';
 import { FX } from './fx.js';
 import { viewFor, disposeView, VIEWS } from './views.js';
@@ -32,6 +32,7 @@ class ViewportsPass extends Pass {
     const o = this.owner, pr = renderer.getPixelRatio();
     renderer.setRenderTarget(readBuffer);
     renderer.setClearColor(0x000000, 1);
+    renderer.clear();   // the whole buffer, including the gap between split viewports (bloom would pick it up)
     readBuffer.scissorTest = true;
     for (const vp of o.viewports) {
       readBuffer.viewport.set(vp.x * pr, vp.y * pr, vp.w * pr, vp.h * pr);
@@ -69,6 +70,11 @@ class CamRig {
       target.x += Math.sin(time * 0.3) * 0 + (this.i ? 1 : -1) * 4.5 * e; target.y += 4 * e; target.z += 5 * e;
     }
     if (!alive) { target.y += 1.2; look.set(p.x, Math.max(p.y, this.y - 4), -p.z); }
+    if (this.override) {   // debug close-ups (demo ?cam=dx,dy,dz): offset from the player in sim units, looking at them
+      const [dx, dy, dz] = this.override;
+      target.set(p.x + dx, p.y + dy, -(p.z + dz)); look.set(p.x, p.y + 0.75, -p.z);
+      this.pos = null;
+    }
     if (this.pos == null) { this.pos = target.clone(); this.look.copy(look); }
     const kp = Math.min(1, dt * (alive ? 9 : 2)), kl = Math.min(1, dt * (alive ? 10 : 3));
     this.pos.x += (target.x - this.pos.x) * kp;
@@ -97,7 +103,7 @@ export class Runner3DRenderer {
     this.cssW = canvas.clientWidth || 960; this.cssH = canvas.clientHeight || 540; this.dpr = 1;
 
     const scene = this.scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(PAL.fog, 38, 150);
+    scene.fog = new THREE.Fog(PAL.fog, 34, 125);
     textures();
 
     // lights: soft key from behind the camera, warm (sun) and cool (moon) rims from ahead
@@ -110,6 +116,7 @@ export class Runner3DRenderer {
     this.sky = makeSky(); scene.add(this.sky);
     this.abyss = makeAbyss(); scene.add(this.abyss);
     this.motes = makeMotes(); scene.add(this.motes);
+    this.mist = [makeMist(0), makeMist(1)]; for (const m of this.mist) scene.add(m);
     this.deco = new WorldDeco(scene);
     this.zoneFx = new DuskZone(); scene.add(this.zoneFx.group);
     this.glow = new GlowField(700); scene.add(this.glow.mesh);
@@ -119,8 +126,9 @@ export class Runner3DRenderer {
     // characters, their lights and blob shadows
     this.chars = [0, 1].map((i) => { const c = new Character(i); scene.add(c.root); return c; });
     this.plights = [0xffa850, 0x80c8ff].map((c) => { const l = new THREE.PointLight(c, 6, 7, 1.6); scene.add(l); return l; });
-    const shMat = new THREE.MeshBasicMaterial({ map: textures().shadow, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
-    this.shadows = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), shMat); m.renderOrder = 2; scene.add(m); return m; });
+    // one material per shadow: each has its own opacity
+    const shMat = () => new THREE.MeshBasicMaterial({ map: textures().shadow, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
+    this.shadows = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), shMat()); m.renderOrder = 2; scene.add(m); return m; });
 
     this.rigs = [new CamRig(0), new CamRig(1)];
     this.vign = this.rigs.map((rg, i) => { const v = makeVignette(1 + i); scene.add(v); return v; });
@@ -266,7 +274,7 @@ export class Runner3DRenderer {
   onDeath(L, S, i, q) {
     const why = S.why[i], x = q.x, y = q.y, z = -q.z, fx = this.fx;
     const info = { why };
-    if (why === 'spike') {
+    if (why === 'spike' || why === 'sweep' || why === 'gate') {
       fx.burst(x, y + 0.6, z, fx.cols.thorn, 50, 4.5, 0.9, 0.11, 6);
       fx.burst(x, y + 0.6, z, i ? fx.cols.moon : fx.cols.sun, 24, 3, 0.8, 0.08, 4);
     } else if (why === 'pool') {
@@ -278,6 +286,9 @@ export class Runner3DRenderer {
     } else if (why === 'zone') {
       fx.smoke(x, y, z, 24);
       for (let k = 0; k < 30; k++) fx.ember(x + (Math.random() - 0.5), y + Math.random() * 1.4, z + (Math.random() - 0.5));
+    } else if (why === 'blade' || why === 'orb' || why === 'shard') {
+      fx.burst(x, y + 0.7, z, i ? fx.cols.moon : fx.cols.sun, 46, 4.5, 0.9, 0.1, 5);
+      fx.dust(x, y, z, 14, i, 1.4);
     } else {
       fx.burst(x, y + 0.6, z, i ? fx.cols.moon : fx.cols.sun, 30, 2.5, 1.2, 0.1, -1);
     }
@@ -299,7 +310,7 @@ export class Runner3DRenderer {
     const land = this.observe(L, S, view);
 
     const pz = Math.max(view.p[0].z, view.p[1].z);
-    const zMin = view.zone - 30, zMax = pz + 160;
+    const zMin = view.zone - 30, zMax = pz + 125;
     this.glow.begin();
     // fractional tick of this frame: the view's zone lags S.zone by (1 - alpha) ticks of zone travel
     const alpha = S.v > 1e-6 ? Math.max(0, Math.min(1, 1 - (S.zone - view.zone) / S.v)) : 1;
@@ -331,11 +342,11 @@ export class Runner3DRenderer {
       const g = p.alive || deadT < 0.4 ? this.groundAt(q.x, q.z, q.y + 0.3, i, S, this.tick) : null;
       const sh = this.shadows[i];
       if (g && vis) {
-        const hgt = Math.max(0, q.y - g.y), k = Math.max(0, 1 - hgt / 7);
+        const hgt = Math.max(0, q.y - g.y), k = Math.max(0, 1 - hgt / 9);
         sh.visible = k > 0.02;
         sh.position.set(q.x, g.y + 0.02, -q.z);
-        const s = 0.95 * (0.55 + 0.45 * k); sh.scale.set(s, 1, s);
-        sh.material.opacity = 0.75 * k;
+        const s = 1.0 * (0.6 + 0.4 * k); sh.scale.set(s, 1, s);
+        sh.material.opacity = Math.min(1, 0.95 * Math.sqrt(k));
       } else sh.visible = false;
       // trail motes
       const sp = Math.hypot(p.vx, p.vz);
@@ -357,7 +368,7 @@ export class Runner3DRenderer {
     }
 
     // world deco
-    this.deco.update(view.zone - 30, pz + 170, (z) => this.courseY(z), time);
+    this.deco.update(view.zone - 30, pz + 135, (z) => this.courseY(z), time);
     this.glow.end();
     if (dt > 0) this.fx.update(dt);
 
@@ -384,6 +395,7 @@ export class Runner3DRenderer {
     const rg = this.rigs[vp.i], cam = rg.cam;
     this.sky.position.copy(cam.position);
     this.abyss.position.set(cam.position.x, this.lastCourseY - 34, cam.position.z - 150);
+    this.mist.forEach((m, k) => { m.position.set(cam.position.x, this.lastCourseY - 5 - k * 7, cam.position.z - 120); m.material.uniforms.uCam.value.copy(cam.position); });
     this.motes.material.uniforms.uCenter.value.set(cam.position.x, cam.position.y - 2, cam.position.z - 30);
     U.uPtScale.value = pxH / (2 * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2));
     this.renderer.render(this.scene, cam);

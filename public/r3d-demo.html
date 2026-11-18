@@ -16,7 +16,7 @@
 <canvas id="c"></canvas>
 <div id="hud"></div>
 <div id="help">Bots run both players. Take over Sol: arrows + Enter (jump). Luna: WASD + Space.
-?seed= ?split=1 ?me=1 ?z= ?kind= ?q=high|low ?count=1 ?bot=0 ?hud=0 ?auto=0</div>
+?seed= ?split=1 ?me=1 ?z= ?kind= ?q=high|low ?count=1 ?bot=0 ?hud=0 ?auto=0 ?cam=dx,dy,dz</div>
 <script type="module">
 import * as R3 from '/shared/runner3d.js';
 import { Runner3DRenderer } from '/js/r3d/renderer.js';
@@ -39,20 +39,22 @@ function topAt(x, z) {
   let best = null;
   for (const o of L.objs) {
     if (o.z0 > z + 1) break;
-    if (o.k === 'spikes' || o.k === 'pool') continue;
-    if (x >= o.x0 && x <= o.x1 && z >= o.z0 && z <= o.z1 && (best == null || o.y > best)) best = o.y;
+    if (o.k !== 'floor' && o.k !== 'ramp') continue;
+    const y = o.k === 'ramp' ? o.y + (o.y1 - o.y) * (z - o.z0) / (o.z1 - o.z0) : o.y;
+    if (x >= o.x0 && x <= o.x1 && z >= o.z0 && z <= o.z1 && (best == null || y > best)) best = y;
   }
   return best;
 }
-function placeAt(z) {
+function placeAt(z, cx = null) {
   R3.ensureGenerated(L, z + 200);
   S.zone = z - 9;
   S.lo = 0;
   for (let i = 0; i < 2; i++) {
     const p = S.p[i];
+    if (cx != null) p.x = cx + (i ? 0.7 : -0.7);
     let zz = z;
     for (let k = 0; k < 80 && topAt(p.x, zz) == null; k++) zz += 0.5;
-    p.z = zz; p.y = topAt(p.x, zz) ?? 0; p.vx = p.vy = p.vz = 0; p.gr = true; p.alive = true;
+    p.z = zz; p.y = topAt(p.x, zz) ?? 0; p.fy = p.y; p.vx = p.vy = p.vz = 0; p.gr = true; p.alive = true;
     S.dead[i] = -1; S.why[i] = '';
   }
   S.best = [S.p[0].z, S.p[1].z];
@@ -62,7 +64,9 @@ if (Q.has('kind')) {
   const kind = Q.get('kind');
   let found = null;
   for (let zz = 100; zz < 4000 && !found; zz += 100) { R3.ensureGenerated(L, zz); found = L.objs.find(o => o.k === kind); }
-  if (found) placeAt(Math.max(0, found.z0 - 7)); else console.warn('no object of kind', kind);
+  // start on the run-up of the section that holds it
+  const fi = L.objs.indexOf(found), sec = found && L.secs.find(s => fi >= s.o0 && fi < s.o1);
+  if (sec) placeAt(sec.sz, sec.sx); else if (found) placeAt(Math.max(0, found.z0 - 7)); else console.warn('no object of kind', kind);
 } else if (Q.has('z')) placeAt(num('z', 0));
 
 // --- input: bots by default; pressing a player's keys hands that player to the keyboard
@@ -86,7 +90,8 @@ function botBits(i) {
   for (let dx = -4; dx <= 4; dx += 0.5) {
     const x = p.x + dx; let s = 0;
     for (let a = 1; a <= 6; a++) if (safe(x, p.z + a)) s++;
-    s -= Math.abs(dx) * 0.15 + Math.abs(x) * 0.05;
+    const o = S.p[1 - i];
+    s -= Math.abs(dx) * 0.15 + Math.abs(x) * 0.05 + (o.alive && Math.abs(x - o.x) < 1.2 && Math.abs(o.z - p.z) < 3 ? 2.5 : 0) + (i ? (x < o.x ? 0.6 : 0) : (x > o.x ? 0.6 : 0));
     if (s > bestScore) { bestScore = s; tx = x; }
   }
   if (tx < p.x - 0.2) b |= R3.IN_L; else if (tx > p.x + 0.2) b |= R3.IN_R;
@@ -99,6 +104,7 @@ function botBits(i) {
 // --- loop: fixed 60 Hz sim, interpolated view
 const r = new Runner3DRenderer(canvas);
 if (Q.has('q')) r.setQuality(Q.get('q'));
+if (Q.has('cam')) { const c = Q.get('cam').split(',').map(Number); for (const rg of r.rigs) rg.override = c; }
 r.reset(L);
 const fit = () => r.resize(innerWidth, innerHeight, devicePixelRatio || 1);
 addEventListener('resize', fit); fit();
@@ -150,6 +156,16 @@ window.__r3d = {
   step(n = 1) { for (let k = 0; k < n; k++) { stepOnce(); simTime += 1 / 60; } },
   render() { r.renderer.info.reset(); r.draw(L, S, view(1), simTime, { split, me, paused: false }); return r.stats(); },
   place: placeAt, manual, ready: true,
+  // reset the renderer n times (rendering a few frames each) and report its GPU memory counts
+  leakCheck(n = 5) {
+    const out = [];
+    for (let k = 0; k < n; k++) {
+      r.reset(L);
+      for (let f = 0; f < 4; f++) { stepOnce(); simTime += 1 / 60; r.draw(L, S, view(1), simTime, { split, me, paused: false }); }
+      const m = r.renderer.info.memory; out.push([m.geometries, m.textures, r.views.size]);
+    }
+    return out;
+  },
 };
 </script>
 </body>

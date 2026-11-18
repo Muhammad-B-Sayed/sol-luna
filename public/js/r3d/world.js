@@ -29,7 +29,7 @@ export function makeSky() {
         c += warm * band * smoothstep(0.1, -0.9, side) * 0.38;
         c += cool * band * smoothstep(-0.1, 0.9, side) * 0.45;
         float sd = max(dot(d, uSun), 0.0), md = max(dot(d, uMoon), 0.0);
-        c += vec3(1.0, 0.45, 0.2) * pow(sd, 16.0) * 0.45 + vec3(1.0, 0.6, 0.3) * pow(sd, 220.0) * 1.1;
+        c += vec3(1.0, 0.45, 0.2) * pow(sd, 16.0) * 0.45 + vec3(1.0, 0.5, 0.22) * pow(sd, 260.0) * 0.8;
         c += vec3(0.35, 0.6, 1.0) * pow(md, 30.0) * 0.35;
         // soft drifting cloud bands
         vec2 q = vec2(atan(d.x, -d.z) * 3.0, e * 9.0);
@@ -37,8 +37,8 @@ export function makeSky() {
         cl = smoothstep(0.5, 0.9, cl) * exp(-abs(e - 0.12) * 9.0);
         c = mix(c, mix(vec3(0.45, 0.2, 0.35), vec3(0.2, 0.25, 0.45), smoothstep(-0.5, 0.5, side)), cl * 0.45);
         // sun disc (setting, half-veiled)
-        float sun = smoothstep(0.9985, 0.9992, sd);
-        c = mix(c, vec3(4.0, 2.3, 0.9), sun);
+        float sun = smoothstep(0.9989, 0.9994, sd);
+        c = mix(c, vec3(3.0, 1.45, 0.45), sun);
         // crescent moon
         float m1 = smoothstep(0.99935, 0.9996, md);
         vec3 mo = normalize(uMoon + vec3(0.013, 0.008, 0.0));
@@ -78,7 +78,7 @@ export function makeAbyss() {
         float n = vn(p + uTime * 0.03) * 0.6 + vn(p * 2.3 - uTime * 0.05) * 0.4;
         float vein = smoothstep(0.47, 0.5, n) * smoothstep(0.53, 0.5, n);
         float cx = exp(-abs(vW.x) * 0.05);
-        vec3 c = vec3(0.09, 0.045, 0.17) * (0.6 + 0.6 * cx) + vec3(0.35, 0.15, 0.55) * vein * 0.5 * cx;
+        vec3 c = vec3(0.03, 0.016, 0.06) * (0.7 + 0.9 * cx) + vec3(0.32, 0.12, 0.5) * vein * 0.45 * cx;
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -87,6 +87,32 @@ export function makeAbyss() {
   });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(700, 700).rotateX(-Math.PI / 2), mat);
   m.renderOrder = -9; m.frustumCulled = false;
+  return m;
+}
+
+// Mist below the course: a slow-drifting cloud layer the course seems to float over. Follows the camera.
+export function makeMist(layer = 0) {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: U.uTime, uCam: { value: new THREE.Vector3() }, uLayer: { value: layer } },
+    vertexShader: `varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `varying vec3 vW; uniform float uTime; uniform vec3 uCam; uniform float uLayer;
+      float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+      float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
+      void main() {
+        vec2 p = vW.xz * (0.045 + uLayer * 0.02) + vec2(uTime * 0.012, uTime * (0.02 + uLayer * 0.01));
+        float n = vn(p) * 0.55 + vn(p * 2.3 + 7.0) * 0.3 + vn(p * 5.1 - 3.0) * 0.15;
+        float d = length(vW.xz - uCam.xz);
+        float a = smoothstep(0.35, 0.8, n) * (1.0 - smoothstep(60.0, 150.0, d)) * smoothstep(3.0, 14.0, d) * (0.32 - uLayer * 0.1);
+        vec3 c = mix(vec3(0.2, 0.12, 0.34), vec3(0.42, 0.28, 0.58), n);
+        gl_FragColor = vec4(c, a);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+    transparent: true, depthWrite: false, fog: false,
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(320, 320).rotateX(-Math.PI / 2), mat);
+  m.frustumCulled = false; m.renderOrder = 3 - layer;
   return m;
 }
 
@@ -200,6 +226,11 @@ function silhouetteChunk(ci, side) {
     }
   }
   const g = THREE.mergeGeometries(parts.map(p => (p.index ? p.toNonIndexed() : p)).map(p => { p.deleteAttribute('uv'); p.deleteAttribute('normal'); return p; }));
+  {
+    const pos = g.attributes.position, c = new Float32Array(pos.count * 3), lo = col(0x4a3870), hi = col(0x150e28), t = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) { t.copy(lo).lerp(hi, Math.max(0, Math.min(1, (pos.getY(i) + 26) / 55))); c[i * 3] = t.r; c[i * 3 + 1] = t.g; c[i * 3 + 2] = t.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+  }
   const wg = wins.length ? THREE.mergeGeometries(wins.map(p => { p.deleteAttribute('uv'); p.deleteAttribute('normal'); return p; })) : null;
   return { g, wg };
 }
@@ -211,8 +242,8 @@ export class WorldDeco {
     const M = materials();
     this.pillarMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, flatShading: true }), { key: 'pil' });
     this.archMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, flatShading: true, map: null }), { key: 'arc' });
-    this.silMat = new THREE.MeshBasicMaterial({ color: 0x1a1230, fog: true });
-    this.silMat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n float ff = smoothstep(fogNear, fogFar, vFogDepth) * 0.55;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, ff);\n#endif'); };
+    this.silMat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: true });
+    this.silMat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n float ff = 0.2 + smoothstep(fogNear, fogFar * 1.6, vFogDepth) * 0.5;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.16, 0.1, 0.25), ff);\n#endif'); };
     this.silMat.customProgramCacheKey = () => 'sil';
     this.winMats = [new THREE.MeshBasicMaterial({ color: col(0xffb860).multiplyScalar(1.6), fog: false }), new THREE.MeshBasicMaterial({ color: col(0x8fd0ff).multiplyScalar(1.4), fog: false })];
     this.pillarG = pillarGeometry();

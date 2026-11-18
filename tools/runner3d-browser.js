@@ -102,6 +102,7 @@ async function page(url) {
       for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await cmd('Input.dispatchMouseEvent', { type, x: r.x, y: r.y, button: 'left', clickCount: 1 }, sessionId);
       return r;
     },
+    async mouse(type, x, y) { await cmd('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 }, sessionId); },
     async shot(name) {
       let r;   // a background tab's capture sometimes fails in headless: bring it forward and retry
       for (let k = 0; ; k++) {
@@ -130,6 +131,9 @@ function check(name, ok, info = '') { console.log(`${ok ? 'ok  ' : 'FAIL'} ${nam
 const ST = `(() => { const r = window.__runner3d, S = r.S; if (!S) return null; return { active: r.active, online: r.online, rend: r.rendKind, seed: S.seed, tick: S.tick, phase: S.phase, zone: S.zone, win: S.win,
   p: S.p.map(p => ({ x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), alive: p.alive, jumpN: p.jumpN })), screen: document.body.dataset.screen, corr: r.corr, rerr: r.renderErrors.length } })()`;
 const screen = (P) => P.eval('document.body.dataset.screen');
+// is a keydown with this code default-prevented when it starts on the given element?
+const BLOCKED = (code, on = 'document.body') => `(() => { const e = new KeyboardEvent('keydown', { code: '${code}', bubbles: true, cancelable: true }); (${on}).dispatchEvent(e);
+  (${on}).dispatchEvent(new KeyboardEvent('keyup', { code: '${code}', bubbles: true })); return e.defaultPrevented })()`;   // release it: the game tracks held keys
 
 try {
   if (ONLY !== 'online' && ONLY !== 'webgl') {
@@ -144,6 +148,8 @@ try {
     check('local: Runner 3D starts from the title menu button', s && s.active && !s.online && s.phase === 0 && s.screen === 'game', JSON.stringify({ phase: s?.phase, screen: s?.screen }));
     console.log('    renderer:', s.rend);
     const vis = await A.eval(`(() => ({ g2: getComputedStyle(document.querySelector('#game')).display, g3: getComputedStyle(document.querySelector('#game3d')).display, hud: getComputedStyle(document.querySelector('#r3Hud')).display }))()`);
+    const blk = await A.eval(`[${['Slash', 'ShiftRight', 'Space', 'ArrowDown'].map(c => BLOCKED(c)).join(',')}, ${BLOCKED('Slash', "document.querySelector('#joinCode')")}]`);
+    check('local: / Shift Space arrows are kept from the page while playing, not in a text field', blk.slice(0, 4).every(Boolean) && !blk[4], JSON.stringify(blk));
     check('local: 3D canvas and HUD shown, 2D canvas hidden', vis.g2 === 'none' && vis.g3 === 'block' && vis.hud === 'block', JSON.stringify(vis));
     await sleep(1200);
     await A.shot(FP + 'local-countdown');
@@ -212,6 +218,7 @@ try {
     await A.tap('KeyP'); await sleep(200);
     await A.click('#r3pQuit'); await sleep(400);
     const q = await A.eval(`({ screen: document.body.dataset.screen, active: window.__runner3d.active, r3d: document.body.classList.contains('r3d'), g2: getComputedStyle(document.querySelector('#game')).display })`);
+    check('local: / is left alone again on the title screen', !(await A.eval(BLOCKED('Slash'))));
     check('local: quit returns to the title and restores the 2D canvas', q.screen === 'menu' && !q.active && !q.r3d && q.g2 !== 'none', JSON.stringify(q));
     check('local: no renderer errors', s6.rerr === 0);
 
@@ -295,6 +302,21 @@ try {
     await G.waitFor(`window.__runner3d.S && window.__runner3d.S.seed !== ${o1[0].seed} && document.body.dataset.screen === 'game'`, 4000);
     const o3 = await Promise.all([H, G].map(P => P.eval(ST)));
     check('online: rematch gives both a new course from the server', o3[0].seed === o3[1].seed && o3[0].seed !== o1[0].seed && o3.every(s => s.phase === 0 && s.screen === 'game'), JSON.stringify(o3.map(s => s.seed)));
+    // touch: the guest pretends to be a touch device and runs with the thumb pad, then jumps
+    await G.eval(`document.body.classList.add('touch')`);
+    const pad = await G.eval(`(() => { const s = document.querySelector('#r3Touch .r3-stick').getBoundingClientRect(), j = document.querySelector('#r3Touch .r3-jump').getBoundingClientRect();
+      return { vis: getComputedStyle(document.querySelector('#r3Touch')).display, sx: s.x + s.width / 2, sy: s.y + 6, jx: j.x + j.width / 2, jy: j.y + j.height / 2 } })()`);
+    await G.waitFor('window.__runner3d.S.phase === 1', 8000);
+    const t0 = await G.eval(ST);
+    await G.send('Page.bringToFront');
+    await G.mouse('mouseMoved', pad.sx, pad.sy); await G.mouse('mousePressed', pad.sx, pad.sy);
+    const ran = await G.waitFor(`window.__runner3d.S.p[${guestMe}].z > ${t0.p[guestMe].z + 2}`, 8000, 30);
+    await G.mouse('mouseReleased', pad.sx, pad.sy);
+    await G.waitFor(`window.__runner3d.S.p[${guestMe}].gr`, 5000, 30);
+    const j0 = await G.eval(`window.__runner3d.S.p[${guestMe}].jumpN`);
+    await G.mouse('mouseMoved', pad.jx, pad.jy); await G.mouse('mousePressed', pad.jx, pad.jy); await sleep(100); await G.mouse('mouseReleased', pad.jx, pad.jy);
+    const jumpedT = await G.waitFor(`window.__runner3d.S.p[${guestMe}].jumpN > ${j0}`, 3000, 30);
+    check('online: touch pad shows on a touch device; the stick runs forward and the button jumps', pad.vis === 'flex' && ran && jumpedT, JSON.stringify({ vis: pad.vis, ran, jumpedT }));
     await G.tap('Escape'); await sleep(200);
     check('online: guest pause card offers "Back to room"', (await screen(G)) === 'r3Pause' && !(await G.eval(`document.querySelector('#r3pRoom').hidden`)));
     await G.click('#r3pRoom');

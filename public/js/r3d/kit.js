@@ -161,21 +161,25 @@ export function textures() {
     }
     g.restore();
   }, { srgb: false });
-  // A strip of glowing runes (repeats along u).
+  // A strip of glowing runes (repeats along u): sun, moon and star marks, no letter shapes.
   _tex.runes = canvasTex(512, 64, (g) => {
-    g.strokeStyle = '#fff'; g.lineWidth = 4; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineWidth = 3.5; g.lineCap = 'round'; g.lineJoin = 'round';
+    const TAU = Math.PI * 2;
     for (let k = 0; k < 8; k++) {
-      const x = k * 64 + 32, y = 32, s = 18, t = Math.floor(hash(k, 77) * 6);
+      const x = k * 64 + 32, y = 32, s = 15, t = k % 8;
       g.beginPath();
-      if (t === 0) { g.arc(x, y, s * 0.7, 0, Math.PI * 2); g.moveTo(x, y - s); g.lineTo(x, y + s); }
-      else if (t === 1) { g.moveTo(x - s, y + s); g.lineTo(x, y - s); g.lineTo(x + s, y + s); g.moveTo(x - s * 0.5, y + 2); g.lineTo(x + s * 0.5, y + 2); }
-      else if (t === 2) { g.arc(x, y, s * 0.8, Math.PI * 0.3, Math.PI * 1.7); g.moveTo(x + s * 0.2, y - s); g.lineTo(x + s * 0.2, y + s); }
-      else if (t === 3) { g.moveTo(x - s, y); g.lineTo(x + s, y); g.moveTo(x, y - s); g.lineTo(x, y + s); g.moveTo(x - s * 0.6, y - s * 0.6); g.lineTo(x + s * 0.6, y + s * 0.6); }
-      else if (t === 4) { g.moveTo(x - s, y - s); g.lineTo(x + s, y - s); g.lineTo(x - s, y + s); g.lineTo(x + s, y + s); }
-      else { g.arc(x, y, s * 0.4, 0, Math.PI * 2); g.moveTo(x - s, y + s); g.lineTo(x - s * 0.4, y + s * 0.4); g.moveTo(x + s, y + s); g.lineTo(x + s * 0.4, y + s * 0.4); g.moveTo(x, y - s); g.lineTo(x, y - s * 0.4); }
+      if (t === 0) { g.arc(x, y, s * 0.45, 0, TAU); for (let a = 0; a < 8; a++) { const c = Math.cos(a * TAU / 8), d = Math.sin(a * TAU / 8); g.moveTo(x + c * s * 0.7, y + d * s * 0.7); g.lineTo(x + c * s, y + d * s); } }
+      else if (t === 1) { g.arc(x, y, s * 0.85, Math.PI * 0.35, Math.PI * 1.65); g.arc(x + s * 0.4, y, s * 0.62, Math.PI * 1.45, Math.PI * 0.55, true); g.closePath(); }
+      else if (t === 2) { g.moveTo(x, y - s); g.lineTo(x + s * 0.7, y); g.lineTo(x, y + s); g.lineTo(x - s * 0.7, y); g.closePath(); g.stroke(); g.beginPath(); g.arc(x, y, 3, 0, TAU); g.fill(); g.beginPath(); }
+      else if (t === 3) { g.arc(x, y, s * 0.9, 0, TAU); g.moveTo(x + s * 0.4, y); g.arc(x, y, s * 0.4, 0, TAU); }
+      else if (t === 4) { for (let a = 0; a < 4; a++) { const c = Math.cos(a * TAU / 4), d = Math.sin(a * TAU / 4); g.moveTo(x, y); g.quadraticCurveTo(x + (c - d) * s * 0.25, y + (d + c) * s * 0.25, x + c * s, y + d * s); g.quadraticCurveTo(x + (c + d) * s * 0.25, y + (d - c) * s * 0.25, x, y); } }
+      else if (t === 5) { g.arc(x - s * 0.3, y, s * 0.6, Math.PI * 0.5, Math.PI * 1.5); g.moveTo(x + s * 0.3, y - s * 0.6); g.arc(x + s * 0.3, y, s * 0.6, -Math.PI * 0.5, Math.PI * 0.5); g.moveTo(x, y - s); g.lineTo(x, y + s); }
+      else if (t === 6) { g.arc(x, y - s * 0.35, s * 0.5, Math.PI, 0); g.moveTo(x - s, y + s * 0.3); g.lineTo(x + s, y + s * 0.3); g.moveTo(x - s * 0.5, y + s * 0.75); g.lineTo(x + s * 0.5, y + s * 0.75); }
+      else { g.arc(x, y, s * 0.8, Math.PI * 0.2, Math.PI * 1.8); g.stroke(); g.beginPath(); g.arc(x + s * 0.2, y, 3.2, 0, TAU); g.fill(); g.beginPath(); }
       g.stroke();
+      g.beginPath(); g.arc(k * 64, y, 2.2, 0, TAU); g.fill();
     }
-    g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(0, 4, 512, 2); g.fillRect(0, 58, 512, 2);
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(0, 5, 512, 2); g.fillRect(0, 57, 512, 2);
   }, { repeat: true, srgb: false });
   return _tex;
 }
@@ -268,6 +272,7 @@ export function materials() {
     blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), { additive: true, key: 'im' });
   _mats.runes = patchWorld(new THREE.MeshBasicMaterial({ map: T.runes, color: col(0xc9b6ff).multiplyScalar(1.3), transparent: true,
     blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), { additive: true, key: 'ru' });
+  _mats.stonePlain = patchWorld(new THREE.MeshStandardMaterial({ color: 0x5c5084, roughness: 0.85, metalness: 0.05, flatShading: true }), { key: 'sp' });
   _mats.metal = patchWorld(new THREE.MeshStandardMaterial({ color: 0x6e6390, roughness: 0.45, metalness: 0.7 }), { key: 'me' });
   _mats.gold = patchWorld(new THREE.MeshStandardMaterial({ color: 0xc89a4a, roughness: 0.35, metalness: 0.8, emissive: 0x2a1500 }), { key: 'go' });
   return _mats;
@@ -360,6 +365,7 @@ export class GlowField {
           vUv = position.xy + 0.5; vCol = aCol;
           vB = 1.0 - smoothstep(-0.5, 4.0, aOff.z - uZone);
           vec4 mv = viewMatrix * vec4(aOff.xyz, 1.0);
+          vB *= smoothstep(1.0, 4.5, -mv.z);   // fade glows that come right up to the camera
           mv.xy += position.xy * aOff.w;
           gl_Position = projectionMatrix * mv;
         }`,
@@ -424,7 +430,7 @@ export function liquidMaterial(el) {
         w = w * 0.5 + 0.5;
         vec3 c = mix(cB, cA, smoothstep(0.15, 0.75, w));
         c = mix(c, cHi, smoothstep(0.78, 0.98, w));
-        float glowK = uEl > 1.5 ? 0.9 : 1.6;
+        float glowK = uEl > 1.5 ? 0.85 : 0.95;
         gl_FragColor = vec4(c * glowK, 0.92);
         float behind = smoothstep(-0.5, 5.0, vW.z - uZone);
         gl_FragColor.rgb = mix(gl_FragColor.rgb, uDuskCol, behind * 0.92);

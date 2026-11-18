@@ -70,17 +70,19 @@ function objKey(L, S, o0, o1) {
 }
 
 // One tick with `bits` for `who`; the other player's input comes from other(tick).
-export function tick(L, S, who, bits, other) {
+// hook(S), if given, runs after the step (the checker uses it to pin a parked partner).
+export function tick(L, S, who, bits, other, hook) {
   const inp = [0, 0];
   inp[who] = bits; inp[1 - who] = other ? other(S.tick) : 0;
   stepRunner3d(L, S, inp);
+  if (hook) hook(S);
 }
 
 // opts: goalObj (stand on this object index or any later one: the next section's run-up or
 // beyond), or goal (z) and goalY (feet at least this high), deadline (tick, inclusive), other(tick) -> bits,
 // budget (expansions), o0/o1 (object range whose state matters), until(S, p) custom goal test.
 export function search(L, S0, who, opts) {
-  const { goal = -Infinity, goalObj = -1, goalY = -Infinity, deadline = Infinity, other = null, budget = 3000, o0 = 0, o1 = 0, until = null, tw = 0.0013 } = opts;
+  const { goal = -Infinity, goalObj = -1, goalY = -Infinity, deadline = Infinity, other = null, hook = null, budget = 3000, o0 = 0, o1 = 0, until = null, tw = 0.0013 } = opts;
   const t0 = S0.tick;
   const done = until || (goalObj >= 0 ? (S, p) => p.gr && p.gref >= goalObj : (S, p) => p.gr && p.z >= goal && p.y >= goalY - 0.05);
   const heap = new Heap();
@@ -95,7 +97,7 @@ export function search(L, S0, who, opts) {
       const runs = [];
       let res = 0;   // 0 running, 1 goal, -1 dead/late
       const one = (bits) => {
-        tick(L, S, who, bits, other);
+        tick(L, S, who, bits, other, hook);
         const r = runs[runs.length - 1];
         if (r && r[0] === bits) r[1]++; else runs.push([bits, 1]);
         if (!p.alive || S.tick > deadline) res = -1;
@@ -129,10 +131,10 @@ export function solve(L, S, who, opts) {
     { tw: 0.004, budget: 4 * B },
   ];
   let exp = 0;
-  for (const t of tries) {
+  for (const t of tries.slice(0, opts.rungs || tries.length)) {
     let S0 = cloneRunner3d(S);
     const pre = t.pre || [];
-    for (const b of pre) tick(L, S0, who, b, opts.other || null);
+    for (const b of pre) tick(L, S0, who, b, opts.other || null, opts.hook || null);
     if (!S0.p[who].alive || (opts.deadline !== undefined && S0.tick > opts.deadline)) continue;
     const r = search(L, S0, who, { ...opts, tw: t.tw, budget: t.budget });
     exp += r.exp;
