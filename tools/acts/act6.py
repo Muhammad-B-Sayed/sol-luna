@@ -35,106 +35,98 @@ def gate_plat(L, x, y0, y1, g, inv=False):
     return L.plat(x, y0, 1, h, 0, -h, g, inv)
 
 
-# the heart: (row, first x, last x) of air, two lobes over a point
-HEART = [(8, 18, 20), (8, 23, 25), (9, 17, 26), (10, 16, 27), (11, 16, 27), (12, 17, 26),
-         (13, 18, 25), (14, 19, 24), (15, 20, 23), (16, 21, 22)]
-
-
 @level(32)
 def heart_of_twilight():
-    """Heart of Twilight, the finale. Eight floors wrap a heart-shaped chamber in the middle of the
-    screen: the start hall under its point, four stacked floors in each wing (Sol's west, Luna's
-    east), and the top floor over its lobes with a ferry across a shade pit. The heart holds both
-    doors, one in each lobe, behind four gates in a row: orange and white open while a crate sits
-    in each socket, pink while the pink lever is on, and yellow while the yellow lever is off.
-    Every colour has two jobs, so the colours on the lifts are chosen so that no press ever moves
-    a lift someone has just loaded.
+    """Heart of Twilight, the finale. Each wing is four bands seven rows apart (floors 28, 21, 14, 7),
+    so every jump in the room has its full arc. The start hall sits under the heart; Sol's wing
+    is west, Luna's east, the top floor spans the room with a ferry over a shade pit, and the
+    heart in the middle holds both doors behind four floor gates in a row: orange and white open
+    while a crate sits in each socket, pink while the pink lever is on, yellow while the yellow
+    lever is off. Each wing's climb is four steps, and each is worked from the other wing: a lift
+    up to band 1, a gate across band 1, a lift to band 2 and a lift to the top.
 
     1. Both start in the hall. Sol holds orange at its west end: Luna's gate opens and she wades
-       her moon channel into the east wing.
-    2. Luna holds white there: Sol's gate opens and he wades his sun channel into the west wing.
-    3. Each pushes their crate off a ledge onto the first lift and gets behind it.
-    4. The climb, eight lifts, each worked from the other wing: Sol green (Luna and crate 1 up),
-       Luna purple (Sol and crate 0 up), Sol orange, Luna white, Sol purple, Luna green, Sol
-       orange (Luna reaches the top). On every floor the rider pushes the crate across to the
-       next lift, jumping over it when it has to go the other way, and steps clear before the
-       partner lets go.
-    5. Luna pushes crate 1 east along the top and down chute B into the white socket.
-    6. Luna holds purple on the top floor: the last lift brings Sol up. He pushes crate 0 west down
-       chute A into the orange socket.
-    7. Sol rides the ferry east while Luna holds pink, turns the yellow lever off at the far east
-       end, and rides back when she steps off.
-    8. Sol holds pink on the west landing: Luna rides the ferry west. She turns the pink lever on
-       at the far west end (the ferry now stays east, which no longer matters).
-    9. Both drop down chute A onto crate 0, walk east through the four open gates into the heart,
-       climb into the opposite lobe for a gem, and stand at their doors."""
-    L = Lv('Heart of Twilight', 105, 'The heart opens only when both crates sit in their sockets and both levers are set.')
+       her moon channel into the east wing. She holds white there: Sol wades his sun channel west.
+    2. Each pushes their crate onto their wing's first lift. Sol holds green: Luna and crate 1 rise.
+       She parks the crate at her band-1 gate and holds purple: Sol and crate 0 rise.
+    3. Sol parks his crate at his gate and holds orange: Luna's gate opens, her crate goes through
+       onto her next lift, and she holds white: Sol's gate opens and his crate reaches his lift.
+    4. Sol holds purple: Luna and crate 1 rise to band 2. She loads the crate on her top lift and
+       holds green: Sol and crate 0 rise. He loads his crate and holds orange: Luna rides to the
+       top and pushes crate 1 down chute B into the white socket. She holds purple on the top
+       floor: Sol rides up and pushes crate 0 down chute A into the orange socket.
+    5. Luna holds pink: the ferry carries Sol east, where he turns the yellow lever off at the far
+       end. She lets go and he rides back. He holds pink: the ferry fetches Luna, and she turns the
+       pink lever on at the far west end.
+    6. Both drop back into band 2, walk east over crate 0 through the four open gates into the
+       heart, take a gem from its sunken point and one from the opposite lobe, and make the full
+       4-tile jump up into their own lobe to stand at their doors.
+
+    Signature jumps: the 4-tile climbs to the corner shelves in band 0 and into the lobes, and
+    the 4-wide leaps over the lift holes on the top floor."""
+    L = Lv('Heart of Twilight', 100, 'The heart opens only when both crates sit in their sockets and both levers are set.')
     C = canvas()
-    # --- the heart, its ramped floor, and the doors at its point
-    for (y, x0, x1) in HEART:
-        paint(C, x0, y, x1, y)
-    for (x, y) in ((16, 12), (17, 13), (18, 14), (19, 15), (20, 16)):
-        C[y][x] = '\\'
-    for (x, y) in ((27, 12), (26, 13), (25, 14), (24, 15), (23, 16)):
-        C[y][x] = '/'
-    paint(C, 18, 11, 20, 11, '#'); paint(C, 23, 11, 25, 11, '#')   # a ledge under each lobe
-    put(C, 19, 10, 'B'); put(C, 24, 10, 'A')                   # Luna's door in the left lobe, Sol's in the right
-    # the four locks into the heart (gates x12-15) and their slots
-    paint(C, 11, 10, 15, 11); paint(C, 12, 8, 15, 9)
-    # --- the top floor: pink lever L1 (west end), yellow lever L2 (east end), the ferry pit
-    paint(C, 1, 2, 38, 5)
-    paint(C, 11, 5, 13, 5, '#'); paint(C, 28, 5, 28, 5, '#')    # raised landings either side of the pit
-    for x in (14, 20, 25):
-        put(C, x, 2, '#')                                    # hanging stones
-    paint(C, 1, 6, 2, 6); put(C, 4, 5, '^')                  # chute A, L1
-    paint(C, 8, 6, 10, 6)                                    # WT arrival hole
-    paint(C, 14, 6, 27, 6); put(C, 14, 7, 'XXXXXXXXXXXXXX')      # the pit the ferry crosses
-    paint(C, 29, 6, 31, 6); put(C, 35, 5, '&'); paint(C, 37, 6, 38, 6)   # ET hole, L2, chute B
-    put(C, 12, 4, '5'); put(C, 28, 4, '1'); put(C, 32, 5, '5')   # pink ferry plates; purple plate for WT
-    # --- west wing (Sol): W2 rows 9-11, W1.5 rows 13-15, W1 rows 17-19, W0 rows 22-27
-    paint(C, 1, 9, 10, 11); paint(C, 1, 7, 2, 8); paint(C, 8, 7, 10, 8)
-    paint(C, 1, 12, 2, 12); put(C, 1, 12, '3')               # socket A (orange)
-    paint(C, 3, 13, 11, 15); paint(C, 1, 14, 2, 15)          # W1.5
-    paint(C, 5, 12, 7, 16); paint(C, 8, 12, 10, 12); paint(C, 8, 16, 10, 20)   # WU, WT rest, WM
-    paint(C, 1, 17, 11, 19); paint(C, 1, 20, 4, 27)          # W1, WL shaft
-    paint(C, 1, 22, 9, 27); paint(C, 1, 28, 4, 28)
-    # --- east wing (Luna): the mirror image
-    paint(C, 29, 9, 38, 11); paint(C, 37, 7, 38, 8); paint(C, 29, 7, 31, 8)
-    paint(C, 37, 12, 38, 12); put(C, 38, 12, '4')            # socket B (white)
-    paint(C, 28, 13, 36, 15); paint(C, 37, 14, 38, 15)       # E1.5
-    paint(C, 32, 12, 34, 16); paint(C, 29, 12, 31, 12); paint(C, 29, 16, 31, 20)
-    paint(C, 28, 17, 38, 19); paint(C, 35, 20, 38, 27)
-    paint(C, 30, 22, 38, 27); paint(C, 35, 28, 38, 28)
-    # --- the start hall under the heart, and the two personal channels out of it
-    paint(C, 13, 22, 26, 27); paint(C, 17, 20, 22, 21); paint(C, 19, 26, 20, 27, '#'); paint(C, 22, 22, 24, 23, '#')
-    paint(C, 13, 22, 14, 25, '#'); paint(C, 25, 22, 26, 25, '#')     # the hall is narrower; channel mouths
-    paint(C, 10, 26, 14, 27); put(C, 10, 28, 'SSS'); paint(C, 13, 24, 13, 25)
-    paint(C, 25, 26, 29, 27); put(C, 27, 28, 'MMM'); paint(C, 26, 24, 26, 25)
-    paint(C, 5, 27, 8, 27, '#'); paint(C, 31, 27, 34, 27, '#')    # raised floors in the bottom wings
-    paint(C, 17, 22, 18, 22, '#')                                  # a ledge under the hall's alcove
-    # plates. Sol's side works Luna's lifts: green W0 (EL), orange W1 (EM), purple W1.5 (EU), orange W2 (ET).
-    # Luna's side works Sol's: purple E1 (WL), white E1.5 (WM), green E2 (WU), purple top (WT).
-    put(C, 7, 26, '2'); put(C, 11, 19, '3'); put(C, 2, 15, '1'); put(C, 3, 11, '3')
-    put(C, 28, 19, '1'); put(C, 37, 15, '4'); put(C, 36, 11, '2')
-    put(C, 16, 27, '3'); put(C, 32, 26, '4')                      # the hall gates' plates, far from their gates
-    for x, y in ((1, 24), (3, 13), (4, 9), (15, 24), (19, 8), (29, 3)):
+    # ---- the top floor (stand 6): the ferry runs over a shade pit, a step up from either landing
+    paint(C, 1, 1, 38, 6)
+    paint(C, 19, 1, 20, 3, '#')                              # a stone hanging over the pit
+    paint(C, 1, 1, 2, 2, '#'); paint(C, 37, 1, 38, 2, '#')
+    put(C, 13, 6, '#'); put(C, 26, 6, '#')                   # the ferry landings
+    put(C, 14, 7, 'X' * 12)                                  # the pit
+    paint(C, 5, 7, 7, 7); paint(C, 10, 7, 11, 7)             # WT's hole, chute A
+    paint(C, 28, 7, 29, 7); paint(C, 32, 7, 34, 7)           # chute B, ET's hole
+    put(C, 2, 6, '^'); put(C, 12, 6, '5'); put(C, 27, 6, '5'); put(C, 35, 6, '1'); put(C, 37, 6, '&')
+    # ---- band 2 (stand 13): rows 8-13; each wing's socket is a dip beside the middle
+    paint(C, 1, 8, 12, 13); paint(C, 28, 8, 38, 13)
+    paint(C, 1, 14, 3, 14); paint(C, 5, 14, 7, 14)           # WU's hole, WT at rest
+    paint(C, 10, 14, 11, 14); put(C, 10, 14, '3')            # socket A (orange)
+    paint(C, 36, 14, 38, 14); paint(C, 32, 14, 34, 14)
+    paint(C, 28, 14, 29, 14); put(C, 29, 14, '4')            # socket B (white)
+    put(C, 4, 13, '3'); put(C, 35, 13, '2')                  # Sol's orange (ET), Luna's green (WU)
+    # the four locks: full-height floor gates in x13-16 that sink into rows 14-19
+    paint(C, 13, 8, 16, 19)
+    # the heart: two lobes in the outer walls hold the doors; the point sinks between them
+    paint(C, 17, 8, 25, 13)
+    paint(C, 17, 10, 18, 10, '#'); paint(C, 24, 10, 25, 10, '#')   # lobe floors (stand 9): a full jump up
+    paint(C, 20, 14, 22, 16)                                 # the point, three deep (stand 16)
+    put(C, 17, 9, 'B'); put(C, 25, 9, 'A')                   # Luna's door left, Sol's right
+    # ---- band 1 (stand 20): rows 15-20; a gate wall splits each wing
+    paint(C, 1, 15, 11, 20); paint(C, 28, 15, 38, 20)
+    paint(C, 1, 21, 3, 21); paint(C, 9, 21, 11, 21)          # WU at rest, WL's hole
+    paint(C, 36, 21, 38, 21); paint(C, 28, 21, 30, 21)
+    paint(C, 5, 15, 6, 16, '#'); paint(C, 6, 17, 6, 18, '#') # Sol's gate wall (white gate x5)
+    paint(C, 33, 15, 34, 16, '#'); paint(C, 33, 17, 33, 18, '#')   # Luna's (orange gate x34)
+    paint(C, 10, 15, 11, 15, '#'); paint(C, 28, 15, 29, 15, '#')   # under the sockets
+    put(C, 4, 20, '1'); put(C, 8, 20, '3'); put(C, 31, 20, '1'); put(C, 35, 20, '4')
+    # ---- band 0 (stand 27): rows 22-27; a high corner shelf in each wing
+    paint(C, 1, 22, 12, 27); paint(C, 27, 22, 38, 27)
+    paint(C, 1, 24, 3, 27, '#'); paint(C, 36, 24, 38, 27, '#')
+    paint(C, 9, 28, 11, 28); paint(C, 28, 28, 30, 28)        # WL and EL at rest
+    put(C, 12, 27, '2'); put(C, 27, 27, '4')                 # Sol's green (EL), Luna's white (his hall gate)
+    # the hall and the two personal channels out of it
+    paint(C, 17, 21, 22, 27); paint(C, 13, 26, 26, 27)
+    put(C, 13, 28, 'SSS'); put(C, 24, 28, 'MMM')
+    paint(C, 16, 24, 16, 25); paint(C, 23, 24, 23, 25)       # the hall gates' slots
+    paint(C, 18, 27, 21, 27, '#')                            # a dais
+    put(C, 17, 27, '3')                                      # Sol's orange: Luna's way out
+    put(C, 19, 26, 'a'); put(C, 20, 26, 'b')
+    put(C, 8, 27, 'k'); put(C, 31, 27, 'k')
+    for x, y in ((18, 21), (20, 16), (2, 23), (9, 9), (18, 9), (38, 6)):
         put(C, x, y, 's')
-    for x, y in ((38, 24), (36, 13), (35, 9), (24, 24), (24, 8), (10, 3)):
+    for x, y in ((21, 21), (22, 16), (37, 23), (30, 9), (24, 9), (1, 6)):
         put(C, x, y, 'm')
-    put(C, 15, 27, 'a'); put(C, 24, 27, 'b'); put(C, 5, 26, 'k'); put(C, 34, 26, 'k')
     flush(L, C)
-    L.plat(1, 28, 4, 1, 0, -8, 0)          # WL (purple): W0 -> W1, crate 0 rides on it
-    L.plat(8, 20, 3, 1, 0, -4, 3)          # WM (white): W1 -> W1.5
-    L.plat(5, 16, 3, 1, 0, -4, 1)          # WU (green): W1.5 -> W2
-    L.plat(8, 12, 3, 1, 0, -6, 0)          # WT (purple): W2 -> top
-    L.plat(35, 28, 4, 1, 0, -8, 1)         # EL (green): E0 -> E1, crate 1 rides on it
-    L.plat(29, 20, 3, 1, 0, -4, 2)         # EM (orange): E1 -> E1.5
-    L.plat(32, 16, 3, 1, 0, -4, 0)         # EU (purple): E1.5 -> E2
-    L.plat(29, 12, 3, 1, 0, -6, 2)         # ET (orange): E2 -> top
-    L.plat(14, 6, 3, 1, 11, 0, 4)          # the ferry (pink)
-    for x, g, inv in ((12, 2, False), (13, 3, False), (14, 4, False), (15, 5, True)):
-        gate_plat(L, x, 10, 11, g, inv)    # yellow is inverted: L2 starts on, and must be turned off
+    L.plat(9, 28, 3, 1, 0, -7, 0)          # WL (purple): band 0 -> 1, Sol and crate 0
+    L.plat(1, 21, 3, 1, 0, -7, 1)          # WU (green): band 1 -> 2
+    L.plat(5, 14, 3, 1, 0, -7, 0)          # WT (purple): band 2 -> top
+    L.plat(28, 28, 3, 1, 0, -7, 1)         # EL (green): Luna and crate 1
+    L.plat(36, 21, 3, 1, 0, -7, 0)         # EU (purple)
+    L.plat(32, 14, 3, 1, 0, -7, 2)         # ET (orange)
+    L.plat(14, 6, 3, 1, 9, 0, 4)           # the ferry (pink)
+    gate_plat(L, 5, 19, 20, 3)             # Sol's band-1 gate (white)
+    gate_plat(L, 34, 19, 20, 2)            # Luna's band-1 gate (orange)
+    for x, g, inv in ((13, 2, False), (14, 3, False), (15, 4, False), (16, 5, True)):
+        L.plat(x, 8, 1, 6, 0, 6, g, 1 if inv else 0)    # the locks sink to open; yellow is inverted
     L.leverOn.append(5)
-    gate_plat(L, 13, 26, 27, 3)            # Sol's way out of the hall: white, opened from Luna's wing
-    gate_plat(L, 26, 26, 27, 2)            # Luna's: orange, opened from the hall
+    gate_plat(L, 16, 26, 27, 3)            # Sol's way out of the hall (white)
+    gate_plat(L, 23, 26, 27, 2)            # Luna's (orange)
     return L
