@@ -665,9 +665,10 @@ def undertow():
     L.floorgate(32, 8, 2, 1)                              # Sol's gate into it (green), sinks into the floor
     L.clear(26, 5, 28, 8).clear(24, 5, 25, 6)             # S2E, west part: a ramp up going west
     L.set(28, 9, '\\'); L.set(27, 8, '\\'); L.set(26, 7, '\\')
-    L.clear(33, 2, 38, 3).p(34, 3, 'b')                   # Luna's alcove
+    L.clear(33, 1, 38, 3)                                 # Luna's alcove, up to the roof
     L.plate(37, 3, 3)                                     # PW0
     L.clear(33, 5, 38, 9)                                 # NE
+    L.r(33, 5, 35, 7).clear(33, 4, 34, 6).p(33, 6, 'b')   # Luna starts in a pit in the alcove's floor: six rows over her
     L.plate(35, 9, 3)                                     # PW1
     L.clear(37, 11, 38, 11).clear(37, 18, 38, 18).cells(37, 10, 38, 10, 2).mv(2, 0, 8)   # lift (orange): hangs in NE's floor, comes down into E-mid's
     # ---- middle band: W-mid, T_S3, centre C, T_M3, E-mid
@@ -865,6 +866,7 @@ def the_operator():
     L.lever(22, 6, 1)                                     # G (green)
     L.plate(24, 6, 2)                                     # PD, eight tiles from the door
     L.r(21, 1, 31, 4)                                     # the booth: a low passage to the door
+    L.clear(29, 1, 30, 4)                                 # a skylight over Sol's start: a full jump
     vdoor(L, 32, 5, 2)                                    # the deck's door (orange)
     # ---- shaft A (x 4-7): a drop with catch shelves, and a pocket under the well mouth
     L.clear(4, 8, 7, 26).clear(8, 8, 9, 9)
