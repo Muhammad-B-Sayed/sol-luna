@@ -160,10 +160,10 @@ export class LeadVeil {
           float x = vUv.x * uW;
           float streak = 0.55 + 0.45 * sin(x * 9.0 + sin(vUv.y * 6.0 + uTime * 2.0) * 1.5 + uTime * 1.7);
           float a = uK * pow(clamp(1.0 - vUv.y, 0.0, 1.0), 1.6) * streak * smoothstep(0.0, 0.25, x) * (1.0 - smoothstep(uW - 0.25, uW, x));
-          a *= 0.5 + uHeld * (0.9 + 0.5 * sin(uTime * 10.0));
+          a *= 0.45 + uHeld * (0.35 + 0.25 * sin(uTime * 10.0));
           a += uK * (1.0 - smoothstep(0.0, 0.06, vUv.y)) * (0.6 + uHeld);   // a bright line on the floor
-          vec3 c = mix(vec3(0.55, 0.42, 1.0), vec3(0.95, 0.85, 1.0), uHeld * 0.6);
-          gl_FragColor = vec4(c * a, a);
+          vec3 c = mix(vec3(0.55, 0.42, 1.0), vec3(0.95, 0.85, 1.0), uHeld * 0.6) * 1.1;
+          gl_FragColor = vec4(c, clamp(a, 0.0, 1.0));   // additive blending multiplies by alpha itself
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
         }`,
