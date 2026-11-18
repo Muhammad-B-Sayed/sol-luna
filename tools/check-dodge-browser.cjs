@@ -19,6 +19,24 @@ async function errorsOf(page, bag) {
   page.on('pageerror', e => bag.push(String(e)));
 }
 const D = (page) => page.evaluate(() => { const d = window.__app.S && window.__app.S.d; return d && JSON.parse(JSON.stringify({ phase: d.phase, t: d.t, holder: d.holder, score: d.score, ball: d.ball, throwN: d.throwN, hitN: d.hitN, winner: d.winner, serve: d.serve, aim: d.aim })); });
+// Play-out budget. It used to be a fixed count of loop passes (600 local, 800 online), about 31 s
+// of play at ~52 ms a pass. A 9-point match takes about 28 s, and each missed ball that stops
+// where the bots can't reach costs a 6 s shot clock, so the local run often stopped at 4-3 and
+// then timed out waiting for the winner card. Now the budget is game progress: keep going while
+// a point was scored in the last 30 s, up to 4 minutes in all.
+async function playOut(dPage, pass) {
+  const t0 = Date.now(); let lastPoint = Date.now(), hits = -1;
+  for (;;) {
+    const d = await dPage();
+    if (d.phase === 3) return d;
+    if (d.hitN !== hits) { hits = d.hitN; lastPoint = Date.now(); }
+    if (Date.now() - lastPoint > 30000) throw new Error(`no point scored for 30 s (score ${d.score.join('-')}, phase ${d.phase}, holder ${d.holder}, ball ${JSON.stringify(d.ball)})`);
+    if (Date.now() - t0 > 240000) throw new Error(`match not over after 4 min (score ${d.score.join('-')})`);
+    await pass(d);
+  }
+}
+// the winner card shows 40 ticks after the match ends; give slow (throttled) pages room
+const CARD_MS = 15000;
 const waitPlay = (page) => page.waitForFunction(() => { const d = window.__app.S?.d; return d && d.phase === 1 && d.holder >= 0; }, null, { timeout: 15000, polling: 'raf' });
 
 // freeze the frame the moment the ball is `past` px beyond the veil, then screenshot
@@ -104,9 +122,7 @@ async function local() {
     } catch { log(`local: ${name} missed`); }
   }
   // play the rest of the match: whoever holds the ball taps a flat throw
-  for (let i = 0; i < 600; i++) {
-    const d = await D(page);
-    if (d.phase === 3) break;
+  await playOut(() => D(page), async (d) => {
     if (d.phase === 1 && d.holder >= 0) await tapAct(page, d.holder);
     else if (d.phase === 1 && d.holder < 0 && d.ball.st >= 2) {
       // walk the owner to a loose ball
@@ -115,8 +131,8 @@ async function local() {
       const key = owner === 0 ? (d.ball.x < px ? 'ArrowLeft' : 'ArrowRight') : (d.ball.x < px ? 'KeyA' : 'KeyD');
       await page.keyboard.down(key); await sleep(80); await page.keyboard.up(key);
     } else await sleep(50);
-  }
-  await page.waitForSelector('#dodgeOver.on', { timeout: 5000 });
+  });
+  await page.waitForSelector('#dodgeOver.on', { timeout: CARD_MS });
   const over = { title: await page.textContent('#dgWinner'), sol: await page.textContent('#dgSol'), luna: await page.textContent('#dgLuna') };
   log('local: winner screen:', over.title, over.sol + '-' + over.luna);
   await page.screenshot({ path: `${out}/local-winner.png` });
@@ -185,9 +201,7 @@ async function online() {
     log(`online: client ${nm} drew ${n} in-flight frames; biggest backward step ${worstBack.toFixed(1)} px, biggest forward step ${worstJump.toFixed(1)} px (state moves 24 px/tick)`);
   }
   // play out the match: the holder taps
-  for (let i = 0; i < 800; i++) {
-    const d = await D(A);
-    if (d.phase === 3) break;
+  await playOut(() => D(A), async (d) => {
     if (d.phase === 1 && d.holder >= 0) { const p = pageOf(d.holder); await p.keyboard.down('KeyS'); await sleep(50); await p.keyboard.up('KeyS'); await sleep(80); }
     else if (d.phase === 1 && d.holder < 0 && d.ball.st >= 2) {
       const owner = d.ball.x < 480 ? 0 : 1, p = pageOf(owner);
@@ -195,8 +209,8 @@ async function online() {
       const key = d.ball.x < px ? 'ArrowLeft' : 'ArrowRight';
       await p.keyboard.down(key); await sleep(90); await p.keyboard.up(key);
     } else await sleep(60);
-  }
-  await A.waitForSelector('#dodgeOver.on', { timeout: 6000 }); await B.waitForSelector('#dodgeOver.on', { timeout: 6000 });
+  });
+  await A.waitForSelector('#dodgeOver.on', { timeout: CARD_MS }); await B.waitForSelector('#dodgeOver.on', { timeout: CARD_MS });
   const res = async (p) => `${await p.textContent('#dgWinner')} ${await p.textContent('#dgSol')}-${await p.textContent('#dgLuna')}`;
   log('online: winner screens: A:', await res(A), '| B:', await res(B));
   await B.screenshot({ path: `${out}/online-winner.png` });
