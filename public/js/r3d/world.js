@@ -29,7 +29,7 @@ export function makeSky() {
         c += warm * band * smoothstep(0.1, -0.9, side) * 0.38;
         c += cool * band * smoothstep(-0.1, 0.9, side) * 0.45;
         float sd = max(dot(d, uSun), 0.0), md = max(dot(d, uMoon), 0.0);
-        c += vec3(1.0, 0.45, 0.2) * pow(sd, 16.0) * 0.45 + vec3(1.0, 0.6, 0.3) * pow(sd, 220.0) * 1.1;
+        c += vec3(1.0, 0.45, 0.2) * pow(sd, 16.0) * 0.45 + vec3(1.0, 0.5, 0.22) * pow(sd, 260.0) * 0.8;
         c += vec3(0.35, 0.6, 1.0) * pow(md, 30.0) * 0.35;
         // soft drifting cloud bands
         vec2 q = vec2(atan(d.x, -d.z) * 3.0, e * 9.0);
@@ -37,8 +37,8 @@ export function makeSky() {
         cl = smoothstep(0.5, 0.9, cl) * exp(-abs(e - 0.12) * 9.0);
         c = mix(c, mix(vec3(0.45, 0.2, 0.35), vec3(0.2, 0.25, 0.45), smoothstep(-0.5, 0.5, side)), cl * 0.45);
         // sun disc (setting, half-veiled)
-        float sun = smoothstep(0.9985, 0.9992, sd);
-        c = mix(c, vec3(4.0, 2.3, 0.9), sun);
+        float sun = smoothstep(0.9989, 0.9994, sd);
+        c = mix(c, vec3(3.0, 1.45, 0.45), sun);
         // crescent moon
         float m1 = smoothstep(0.99935, 0.9996, md);
         vec3 mo = normalize(uMoon + vec3(0.013, 0.008, 0.0));
@@ -103,7 +103,7 @@ export function makeMist(layer = 0) {
         vec2 p = vW.xz * (0.045 + uLayer * 0.02) + vec2(uTime * 0.012, uTime * (0.02 + uLayer * 0.01));
         float n = vn(p) * 0.55 + vn(p * 2.3 + 7.0) * 0.3 + vn(p * 5.1 - 3.0) * 0.15;
         float d = length(vW.xz - uCam.xz);
-        float a = smoothstep(0.35, 0.8, n) * (1.0 - smoothstep(60.0, 150.0, d)) * smoothstep(3.0, 14.0, d) * (0.42 - uLayer * 0.14);
+        float a = smoothstep(0.35, 0.8, n) * (1.0 - smoothstep(60.0, 150.0, d)) * smoothstep(3.0, 14.0, d) * (0.32 - uLayer * 0.1);
         vec3 c = mix(vec3(0.2, 0.12, 0.34), vec3(0.42, 0.28, 0.58), n);
         gl_FragColor = vec4(c, a);
         #include <tonemapping_fragment>
