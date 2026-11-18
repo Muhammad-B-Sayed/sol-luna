@@ -485,15 +485,19 @@ A competitive mode on one single-screen court, Sol on the left and Luna on the r
   the platform, counts as the bank, can't be touched); dodging (the table above for the old and
   the new court, from `tools/dodge-measure.js`); settling bound and reachability; possession,
   both clocks and stalling loops; scoring; determinism; the online wind-up; aim withholding. `tools/check-dodge-browser.cjs` drives local
-  and online play in Chrome and writes screenshots (see `docs/img/dodgeball/`).
+  and online play in Chrome and writes screenshots (see `docs/img/dodgeball/`); it also checks
+  that the aim arrow shows on a shared screen and is hidden from the other player online
+  (`online-aiming-thrower.jpg` / `online-aiming-watcher.jpg`).
 - **Online: the wind-up (Nov 2026).** Online, a player sees the other's throw about one round
   trip late, so dodging used to be much harder than local (at 100 ms one-way a spawn-to-spawn
   throw was never on screen before it hit). Now a throw waits in the thrower's hand for the
   target's lag before it flies (`windupFor` in `shared/dodge.js`: 1.1 x the server-measured round
   trip plus the target's queued inputs, at most 9 ticks = 150 ms; `D.lag` per target, set by the
   server in the ready freeze). The release reaches the target's screen during the wind-up, so
-  they see the launch on time and the whole 24 px/tick flight: the dodge window equals local up
-  to about 68 ms one-way. During the wind-up the thrower is planted (keys ignored) and the aim is
+  they see the launch on time and the whole flight: the dodge window equals local up to about
+  68 ms one-way (re-measured at 36 px/tick on the new court: identical at 0, 20 and 40 ms; at
+  75 ms the near-net window drops from 5 ticks to 2, and raising `windMax` to 12 would cover it;
+  `docs/dodge-latency.md`). During the wind-up the thrower is planted (keys ignored) and the aim is
   locked, so the launch follows from the state at the release; the shot clock waits.
   - Thrower's screen: the wind-up shows on the release frame (lean back, ball drawn back over the
     shoulder, aim arrow fills, rising hum; `dodge-draw.js` `dodgePose`/`drawCharge`, `audio.js`

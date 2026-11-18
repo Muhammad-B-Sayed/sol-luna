@@ -8,6 +8,56 @@ Branches: `dodge-latency-study` (from `low-gravity`), `dodge-fix-a-ballspeed`, `
 (both from the study branch), `dodge-fix-c-windup` (from `low-gravity`, which has the study).
 **Decision: fix C ships** (`dodge-fix-c-windup`). See "Fix C" and "Decision" below.
 
+## Nov 2026: the new court and a 36 px/tick ball
+
+The court was narrowed to 768 px with one platform per side, and the ball sped up from 24 to
+36 px/tick (HANDOFF section 9, `tools/check-dodge.js` section 3). The study below used the
+old court and ball; its spots now mean: `back wall` both at their back walls (19-tick flight),
+`mid (spawn)` thrower on the spawn behind the platform (17), `near net` thrower at the veil and
+defender at the back wall (9), `spawn to spawn` (15). Re-run with
+`node tools/dodge-latency.js --lat 0,40 --reps 3` and `--lat 0,20,40,75` (one rep):
+
+```
+latency  spot            speed  seen  late  dodge r          latest    thr seen thr gap phantom  thr stop wind thr dly def wu
+local    back wall       36     19    0     r 1-16           267 ms    19       16      0/48     -        0    0       0/0   
+local    mid (spawn)     36     17    0     r 1-14           233 ms    17       14      0/42     -        0    0       0/0   
+local    near net        36     9     0     r 1-5            83 ms     9        5       0/15     -        0    0       0/0   
+local    spawn to spawn  36     15    0     r 1-12           200 ms    15       12      0/36     -        0    0       0/0   
+0 ms     back wall       36     19    0     r 1-16           267 ms    20       17      4/42     6        1    1       0/1   
+0 ms     mid (spawn)     36     17    0     r 1-14           233 ms    18       14      0/37     4        1    1       0/1   
+0 ms     near net        36     9     0     r 1-5            83 ms     10       6       0/15     1        1    1       0/1   
+0 ms     spawn to spawn  36     13    0     r 1-12           200 ms    16       12      2/31     3        1    1       0/1   
+40 ms    back wall       36     18    0     r 1-16           267 ms    25       22      14/40    10       6    6       0/3   
+40 ms    mid (spawn)     36     17    0     r 1-14           233 ms    24       20      10/41    6        6    6       0/3   
+40 ms    near net        36     9     0     r 1-5            83 ms     14       11      3/15     5        6    6       0/1   
+40 ms    spawn to spawn  36     15    0     r 1-12           200 ms    20       18      11/35    5        6    6       0/2   
+20 ms    back wall       36     11    0     r 1-16           267 ms    31       19      6/16     3        4    4       0/4   
+20 ms    mid (spawn)     36     17    0     r 1-14           233 ms    19       17      0/14     2        4    4       1/1   
+20 ms    near net        36     9     0     r 1-5            83 ms     11       7       0/5      2        4    4       1/1   
+20 ms    spawn to spawn  36     15    0     r 1-11           183 ms    17       13      0/11     14       4    4       1/2   
+75 ms    back wall       36     17    1     r 1-15           250 ms    30       27      7/15     10       9    9       0/0   
+75 ms    mid (spawn)     36     16    1     r 1-12           200 ms    27       27      6/12     11       9    9       0/0   
+75 ms    near net        36     6     3     r 1-2            33 ms     21       17      2/2      12       9    9       0/0   
+75 ms    spawn to spawn  36     13    2     r 1-11           183 ms    26       23      9/11     11       9    9       0/0   
+```
+
+- 0, 20 and 40 ms one-way: online matches local at every spot (same latest dodge, and the
+  reaction on the first tick of sight still escapes). The single-rep run had two noisy cells
+  at 0 and 40 ms (one trial each); three reps match local exactly.
+- 75 ms: 1 to 3 ticks worse than local; near the net the latest dodge falls from 5 to 2
+  ticks (83 to 33 ms). The wind-up is capped at `windMax` = 9 ticks (150 ms), and 75 ms
+  one-way needs about 10 plus the queue (`late` 1-3: that much flight is gone before the
+  defender sees the ball). The cap is unchanged from before, but with a 5-tick window each
+  lost tick matters more than it did with a 16-tick one. Smallest change, not made here:
+  `windMax: 12` (200 ms), which covers up to about 95 ms one-way at the cost of a longer
+  hold on the thrower's own screen at high ping. The ping measurement (median of 8 pings,
+  500 ms apart, rounded to ticks) is fine-grained enough: errors of one tick showed up only
+  as the noise above.
+- What the harness can't show is motion against aim (`check-dodge.js` section 3): it scripts
+  flat taps and jumps. Online, the defender's own movement is predicted on their screen and
+  judged by the server from their inputs, and below the cap they see the launch on the same
+  tick as in local play, so the same throws that miss a moving player locally miss online.
+
 ## Harness
 
 `node tools/dodge-latency.js` (about 6 min for all latencies). It starts the real server
