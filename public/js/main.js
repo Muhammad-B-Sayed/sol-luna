@@ -299,7 +299,7 @@ function drawHud(time) {
   const g = R.ctx, S = app.S, L = app.L;
   g.setTransform(R.scale, 0, 0, R.scale, 0, 0);
   if (L.dodge) { drawDodgeHud(g, S, { online: app.mode === 'online', me: app.me, rtt: net.rtt }); return; }
-  const secs = S.tick / TICK_RATE;
+  const secs = wonSecs(S);
   const w = 150, x = WORLD_W / 2 - w / 2, y = 4;
   g.fillStyle = 'rgba(18,12,30,0.72)';
   plaque(g, x, y, w, 34, 10); g.fill();
@@ -333,6 +333,9 @@ function drawHud(time) {
     g.fillText(S.deadWho === SOL ? 'Sol was lost…' : 'Luna was lost…', WORLD_W / 2, WORLD_H / 2);
   }
 }
+// The level is won on the tick both doors finish opening; the clock stops there, not after the
+// 45-tick door animation that comes before the results card (S.tick keeps counting through it).
+function wonSecs(S) { return (S.phase === PH_WON ? S.tick - S.phaseT : S.tick) / TICK_RATE; }
 function fmtTime(s) { const m = Math.floor(s / 60), r = s - m * 60; return `${m}:${r < 10 ? '0' : ''}${r.toFixed(1)}`; }
 function plaque(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + w, y); g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r); g.closePath(); }
 function gemIcon(g, x, y, kind) {
@@ -366,7 +369,7 @@ function drawAttract(time) {
 function showResults() {
   app.results = true;
   const S = app.S, L = app.L;
-  const secs = S.tick / TICK_RATE;
+  const secs = wonSecs(S);
   const got = S.gm.reduce((a, b) => a + b, 0), tot = L.gems.length;
   const rank = record(app.level, secs, got, tot);
   $('#resName').textContent = `${app.level + 1}. ${L.name}`;
