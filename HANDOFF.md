@@ -501,7 +501,8 @@ and its numbers, the files and the hooks in the shell files (file and line), ren
 readability cues, how to run each tool, and known issues.
 
 ```bash
-JOBS=8 node tools/check-runner3d.js             # fairness proof, 50 seeds to z 1700, real sim (~2 min)
+JOBS=8 node tools/check-runner3d.js             # fairness and flow proof, 50 seeds to z 1700, real sim (see docs for the time)
+FLOW_ONLY=1 KIND=gate QUICK=1 node tools/check-runner3d.js   # the never-stop flow test alone, one kind
 PORT=3470 node server/index.js &                # LAG_MS=80 to test prediction
 PORT=3470 node tools/runner3d-browser.js        # local, online, other modes, real renderer, screenshots
 NOSERVER=1 PORT=3470 node tools/r3d-shots.js    # renderer screenshots; open /r3d-demo.html?boxes=1 to see collision
@@ -513,4 +514,14 @@ PORT=3470 node tools/r3d-perf.js                # frame times on this machine's 
 - Headless Chromium reaches the GPU with `--enable-gpu` (the tools pass it by default). Without it
   WebGL is SwiftShader and the real renderer is far too slow to play.
 - When an obstacle's art changes, check it against `?boxes=1`: the red lines are what kills.
+- Nothing may stop a player who holds forward and has done nothing wrong. The owner played it
+  and hated the old lead cap (a player too far ahead of the dusk was held on each run-up). It is
+  gone; there is no cap of any kind. A ledge up to 1.5 high is climbed by walking into it (the
+  mantle). The checker's flow test runs a bot that may never stand still for more than 15 ticks
+  of debt against a quarter of run speed, through every section, for both characters, and at 12
+  arrival times on clocked kinds. A new obstacle must pass it. Fix the generator, not the test.
+- Keys on one keyboard: Sol is arrows plus Enter or Right Shift, Luna is WASD plus Space. The
+  countdown shows each player's keys on their own half. Online Enter is the chat key.
+- The dusk speed table is the owner's call ("seems fine"). Don't speed it up and don't tie it to
+  the leader.
 

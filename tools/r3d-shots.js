@@ -62,7 +62,7 @@ if (process.env.NOSERVER !== '1') {
   server = spawn(process.execPath, ['server/index.js'], { env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore' });
   await sleep(700);
 }
-const profile = mkdtempSync('/tmp/sl-r3dshots-');
+const profile = mkdtempSync('/tmp/' + (process.env.PROFILE_PREFIX || 'sl-r3dshots-'));
 const chrome = spawn(CHROME, [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
   '--mute-audio', ...GL_FLAGS,
