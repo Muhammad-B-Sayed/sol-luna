@@ -220,7 +220,7 @@ export class Runner3DRenderer {
       }
       ctx.idx = i;
       let pose = null;
-      if (poseFn) { try { pose = poseFn(L, S, i, ctx.alpha); } catch { pose = null; } }
+      if (poseFn) { try { pose = poseFn(L, S, i, ctx.tick); } catch { pose = null; } }
       v.def.update(v.obj, o, S.o ? S.o[i] : undefined, pose, ctx, v);
     }
     for (const [i, v] of this.views) if (!seen.has(i)) { this.objRoot.remove(v.obj); disposeView(v.obj); this.views.delete(i); }
@@ -288,7 +288,9 @@ export class Runner3DRenderer {
     const pz = Math.max(view.p[0].z, view.p[1].z);
     const zMin = view.zone - 30, zMax = pz + 160;
     this.glow.begin();
-    const ctx = { time, dt, S, L, fx: this.fx, glow: this.glow, idx: 0, alpha: 1 };
+    // fractional tick of this frame: the view's zone lags S.zone by (1 - alpha) ticks of zone travel
+    const alpha = S.v > 1e-6 ? Math.max(0, Math.min(1, 1 - (S.zone - view.zone) / S.v)) : 1;
+    const ctx = { time, dt, S, L, fx: this.fx, glow: this.glow, idx: 0, alpha, tick: S.tick - 1 + alpha };
     this.streamViews(S, zMin, zMax, ctx);
 
     // characters

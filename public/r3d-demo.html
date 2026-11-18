@@ -16,7 +16,7 @@
 <canvas id="c"></canvas>
 <div id="hud"></div>
 <div id="help">Bots run both players. Take over Sol: arrows + Enter (jump). Luna: WASD + Space.
-?seed= ?split=1 ?me=1 ?z= ?kind= ?q=high|low ?count=1 ?bot=0 ?hud=0</div>
+?seed= ?split=1 ?me=1 ?z= ?kind= ?q=high|low ?count=1 ?bot=0 ?hud=0 ?auto=0</div>
 <script type="module">
 import * as R3 from '/shared/runner3d.js';
 import { Runner3DRenderer } from '/js/r3d/renderer.js';
@@ -140,7 +140,8 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 r.renderer.info.autoReset = false;
-requestAnimationFrame(frame);
+// ?auto=0: no animation loop (the screenshot tool steps and renders by hand)
+if (Q.get('auto') !== '0') requestAnimationFrame(frame);
 
 // hooks for tools/r3d-shots.js: freeze time, step the sim, read stats
 window.__r3d = {
@@ -148,7 +149,7 @@ window.__r3d = {
   freeze(v = true) { frozen = v; },
   step(n = 1) { for (let k = 0; k < n; k++) { stepOnce(); simTime += 1 / 60; } },
   render() { r.renderer.info.reset(); r.draw(L, S, view(1), simTime, { split, me, paused: false }); return r.stats(); },
-  place: placeAt, manual,
+  place: placeAt, manual, ready: true,
 };
 </script>
 </body>
