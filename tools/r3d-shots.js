@@ -7,7 +7,6 @@
 //   CHROME=/path/to/chrome W=1280 H=720 node tools/r3d-shots.js
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 
@@ -15,7 +14,9 @@ const CHROME = process.env.CHROME || '/usr/bin/chromium';
 const PORT = process.env.PORT || 3410;
 const BASE = `http://localhost:${PORT}`;
 const OUT = process.env.OUT || 'docs/img/runner3d';
-const W = +(process.env.W || 1280), H = +(process.env.H || 720);
+const W = +(process.env.W || 960), H = +(process.env.H || 540);
+// Extra Chromium flags. Default headless Chromium here already has WebGL2; swiftshader flags make it slower.
+const GL_FLAGS = (process.env.GL_FLAGS || '').split(' ').filter(Boolean);
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -43,10 +44,10 @@ if (process.env.NOSERVER !== '1') {
   server = spawn(process.execPath, ['server/index.js'], { env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore' });
   await sleep(700);
 }
-const profile = mkdtempSync(join(tmpdir(), 'sl-r3d-'));
+const profile = mkdtempSync('/tmp/sl-r3dshots-');
 const chrome = spawn(CHROME, [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
-  '--mute-audio', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl',
+  '--mute-audio', ...GL_FLAGS,
   '--disable-background-timer-throttling', '--disable-renderer-backgrounding', `--window-size=${W},${H}`, 'about:blank',
 ], { stdio: ['ignore', 'ignore', 'pipe'] });
 const cleanup = () => {
@@ -92,7 +93,7 @@ let failed = 0;
 try {
   for (const [name, q, steps, setup] of list) {
     logs.length = 0;
-    await send('Page.navigate', { url: `${BASE}/r3d-demo.html?hud=0&${q}` });
+    await send('Page.navigate', { url: `${BASE}/r3d-demo.html?hud=0&auto=0&${q}` });
     let ok = false;
     for (let k = 0; k < 100; k++) { await sleep(150); if (await ev('!!window.__r3d').catch(() => false)) { ok = true; break; } }
     if (!ok) { console.log(name, 'demo did not load', logs.join(' | ')); failed++; continue; }
@@ -105,8 +106,8 @@ try {
     const ms = steps ? (Date.now() - t0) / steps : 0;
     await sleep(50);
     const shot = await send('Page.captureScreenshot', { format: 'png' });
-    writeFileSync(join(OUT, `r3d-${name}.png`), Buffer.from(shot.data, 'base64'));
-    console.log(`${name.padEnd(12)} ${String(st.calls).padStart(4)} calls ${String(Math.round(st.triangles / 1000)).padStart(5)}k tris  ${st.views} views  ${st.level}  ~${ms.toFixed(0)} ms/frame (software GL)  -> ${join(OUT, `r3d-${name}.png`)}`);
+    writeFileSync(join(OUT, `render-${name}.png`), Buffer.from(shot.data, 'base64'));
+    console.log(`${name.padEnd(12)} ${String(st.calls).padStart(4)} calls ${String(Math.round(st.triangles / 1000)).padStart(5)}k tris  ${st.views} views  ${st.level}  ~${ms.toFixed(0)} ms/frame (software GL)  -> ${join(OUT, `render-${name}.png`)}`);
     if (logs.length) console.log('   ', logs.slice(0, 6).join('\n    '));
   }
 } catch (e) { console.error(e); failed++; }
