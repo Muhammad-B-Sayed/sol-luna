@@ -127,12 +127,15 @@ export function search(L, S0, who, opts) {
 
 // search() with a ladder of fallbacks: best-first by progress can sink its whole budget into a
 // doomed branch (standing on slabs that are about to crumble), so a failed attempt is retried
-// with a stronger time weight, then from a start nudged by a few ticks of waiting or stepping
-// back. Returns the first success (plans include the nudge).
+// with a stronger time weight, then from a start nudged by a few ticks of strafing, waiting or
+// stepping back. Returns the first success (plans include the nudge).
 export function solve(L, S, who, opts) {
   const B = opts.budget || 1500;
   const tries = [
-    { tw: 0.0013, budget: B }, { tw: 0.03, budget: B }, { tw: 0.01, budget: 2 * B },
+    { tw: 0.0013, budget: B }, { tw: 0.03, budget: B },
+    // sideways first: lining up with a narrow bridge or beam the greedy search may not try
+    { tw: 0.01, budget: B, pre: Array(8).fill(R_) }, { tw: 0.01, budget: B, pre: Array(8).fill(L_) },
+    { tw: 0.01, budget: 2 * B },
     { tw: 0.0013, budget: B, pre: [0, 0, 0, 0, 0, 0] }, { tw: 0.03, budget: B, pre: [B_, B_, B_, B_, B_, B_, B_, B_] },
     { tw: 0.004, budget: 4 * B },
   ];
