@@ -68,7 +68,8 @@ for (const [j, lag] of LAGS.entries()) {
   const res = await Promise.all(C.map(P => P.eval(`(() => ({ screen: document.body.dataset.screen, card: [...document.querySelectorAll('#rrTitle, #rrSol, #rrLuna')].map(e => e.textContent.trim().replace(/\\s+/g, ' ')).join(' | '), rec: { step: window.__rec.step.map(v => +v.toFixed(1)), big: window.__rec.big.map(b => b.length), firstBig: window.__rec.big.map(b => b.slice(0, 6)), frames: window.__rec.frames }, drawn: !!${VIEW}.drawn }))()`)));
   const r = { lag, frames: f, host: res[0], guest: res[1], sameCard: res[0].card === res[1].card };
   out.push(r);
-  console.log(`LAG_MS=${lag}: ${f} frames; largest per-frame step of the drawn player: host sees itself ${res[0].rec.step[0]}px, partner ${res[0].rec.step[1]}px (${res[0].rec.big[1]} over 14px); guest sees itself ${res[1].rec.step[0]}px, partner ${res[1].rec.step[1]}px (${res[1].rec.big[1]} over 14px); drawn view ${res[0].drawn}`);
+  const fps = f / ((Date.now() - t0) / 1000);
+  console.log(`LAG_MS=${lag}: ${f} frames at ${fps.toFixed(0)} frames per real second${fps < 55 ? ' (the driver fell behind real time: page clocks run slow against the real-time server, so steps here are not a measure of the netcode)' : ''}; largest per-frame step of the drawn player: host sees itself ${res[0].rec.step[0]}px, partner ${res[0].rec.step[1]}px (${res[0].rec.big[1]} over 14px); guest sees itself ${res[1].rec.step[0]}px, partner ${res[1].rec.step[1]}px (${res[1].rec.big[1]} over 14px); drawn view ${res[0].drawn}`);
   console.log(`    partner steps over 14px: host ${JSON.stringify(res[0].rec.firstBig[1])} guest ${JSON.stringify(res[1].rec.firstBig[1])}`);
   if (!DODGE) console.log(`${r.sameCard ? 'ok  ' : 'FAIL'} results cards match · host "${res[0].card}" · guest "${res[1].card}"`);
   for (const P of C) await P.eval('window.__pt.stop()');

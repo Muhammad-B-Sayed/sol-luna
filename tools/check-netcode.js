@@ -109,7 +109,7 @@ function startServer(port) {
   const args = ['server/index.js'];
   const cmd = CPU ? 'systemd-run' : process.execPath;
   const argv = CPU ? ['--user', '--scope', '-q', '-p', `CPUQuota=${CPU}%`, '-p', 'CPUWeight=10000', process.execPath, ...args] : args;
-  const p = spawn(cmd, argv, { cwd: env.SERVER_ROOT || ROOT, env: { ...env, PORT: String(port), LAG_MS: '0', TEST_SEED: '1', NET_LOG: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  const p = spawn(cmd, argv, { cwd: env.SERVER_ROOT || ROOT, env: { ...env, PORT: String(port), LAG_MS: env.SERVER_LAG || '0', TEST_SEED: '1', NET_LOG: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
   return new Promise((resolve, reject) => {
     let buf = '';
     p.stdout.on('data', (d) => {
