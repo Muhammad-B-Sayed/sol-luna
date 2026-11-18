@@ -86,9 +86,12 @@ export function tick(L, S, who, bits, other, hook) {
 // opts: goalObj (stand on this object index or any later one: the next section's run-up or
 // beyond), or goal (z) and goalY (feet at least this high), deadline (tick, inclusive), other(tick) -> bits,
 // budget (expansions), o0/o1 (object range whose state matters), until(S, p) custom goal test.
-// flow: { min, stop } makes it a never-stop bot: a branch dies once the player's forward progress
-// (world z per tick, carried motion included) stays below `min` for more than `stop` ticks in a
-// row. It may slow down, steer, strafe and jump, but never stand still to wait.
+// flow: { min, stop } makes it a never-stop bot. Each tick it owes `min` units of forward progress
+// (world z, carried motion included); falling short adds to a debt, moving faster pays it back.
+// A branch dies once the debt reaches `stop` ticks of standing still. So it can never stand still
+// for longer than `stop` ticks, and over any longer stretch it averages at least `min` per tick:
+// it may slow down, steer, strafe and jump, but not wait (a 15-tick stop needs 5 ticks of full
+// running to pay back before the next one).
 export const FLOW = { min: 0.25 * 0.135, stop: 15 };
 export function search(L, S0, who, opts) {
   const { goal = -Infinity, goalObj = -1, goalY = -Infinity, deadline = Infinity, other = null, hook = null, budget = 3000, o0 = 0, o1 = 0, until = null, tw = 0.0013, flow = null } = opts;
@@ -111,7 +114,7 @@ export function search(L, S0, who, opts) {
         tick(L, S, who, bits, other, hook);
         const r = runs[runs.length - 1];
         if (r && r[0] === bits) r[1]++; else runs.push([bits, 1]);
-        if (flow) { slow = p.z - z < flow.min ? slow + 1 : 0; if (slow > maxSlow) maxSlow = slow; }
+        if (flow) { slow = Math.max(0, slow + 1 - (p.z - z) / flow.min); if (slow > maxSlow) maxSlow = slow; }
         if (!p.alive || S.tick > deadline || (flow && slow > flow.stop)) res = -1;
         else if (done(S, p)) res = 1;
       };
@@ -123,7 +126,7 @@ export function search(L, S0, who, opts) {
       }
       if (res === 1) return { ok: true, plan: unroll(node, runs), tick: S.tick, S, exp, maxSlow };
       if (res === -1 || !p.gr) continue;
-      const key = `${Math.round(p.x * 3)},${Math.round(p.z * 3)},${Math.round(p.y * 4)},${Math.round(p.vx * 20)},${Math.round(p.vz * 20)},${(S.tick - t0) >> 2}${objKey(L, S, o0, o1)}${flow ? ',' + (slow >> 2) : ''}`;
+      const key = `${Math.round(p.x * 3)},${Math.round(p.z * 3)},${Math.round(p.y * 4)},${Math.round(p.vx * 20)},${Math.round(p.vz * 20)},${(S.tick - t0) >> 2}${objKey(L, S, o0, o1)}${flow ? ',' + Math.floor(slow / 4) : ''}`;
       if (seen.has(key)) continue;
       seen.add(key);
       heap.push({ S, parent: node, runs, pr: p.z - tw * (S.tick - t0), slow, maxSlow });

@@ -190,9 +190,9 @@ body:has(#chat:not([hidden])) .r3-pl.luna { right: 66px; }   /* clear of the roo
 #r3Hud.single .r3-tip { left: 50%; max-width: min(80%, 560px); } #r3Hud.single[data-me="0"] .r3-tip.luna, #r3Hud.single[data-me="1"] .r3-tip.sol { display: none; }
 .r3-tip.sol { border-color: rgba(255,210,122,0.45); } .r3-tip.luna { border-color: rgba(169,227,255,0.45); }
 /* controls: a large card on each player's half during the countdown, then a small jump reminder in their box */
-.r3-keys { position: absolute; top: 64%; transform: translate(-50%, -50%); padding: 12px 22px 14px; border-radius: 16px; background: rgba(18,12,30,0.8); border: 2px solid rgba(214,196,255,0.35); color: #f4ecff; text-align: center; opacity: 0; white-space: nowrap; }
+.r3-keys { position: absolute; top: 30%; transform: translate(-50%, -50%); padding: 12px 22px 14px; border-radius: 16px; background: rgba(18,12,30,0.8); border: 2px solid rgba(214,196,255,0.35); color: #f4ecff; text-align: center; opacity: 0; white-space: nowrap; }
 #r3Hud.split .r3-keys.sol { left: 25%; } #r3Hud.split .r3-keys.luna { left: 75%; }
-#r3Hud.single .r3-keys { left: 50%; } #r3Hud.single[data-me="0"] .r3-keys.luna, #r3Hud.single[data-me="1"] .r3-keys.sol { display: none; }
+#r3Hud.single .r3-keys { left: 50%; } #r3Hud.single .r3-count { top: 54%; }   /* below your card, clear of the HUD */ #r3Hud.single[data-me="0"] .r3-keys.luna, #r3Hud.single[data-me="1"] .r3-keys.sol { display: none; }
 .r3-keys.sol { border-color: rgba(255,210,122,0.75); } .r3-keys.luna { border-color: rgba(169,227,255,0.75); }
 .r3-keys h3 { margin: 0 0 8px; font: 700 26px Cinzel, Georgia, serif; }
 .r3-keys.sol h3 { color: #ffd27a; } .r3-keys.luna h3 { color: #a9e3ff; }
