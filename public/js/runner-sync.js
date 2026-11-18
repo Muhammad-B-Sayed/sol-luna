@@ -330,7 +330,13 @@ export class RunnerSync {
       const rv = this.lastRide && this.lastRide.key === key ? this.lastRide.v : ride;   // its offset last frame, same part
       if (this.lastRide && this.lastRide.key !== key) for (const k of sim.dims) this.roff[k] += this.lastRide.v[k] - ride[k];
       this.lastRide = { key, v: ride };
-      for (const k of sim.dims) theirs[k] += ride[k] + this.roff[k];
+      // where the server had them, on the part they ride as it is now, and kept in front of the
+      // dusk as it is drawn now (a player drawn in the past could otherwise look caught early)
+      const alive = A.p[o].alive || T < A.dead[o];
+      for (const k of sim.dims) theirs[k] += ride[k];
+      if (alive) sim.front(sa.st.p[o], theirs, scroll);
+      const base = { ...theirs };
+      for (const k of sim.dims) theirs[k] += this.roff[k];
       // Continuity: from one frame to the next the drawing may differ from "last frame plus the
       // server's own motion" (both measured on the newest data, so a late snapshot replacing an
       // extension is not motion) by at most sim.ease; along the run it never goes back faster
@@ -338,9 +344,12 @@ export class RunnerSync {
       // in the offset and eases out, so no source of error can make a pop.
       if (this.lastTheirs && this.lastT !== undefined) {
         const w = Math.min(2, Math.max(1, (this.frameDt || DT) / DT)), f = sim.fwd;
-        const rNow = this.remoteRaw(T), rPrev = this.remoteRaw(this.lastT);
+        const rPrev = this.remoteRaw(this.lastT);
+        for (const k of sim.dims) rPrev[k] += rv[k];
+        if (alive) sim.front(sa.st.p[o], rPrev, this.lastScroll);
+        this.moved = {};
         for (const k of sim.dims) {
-          const moved = rNow[k] + ride[k] - (rPrev[k] + rv[k]);
+          const moved = this.moved[k] = base[k] - rPrev[k];
           const exp = this.lastTheirs[k] + moved, lim = sim.ease * w;
           let lo = exp - lim;
           const hi = exp + lim;
@@ -349,9 +358,8 @@ export class RunnerSync {
           else if (theirs[k] > hi) { this.roff[k] -= theirs[k] - hi; theirs[k] = hi; }
         }
       }
-      this.lastT = T;
-      if (A.p[o].alive || T < A.dead[o]) sim.front(sa.st.p[o], theirs, scroll);
-    } else this.lastT = undefined;
+      this.lastT = T; this.lastScroll = scroll;
+    } else { this.lastT = undefined; this.moved = null; }
     this.lastTheirs = theirs;
     this.lastR = { T };
     // once the end is shown, everyone stays where they were drawn
@@ -383,6 +391,8 @@ export class RunnerSync {
       T: +T.toFixed(2), newest: A.tick, theirs: r2(theirs), ro: r2(this.roff), sa: sa.tick };
     // draw() moves the drawing's own state on (offsets, the end freeze): call it once per frame.
     // Tools read the last result from this.last.
-    return (this.last = { S, v, T, alpha, results: false, me: raw, dbg });
+    // moved: the server's own motion of the other player over this frame (on the newest data,
+    // on the moving part they stand on), what the continuity rule measures the drawing against
+    return (this.last = { S, v, T, alpha, results: false, me: raw, moved: this.moved, dbg });
   }
 }
