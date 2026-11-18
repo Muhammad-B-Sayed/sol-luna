@@ -46,5 +46,26 @@ console.log('Input latching');
   down('ArrowUp'); L.blur();
   ok(I.any() === 0, 'losing focus lets go of everything');
 }
+console.log('Runner 3D keys');
+{
+  const I = new Input();
+  const press = (code) => { let pd = false; L.keydown({ code, target: { closest: () => null }, preventDefault() { pd = true; } }); return pd; };
+  const F = 8, J = 4;
+  I.mode3d = 'local';
+  for (const k of ['Enter', 'ShiftRight', 'Slash', 'ControlRight', 'Numpad0']) {
+    const pd = press(k); ok(I.local3d()[0] === J && I.local3d()[1] === 0 && pd, `same keyboard: ${k} jumps Sol (default prevented)`); up(k);
+  }
+  for (const k of ['Space', 'ShiftLeft']) { press(k); ok(I.local3d()[1] === J && I.local3d()[0] === 0, `same keyboard: ${k} jumps Luna`); up(k); }
+  press('ArrowUp'); press('KeyW'); ok(I.local3d()[0] === F && I.local3d()[1] === F, 'arrows move Sol, WASD move Luna'); up('ArrowUp'); up('KeyW');
+  I.mode3d = 'online';
+  let pd = press('Enter'); ok(I.any3d() === 0 && !pd, 'online: Enter does not jump and is left to the chat'); up('Enter');
+  pd = press('Space'); ok(I.any3d() === J && pd, 'online: Space jumps'); up('Space');
+  press('ArrowUp'); ok(I.any3d() === F, 'online: arrows move'); up('ArrowUp');
+  press('KeyD'); ok(I.any3d() === 2, 'online: WASD move'); up('KeyD');
+  I.mode3d = false;
+  pd = press('Enter'); ok(!pd, 'outside Runner 3D, Enter is left alone'); up('Enter');
+  const typing = { code: 'Space', target: { closest: () => ({}) }, preventDefault() { pd = true; } };
+  I.mode3d = 'local'; pd = false; L.keydown(typing); ok(!pd && !I.down.has('Space'), 'typing in a text field is never a game key');
+}
 console.log(failed ? `\n${failed} check(s) FAILED` : '\nAll input checks passed.');
 process.exit(failed ? 1 : 0);
