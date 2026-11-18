@@ -28,9 +28,10 @@ and its numbers, 5 determinism and netcode, 6 files and hooks, 7 rendering, 8 re
   rises about 4.1 units and stays in the air 0.8 s. Coyote time 5 ticks, a 6-tick jump buffer,
   and holding jump jumps again on landing. Step-up 0.5 units: lower steps are walked.
 - Mantle: a standing player who walks into a ledge up to 1.5 units high (`P3.mantle`) hops up
-  onto it on their own and keeps their speed, so no step or ledge you can walk into stops you
-  dead. Taller ledges are jumped. Anyone rising past a ledge face that low keeps their speed while
-  pressed against it, so a jump into a step face carries on over it.
+  onto it on their own and keeps their speed. Every rise on a stair is at most 1.5, so no step
+  you can walk into stops you dead. Taller ledges, across gaps, are jumped. Anyone rising past a
+  ledge face that low keeps their speed while pressed against it, so a jump into a step face
+  carries on over it. A 1.5 ledge holds a player at its face for about 8 ticks.
 - The player is a box 0.72 wide and 1.4 tall. Players pass through each other.
 - Static stone is solid on every side. Moving and tilting parts are solid from above only, so
   nothing can ever pin or wedge a player.
@@ -38,11 +39,12 @@ and its numbers, 5 determinism and netcode, 6 files and hooks, 7 rendering, 8 re
   it slowly downhill (5% of the slope per tick), so it is felt, but a player can always walk
   against it.
 - Falling: a player more than 9 units below the last ground they stood on is lost.
-- No lead cap. A player may run as far ahead of the dusk as they can survive. Nothing holds a
-  player who is holding forward. (Until November 2026 a lead cap stopped a player on a run-up
-  more than 32 units ahead of the dusk. At the start, when the dusk moves at 31% of run speed,
-  that held a running player on almost every run-up. It is gone.) The dusk never depends on the
-  players, so a leader can never push it onto the other.
+- No lead cap. A player may run as far ahead of the dusk as they can survive, and nothing holds
+  a player who is holding forward. Until November 2026 a lead cap stopped a player on a run-up
+  more than 32 units ahead of the dusk. The dusk starts at 31% of run speed, so a running player
+  hit the cap 4.9 s in and was then stopped on almost every run-up. The owner played it and
+  hated it, so it is gone. The dusk never depends on the players, so a leader can never push it
+  onto the other.
 
 | | Move (the camera never turns, so up is always forward) | Jump |
 | --- | --- | --- |
@@ -100,7 +102,7 @@ difficulty.
 | Obstacle | What it is | 1 | 2 | 3 | 4 |
 | --- | --- | --- | --- | --- | --- |
 | Gaps | Pits with landings offset sideways, higher or lower, narrower | Gap ≤ envelope for that rise minus the margin; landings overlap the take-off sideways by at least 1.2 units | Stateless | Stateless | Same for both |
-| Steps | Stairs up or down, ramps, drops, width changes | Rises ≤ 1.5 per step (0.5 is walked), ramps at most 1:2 | Stateless | Stateless | Same for both |
+| Steps | Stairs up or down, ramps, drops, width changes | Rises ≤ 1.5 per step: 0.5 is walked, higher ones are climbed by walking into them (the mantle) or jumped. Ramps at most 1:2 | Stateless | Stateless | Same for both |
 | Thorns | Hedges blocking part of the width (dodge through the opening, or jump them) and low strips across the whole width (jump) | Openings ≥ 1.6 wide; rows spaced so a diagonal run reaches the next opening; strips ≤ 2.5 deep | Stateless | Stateless | Same for both |
 | Pools | Twin channels: a sun channel and a moon channel side by side with a neutral strip, swapping sides at higher difficulty, shade bars across them; shade ponds; a sun/moon checkerboard | Every hostile stretch is either walkable around (the strip) or ≤ the gap limit | Stateless | Stateless | Mirrored: Sol's channel is Luna's channel reflected, and the checkerboard has an even column count so its mirror swaps the colours |
 | Chain slab | Slab hung on chains over a pit, tilting on two axes toward the weight on it | Gaps on and off sized for the slab at full tilt | Checked with the other player arriving earlier, abusing it, and parked on its edges, middle and corners | Damped spring back to exactly level (snaps to 0 below 2e-4), bounded 150 ticks; solid from above only, so it can't wedge | Same for both |
@@ -111,7 +113,7 @@ difficulty.
 | Thorn sweeper | A low thorn arm (or bar) turning over a round floor around a post | The bar is 0.55 high: a jump is above it for 46 ticks | Fixed clock, players don't move it | Clock only | Same for both |
 | Pendulums | Blades swinging sideways across a narrow bridge | The swing carries the blade fully clear of the bridge at each end; the blades of one bridge share a clock, each phased by the running time from the first, so timing the first is enough | Fixed clock | Clock only | Same for both |
 | Orbiting stones (new, 3D) | Four stones circling a pillar over a pit; step on as one passes the ledge, ride or hop between stones, step off on the far side | A stone passes the ledge every quarter turn; hops between neighbouring stones are short | Fixed clock | Clock only | Same for both |
-| Thorn curtain (new, 3D) | A thorn curtain across the course, too tall to jump, with an opening that slides from side to side | Opening ≥ 2.0 wide; it crosses every point of the course twice a period; curtains in one section share a clock phased by running time, so following the opening through one lines you up with the next | Fixed clock | Clock only | Same for both |
+| Thorn curtain (new, 3D) | A thorn curtain across the course, too tall to jump, with an opening that slides from side to side | Opening 3.0 wide at the start, 2.4 at full difficulty, sliding slowly: one period is 260 to 320 ticks, 40 fewer at full difficulty, so it moves at most about half of run speed. 3 units of floor before the first curtain to line up on. A player who runs and steers toward the opening as it is now gets through every time. Curtains in one section share a clock phased by running time, so following the opening through one lines you up with the next | Fixed clock | Clock only | Same for both |
 | Rolling orbs | Orbs rolling down lanes toward the players on fixed clocks | Dodge between lanes, or jump (an orb is 1.4 tall) | Fixed clock | Clock only | Same for both |
 
 ## 4. The checker and its final numbers
@@ -120,6 +122,7 @@ difficulty.
 node tools/check-runner3d.js                  # 50 seeds, course to z 1700
 QUICK=1 node tools/check-runner3d.js          # 4 seeds, for iteration
 SEED=7 V=1 Z=600 node tools/check-runner3d.js # one seed, every section printed
+FLOW_ONLY=1 KIND=gate node tools/check-runner3d.js  # only the flow test, only one kind
 ```
 
 `check-runner3d.js` uses the real sim, in parallel worker threads (`JOBS`, default 6). It runs every seed far enough to reach full difficulty (z 1100) and the top zone speed (the
@@ -143,6 +146,17 @@ zone reaches it at z 1600 travelled). It tests, for every section:
 7. **Determinism**: both course routes played together give the same state hash twice, from
    a freshly generated course, and with the state sent through `JSON.parse(JSON.stringify(S))`
    every 250 ticks.
+8. **Flow**: a never-stop bot must clear every section, for both characters, arriving at full
+   speed. Each tick it owes a quarter of run speed in forward progress, carried motion
+   included. Falling short adds to a debt and running faster pays it back. Once the debt
+   reaches 15 ticks of standing still, that route is dead. So it may slow, steer, strafe and
+   jump, but it never stands still for more than a quarter of a second and never averages less
+   than a quarter of run speed. Kinds without a clock are tried once. Clocked kinds (sweeper,
+   pendulum, orbiting stones, curtains, orbs) are tried at 12 arrival times 25 ticks apart, which
+   covers every phase of their clocks. A failed try is retried with a bigger allowed debt, to
+   report how long a wait it needed. Thorn curtains also get a reactive runner with no
+   foresight: always forward, steering toward the opening as it is now, keeping to the floor
+   underfoot. It must clear every curtain at the same 12 arrival times.
 
 ### What the checker found
 
@@ -152,7 +166,8 @@ The first full runs failed, and each failure was traced to either the course or 
   the wait for them to re-form ate a 12-unit lead at top speed. Slabs now come as two halves
   (one pass leaves a half whole) and re-form faster.
 - **Course: lead cap.** Holding a player at the cap anywhere could freeze them on a crumbling
-  slab or among thorns. The cap now holds only on run-ups.
+  slab or among thorns. The cap then held only on run-ups. It has since been removed, see
+  "Flow" below.
 - **Course: eclipse lane switches.** Diagonal jumps from small stones with full-length row gaps
   were barely possible. Lane switches now get shorter gaps.
 - **Course: thorn curtains and pendulum rows.** Several curtains or blades on unrelated clocks
@@ -163,24 +178,45 @@ The first full runs failed, and each failure was traced to either the course or 
   front of thorns past a short run-up, or a buffered jump at a run-up's edge). It now has
   retry rungs with other time weights and with a sideways or backward start.
 
+### Flow: what stopped a player who keeps moving
+
+Asked kind by kind whether a player who keeps moving, jumping and steering gets through
+without standing still to wait:
+
+| What | Before | Now |
+| --- | --- | --- |
+| Lead cap | A full-speed runner reached 141 of 145 run-ups in the first 600 units more than 32 ahead of the dusk, the first 4.9 s in, and was stopped on each. Hopping across a run-up slipped past it, which nobody would guess | Removed. No cap of any kind |
+| Step-ups | A rise over 0.5 was a wall until you jumped. Rises come in 0.25 steps up to 1.5, so a 0.75 step looked walkable and was not | The mantle: walk into a ledge up to 1.5 high and you hop up onto it, keeping your speed |
+| Thorn curtain | The never-stop bot got through on every try, but only by picking on the run-up where the opening would be. A reactive runner, steering toward the opening as it is, cleared 92% of tries on 30 seeds | Opening 3.0 to 2.4 wide, was 2.6 to 2.0. Slide period 260 to 320 ticks, was 160 to 210. 3 units of floor before the first curtain, was 1.5. The reactive runner clears 100% |
+| Gaps, steps, thorns, pools, chain slabs, stepping stones, ember slabs, eclipse stones, beams | No forced waits | No forced waits |
+| Sweeper, pendulum, orbiting stones, orbs | No forced waits at any of 12 arrival times. A runner times them by slowing on the run-up, never by standing still | Unchanged |
+
+The never-stop bot on this branch's code without the mantle and curtain changes, 4 seeds:
+3154 of 3154 tries cleared, 0 forced waits. So after the lead cap went, nothing in the course
+forced a stop on a player who sees ahead. The mantle and the curtain change are for a player
+who does not.
+
 ### Final numbers
 
-`node tools/check-runner3d.js` (50 seeds, z 1700, `JOBS=6`), at commit `4c0c574`: **PASS** in 146 s.
+`JOBS=8 node tools/check-runner3d.js` (50 seeds, z 1700), on branch `r3d-flow`: **PASS** in
+1553 s. The flow test is most of that time.
 
 | Test | Result |
 | --- | --- |
-| Whole course | 100/100 runs (Sol and Luna, every seed) reached z 1700, 317 s of play, past full difficulty (z 1100) and at top zone speed (6.9 u/s). Smallest lead at a section start 4.8 units, median of per-run minimums 13.1 |
-| Single section | 9722/9722 cleared alive from a 12-unit lead (4861 sections); 1027 slower than the zone, repaid by later sections |
-| Second arrival | 10668/10668 cleared. Time lost against the deadline: median -25 ticks (still early), 95% 6, worst 51 |
-| Parked partner | 7364/7364 cleared |
-| Back to rest | Chain slabs: 1868 after runs and abuse, slowest 99 ticks (bound 150). Ember slabs: 2638, slowest 83 ticks (bound crack + 46). None over |
+| Whole course | 100/100 runs (Sol and Luna, every seed) reached z 1700, 317 s of play, past full difficulty (z 1100) and at top zone speed (6.9 u/s). Smallest lead at a section start 4.3 units, median of per-run minimums 14.1 |
+| Single section | 9678/9678 cleared alive from a 12-unit lead (4839 sections); 982 slower than the zone, repaid by later sections |
+| Second arrival | 10948/10948 cleared. Time lost against the deadline: median -24 ticks, so still early, 95% 6, worst 46 |
+| Parked partner | 7602/7602 cleared |
+| Back to rest | Chain slabs: 1928 after runs and abuse, slowest 99 ticks, bound 150. Ember slabs: 2731, slowest 83 ticks, bound crack + 46. None over |
 | Equal difficulty | Sol and Luna average clear times match to 0.01 s in every kind; the largest single-section gap is 49 ticks (eclipse, mirrored routes found differently by the bot) |
 | Determinism | 50/50 seeds identical on replay, from a fresh course and through JSON every 250 ticks |
+| Flow | 41006/41006 tries cleared by the never-stop bot, 0 forced waits in any kind. Largest debt used: 15 ticks on curtains, 14 on gaps, steps and eclipse stones, 9 to 13 elsewhere. Thorn curtains, reactive runner: 6648/6648 cleared |
 
 Average clear time per section at full speed ranges from 1.8 s (curtains, pendulums,
 sweepers) to 3.7 s (stepping stones).
 
-The sim is unchanged on the polish branch (`r3d-polish`), so these numbers still hold.
+The course changed on this branch only in the thorn curtain and the mantle, so section counts
+moved a little from the earlier run (4861 sections then, 4839 now).
 
 ## 5. Determinism and netcode
 
@@ -195,6 +231,22 @@ The sim is unchanged on the polish branch (`r3d-polish`), so these numbers still
   the dusk; collision never scans it whole. `L.zmx[i]` is the largest `z1` of `L.objs[0..i]`, and
   `firstFrom(L, z)` finds by binary search the first object that can reach `z`, so each player's
   collision looks only at the objects around them.
+
+With the players far apart, `node tools/r3d-far.js` (3 seeds, 40 spots each, both holding
+forward and jump), before and after the per-player windows:
+
+| Players apart | Tick, mean | Tick, 99th pct | State, mean | State, largest | Objects with state |
+| --- | --- | --- | --- | --- | --- |
+| 0, before | 2.9 µs | 17 µs | 647 B | 789 B | 8 |
+| 0, now | 2.6 µs | 11 µs | 626 B | 766 B | 8 |
+| 100, before | 5.6 µs | 22 µs | 682 B | 947 B | 15 |
+| 100, now | 3.9 µs | 18 µs | 651 B | 802 B | 8 |
+| 400, before | 13.7 µs | 45 µs | 872 B | 1407 B | 37 |
+| 400, now | 4.1 µs | 20 µs | 659 B | 858 B | 10 |
+
+The renderer keeps object views and side decoration in a window around each drawn camera's
+player, 30 units behind to 125 ahead, merged where the two overlap. With the players 354 apart
+split screen keeps 97 views and single view 53.
 
 Online play uses the same scheme as the 2D runner. The client predicts with its own input and
 the last known remote input. On each snapshot it replays its unacknowledged inputs and carries
@@ -221,8 +273,9 @@ Measured with the real renderer on this machine's GPU, two headless clients and 
 - Largest correction of your own player: 0.0000 units in the real-renderer match; 0 or 0.1375
   (one tick of running) in the debug-view match, depending on the run. Never drawn moving
   backwards.
-- Final run of `tools/runner3d-browser.js`: 49 checks, all passed (local, online, co-op,
-  Dodgeball and the 2D runner from the menu, the real-renderer pass).
+- Final run of `tools/runner3d-browser.js`: 59 checks, all passed: local, online, co-op,
+  Dodgeball and the 2D runner from the menu, the real-renderer pass, the control cards, Enter
+  online, and the players 354 units apart in split and single view.
 - The other player: their input arrives a round trip late, so a jump or a stop of theirs is
   mispredicted by up to about 4 units. That correction used to snap (it was over `OFF_MAX`, 3
   units), which showed as a jump of 3.4 to 4.1 units in one frame. It now eases out at most 0.3
@@ -258,14 +311,15 @@ Hooks in the shared shell files. Each is a few lines next to the matching 2D run
   `#r3Results` cards.
 - `public/js/main.js:12` import; `:49` and `:64` create `Runner3DMode`; `:268` hands it the frame
   loop while active; `:413` stops it in `quitToMenu`; `:434` routes `start{mode:'runner3d'}` to it.
-- `public/js/input.js:5-6` the `SOL_3D` and `LUNA_3D` key maps; `:17` `preventDefault` for the
-  extra keys only while `mode3d` is on and never in a text field; `:24` the `mode3d` and `touch3`
-  fields; `:52-60` `pad3()`, `local3d()`, `any3d()`.
+- `public/js/input.js:4-12` the `SOL_3D`, `LUNA_3D` and online `ANY_3D` key maps; `:38-41`
+  `preventDefault` for those keys only while `mode3d` is `'local'` or `'online'`, never in a text
+  field, and never for Enter on a focused button; `:55` the `mode3d` and `touch3` fields;
+  `:104-112` `pad3()`, `local3d()`, `any3d()`.
 - `server/index.js:11` import; `:115` `Room.startRunner3d()`; `:123`, `:125`, `:142`, `:221` the
   `runner3d` branches in `restartGame()`, `startMsg()`, `tick()` and the `start` message; `:170`
   the input mask `& 31` (bit 16 is "back"; the co-op sim and the 2D runner read only bits 1, 2
   and 4, and Dodgeball reads 8).
-- `public/style.css:145-193` one block for the canvas, HUD, tips, held note and touch pad.
+- `public/style.css:154-223` one block for the canvas, HUD, tips, control cards and touch pad.
 
 ## 7. Rendering
 
@@ -439,6 +493,11 @@ node tools/r3d-far.js                                # sim tick time and state s
 - The pendulum blade's deadly depth is 0.28 all the way to its rim, so the drawn edge is thinner
   than what kills (by up to 0.12 at the very rim).
 - `WHY3.shard` has a death effect but nothing in the current sim causes it.
+- With no lead cap, the dusk is slow early: a good runner is 340 units ahead after 75 s. That is
+  the owner's call. The race is then decided by the course, not the dusk, until the dusk speeds up.
+- The flow test's bot plans with the real sim, so it knows where moving parts will be. It shows a
+  route without waiting exists, not that a player sees it. The thorn curtain also has a reactive
+  runner with no foresight. The other clocked kinds are timed by slowing on the run-up.
 - The dev server once exited with code 1 and no output in the shell agent's run. It did not
   happen again in this branch's runs (three servers, several hours).
 
@@ -453,7 +512,7 @@ node tools/r3d-far.js                                # sim tick time and state s
 - Art matched to the sim: pendulum disc, sweeper arm, full-size orbs with an archway and a
   socket, bramble curtain, ember halves with a re-form ghost. Passed curtains hide per camera.
 - Readability: per-player pool rims, creeping dusk shadow, lead-cap veil and held note, first-time
-  tips, dusk tick, ember crack and held sounds.
+  tips, dusk tick, ember crack and held sounds. The veil, note and held sound went with the cap.
 - Fixed a black frame: a shader `pow()` of a negative number gave NaN, and bloom spread it.
 - Glow sprite square edge, Luna's hood lining.
 - Perf: mid quality, auto by slow frames, vignette noise skipped when idle, shader warm-up, no
@@ -461,3 +520,8 @@ node tools/r3d-far.js                                # sim tick time and state s
 - Online: the other player's correction eases out instead of snapping (no pops at 80 ms lag).
   The browser test plays the WebGL pass in real time and checks tips and remote motion.
 - Folded `runner3d-app.md` and `runner3d-render.md` into this file; HANDOFF section 11.
+- Branch `r3d-flow` from `runner-3d` (d52cb57), after the owner played it: removed the lead cap
+  and everything that showed it; per-player object windows in the sim and the renderer;
+  the mantle; a slower, wider thorn curtain; a never-stop flow test and a reactive curtain runner
+  in the checker; Sol jumps with Enter or Right Shift, Luna with Space; control cards during the
+  countdown and a jump reminder until the first jump; `tools/r3d-far.js`.

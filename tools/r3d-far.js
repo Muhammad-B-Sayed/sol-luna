@@ -17,7 +17,7 @@ function stand(p, o) {
   Object.assign(p, { x: (o.x0 + o.x1) / 2, z: o.z0 + 0.5, y: o.y, fy: o.y, vx: 0, vy: 0, vz: 0, gr: true, gref: -1, alive: true, jb: 0, jh: 0, coy: 0 });
 }
 
-for (const gap of gaps) {
+for (const [gap, warm] of [[gaps[gaps.length - 1], true], ...gaps.map(g => [g, false])]) {   // one silent pass first warms up the JIT
   let n = 0, us = 0, all = [], bytes = 0, maxBytes = 0, maxO = 0;
   for (const seed of seeds) {
     const L = buildRunner3d(seed);
@@ -41,5 +41,5 @@ for (const gap of gaps) {
       }
     }
   }
-  console.log(`players ${String(gap).padStart(3)} apart: tick mean ${(us / n).toFixed(1)} us, 99th percentile ${all.sort((x, y) => x - y)[Math.floor(all.length * 0.99)].toFixed(0)} us; state mean ${Math.round(bytes / (n / 25 * 3))} bytes, largest ${maxBytes} bytes, at most ${maxO} objects with state`);
+  if (!warm) console.log(`players ${String(gap).padStart(3)} apart: tick mean ${(us / n).toFixed(1)} us, 99th percentile ${all.sort((x, y) => x - y)[Math.floor(all.length * 0.99)].toFixed(0)} us; state mean ${Math.round(bytes / (n / 25 * 3))} bytes, largest ${maxBytes} bytes, at most ${maxO} objects with state`);
 }
