@@ -540,6 +540,6 @@ What C costs and where it stops:
 - Browser checks on C: dodge local passes (5-4, rematch, co-op level after); online at
   `LAG_MS=40` and `LAG_MS=80` pass (both winner screens, rematch, back to lobby, no console
   errors, no backward steps of the drawn ball); co-op online 23/24 (`tools/playtest/online-browser.mjs`,
-  `PORT0=3488`; the failing "host Next level takes both clients to level 2" fails on
+  `PORT0=3488`, a port option since reverted because `low-gravity` gained `PORT` for the same thing; the failing "host Next level takes both clients to level 2" fails on
   `low-gravity` too, which also fails both lag-80 checks that pass here); Runner 2D passes.
 - Decision written: C ships.
