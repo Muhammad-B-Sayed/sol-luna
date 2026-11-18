@@ -256,7 +256,8 @@ change one, keep the room's shape and its place on the difficulty curve, and say
    bottom pair, green the top pair and the bridge over the shade at the top. The players pump
    each other upward; the plates past the east wing's sun channel make Sol the operator in the
    middle. Then a crate pushed onto the top east lift presses a green pad there and holds the
-   pair down, which keeps Sol up and the bridge raised. 8 beats.
+   pair down, which keeps Sol up and the bridge raised. 8 beats. Luna spawns on the east floor
+   by P0a, under the 3-row pocket she used to start in, so her first jump rises the full 99 px.
 10. **Stone Raft.** Shape: a deep shade lake across the middle with an island in it. The dock,
     island and shelf are a low deck; the rooms above each shore and the long gallery underneath
     have full headroom. Sol starts at the bottom of a 1-wide, 3-deep well at the west end of the
