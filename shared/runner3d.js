@@ -881,10 +881,22 @@ function updateObjects(L, S) {
 function updateTilt(S, o, i) {
   const st = S.o[i], T = TILT;
   let load = 0, kick = 0, on = false;
+  // A player standing in the centre band holds the slab on its latch: the other player, out on
+  // an outer band, cannot lean or flip it under them (one player must never be able to throw
+  // the other off).
+  let riders = 0, held = false;
+  for (const p of S.p) {
+    if (!p.alive || !p.gr || p.gref !== i) continue;
+    riders++;
+    const u = (p.x - o.cx) / o.hx;
+    if (u <= T.UC && u >= -T.UC) held = true;
+  }
+  held = held && riders > 1;
   for (const p of S.p) {
     if (!p.alive || !p.gr || p.gref !== i) continue;
     on = true;
     const u = clamp((p.x - o.cx) / o.hx, -1, 1), au = u < 0 ? -u : u;
+    if (held && au > T.UC) continue;
     load += T.LOAD * u;
     if (au > T.UC) kick += (u < 0 ? -T.W0 : T.W0) * Math.min(1, (au - T.UC) / (T.UE - T.UC));
   }
