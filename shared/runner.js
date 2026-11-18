@@ -174,22 +174,23 @@ const FEAT = {
   },
   // Chain plank: a beam on an axle at its middle, hung from a chain. Weight near the middle only
   // rocks it; toward an end it tips and throws you off; a touch on the tip spins it right over.
-  // The run-up is longer so a second arrival can wait for it to settle. Every jump on and off is
-  // sized from the edge of the safe middle zone, never from the tip.
+  // The run-up is longer so a second arrival can wait for it to settle. The first plank's middle
+  // is where a full-speed jump from the ledge's edge comes down (about 150 px out, 160 onto a
+  // plank a tile lower), so the natural jump lands in the safe zone; the near tip is reached only
+  // by jumping well before the edge. The jumps between planks and off are sized from the safe zone.
   plank(g, d, intro) {
     const count = !intro && d > 0.55 && g.rand() < 0.4 ? 2 : 1;
     const drop = !intro && d > 0.4 && g.rand() < 0.5 ? 1 : 0;    // plank a tile below the ledge
     const safe = intro ? 36 : Math.round(lerp(34, 30, d));
     g.ground(intro ? 1 : count > 1 ? 4 : 2);   // room to wait: two planks can both be set spinning
-    let gap = intro ? 1 : g.ri(1, 2);
     const top = (g.h + drop) * TS;
     for (let k = 0; k < count; k++) {
       const len = intro ? 6 : count > 1 ? 6 : g.ri(6, 8);
+      const gap = k ? 1 : Math.round((150 + 10 * drop - 12 * len) / 24);
       g.pit(gap);
       const x = g.x * TS, w = len * TS;
       g.obj({ k: 'plank', x, y: top, w, h: 12, px: x + w / 2, py: top + 6, H: w / 2, safe, n: w / SEG, ax0: x, ax1: x + w });
       g.pit(len);
-      gap = 1;
     }
     g.pit(intro ? 1 : g.ri(1, d > 0.5 ? 2 : 1));
     const r = intro || d < 0.3 ? 0 : g.ri(-1, 1);
