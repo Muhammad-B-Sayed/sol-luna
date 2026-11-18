@@ -117,6 +117,30 @@ export function search(L, S0, who, opts) {
   return { ok: false, exp };
 }
 
+// search() with a ladder of fallbacks: best-first by progress can sink its whole budget into a
+// doomed branch (standing on slabs that are about to crumble), so a failed attempt is retried
+// with a stronger time weight, then from a start nudged by a few ticks of waiting or stepping
+// back. Returns the first success (plans include the nudge).
+export function solve(L, S, who, opts) {
+  const B = opts.budget || 1500;
+  const tries = [
+    { tw: 0.0013, budget: B }, { tw: 0.03, budget: B }, { tw: 0.01, budget: 2 * B },
+    { tw: 0.0013, budget: B, pre: [0, 0, 0, 0, 0, 0] }, { tw: 0.03, budget: B, pre: [B_, B_, B_, B_, B_, B_, B_, B_] },
+    { tw: 0.004, budget: 4 * B },
+  ];
+  let exp = 0;
+  for (const t of tries) {
+    let S0 = cloneRunner3d(S);
+    const pre = t.pre || [];
+    for (const b of pre) tick(L, S0, who, b, opts.other || null);
+    if (!S0.p[who].alive || (opts.deadline !== undefined && S0.tick > opts.deadline)) continue;
+    const r = search(L, S0, who, { ...opts, tw: t.tw, budget: t.budget });
+    exp += r.exp;
+    if (r.ok) return { ...r, plan: pre.concat(r.plan), exp };
+  }
+  return { ok: false, exp };
+}
+
 function unroll(node, last) {
   const seq = [last];
   for (let n = node; n && n.runs; n = n.parent) seq.push(n.runs);
@@ -126,6 +150,28 @@ function unroll(node, last) {
 }
 
 export { STATEFUL };
+
+// Goal test for "made it into section k": standing on its run-up with room to stop (at least
+// 1 unit before the run-up's end), or already standing on something past the run-up.
+export function sectionGoal(L, k) {
+  const sec = L.secs[k];
+  let first = sec.o0;
+  const run = [];
+  for (let i = sec.o0; i < sec.o1; i++) if (L.objs[i].k === 'floor' && L.objs[i].skin === 1) run.push(i);
+  for (let i = sec.o0; i < sec.o1; i++) if (!run.includes(i)) { first = i; break; }
+  if (first === sec.o0 && run.length) first = sec.o1;
+  return (S, p) => {
+    if (!p.gr) return false;
+    if (run.includes(p.gref)) return p.z <= L.objs[p.gref].z1 - 1 || p.gref !== run[run.length - 1];
+    return p.gref >= first;
+  };
+}
+// Standing on the run-up of section k (a safe place to wait)?
+export function onRunup(L, k, p) {
+  if (!p.gr || p.gref < 0) return false;
+  const o = L.objs[p.gref];
+  return o.k === 'floor' && o.skin === 1 && p.gref >= L.secs[k].o0 && p.gref < L.secs[k].o1 && p.z <= o.z1 - 1;
+}
 
 // CLI: run the bot down one course for a few seeds and report how far it gets.
 //   node tools/runner3d-bot.js [seeds=1,2,3] [z=600]
@@ -142,7 +188,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     while (S.phase === 0) stepRunner3d(L, S, [0, 0]);
     for (; L.secs[k].z0 < Z; k++) {
       const c = L.secs[k - 1], nx = L.secs[k];
-      const r = search(L, S, 0, { goalObj: nx.o0, budget: 3000, o0: c.o0, o1: c.o1 });
+      if (onRunup(L, k - 1, S.p[0])) while (S.p[0].z - S.zone > 20) stepRunner3d(L, S, [0, 0]);   // wait on the run-up when far ahead
+      const r = solve(L, S, 0, { until: sectionGoal(L, k), budget: 1500, o0: c.o0, o1: c.o1 });
       if (!r.ok) { ok = false; console.log(`seed ${seed}: stuck in #${k - 1} ${c.kind} z${c.z0.toFixed(1)} (exp ${r.exp}) lead ${(S.p[0].z - S.zone).toFixed(1)}`); break; }
       S = r.S;
     }
