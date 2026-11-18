@@ -160,7 +160,7 @@ SCRIPTS[27] = () => [
   press(SOL, 4, 27), pushTo(LUNA, 0, 32, { y: 26, tol: 0.25 }), press(LUNA, 30, 26),   // she shoves the crate through her gate
   goto(SOL, 12, 27), board(SOL, 13, 28),
   // 1. Luna: crate onto E1, hop over it in the open shaft, purple for Sol's W1
-  rideWithCrate(33, 27, 35.5, -1), grab(LUNA, 37, 26), press(LUNA, 38, 26), waitPlat(13, 28),
+  rideWithCrate(33, 27, 35.5, -1), grab(LUNA, 37, 26), grab(LUNA, 38, 22),   // a climb of 4 up the open shaft press(LUNA, 38, 26), waitPlat(13, 28),
   goto(SOL, 12, 21),
   rideWithCrate(33, 27, 34.0, 1),
   // 2. Sol holds orange: E1 takes Luna and the crate up to floor 21
@@ -170,7 +170,7 @@ SCRIPTS[27] = () => [
   // 3. green twice: Sol's gate, then W2
   press(LUNA, 32, 20), ...walk(SOL, 10, 6, 21), goto(LUNA, 31, 20), goto(LUNA, 30, 20),   // low rooms: walk, never hop
   ...walk(SOL, 4, 2, 21), grab(SOL, 1, 21), goto(SOL, 3, 21), goto(SOL, 4, 21), press(LUNA, 32, 20), waitPlat(3, 22),
-  goto(SOL, 3, 15), goto(SOL, 2, 15), grab(SOL, 1, 15), ...walk(SOL, 3, 5, 15), goto(SOL, 6, 15, { tol: 0.12 }), rideWithCrate(27, 21, 28.0, 1),
+  goto(SOL, 3, 15), goto(SOL, 2, 15), grab(SOL, 1, 15), ...walk(SOL, 3, 5, 15), goto(SOL, 6, 15, { tol: 0.12 }), goto(LUNA, 31, 20), goto(LUNA, 30, 20), rideWithCrate(27, 21, 28.0, 1),
   // 4. Sol holds white: E2 takes Luna and the crate to floor 15; she hops west over it and pushes it to E3
   press(SOL, 7, 15), waitPlat(27, 21),
   grab(LUNA, 25, 14), pushTo(LUNA, 0, 36, { y: 14, tol: 0.5 }), goto(LUNA, 34, 14),
@@ -185,12 +185,13 @@ SCRIPTS[27] = () => [
     { key: 'chute27b', h: (S, p) => Math.abs(cx(S.b[0]) - 38) * 13 + Math.abs(bot(S.b[0]) - 14) * 3 + Math.abs(cx(p) - cx(S.b[0])) * 3 }),
   press(LUNA, 31, 8, K), waitPlat(3, 10),             // Luna holds yellow on floor 9: Sol's floor gate on the top sinks
   // 8. Sol holds white at the top: E4 brings Luna up
-  goto(SOL, 2, 3, K), grab(SOL, 1, 3, K), ...walk(SOL, 3, 13, 3, K), board(LUNA, 27, 9, 4), ...walk(SOL, 15, 25, 3, K), press(SOL, 25, 3, K), waitPlat(27, 9),
+  goto(SOL, 2, 3, K), grab(SOL, 1, 3, K), ...walk(SOL, 3, 13, 3, K), goto(LUNA, 30, 8, K), goto(LUNA, 29, 8, K), board(LUNA, 27, 9, 4), ...walk(SOL, 15, 25, 3, K), press(SOL, 25, 3, K), waitPlat(27, 9),
   ...walk(LUNA, 30, 36, 3, K), grab(LUNA, 38, 3, K), ...walk(LUNA, 36, 24, 3, K), goto(LUNA, 23, 3, K),   // back west over E4 while Sol still holds it up
   // 9. the core: Luna holds pink, Sol rides D1 down, gem, onto the counterweight D2
   ...walk(SOL, 23, 19, 3, K), goto(SOL, 18, 3, K), ...walk(LUNA, 21, 15, 3, K), press(LUNA, 13, 3, K), waitPlat(17, 4),
   grab(SOL, 23, 11, K), board(SOL, 21, 16), goto(LUNA, 15, 3, K), grab(SOL, 19, 19, K), waitPlat(21, 28, false),   // step off the sinking counterweight into a niche
-  press(SOL, 20, 27, K), waitPlat(21, 28),
+  seek(SOL, 'sol on the foot plate, clear of the counterweight', (S, p) => S.act[4] && p.gr && Math.abs(p.vx) < 0.05 && cx(p) > 20.1 && cx(p) < 20.5 && bot(p) > 27.7, { key: 'foot27', keep: true, h: (S, p) => Math.abs(cx(p) - 20.3) * 7 + Math.abs(bot(p) - 28) * 4 }),
+  waitPlat(21, 28),
   goto(LUNA, 18, 15, K), grab(LUNA, 20, 8, K), board(LUNA, 21, 16),
   goto(SOL, 19, 27, K), door(SOL, K), grab(LUNA, 19, 22, K), door(LUNA, K), win(),
 ];
