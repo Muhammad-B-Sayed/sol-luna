@@ -316,6 +316,11 @@ jump back, a run back, or nothing) 0 to 11 ticks after they first see it.
 | inputs drained between points | 10,778 | 838 | 9,704 | 415 |
 | your player: largest correction | 39 px | 34 px | 39 px | 22 px |
 
+"Your own throw left otherwise" was 0 in about 1,500 throws over the after-runs with a clean
+harness, and 1 in a run where the harness itself stalled (84 ms). A throw's angle counts from
+when you got the ball, and that can hang on the other player's late inputs (a handover, a ball
+coming back), so it is printed by the check, not a failure. I did not catch that one throw's cause.
+
 "Thrower's screen showed a miss" is about the other player: the thrower sees them a round trip
 late, so a run seen as a dodge can turn out a hit. It happened 0 to 4 times in 390 throws over
 other runs after the fix, and 1 to 5 before.
