@@ -202,7 +202,21 @@ backwards in z, `viewBack` the most the drawn player moved backwards in one fram
 was held) and the other player's drawn motion (`remoteStep`, the largest move between two frames,
 and `remoteBack`, the most it moved backwards in one frame while running forward).
 
-PERF_ONLINE
+Measured with the real renderer on this machine's GPU, two headless clients and a server with
+`LAG_MS=80` (the HUD showed 160 to 183 ms round trips), in `tools/runner3d-browser.js`:
+
+- Both clients agree: after both stand still, positions differ by 0.0000 and jump counts match.
+- Largest correction of your own player: 0.0000 units in the real-renderer match; 0 or 0.1375
+  (one tick of running) in the debug-view match, depending on the run. Never drawn moving
+  backwards.
+- Final run of `tools/runner3d-browser.js`: 49 checks, all passed (local, online, co-op,
+  Dodgeball and the 2D runner from the menu, the real-renderer pass).
+- The other player: their input arrives a round trip late, so a jump or a stop of theirs is
+  mispredicted by up to about 4 units. That correction used to snap (it was over `OFF_MAX`, 3
+  units), which showed as a jump of 3.4 to 4.1 units in one frame. It now eases out at most 0.3
+  units per tick (`REMOTE_EASE`) and is only dropped past 8 units. Their largest drawn step is now
+  0.44 to 0.48 units per tick over two runs (running and jumping alone are up to about 0.37), and they never move
+  backwards while running forward.
 
 ## 6. Files and the hooks in the shell files
 
@@ -238,7 +252,7 @@ Hooks in the shared shell files. Each is a few lines next to the matching 2D run
   `runner3d` branches in `restartGame()`, `startMsg()`, `tick()` and the `start` message; `:170`
   the input mask `& 31` (bit 16 is "back"; the co-op sim and the 2D runner read only bits 1, 2
   and 4, and Dodgeball reads 8).
-- `public/style.css:145-195` one block for the canvas, HUD, tips, held note and touch pad.
+- `public/style.css:145-193` one block for the canvas, HUD, tips, held note and touch pad.
 
 ## 7. Rendering
 
@@ -278,9 +292,11 @@ checked every kind this way at an easy and a hard instance, and the moving ones 
 
 ### Rendering notes
 
-- Quality: `setQuality('auto' | 'high' | 'low')`, default auto. High has bloom through
-  `EffectComposer` and pixel ratio up to 1.5; low draws straight to the screen at pixel ratio 1.
-  Auto steps down to low when the median frame over 3 s is longer than 24 ms.
+- Quality: `setQuality('auto' | 'high' | 'mid' | 'low')`, default auto. High has bloom through
+  `EffectComposer`, 4x MSAA and pixel ratio up to 1.5. Mid has bloom at a lower resolution, no
+  MSAA, pixel ratio 1. Low draws straight to the antialiased canvas at pixel ratio 1. Auto starts
+  at high, or at mid above about 1.25 million device pixels, and steps down a level when more than
+  1 frame in 10 over 3 s takes over 20 ms (see the frame rate section).
 - The first `reset()` builds one view of every kind on a throwaway course and compiles their
   shaders, so the first curtain or orb of a match does not stall a frame.
 - Per-frame updates reuse scratch vectors and matrices (no garbage every frame).
@@ -304,7 +320,44 @@ checked every kind this way at an easy and a hard instance, and the moving ones 
 5. If it brings a new cause of death (`WHY3`), add a branch in `onDeath` and in `Character.update`.
 6. Add a tip in `TIPS` in `runner3d-app.js`.
 
-PERF_SECTION
+### Frame rate
+
+Headless Chromium reaches the GPU with `--enable-gpu` (an AMD Radeon 780M, integrated, through
+ANGLE on OpenGL ES). `tools/r3d-perf.js` runs the demo's bots in real time for 30 s at each
+setting, at the browser's normal 60 Hz, with the default auto quality. "Slow" is the share of
+frames over 20 ms (a missed 60 Hz frame). JS is the time spent in `draw()` each frame.
+
+| View | Size | z | Median | 99th pct | Slow | JS median | Calls per view | Triangles per view | Level |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| single | 1280x720 | 0 | 16.7 ms | 16.8 ms | 0.1% | 6.1 ms | 186 | 39k | high |
+| single | 1280x720 | 600 | 16.7 | 16.8 | 0.1% | 8.4 | 212 | 37k | high |
+| single | 1280x720 | 1300 | 16.7 | 33.4 | 3.0% | 7.0 | 202 | 29k | high, then mid |
+| single | 1920x1080 | 0 | 16.7 | 16.8 | 0.0% | 4.9 | 186 | 39k | mid |
+| single | 1920x1080 | 600 | 16.7 | 16.8 | 0.0% | 6.1 | 212 | 37k | mid |
+| single | 1920x1080 | 1300 | 16.7 | 16.8 | 0.0% | 5.2 | 202 | 29k | mid |
+| split | 1280x720 | 0 | 16.7 | 16.8 | 0.0% | 7.3 | 177 | 39k | high |
+| split | 1280x720 | 600 | 16.7 | 16.8 | 0.0% | 9.7 | 213 | 39k | high |
+| split | 1280x720 | 1300 | 16.7 | 16.8 | 0.0% | 9.4 | 192 | 28k | high |
+| split | 1920x1080 | 0 | 16.7 | 16.8 | 0.4% | 6.7 | 177 | 39k | mid |
+| split | 1920x1080 | 600 | 16.7 | 16.8 | 0.0% | 7.1 | 212 | 38k | mid |
+| split | 1920x1080 | 1300 | 16.7 | 16.8 | 0.0% | 5.8 | 192 | 28k | mid |
+
+Before the tuning, high quality at 1920x1080 missed 17 to 22% of frames in single view and up to
+38% in split screen, and auto quality never stepped down because it only looked at the median
+(which stayed at 16.7 ms). What changed:
+
+- A mid level: bloom without MSAA, at a third of the resolution. Measured at 1920x1080, z 600:
+  high missed 34% of frames, mid none, low none.
+- Auto starts at mid on canvases over about 1.25 million device pixels, and steps down a level
+  when more than 1 frame in 10 in a 3 s window takes over 20 ms.
+- The screen vignette ran a 4-octave noise on every pixel of every camera, even with the dusk
+  far away. It now skips the noise while the dusk is far.
+- Shaders compile up front, and the per-frame updates no longer allocate.
+
+With vsync and the frame-rate limit off (`UNCAPPED=1`), the median frame is 1.3 to 4.5 ms at
+1280x720, but the intervals then mostly measure how far Chromium lets the CPU run ahead of the GPU
+(a 99th percentile near 90 ms with a 1.3 ms median), so the 60 Hz numbers above are the ones to
+trust.
 
 ## 8. Readability cues
 
@@ -364,8 +417,35 @@ node tools/r3d-glprobe.js                            # which WebGL renderer each
 
 ## 10. Known issues
 
-KNOWN
+- Frame rate is measured on one integrated GPU (Radeon 780M) only. A weaker GPU relies on auto
+  quality stepping down, which takes 3 s of missed frames per step.
+- Online, the other player is drawn up to about 0.2 s behind where they turn out to be after a
+  sudden jump or stop at 80 ms of lag: their correction eases out instead of snapping. Local
+  players are exact.
+- Gamepad play is untested (no pad here). The key maps and `pad3()` follow the 2D runner.
+- The thorn curtain a camera's player has passed vanishes for that camera all at once.
+- The pendulum blade's deadly depth is 0.28 all the way to its rim, so the drawn edge is thinner
+  than what kills (by up to 0.12 at the very rim).
+- `WHY3.shard` has a death effect but nothing in the current sim causes it.
+- The dev server once exited with code 1 and no output in the shell agent's run. It did not
+  happen again in this branch's runs (three servers, several hours).
 
 ## 11. Work log
 
-WORKLOG
+- Branch `r3d-polish` from `runner-3d` (483a860). The browser test passed as it was on the final
+  sim, with the real renderer loading without errors.
+- Headless Chromium gets the GPU with `--enable-gpu` (`tools/r3d-glprobe.js` tries 12 flag sets;
+  only the default one is SwiftShader). All tools now pass it.
+- `?boxes=1` collision overlay; demo `kind=` takes section kinds and `after=`; fixed debug
+  cameras (`__r3d.aim`); `tools/r3d-eval.js`.
+- Art matched to the sim: pendulum disc, sweeper arm, full-size orbs with an archway and a
+  socket, bramble curtain, ember halves with a re-form ghost. Passed curtains hide per camera.
+- Readability: per-player pool rims, creeping dusk shadow, lead-cap veil and held note, first-time
+  tips, dusk tick, ember crack and held sounds.
+- Fixed a black frame: a shader `pow()` of a negative number gave NaN, and bloom spread it.
+- Glow sprite square edge, Luna's hood lining.
+- Perf: mid quality, auto by slow frames, vignette noise skipped when idle, shader warm-up, no
+  per-frame allocations. `tools/r3d-perf.js`.
+- Online: the other player's correction eases out instead of snapping (no pops at 80 ms lag).
+  The browser test plays the WebGL pass in real time and checks tips and remote motion.
+- Folded `runner3d-app.md` and `runner3d-render.md` into this file; HANDOFF section 11.
