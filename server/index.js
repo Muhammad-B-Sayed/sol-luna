@@ -324,12 +324,14 @@ class Room {
     }
     this.steps++;
     // Dodgeball: the wind-up for throws at each player follows their round trip. It changes
-    // only in the ready freeze at the start of a point, when nobody can throw.
-    if (this.L.dodge && this.S.d.phase === DP_READY) {
+    // only in the ready freeze at the start of a point, when nobody can throw, and not in its last
+    // DRAIN_STOP ticks: a client a round trip ahead is already playing the point, and its throws
+    // must wind up as long on its screen as on the server.
+    if (this.L.dodge && this.S.d.phase === DP_READY && this.S.d.t < DODGE.ready - DRAIN_STOP) {
       const lag = [0, 0];
       const med = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
       if (WINDUP) for (const c of this.clients) lag[c.char] = windupFor(rttOf(c.ws), med(this.qDepth[c.char]));
-      if (process.env.DODGE_LOG && this.S.d.t === 49) console.log(`dodge ${this.code}: rtt ${this.clients.map(c => Math.round(rttOf(c.ws))).join('/')} ms, queue ${this.qDepth.map(med).join('/')}, wind-up at Sol/Luna ${lag.join('/')}`);
+      if (process.env.DODGE_LOG && this.S.d.t === DODGE.ready - DRAIN_STOP - 1) console.log(`dodge ${this.code}: rtt ${this.clients.map(c => Math.round(rttOf(c.ws))).join('/')} ms, queue ${this.qDepth.map(med).join('/')}, wind-up at Sol/Luna ${lag.join('/')}`);
       this.S.d.lag = lag;
     }
     const wasOver = this.S.phase === 2;
