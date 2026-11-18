@@ -28,7 +28,7 @@ import { availableParallelism } from 'node:os';
 import { TS } from '../shared/sim.js';
 import {
   buildRunner, createRunnerState, stepRunner, cloneRunner, ensureGenerated, STATEFUL, oidObj,
-  COUNT_TICKS, SLAB_GONE, SLAB_REFORM, SHARD_GONE, SHARD_REGROW, speedAt, diffAt,
+  COUNT_TICKS, SLAB_GONE, SLAB_REFORM, SHARD_GONE, SHARD_REGROW, PLANK, speedAt, diffAt,
 } from '../shared/runner.js';
 import { search as search1, tick, L_, R_, U_ } from './runner-bot.js';
 
@@ -73,8 +73,8 @@ function loaded(L, S, i) {
   }
   return false;
 }
-function atRest(st, k) { return k === 'plank' ? st.s === 0 && st.w === 0 : st.st === 0; }
-const REST_BOUND = { plank: 150, slab: 0, shard: 0 };   // slab/shard bounds depend on the object
+function atRest(st, k) { return k === 'plank' ? st.s === 0 && st.w === 0 && !st.f : st.st === 0; }
+const REST_BOUND = { plank: 120, slab: 0, shard: 0 };   // slab/shard bounds depend on the object
 function restBound(o) {
   if (o.k === 'plank') return REST_BOUND.plank;
   if (o.k === 'slab') return o.crack + SLAB_GONE + SLAB_REFORM + 4;
@@ -113,6 +113,35 @@ function restCheck(L, S, c, removeAt, inputs, out) {
   }
 }
 
+// A touch on a plank's tip: replay the other player's track (it lands on the tip), find the tick
+// the plank is set spinning, and count its turns (the sum of its turn rate) until it is at rest.
+// Each touch must give 2.5 to 3.5 turns and end exactly level.
+function spinCheck(L, S0, c, a, i, track, out) {
+  const S = cloneRunner(S0), t0 = S.tick;
+  place(S, a, c); park(S, 1 - a);
+  let kick = -1, ang = 0, last = 0;
+  const times = [];
+  for (let t = 0; t < 600; t++) {
+    const inp = [0, 0]; inp[a] = track(S.tick - t0);
+    stepRunner(L, S, inp);
+    const st = S.o[i];
+    if (!st) break;
+    if (kick < 0) { if (Math.abs(st.w) === PLANK.kick) { kick = S.tick; last = S.tick; ang = st.w; } continue; }
+    if (loaded(L, S, i)) { out.reload++; return; }      // touched again before it settled: not a clean measurement
+    ang += st.w;
+    if (Math.abs(ang) >= (times.length + 1) * 2 * Math.PI) { times.push(S.tick - last); last = S.tick; }
+    if (atRest(st, 'plank')) {
+      const turns = Math.abs(ang) / (2 * Math.PI), rest = S.tick - kick;
+      out.n++; out.min = Math.min(out.min, turns); out.max = Math.max(out.max, turns); out.rest = Math.max(out.rest, rest);
+      for (let j = 0; j < 3; j++) if (times[j] !== undefined) { out.tmin[j] = Math.min(out.tmin[j], times[j]); out.tmax[j] = Math.max(out.tmax[j], times[j]); }
+      if (turns < 2.5 || turns > 3.5 || st.s !== 0) out.fail.push({ seed: L.seed, x0: c.x0, obj: i, turns: +turns.toFixed(2), s: st.s });
+      return;
+    }
+  }
+  if (kick < 0) out.nokick++;
+  else out.fail.push({ seed: L.seed, x0: c.x0, obj: i, why: 'not at rest' });
+}
+
 // Everything a work unit of one seed needs: the course, chunk entry ticks and ghost snapshots.
 function prepSeed(seed) {
   const L = buildRunner(seed);
@@ -145,9 +174,11 @@ function prepSeed(seed) {
   return { L, chunks, ghost, T, snap };
 }
 
+const emptySpin = () => ({ n: 0, min: Infinity, max: 0, rest: 0, tmin: [Infinity, Infinity, Infinity], tmax: [0, 0, 0], fail: [], nokick: 0, reload: 0 });
 function emptyRes(seed, chunks, T = []) {
   const n = chunks.length;
   return { seed, chunks: 0, nChunks: n, speed: n ? speedAt(chunks[n - 1].x0 * TS) : 0, tMax: n ? T[n - 1] : 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [],
+    parkHeld: 0, parkMiss: 0, abused: 0, abusedFail: [], abuseMiss: 0, spin: emptySpin(),
     lost: [], slack: [], kinds: {}, course: [], courseFail: [], rest: {}, abuse: {} };
 }
 
@@ -252,26 +283,63 @@ function checkChunks(seed, ka, kb) {
         if (!r.ok) res.secondFail.push({ seed, k, kind: c.kind, x0: c.x0, who: b, delta: d, touched });
         else res.lost.push(r.tick - Tn);
       }
-      // parked partner on each plank: near end, middle, far end
+      // Planks: the other player parks on it, or abuses it, and the tested one arrives into that.
+      // Parked: standing still in the safe middle zone (its near edge, the middle, its far edge);
+      // anywhere farther out the plank throws them off, so they cannot stay there.
+      // Abuse: landing on the near tip or the far tip (it spins about three turns), or landing
+      // in the middle and hopping there. Each abuse is replayed with the other player starting
+      // DELTA ticks before the tested one, so the touch lands at a range of times.
       for (let i = c.o0; i < c.o1; i++) {
         const o = L.objs[i];
         if (o.k !== 'plank') continue;
-        for (const tgt of [o.x + 14, o.px, o.x + o.w - 14]) {
-          const t0 = Tk - 150;
-          if (!snap.has(t0)) continue;
+        const t0 = Tk - 150;
+        if (!snap.has(t0)) continue;
+        const rOf = (p) => p.x + p.w / 2 - o.px;
+        const onI = (p) => p.gr && oidObj(p.gref) === i;
+        // the other player's setup: the search heads for the spot, and stops when it is met
+        const plan = (until, toward) => {
           const S = cloneRunner(snap.get(t0));
           place(S, a, c); park(S, b);
-          const pa = search(L, S, a, { budget: BUDGET, o0: c.o0, o1: c.o1, until: (S2, p) => p.gr && oidObj(p.gref) === i && Math.abs(p.x + p.w / 2 - tgt) < 16 });
-          if (!pa.ok) continue;
-          const S2 = cloneRunner(snap.get(t0));
-          place(S2, a, c); park(S2, b);
-          const other = (t) => pa.plan[t - t0] ?? 0;
-          while (S2.tick < Tk) tick(L, S2, b, 0, other);
-          place(S2, b, c);
-          const r = search(L, S2, b, { goal, other, budget: BUDGET, o0: c.o0, o1: c.o1 });
+          const r = search1(L, S, a, { budget: 800, o0: c.o0, o1: c.o1, until, toward });
+          return r.ok ? r.plan : null;
+        };
+        // the tested player arrives at Tk; the other plays `track` from its start ledge at ts
+        const arrive = (ts, track) => {
+          const S = cloneRunner(snap.get(ts));
+          place(S, a, c); park(S, b);
+          const other = (t) => track(t - ts);
+          while (S.tick < Tk) tick(L, S, b, 0, other);
+          const held = S.p[a].alive && onI(S.p[a]);
+          place(S, b, c);
+          return { r: search(L, S, b, { goal, other, budget: BUDGET, o0: c.o0, o1: c.o1 }), held };
+        };
+        for (const [j, dx] of [[0, -(o.safe - 8)], [1, 0], [2, o.safe - 8]]) {
+          const pa = plan((S2, p) => onI(p) && Math.abs(rOf(p) - dx) < 6 && Math.abs(p.vx) < 1, o.px + dx);
+          if (!pa) { res.parkMiss++; continue; }
+          const { r, held } = arrive(t0, (t) => pa[t] ?? 0);
           res.parked++;
-          if (!r.ok) res.parkedFail.push({ seed, k, kind: c.kind, x0: c.x0, who: b, at: Math.round((tgt - o.x) / TS) });
+          if (held) res.parkHeld++;
+          if (!r.ok) res.parkedFail.push({ seed, k, kind: c.kind, x0: c.x0, who: b, at: ['near', 'middle', 'far'][j] });
           else res.lost.push(r.tick - Tn);
+        }
+        const hop = (t) => (t % 26 === 0 ? U_ : 0);
+        for (const [name, until, toward] of [
+          ['near tip', (S2, p) => onI(p) && rOf(p) <= -(o.H - PLANK.tip), o.px - o.H + 8],
+          ['far tip', (S2, p) => onI(p) && rOf(p) >= o.H - PLANK.tip, o.px + o.H - 8],
+          ['middle hops', (S2, p) => onI(p) && Math.abs(rOf(p)) < 8 && Math.abs(p.vx) < 1, o.px],
+        ]) {
+          const pa = plan(until, toward);
+          if (!pa) { res.abuseMiss++; continue; }
+          const track = name === 'middle hops' ? (t) => (t < pa.length ? pa[t] : hop(t - pa.length)) : (t) => pa[t] ?? 0;
+          if (name !== 'middle hops') spinCheck(L, snap.get(t0), c, a, i, track, res.spin);
+          for (const d of [...DELTAS, 150]) {
+            const ts = Tk - d;
+            if (!snap.has(ts)) continue;
+            const { r } = arrive(ts, track);
+            res.abused++;
+            if (!r.ok) res.abusedFail.push({ seed, k, kind: c.kind, x0: c.x0, who: b, abuse: name, delta: d });
+            else res.lost.push(r.tick - Tn);
+          }
         }
       }
     }
@@ -299,13 +367,19 @@ function checkChunks(seed, ka, kb) {
 }
 
 function merge(all) {
-  const tot = { course: [], courseFail: [], seeds: new Set(all.map(r => r.seed)).size, chunks: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, tMax: 0 };
+  const tot = { course: [], courseFail: [], seeds: new Set(all.map(r => r.seed)).size, chunks: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [],
+    parkHeld: 0, parkMiss: 0, abused: 0, abusedFail: [], abuseMiss: 0, spin: emptySpin(), lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, tMax: 0 };
   const nChunks = new Map();
   for (const r of all) nChunks.set(r.seed, r.nChunks);
   tot.courseChunks = [...nChunks.values()].reduce((a, b) => a + b, 0);
   for (const r of all) {
     tot.chunks += r.chunks; tot.first += r.first; tot.second += r.second; tot.parked += r.parked;
     tot.firstFail.push(...r.firstFail); tot.secondFail.push(...r.secondFail); tot.parkedFail.push(...r.parkedFail);
+    tot.parkHeld += r.parkHeld; tot.parkMiss += r.parkMiss; tot.abused += r.abused; tot.abusedFail.push(...r.abusedFail); tot.abuseMiss += r.abuseMiss;
+    const a = tot.spin, b = r.spin;
+    a.n += b.n; a.min = Math.min(a.min, b.min); a.max = Math.max(a.max, b.max); a.rest = Math.max(a.rest, b.rest);
+    a.fail.push(...b.fail); a.nokick += b.nokick; a.reload += b.reload;
+    for (let j = 0; j < 3; j++) { a.tmin[j] = Math.min(a.tmin[j], b.tmin[j]); a.tmax[j] = Math.max(a.tmax[j], b.tmax[j]); }
     tot.lost.push(...r.lost); tot.slack.push(...r.slack);
     tot.course.push(...r.course); tot.courseFail.push(...r.courseFail);
     tot.speed = Math.max(tot.speed, r.speed); tot.tMax = Math.max(tot.tMax, r.tMax);
@@ -325,7 +399,8 @@ function merge(all) {
 const pct = (arr, q) => { if (!arr.length) return 0; const a = [...arr].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(q * a.length))]; };
 
 function report(t, secs) {
-  const ok = !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length &&
+  const sp = t.spin;
+  const ok = !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length && !t.abusedFail.length && !sp.fail.length && !sp.nokick &&
     Object.values(t.rest).every(v => !v.fail) && Object.values(t.abuse).every(v => !v.fail);
   console.log(`\nRunner check: ${t.seeds} seeds, ${t.chunks || t.courseChunks} chunks to ${TILES} tiles (full difficulty at ${1100}), top scroll speed ${t.speed.toFixed(2)} px/tick, ${(t.tMax / 60).toFixed(0)} s in. ${secs.toFixed(0)} s.`);
   const leads = t.course.map(r => r.minLead / TS);
@@ -333,7 +408,9 @@ function report(t, secs) {
   else console.log(`  whole course    ${t.course.length - new Set(t.courseFail.map(f => f.seed * 2 + f.who)).size}/${t.course.length} runs (Sol and Luna, every seed) reached ${TILES} tiles; smallest lead over the left edge at a chunk start: ${Math.min(...leads).toFixed(1)} tiles (median of per-run minimums ${pct(leads, 0.5).toFixed(1)})`);
   console.log(`  single chunk    ${t.first - t.firstFail.length}/${t.first} cleared alive from a ${BUF / TS}-tile lead; ${t.slack.filter(x => x < 0).length} of them slower than the scroll (repaid by later chunks)`);
   console.log(`  second arrival  ${t.second - t.secondFail.length}/${t.second} cleared`);
-  console.log(`  parked partner  ${t.parked - t.parkedFail.length}/${t.parked} cleared`);
+  console.log(`  parked partner  ${t.parked - t.parkedFail.length}/${t.parked} cleared (partner standing still in the plank's safe zone: near edge, middle, far edge; still on it when the tested one arrived: ${t.parkHeld}; could not be set up: ${t.parkMiss})`);
+  console.log(`  plank abuse     ${t.abused - t.abusedFail.length}/${t.abused} cleared (the other lands on the near tip, the far tip, or hops in the middle, ${DELTAS.join('/')}/150 ticks earlier; could not be set up: ${t.abuseMiss})`);
+  if (sp.n) console.log(`  tip touch       ${sp.n} touches: ${sp.min.toFixed(2)} to ${sp.max.toFixed(2)} turns (allowed 2.5 to 3.5), turns took ${sp.tmin.map((v, j) => `${v}-${sp.tmax[j]}`).join(', ')} ticks, at rest (angle exactly 0) at most ${sp.rest} ticks after the touch; bad: ${sp.fail.length}, no spin: ${sp.nokick}, touched again first: ${sp.reload}`);
   console.log(`  spare time at a chunk's exit vs. the scroll (ticks): min ${Math.min(...t.slack)}, median ${pct(t.slack, 0.5)}`);
   console.log(`  time lost by second arrivals vs the deadline (ticks, + = later): median ${pct(t.lost, 0.5)}, 95% ${pct(t.lost, 0.95)}, max ${t.lost.length ? Math.max(...t.lost) : 0}`);
   console.log('  kind      chunks  sol avg  luna avg  max |sol-luna|  min spare  top speed');
@@ -343,7 +420,7 @@ function report(t, secs) {
   for (const key of ['rest', 'abuse']) for (const [k, v] of Object.entries(t[key])) {
     console.log(`  ${key === 'rest' ? 'rest after a run' : 'rest after abuse'}  ${k.padEnd(6)} ${v.n} objects, slowest ${v.max} ticks after the last touch, over bound: ${v.fail}${v.off ? `, ${v.off} scrolled away first` : ''}`);
   }
-  for (const f of [...t.courseFail, ...t.firstFail, ...t.secondFail, ...t.parkedFail].slice(0, 40)) console.log('  FAIL', JSON.stringify(f));
+  for (const f of [...t.courseFail, ...t.firstFail, ...t.secondFail, ...t.parkedFail, ...t.abusedFail, ...sp.fail].slice(0, 40)) console.log('  FAIL', JSON.stringify(f));
   console.log(ok ? '\nPASS' : '\nFAIL');
   return ok;
 }
@@ -371,9 +448,9 @@ if (isMainThread) {
         const tu = Date.now();
         w.on('message', (r) => {
           results.push(r);
-          const bad = [...r.courseFail, ...r.firstFail, ...r.secondFail, ...r.parkedFail];
+          const bad = [...r.courseFail, ...r.firstFail, ...r.secondFail, ...r.parkedFail, ...r.abusedFail, ...r.spin.fail];
           const what = u.who !== undefined ? `course ${u.who ? 'luna' : 'sol '}` : `chunks ${r.ka}-${r.kb - 1}`;
-          console.log(`seed ${String(r.seed).padStart(3)} ${what}: ${r.chunks ? r.chunks + ' chunks, ' : ''}${r.first + r.second + r.parked} runs, ${bad.length ? bad.length + ' FAILED' : 'ok'}  (${((Date.now() - tu) / 1000).toFixed(0)} s)`);
+          console.log(`seed ${String(r.seed).padStart(3)} ${what}: ${r.chunks ? r.chunks + ' chunks, ' : ''}${r.first + r.second + r.parked + r.abused} runs, ${bad.length ? bad.length + ' FAILED' : 'ok'}  (${((Date.now() - tu) / 1000).toFixed(0)} s)`);
           for (const f of bad) console.log('    fail', JSON.stringify(f));
           const n = (bySeed.get(r.seed) || 0) + 1; bySeed.set(r.seed, n);
         });

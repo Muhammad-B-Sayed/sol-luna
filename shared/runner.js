@@ -609,9 +609,6 @@ export function stepRunner(L, S, inputs) {
     const s = solidById(L, S, i, p.gref);
     return s && { x: s.o.x, y: s.o.y };
   });
-  // the planks near the screen and their angles before they move
-  const pk = [], s0 = [];
-  for (let k = S.lo; k < S.hi; k++) if (L.objs[k].k === 'plank') { pk.push(k); s0.push(S.o[k].s); }
   S.tick++;
   S.phaseT++;
   const counting = S.phase === RPH_COUNT;
@@ -622,6 +619,9 @@ export function stepRunner(L, S, inputs) {
     S.cam += S.v;
   }
   activate(L, S);
+  // the planks near the screen and their angles before they move
+  const pk = [], s0 = [];
+  for (let k = S.lo; k < S.hi; k++) if (L.objs[k].k === 'plank') { pk.push(k); s0.push(S.o[k].s); }
   updateObjects(L, S);
   const W = worldsFor(L, S);
   for (let i = 0; i < 2; i++) {

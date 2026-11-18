@@ -62,7 +62,7 @@ function objKey(L, S, o0, o1) {
     const st = S.o[i];
     if (!st) continue;
     const kind = L.objs[i].k;
-    k += kind === 'plank' ? '|' + Math.round(st.s * 20) : '|' + st.st;
+    k += kind === 'plank' ? '|' + Math.round(st.s * 20) + (st.f ? '~' + Math.round(st.w * 20) : '') : '|' + st.st;
   }
   return k;
 }
@@ -75,9 +75,10 @@ export function tick(L, S, who, bits, other) {
 }
 
 // opts: goal (px), deadline (tick, inclusive), other(tick) -> bits, budget (expansions),
-// o0/o1 (object index range that matters for state keys), until(S, p) custom goal test.
+// o0/o1 (object index range that matters for state keys), until(S, p) custom goal test,
+// toward (px): with `until`, search nearest to that x first instead of farthest right.
 export function search(L, S0, who, opts) {
-  const { goal, deadline = Infinity, other = null, budget = 3000, o0 = 0, o1 = 0, until = null } = opts;
+  const { goal, deadline = Infinity, other = null, budget = 3000, o0 = 0, o1 = 0, until = null, toward = null } = opts;
   const t0 = S0.tick;
   const done = until || ((S, p) => p.gr && p.x >= goal);
   // with a deadline, drop nodes that can't reach the goal in time even at full running speed
@@ -114,7 +115,7 @@ export function search(L, S0, who, opts) {
       const key = `${Math.round(p.x / 3)},${Math.round(p.y / 3)},${Math.round(p.vx)},${(S.tick - t0) >> 2}${objKey(L, S, o0, o1)}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      heap.push({ S, parent: node, runs, pr: p.x - 0.03 * (S.tick - t0) });
+      heap.push({ S, parent: node, runs, pr: (toward === null ? p.x : -Math.abs(p.x + p.w / 2 - toward)) - 0.03 * (S.tick - t0) });
     }
   }
   return { ok: false, exp };

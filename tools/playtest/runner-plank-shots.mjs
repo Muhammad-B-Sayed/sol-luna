@@ -1,0 +1,122 @@
+// Screenshots of the 2D Runner's chain plank and distance milestones, staged in a real browser
+// (headless Chromium, clock control: every frame is exactly one tick). Look at each one.
+//
+//   CHROME=/usr/bin/chromium PORT=3550 node tools/playtest/runner-plank-shots.mjs
+//   BEFORE=http://localhost:3551 ...   also shoot the milestones on a server running the old code
+//
+// Plank: at rest, a player in the safe middle zone, tipping (a player past the safe zone),
+// mid-spin after a touch on the tip (with the after-images), settling, and a crossing.
+// Milestones: seed 3 at 150 m (a page edge cut the old sign in half), 200 m (over a pit, the
+// old sign sat at the bottom of the screen) and 400 m (in a shard gallery, the old sign sat
+// above the ceiling), at 1280x800 and 1920x1080.
+import { launch, startServer, sleep } from './cdp.mjs';
+
+const PORT = +(process.env.PORT || 3550);
+const OUT = process.env.OUT || 'docs/img/runner';
+const BEFORE = process.env.BEFORE || '';
+process.env.PROFILE_PREFIX ||= '/tmp/sl-plank2d-shots-';
+const srv = process.env.NOSERVER ? null : await startServer(PORT);
+const B = await launch({ name: 'plank-shots' });
+let fails = 0;
+const check = (name, ok, info = '') => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${info ? ' · ' + info : ''}`); };
+
+// Start a local match on `seed`, fast-forward headlessly until the view's left edge is at `camX`
+// (px), and hand the page a sandboxed state in play (nobody dies, nothing ends).
+const stage = (seed, camX) => `(async () => {
+  const R = await import('/shared/runner.js');
+  const run = window.__runner;
+  run.startLocal(${seed});
+  const L = run.L, S = run.S;
+  R.ensureGenerated(L, ${camX} + 3000);
+  S.sb = 1; S.p.forEach(p => { p.alive = false; p.x = -1e5; });
+  while (S.phase === 0) R.stepRunner(L, S, [0, 0]);
+  while (S.cam < ${camX}) R.stepRunner(L, S, [0, 0]);
+  run.prev = run.capture(S); run.heard = null;
+  window.__R = R;
+  return { cam: S.cam };
+})()`;
+const put = (who, x, y, extra = '{}') => `(() => { const S = window.__runner.S, p = S.p[${who}];
+  Object.assign(p, { alive: true, x: ${x}, y: ${y}, vx: 0, vy: 0, gr: false, gref: -1, coy: 0 }, ${extra}); S.dead[${who}] = -1; S.best[${who}] = p.x;
+  window.__runner.prev = window.__runner.capture(S); })()`;
+
+async function plankShots() {
+  const P = await B.page(`http://localhost:${PORT}/`, { clock: true, ready: '!!window.__runner' });
+  await P.eval('window.__pt.start()');
+  // the first plank past 900 tiles on seed 5 (as in tools/runner-browser.js)
+  const info = await P.eval(`(async () => {
+    const R = await import('/shared/runner.js');
+    const L = R.buildRunner(5); R.ensureGenerated(L, 1400 * 24);
+    const c = L.chunks.find(c => c.x0 >= 900 && c.kind === 'plank');
+    const o = L.objs[c.o0];
+    return { x0: c.x0, h0: c.h0, i: c.o0, px: o.px, py: o.py, y: o.y, H: o.H, safe: o.safe, n: c.o1 - c.o0 };
+  })()`);
+  console.log('plank', JSON.stringify(info));
+  const st = (expr) => P.eval(`(() => { const S = window.__runner.S, st = S.o[${info.i}]; return ${expr}; })()`);
+  const shoot = async (name) => { await P.shot(`${OUT}/${name}.png`); console.log('  screenshot', `${OUT}/${name}.png`); };
+  const cam = info.px - 640;
+  // at rest, players waiting on the run-up
+  await P.eval(stage(5, cam));
+  await P.eval(put(0, info.x0 * 24 + 30, info.h0 * 24 - 34, '{ gr: true }'));
+  await P.eval(put(1, info.x0 * 24 + 70, info.h0 * 24 - 34, '{ gr: true }'));
+  await P.frames(3);
+  await shoot('runner-plank-rest');
+  check('plank at rest is exactly level', await st('st.s === 0 && st.w === 0'));
+  // Sol lands in the safe middle zone: it rocks a little and holds him
+  await P.eval(stage(5, cam));
+  await P.eval(put(0, info.px - 10 + 14, info.y - 34 - 60));
+  await P.frames(30);
+  await shoot('runner-plank-middle');
+  check('a player in the middle zone stays on', await P.eval(`(() => { const p = window.__runner.S.p[0]; return p.gr && window.__R.oidObj(p.gref) === ${info.i}; })()`));
+  // Luna lands past the safe zone: it tips and drops her
+  await P.eval(stage(5, cam));
+  await P.eval(put(1, info.px - 10 - (info.safe + 14), info.y - 34 - 30));
+  const tilt = await P.frames(80, `(() => { const p = window.__runner.S.p[1]; return p.gr && window.__R.oidObj(p.gref) === ${info.i}; })()`);
+  await P.frames(3);
+  await shoot('runner-plank-tipping');
+  check('tipping: the plank leans toward her', await st('st.s < -0.1'), JSON.stringify(await st('st')) + ' after ' + tilt);
+  // Sol lands on the far tip: three turns
+  await P.eval(stage(5, cam));
+  await P.eval(put(0, info.px + info.H - 14, info.y - 34 - 30));
+  await P.frames(80, `Math.abs(window.__runner.S.o[${info.i}].w) > 0.3`);
+  await P.frames(8);
+  await shoot('runner-plank-spin');
+  check('mid-spin after a tip touch', await st('Math.abs(st.w) > 0.25'), JSON.stringify(await st('st')));
+  await P.frames(70);
+  await shoot('runner-plank-slowing');
+  let n = await P.frames(200, `(() => { const st = window.__runner.S.o[${info.i}]; return st.s === 0 && st.w === 0; })()`);
+  check('back to exactly level after the spin', await st('st.s === 0 && st.w === 0'), `${78 + n} ticks after the spin was seen`);
+  // a crossing: Luna parked in the middle, Sol jumping across her to the far ledge
+  await P.eval(stage(5, cam));
+  await P.eval(put(1, info.px - 10 - 6, info.y - 34 - 2));
+  await P.eval(put(0, info.px - 10 - 70, info.y - 34 - 70, '{ vx: 3.25, vy: -1 }'));
+  await P.frames(14);
+  await shoot('runner-plank-crossing');
+  await P.close();
+}
+
+async function milestoneShots(base, tag) {
+  for (const [w, h] of [[1280, 800], [1920, 1080]]) {
+    const P = await B.page(`${base}/`, { clock: true, ready: '!!window.__runner', w, h });
+    await P.eval('window.__pt.start()');
+    for (const m of [150, 200, 400]) {
+      // the milestone column (m + 10) a third of the way across the view
+      await P.eval(stage(3, (m + 10) * 24 - 330));
+      await P.frames(2);
+      const file = `${OUT}/runner-milestone-${m}-${tag}-${w}.png`;
+      await P.shot(file);
+      console.log('  screenshot', file);
+    }
+    await P.close();
+  }
+}
+
+try {
+  await plankShots();
+  await milestoneShots(`http://localhost:${PORT}`, 'after');
+  if (BEFORE) await milestoneShots(BEFORE, 'before');
+} catch (e) { console.error(e); fails++; }
+check('no page errors', !B.pageErrors.length, B.pageErrors.slice(0, 3).join(' | '));
+B.close();
+srv?.stop();
+console.log(fails ? `\n${fails} problem(s)` : '\nall done');
+process.exit(fails ? 1 : 0);
