@@ -48,11 +48,13 @@ export const DODGE = {
   windMax: 9,         // 150 ms: the longest wind-up
 };
 
-// Wind-up for throws at a player whose round trip to the server is rttMs: about 1.1 round
-// trips (the round trip, plus the 2-tick snapshot interval and the input queue; the latency
-// harness measures it), capped at windMax ticks. 0 when local or rttMs is unknown.
-export function windupFor(rttMs) {
-  const t = Math.round(1.1 * Math.max(0, +rttMs || 0) / (1000 / 60));
+// Wind-up for throws at a player: how late their screen shows a remote throw, capped at
+// windMax ticks. That is about 1.1 round trips (rttMs, plus the 2-tick snapshot interval; the
+// latency harness measures it) plus `queue`, the inputs of theirs the server holds in its
+// queue: a browser that started a few ticks ahead of the server stays that far ahead (3-5 ticks
+// in tools/dodge-filmstrip.cjs runs), and sees the other player that much later. 0 when local.
+export function windupFor(rttMs, queue = 0) {
+  const t = Math.round(1.1 * Math.max(0, +rttMs || 0) / (1000 / 60) + Math.max(0, +queue || 0));
   return Math.min(DODGE.windMax, t);
 }
 

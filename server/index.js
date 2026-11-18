@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, createState, step, PH_WON } from '../shared/sim.js';
-import { COURT, createDodge, stepDodge, windupFor, DP_READY } from '../shared/dodge.js';
+import { COURT, createDodge, stepDodge, windupFor, DP_READY, DP_POINT, DP_OVER } from '../shared/dodge.js';
 import { buildRunner, createRunnerState, stepRunner, newSeed } from '../shared/runner.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -101,6 +101,7 @@ class Room {
     this.mode = 'coop';      // 'coop' (a level index) or a versus mode such as 'dodge'
     this.L = null; this.S = null; this.seed = 0;
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
+    this.qDepth = [[], []];  // dodge: each player's input queue length over the last half second
     this.lastActive = Date.now();
   }
   get host() { return this.clients[0]; }
@@ -138,11 +139,23 @@ class Room {
     this.level = -1; this.L = null; this.S = null;
     this.broadcast({ t: 'menu' });
   }
+  // Dodgeball. A browser that starts a few ticks ahead of the server (a slow first frame sends a
+  // burst of inputs) keeps that many inputs waiting here for the rest of the match, and the other
+  // player sees it that much later. Drain the queue while it costs nothing: after a hit, when
+  // inputs are ignored, and in the ready freeze, where an input the same as the keys already
+  // held only makes that hold one tick shorter (nobody can throw yet). Then record the depth
+  // that is left, for the wind-up.
+  dodgeQueue(ch) {
+    const q = this.q[ch], ph = this.S.d.phase;
+    if (q.length > 1 && (ph === DP_POINT || ph === DP_OVER || (ph === DP_READY && q[0][1] === this.cur[ch]))) this.ack[ch] = q.shift()[0];
+    const h = this.qDepth[ch]; h.push(q.length); if (h.length > 30) h.shift();
+  }
   tick() {
     if (!this.S) return;
     for (let ch = 0; ch < 2; ch++) {
       const q = this.q[ch];
       if (q.length > 12) q.splice(0, q.length - 4); // client ran far ahead: catch up
+      if (this.L.dodge) this.dodgeQueue(ch);
       if (q.length) {
         const [s, b] = q.shift();
         this.cur[ch] = b; this.ack[ch] = s; this.starve[ch] = 0;
@@ -152,7 +165,9 @@ class Room {
     // only in the ready freeze at the start of a point, when nobody can throw.
     if (this.L.dodge && this.S.d.phase === DP_READY) {
       const lag = [0, 0];
-      if (WINDUP) for (const c of this.clients) lag[c.char] = windupFor(rttOf(c.ws));
+      const med = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
+      if (WINDUP) for (const c of this.clients) lag[c.char] = windupFor(rttOf(c.ws), med(this.qDepth[c.char]));
+      if (process.env.DODGE_LOG && this.S.d.t === 49) console.log(`dodge ${this.code}: rtt ${this.clients.map(c => Math.round(rttOf(c.ws))).join('/')} ms, queue ${this.qDepth.map(med).join('/')}, wind-up at Sol/Luna ${lag.join('/')}`);
       this.S.d.lag = lag;
     }
     (this.mode === 'runner' ? stepRunner : this.L.dodge ? stepDodge : step)(this.L, this.S, this.cur);
