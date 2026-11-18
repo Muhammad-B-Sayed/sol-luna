@@ -121,7 +121,7 @@ const RUN_QMAX = 120;    // longest input queue kept
 const RUN_WAIT = 24;     // ticks the room waits for a late player's inputs before it holds their keys (400 ms)
 const BACK_TICKS = 60;   // co-op and dodge: after an absence, ticks during which a long queue is cut to BACK_KEEP
 const BACK_KEEP = 2;
-const DRAIN_STOP = 20;   // dodge: no queue drain in the last 20 ticks (333 ms) of the ready freeze
+const DRAIN_STOP = 35;   // dodge: no queue drain and no new wind-up in the last 35 ticks (583 ms) of the ready freeze
 
 class Room {
   constructor(code) {

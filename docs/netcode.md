@@ -176,12 +176,14 @@ changes keep the wind-up exact:
 
 - The queue drain (`dodgeQueue`) now drops only a standing queue: one that never fell below 2 in
   the last second. Draining the cushion that jitter needs left that player's inputs late and the
-  room waiting for them (1,200 holds in a 40 s test). It also stops 20 ticks before the ready
-  freeze ends: a drain moves every input after it one tick earlier, and a client a round trip
-  ahead has already sent its first inputs of play.
-- The wind-up (`D.lag`) is set until 20 ticks before the freeze ends, not until its last tick. A
+  room waiting for them (1,200 holds in a 40 s test). It also stops 35 ticks (583 ms) before
+  the ready freeze ends: a drain moves every input after it one tick earlier, and a client a
+  round trip ahead has already sent its first inputs of play.
+- The wind-up (`D.lag`) is set until 35 ticks before the freeze ends, not until its last tick. A
   client a round trip ahead was already playing the point with the old value, so a throw in the
   first moments of play wound up longer or shorter on the thrower's screen than on the server.
+  20 ticks was not enough: during a spike a client can go that long without a snapshot (1 or 2
+  throws in 100 still differed). With 35, none did in 390.
 - The queue depth for the wind-up is sampled once per `advance()`, so a catch-up after a wait
   counts once, as what is left, and can't make the wind-up longer.
 

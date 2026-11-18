@@ -545,7 +545,7 @@ function dodgeMeter() {
         const hit = e.hitN > e.hb, sh = M.shown[k][n];
         out.throws++; if (hit) out.hits++;
         // the thrower's own screen launched it from another tick or at another angle than the server
-        if (e.by === M.me && sh && sh.launch && e.launch && sh.launch !== e.launch) out.ownThrowMoved++;
+        if (e.by === M.me && sh && sh.launch && e.launch && sh.launch !== e.launch) { out.ownThrowMoved++; if (V) console.log(`  throw ${k}/${n} by ${M.me}: shown ${sh.launch}, server ${e.launch}`); }
         if (!sh || sh.hitN === null) continue;
         const shownHit = sh.hitN > e.hb;
         if (shownHit === hit) continue;

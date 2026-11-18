@@ -163,7 +163,7 @@ input rules that co-op and Dodgeball got after it, the numbers, the checks) is i
     ticks (30 Hz), and only the newest after a catch-up. `qm` counts the ticks the room still
     owes, so the clients run ahead until the room is back on real time. A player gone for about
     a second (a hidden tab) is not waited for, and when they come back their backlog is dropped.
-  - Dodge rooms also: the wind-up from each player's round trip and queue, fixed 20 ticks before
+  - Dodge rooms also: the wind-up from each player's round trip and queue, fixed 35 ticks before
     the ready freeze ends; a standing queue drained between points; the other player's aim
     withheld from each snapshot (`dodgeViewFor`).
   - `NET_LOG=1` prints waits, holds, skips, late keys, keys let go and drained inputs per match
@@ -535,8 +535,8 @@ A competitive mode on one single-screen court, Sol on the left and Luna on the r
     `server/index.js` sends dodge snapshots per client through it, at the cost of a second encode
     per snapshot in dodge rooms.
   - Server: protocol pings every 500 ms per socket (median of 8); in dodge rooms it drains a
-    standing input queue after a hit and in the ready freeze, but not in its last 20 ticks
-    (`Room.dodgeQueue`), and fixes the wind-up 20 ticks before the freeze ends. Input rules as
+    standing input queue after a hit and in the ready freeze, but not in its last 35 ticks
+    (`Room.dodgeQueue`), and fixes the wind-up 35 ticks before the freeze ends. Input rules as
     in every room (section 3, `docs/netcode.md` section 4).
     `DODGE_WINDUP=off` turns the wind-up off; `DODGE_LOG=1` logs round trips, queue and wind-up.
   - Measured in `docs/dodge-latency.md` against two other fixes (slower ball, rewind), with
