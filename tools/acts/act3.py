@@ -436,6 +436,15 @@ def lock_bridge(L, x, y, code):
     L.plat(x + 3, y + 1, 3, 1, 0, -1, 1, not code[1])
 
 
+def lock_stones(L, x, y, code):
+    """A lock over a sixteen-wide shade pit drawn in row y at cols x..x+15: a purple stepping stone
+    (x+4..x+5) and a green one (x+10..x+11), each rising out of the row below, with four-wide gaps
+    between them. Both up: long jumps of 4 from stone to stone. One down: a gap of 10, which nobody
+    can jump."""
+    L.plat(x + 4, y + 1, 2, 1, 0, -1, 0, not code[0])
+    L.plat(x + 10, y + 1, 2, 1, 0, -1, 1, not code[1])
+
+
 def lock_gates(L, x, y0, code):
     """A lock of two two-high gates, purple at col x and green at x+1, rows y0..y0+1."""
     gate_plat(L, x, y0, y0 + 1, 0, not code[0])
@@ -448,83 +457,100 @@ TL_S, TL_W, TL_N, TL_E = (0, 0), (1, 1), (0, 1), (1, 0)
 
 @level(26)
 def tidelock():
-    """Tidelock. Four quadrant basins ring a cross-shaped control room. The purple lever (west
-    arm) and green lever (east arm) give four states, and each state opens one crossing: S (both
-    off) lets you from the start into the SW basin and from the SE basin into the latch hall,
-    W (both on) from SW to NW, N (purple off, green on) the bridge over the top from NW to NE,
-    E (purple on, green off) from NE to SE. Every basin has two locks with different codes, so
-    a runner inside one is shut in until the operator changes the state. The doors are in the
-    two arms of the control room, behind gates that only the latch hall opens.
+    """Tidelock. Four quadrant basins ring a cross-shaped control room. The purple lever and the
+    green lever, both on the control room floor, give four states, and each state opens one
+    crossing: S (both off) lets you from the start hall into the SW basin and from the SE basin
+    into the latch hall, W (both on) from SW to the NW tide lift, N (purple off, green on) raises
+    the stepping stones over the top from NW to NE, E (purple on, green off) from NE to SE. Every
+    basin has two locks with different codes, so a runner inside one is shut in until the operator
+    changes the state. The doors are in the two arms of the control room, behind gates that only
+    the latch hall opens.
+    Re-spaced Nov 2026 for the higher jump: the west basins are four bands with floors 7 rows apart
+    (28, 21, 14, 7), each band climbed on two 3-row steps under a hole in the floor above; the
+    control room stands 6 rows tall on floor 17 between them, so the operator can jump the levers;
+    the bridge over the top is a 16-wide shade pit crossed by two long jumps of 4 on two stepping
+    stones, and a third jump off the green stone drops into the hole down to the NE basin. Luna's
+    gem in the NE corner needs the longest jump in the room: 6 tiles from the green stone, over the
+    pit's last gap and the hole. The latch hall's lanes, the start hall and the south bridge are low
+    corridors that are only walked. The start plate is on the hall's raised east end, off the path
+    from the chute to the lift.
 
-    1. Sol stands on the orange plate in the start area; Luna rides the lift up into the control
+    1. Sol stands on the orange plate in the start hall; Luna rides the lift up into the control
        room. She is the operator.
-    2. Sol walks west into the SW basin (S is open). Luna sets both levers on (W): the SW lock
-       behind him shuts, the W lock opens, and he climbs to the tide lift at the west wall.
-    3. Luna holds a yellow tide plate: the lift raises Sol into the NW basin. He climbs to the top
-       corridor.
-    4. Luna turns purple off (N): the bridge over the top rises; Sol crosses into the NE basin
-       and drops down the east wall.
-    5. Luna turns purple on and green off (E): Sol passes the east lock into the SE basin.
-    6. Luna turns purple off (S): Sol crosses the bridge into the latch hall, wades his sun lane
-       to the white latch (Luna's door gate opens for good) and drops down the chute into the
-       start area.
-    7. Luna holds the orange plate in the hub: the lift brings Sol up. Roles swap: Luna drops
-       down the shaft and runs the same ring while Sol works the levers and the tide.
-    8. In the latch hall Luna wades her moon lane to the pink latch (Sol's door gate opens) and
-       drops down the chute. Sol lifts her up with the orange plate, and both walk to their
-       doors at the ends of the two arms."""
+    2. Sol walks west into the SW basin (S is open) and climbs its two steps. Luna walks east
+       through both levers (W): the S lock behind him shuts, the W lock opens.
+    3. Luna holds the yellow tide plate: the tide lift raises Sol into the NW basin. He climbs its
+       steps to the top band.
+    4. Luna walks west through purple (N): the stepping stones rise; Sol jumps the pit stone to
+       stone and off the green stone down the hole into the NE basin.
+    5. Luna turns purple on and green off (E): Sol passes the east lock and drops to the SE.
+    6. Luna turns purple off (S): Sol crosses the south bridge into the latch hall, wades his sun
+       lane to the white latch (Luna's door gate opens for good) and drops down the chute into the
+       start hall.
+    7. Luna holds the orange plate in the control room: the lift brings Sol up. Roles swap: Luna
+       drops down the shaft and runs the same ring while Sol works the levers and the tide.
+    8. In the latch hall Luna drops to her moon lane and the pink latch (Sol's door gate opens) and
+       takes the chute. Sol lifts her up with the orange plate; he jumps the lift hole into the
+       west arm, and both walk to their doors at the ends of the two arms."""
     L = Lv('Tidelock', 115, 'Purple and green make four codes; each code opens one crossing. '
            'Walk right through a lever to turn it on, left to turn it off, and jump over it to leave it.')
     C = canvas()
-    # top band: NW room, corridor, the N bridge, NE corridor, NE room
-    paint(C, 1, 1, 6, 11); paint(C, 7, 1, 14, 3); paint(C, 15, 2, 24, 3)
-    paint(C, 25, 1, 32, 3); paint(C, 33, 1, 38, 11)
-    put(C, 17, 4, 'XXXXXX'); put(C, 17, 5, '......')
-    paint(C, 10, 3, 13, 3, '#'); paint(C, 26, 3, 29, 3, '#')     # steps in the top corridors
-    paint(C, 9, 10, 12, 11); paint(C, 27, 10, 30, 11)              # gem alcoves off the two columns
-    paint(C, 7, 6, 8, 17)                     # NW tide lift column
-    paint(C, 31, 6, 32, 16)                   # NE drop column
-    for x, y in ((1, 10), (5, 8), (1, 6), (5, 4)):      # NW climb; the NE mirrors it
-        paint(C, x, y, x + 1, y, '#'); paint(C, 38 - x, y, 39 - x, y, '#')
-    # W lock (gates x4-5) between the SW exit and the tide lift; E lock (x34-35) mirrored
-    paint(C, 1, 15, 3, 16); paint(C, 4, 13, 5, 16); paint(C, 6, 15, 6, 16); paint(C, 1, 17, 2, 17)
-    paint(C, 36, 15, 38, 16); paint(C, 34, 13, 35, 16); paint(C, 33, 15, 33, 16); paint(C, 37, 17, 38, 17)
-    # the cross: hub, N arm, W arm (Sol's door), E arm (Luna's door)
-    paint(C, 15, 12, 24, 17); paint(C, 18, 7, 21, 11)
-    paint(C, 13, 13, 14, 17); paint(C, 10, 16, 12, 17); paint(C, 11, 14, 11, 15)
-    paint(C, 25, 13, 26, 17); paint(C, 27, 16, 29, 17); paint(C, 28, 14, 28, 15)
-    put(C, 10, 17, 'A'); put(C, 14, 17, '!6'); put(C, 24, 17, '6@'); put(C, 29, 17, 'B')
-    put(C, 22, 17, '3')                       # hub orange plate
-    paint(C, 21, 15, 23, 15, '#'); paint(C, 18, 13, 19, 13, '#')   # perch climb
-    # S arm lift shaft and the start area
-    paint(C, 16, 18, 18, 28)
-    paint(C, 15, 26, 27, 27); paint(C, 16, 25, 27, 25)
-    paint(C, 13, 24, 14, 27)                  # S lock gates (x13-14) and their slots
-    put(C, 25, 27, '3')                       # start orange plate
-    put(C, 20, 27, 'a'); put(C, 22, 27, 'b')
-    # latch hall: Sol's lane above (sun), Luna's below (moon), chute at x27
-    paint(C, 20, 19, 27, 20); put(C, 23, 21, 'SSS'); put(C, 26, 21, '.')
-    paint(C, 20, 22, 27, 23); put(C, 23, 24, 'MMM'); put(C, 27, 24, '.')
-    put(C, 21, 20, '%'); put(C, 21, 23, '^')
-    paint(C, 28, 19, 34, 20); put(C, 28, 21, 'XXXXXX'); put(C, 28, 22, '......')
-    # SW basin
-    paint(C, 1, 20, 11, 27); paint(C, 1, 18, 6, 19); paint(C, 10, 19, 11, 19); paint(C, 12, 26, 12, 27)
-    paint(C, 1, 27, 4, 27, '#')
-    paint(C, 9, 26, 10, 26, '#'); paint(C, 6, 24, 7, 24, '#'); paint(C, 4, 22, 5, 22, '#'); paint(C, 1, 20, 2, 20, '#')
-    # SE basin
-    paint(C, 35, 18, 38, 26); paint(C, 29, 24, 34, 26)
-    paint(C, 34, 23, 34, 23); paint(C, 35, 25, 36, 25, '#'); paint(C, 37, 23, 38, 23, '#'); paint(C, 35, 21, 35, 21, '#')
-    for x, y in ((18, 9), (11, 11), (1, 2), (11, 20), (32, 26)):
+    # top band (rows 1-6, floor 7): NW top, the stepping-stone pit, NE top
+    paint(C, 1, 1, 38, 6)
+    paint(C, 1, 7, 4, 7)                              # the hole the NW steps climb through
+    put(C, 13, 7, 'X' * 16)                           # the N pit; stones rise from row 8
+    paint(C, 17, 8, 18, 8); paint(C, 23, 8, 24, 8)
+    paint(C, 29, 7, 30, 7)                            # the drop into the NE basin, right after the pit
+    paint(C, 7, 1, 10, 3, '#'); paint(C, 34, 1, 38, 3, '#')   # roof rocks over floor that is only walked
+    paint(C, 31, 1, 33, 1, '#')                       # and a one-row lip past the pit (keeps the band's air <= 120)
+    # NW basin (rows 8-13, floor 14): the tide lift arrives at the east, steps climb at the west
+    paint(C, 1, 8, 11, 13)
+    paint(C, 1, 8, 2, 13, '#'); paint(C, 3, 11, 4, 13, '#')    # step two (top 8), step one (top 11)
+    paint(C, 10, 14, 11, 21)                          # the tide lift's shaft and its rest
+    # SW upper (rows 15-20, floor 21): steps arrive at the west, the W lock, the tide lift
+    paint(C, 1, 15, 9, 20)
+    paint(C, 1, 21, 4, 21)                            # the hole the SW steps climb through
+    paint(C, 7, 15, 9, 16, '#'); paint(C, 7, 17, 7, 18, '#')   # W lock pillar (slots x8-9, rows 17-18)
+    # SW lower (rows 22-27, floor 28), entered from the start hall through the S lock
+    paint(C, 1, 22, 11, 27)
+    paint(C, 1, 22, 2, 27, '#'); paint(C, 3, 25, 4, 27, '#')   # step two (top 22), step one (top 25)
+    paint(C, 12, 26, 14, 27); paint(C, 13, 24, 14, 25)         # S lock doorway, gates x13-14, slots
+    # the control room (rows 11-16, floor 17): W arm, hub, N arm, E arm
+    paint(C, 13, 15, 14, 16)                          # Sol's door and his gate, under a low roof
+    paint(C, 15, 11, 25, 16)                          # the hub
+    paint(C, 19, 9, 22, 10)                           # N arm
+    paint(C, 26, 15, 28, 16); paint(C, 27, 13, 27, 14)   # E arm: Luna's gate (slot above) and door
+    put(C, 13, 16, 'A'); put(C, 28, 16, 'B')
+    put(C, 15, 16, '6'); put(C, 19, 16, '3'); put(C, 21, 16, '!'); put(C, 23, 16, '6'); put(C, 24, 16, '@')
+    # S arm: the lift shaft from the start hall up into the hub
+    paint(C, 16, 17, 18, 28)
+    # latch hall: Sol's sun lane (rows 18-19) over Luna's moon lane (rows 21-22), the junction,
+    # the south bridge under a low roof, the SE basin
+    paint(C, 21, 18, 28, 19); put(C, 22, 19, '%'); put(C, 24, 20, 'SSS')
+    paint(C, 21, 21, 28, 22); put(C, 22, 22, '^'); put(C, 24, 23, 'MMM')
+    paint(C, 27, 20, 27, 20)                          # junction: the drop to the moon lane
+    paint(C, 28, 23, 28, 23)                          # and the chute down to the start hall
+    paint(C, 29, 18, 34, 19); put(C, 29, 20, 'X' * 6); paint(C, 29, 21, 34, 21)
+    paint(C, 35, 15, 38, 20); put(C, 35, 20, '\\')
+    # NE basin (rows 8-13, floor 14) with the E lock and the drop to the SE basin
+    paint(C, 29, 8, 38, 13)
+    paint(C, 34, 8, 37, 9, '#'); paint(C, 34, 10, 34, 11, '#'); paint(C, 37, 10, 37, 11, '#')
+    paint(C, 37, 14, 38, 14)
+    # start hall (rows 24-27, floor 28)
+    paint(C, 15, 26, 15, 27); paint(C, 19, 24, 38, 27); paint(C, 16, 24, 18, 27)
+    put(C, 31, 27, '/'); paint(C, 32, 27, 38, 27, '#')   # the hall's east end is a step higher
+    put(C, 34, 26, '3'); put(C, 25, 27, 'a'); put(C, 22, 27, 'b')
+    for x, y in ((1, 2), (33, 8), (38, 15), (22, 11), (11, 22)):
         put(C, x, y, 's')
-    for x, y in ((21, 9), (28, 11), (38, 2), (3, 26), (30, 26)):
+    for x, y in ((6, 15), (8, 8), (37, 6), (19, 11), (38, 24)):
         put(C, x, y, 'm')
     flush(L, C)
-    L.plat(7, 17, 2, 1, 0, -5, 5)            # NW tide lift (yellow)
-    L.plat(16, 28, 3, 1, 0, -10, 2)          # start lift (orange)
-    lock_gates(L, 4, 15, TL_W); lock_gates(L, 34, 15, TL_E); lock_gates(L, 13, 26, TL_S)
-    lock_bridge(L, 17, 4, TL_N); lock_bridge(L, 28, 21, TL_S)
-    gate_plat(L, 11, 16, 17, 4)              # Sol's door gate (pink: Luna's latch)
-    gate_plat(L, 28, 16, 17, 3)              # Luna's door gate (white: Sol's latch)
+    L.plat(10, 21, 2, 1, 0, -7, 5)                    # tide lift (yellow), SW upper to NW basin
+    L.plat(16, 28, 3, 1, 0, -11, 2)                   # start lift (orange)
+    lock_gates(L, 8, 19, TL_W); lock_gates(L, 35, 12, TL_E); lock_gates(L, 13, 26, TL_S)
+    lock_stones(L, 13, 7, TL_N); lock_bridge(L, 29, 20, TL_S)
+    L.floorgate(14, 15, 2, 4)                         # Sol's door gate (pink: Luna's latch) sinks
+    gate_plat(L, 27, 15, 16, 3)                       # Luna's door gate (white: Sol's latch) rises
     return L
 
 
