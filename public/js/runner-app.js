@@ -16,6 +16,7 @@ const WHY = {
   thorn: 'ran into thorns', shard: 'hit by a falling shard',
 };
 const RESULT_DELAY = 70;   // ticks of the final moment before the results card
+const REMOTE_CAP = 240, REMOTE_EASE = 6;   // the partner's visual correction (see main.js)
 
 export class RunnerMode {
   // ctx: { R, input, net, sfx, show(id), toast(msg), app, quit() }
@@ -99,7 +100,14 @@ export class RunnerMode {
     this.prev = this.capture(this.S);
     stepRunner(this.L, this.S, inp);
     this.listen();
-    for (const v of this.off) { v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; }
+    this.off.forEach((v, i) => {
+      // the partner's late-heard jumps are paid back at most REMOTE_EASE px per tick (see main.js)
+      if (i !== this.app.me) {
+        const m = Math.hypot(v.x, v.y), k = m < 0.05 ? 0 : Math.max(0.8, (m - REMOTE_EASE) / m);
+        v.x *= k; v.y *= k; return;
+      }
+      v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0;
+    });
   }
 
   onSnapshot(m) {
@@ -114,7 +122,7 @@ export class RunnerMode {
     before.p.forEach((v, i) => {
       const o = this.off[i];
       o.x += v.x - after.p[i].x; o.y += v.y - after.p[i].y;
-      if (Math.hypot(o.x, o.y) > 64) { o.x = 0; o.y = 0; }
+      if (Math.hypot(o.x, o.y) > (i === me ? 64 : REMOTE_CAP)) { o.x = 0; o.y = 0; }
       this.prev.p[i].x += after.p[i].x - v.x; this.prev.p[i].y += after.p[i].y - v.y;
     });
     this.prev.cam += after.cam - before.cam;
@@ -145,7 +153,8 @@ export class RunnerMode {
     }
     if (n === 8) this.acc = 0;
     const alpha = this.paused && !this.online ? 1 : Math.min(1, this.acc / DT);
-    this.RR.draw(this.L, this.S, this.view(alpha), now / 1000);
+    const v = this.drawn = this.view(alpha);   // what was drawn, for the browser checks
+    this.RR.draw(this.L, this.S, v, now / 1000);
     this.hud(now / 1000);
   }
 

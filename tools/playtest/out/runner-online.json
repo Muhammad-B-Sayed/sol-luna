@@ -1,0 +1,137 @@
+[
+ {
+  "lag": 0,
+  "frames": 1050,
+  "host": {
+   "screen": "runnerResults",
+   "card": "Luna wins! | Sol0:13.364 mran into thorns | Luna0:14.465 mstill running",
+   "rec": {
+    "step": [
+     8.5,
+     12.4
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 1050
+   },
+   "drawn": true
+  },
+  "guest": {
+   "screen": "runnerResults",
+   "card": "Luna wins! | Sol0:13.364 mran into thorns | Luna0:14.465 mstill running",
+   "rec": {
+    "step": [
+     8.5,
+     12.5
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 1050
+   },
+   "drawn": true
+  },
+  "sameCard": true
+ },
+ {
+  "lag": 80,
+  "frames": 480,
+  "host": {
+   "screen": "runnerResults",
+   "card": "Luna wins! | Sol0:04.023 mfell into the abyss | Luna0:05.227 mstill running",
+   "rec": {
+    "step": [
+     8.5,
+     11.3
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 480
+   },
+   "drawn": true
+  },
+  "guest": {
+   "screen": "runnerResults",
+   "card": "Luna wins! | Sol0:04.023 mfell into the abyss | Luna0:05.227 mstill running",
+   "rec": {
+    "step": [
+     8.5,
+     9.7
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 480
+   },
+   "drawn": true
+  },
+  "sameCard": true
+ },
+ {
+  "lag": 150,
+  "frames": 480,
+  "host": {
+   "screen": "runnerResults",
+   "card": "Luna wins! | Sol0:04.224 mfell into the abyss | Luna0:05.427 mstill running",
+   "rec": {
+    "step": [
+     9.1,
+     9.5
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 480
+   },
+   "drawn": true
+  },
+  "guest": {
+   "screen": "runnerResults",
+   "card": "Luna wins! | Sol0:04.224 mfell into the abyss | Luna0:05.427 mstill running",
+   "rec": {
+    "step": [
+     9.1,
+     11.8
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 480
+   },
+   "drawn": true
+  },
+  "sameCard": true
+ }
+]

@@ -196,9 +196,21 @@ function tickOnline() {
   decayOff();
 }
 
+// The partner is predicted from their last known keys, so a jump the client hears about late
+// leaves an error of up to ~RTT worth of motion (90-130 px at 160-300 ms). Their correction is
+// carried whole (cap REMOTE_CAP) and paid back at most REMOTE_EASE px per tick, so their drawn
+// motion stays continuous. Your own character keeps the original short, tight correction.
+const REMOTE_CAP = 240, REMOTE_EASE = 6;
+function easeOff(v) {
+  const m = Math.hypot(v.x, v.y);
+  if (m < 0.05) { v.x = 0; v.y = 0; return; }
+  const k = Math.max(0.8, (m - REMOTE_EASE) / m);
+  v.x *= k; v.y *= k;
+}
 function decayOff() {
   const o = app.off;
-  for (const arr of [o.p, o.b, o.pl]) for (const v of arr) { v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; }
+  o.p.forEach((v, i) => { if (i !== app.me) { easeOff(v); return; } v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; });
+  for (const arr of [o.b, o.pl]) for (const v of arr) { v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; }
   const v = o.ball; v.x *= 0.75; v.y *= 0.75; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0;
 }
 
@@ -217,8 +229,8 @@ function onSnapshot(m) {
   const after = capture(ns);
   // keep visuals continuous: carry the correction as a decaying offset
   if (ns.p.length === app.off.p.length && ns.tries === app.S.tries) {
-    const add = (o, a, b) => { o.x += a.x - b.x; o.y += a.y - b.y; if (Math.hypot(o.x, o.y) > 64) { o.x = 0; o.y = 0; } };
-    before.p.forEach((v, i) => add(app.off.p[i], v, after.p[i]));
+    const add = (o, a, b, cap = 64) => { o.x += a.x - b.x; o.y += a.y - b.y; if (Math.hypot(o.x, o.y) > cap) { o.x = 0; o.y = 0; } };
+    before.p.forEach((v, i) => add(app.off.p[i], v, after.p[i], i === app.me ? 64 : REMOTE_CAP));
     before.b.forEach((v, i) => add(app.off.b[i], v, after.b[i]));
     before.pl.forEach((v, i) => add(app.off.pl[i], v, after.pl[i]));
     if (before.ball) {
@@ -274,7 +286,8 @@ function frame(now) {
   }
   if (app.L) {
     const alpha = playing && !app.paused ? Math.min(1, acc / DT) : 1;
-    R.draw(app.L, app.S, view(alpha), now / 1000);
+    const v = app.drawn = view(alpha);   // what was drawn, for the browser checks
+    R.draw(app.L, app.S, v, now / 1000);
     drawHud(now / 1000);
   } else {
     drawAttract(now / 1000);

@@ -46,7 +46,7 @@ const KEYNAME = { KeyA: 'a', KeyD: 'd', KeyW: 'w', KeyS: 's', KeyP: 'p', KeyR: '
 
 export async function launch({ name = 'main', width = 1280, height = 800 } = {}) {
   const CHROME = process.env.CHROME || '/usr/bin/chromium';
-  const profile = mkdtempSync(`/tmp/sl-playtest-${name}-`);
+  const profile = mkdtempSync(`${process.env.PROFILE_PREFIX || "/tmp/sl-playtest-"}${name}-`);
   const chrome = spawn(CHROME, [
     '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
     '--no-default-browser-check', '--mute-audio', '--disable-background-timer-throttling',
