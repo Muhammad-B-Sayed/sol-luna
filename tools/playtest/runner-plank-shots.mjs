@@ -2,18 +2,20 @@
 // (headless Chromium, clock control: every frame is exactly one tick). Look at each one.
 //
 //   CHROME=/usr/bin/chromium PORT=3550 node tools/playtest/runner-plank-shots.mjs
-//   BEFORE=http://localhost:3551 ...   also shoot the milestones on a server running the old code
+//   BEFORE=http://localhost:3551 AFTER=http://localhost:3552 ...   milestones on two other servers:
+//     the old code, and the old code with only the milestone fix (the same course, so the two
+//     sets show the same ground). Without them the milestones are shot on this build.
 //
 // Plank: at rest, a player in the safe middle zone, tipping (a player past the safe zone),
 // mid-spin after a touch on the tip (with the after-images), settling, and a crossing.
-// Milestones: seed 3 at 150 m (a page edge cut the old sign in half), 200 m (over a pit, the
-// old sign sat at the bottom of the screen) and 400 m (in a shard gallery, the old sign sat
-// above the ceiling), at 1280x800 and 1920x1080.
+// Milestones: on seed 1's old course, 150 m (a page edge cut the old sign in half), 200 m (over
+// a pit: the old sign sat at the bottom of the screen) and 600 m (in a shard gallery: the old
+// sign sat above the ceiling), at 1280x800 and 1920x1080.
 import { launch, startServer, sleep } from './cdp.mjs';
 
 const PORT = +(process.env.PORT || 3550);
 const OUT = process.env.OUT || 'docs/img/runner';
-const BEFORE = process.env.BEFORE || '';
+const BEFORE = process.env.BEFORE || '', AFTER = process.env.AFTER || '';
 process.env.PROFILE_PREFIX ||= '/tmp/sl-plank2d-shots-';
 const srv = process.env.NOSERVER ? null : await startServer(PORT);
 const B = await launch({ name: 'plank-shots' });
@@ -31,6 +33,11 @@ const stage = (seed, camX) => `(async () => {
   S.sb = 1; S.p.forEach(p => { p.alive = false; p.x = -1e5; });
   while (S.phase === 0) R.stepRunner(L, S, [0, 0]);
   while (S.cam < ${camX}) R.stepRunner(L, S, [0, 0]);
+  // both players standing on the first floor a few tiles into the view
+  let x = Math.floor(S.cam / 24) + 4;
+  while (!L.cols[x][29]) x++;
+  let y = 29; while (y > 0 && L.cols[x][y - 1]) y--;
+  S.p.forEach((p, i) => { Object.assign(p, { alive: true, x: x * 24 + 2 + i * 22, y: y * 24 - p.h, vx: 0, vy: 0, gr: true, gref: -1 }); S.dead[i] = -1; S.best[i] = p.x; });
   run.prev = run.capture(S); run.heard = null;
   window.__R = R;
   return { cam: S.cam };
@@ -98,9 +105,9 @@ async function milestoneShots(base, tag) {
   for (const [w, h] of [[1280, 800], [1920, 1080]]) {
     const P = await B.page(`${base}/`, { clock: true, ready: '!!window.__runner', w, h });
     await P.eval('window.__pt.start()');
-    for (const m of [150, 200, 400]) {
+    for (const m of [150, 200, 600]) {
       // the milestone column (m + 10) a third of the way across the view
-      await P.eval(stage(3, (m + 10) * 24 - 330));
+      await P.eval(stage(1, (m + 10) * 24 - 420));
       await P.frames(2);
       const file = `${OUT}/runner-milestone-${m}-${tag}-${w}.png`;
       await P.shot(file);
@@ -112,8 +119,8 @@ async function milestoneShots(base, tag) {
 
 try {
   await plankShots();
-  await milestoneShots(`http://localhost:${PORT}`, 'after');
   if (BEFORE) await milestoneShots(BEFORE, 'before');
+  await milestoneShots(AFTER || `http://localhost:${PORT}`, AFTER ? 'after' : 'build');
 } catch (e) { console.error(e); fails++; }
 check('no page errors', !B.pageErrors.length, B.pageErrors.slice(0, 3).join(' | '));
 B.close();

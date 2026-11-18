@@ -94,12 +94,88 @@ return to rest and can't be wedged, (4) both characters face equal difficulty.
 | Thorns | Crystal spikes on the floor, deadly to both | ≤ 4 wide, landing islands 5-7 tiles so a running player can land and jump again | Stateless | Stateless | Same for both |
 | Shade pool | Deadly to both | Width ≤ gap limit | Stateless | Stateless | Same for both |
 | Twin pools | A sun pool and a moon pool of the same width | Width ≤ gap limit | Stateless | Stateless | Each wades one and jumps the other |
-| Chain plank | Beam on a chain at its middle; tilts toward the weight on it | Short gaps on and off; the far end at full tilt is still well within the jump limit | Checked with the other player parked on the near end, the middle and the far end | Damped spring back to level (about 100 ticks); motion is never blocked, so nothing can wedge it | Same for both |
+| Chain plank | Beam on an axle at its middle, hung from a chain. The middle rocks; past it the beam tips you off; a touch on a tip spins it three times (below) | Gaps of 1 or 2 tiles; the jumps on and off are sized from the edge of the safe middle zone, never from the tip | Checked with the other player parked in the safe zone and abusing it (landing on each tip, hopping in the middle) at 7 delays. The run-up is 2 tiles longer (4 with two planks), so a second arrival can wait for it to settle | Always ends exactly level, within 106 ticks of a tip touch. Only its top face is solid, and only near level, so it is never a wall and can't hold anyone | Same for both |
 | Ember slabs (new) | Floating stones that crack under a standing player, fall, and re-form | Gaps sized by the margin | The slab is back within about 1.4 s; checked for second arrivals | Fixed timers; re-forms as soon as no one is inside its space | Same for both |
 | Eclipse stones (new) | Alternating sun and moon stones over a pit; you stand only on your colour | Every jump ≤ gap limit | Stateless | Stateless | Mirrored layout: both get the same set of jumps, in reverse order |
 | Star well (new) | Updraft up the face of a cliff too tall to climb | The lift always carries you over the top | Stateless | Stateless | Same for both |
 | Swinging lantern (new) | Platform on a long chain swinging on a fixed clock | Gaps sized for both the nearest and the farthest point of the swing | Players don't move it | Driven by the clock only | Same for both |
 | Falling shards (new) | Crystals in a low gallery; a shard shakes and glows on the floor below, then drops, shatters and regrows | A full-speed runner passes under before it lands | A shard someone else triggered is falling or gone when you get there | Fixed timers | Neutral (deadly to both) |
+
+## The chain plank (Nov 2026)
+
+The owner, after playing: the planks' tip-over was "way, way too slow"; in the game they had in
+mind, touching the tip of one spins it about three times, the first two fast and the last a bit
+slower. The old plank was a slow damped spring capped at a small tilt. It is now a beam that
+turns freely on an axle at its middle.
+
+The rule, in plain words:
+
+- **Near the middle it rocks.** Each player standing on it pushes with a torque that grows with
+  their distance from the middle: gently inside the safe zone (about 30 px each side, 36 on the
+  intro plank, marked by the glowing runes and the bronze bands), ten times as hard beyond it. A
+  stiff, well damped spring holds it toward level, so in the safe zone it leans at most about
+  5 degrees and holds you.
+- **Past the safe zone it tips you off.** It leans past the stand limit within a few ticks and
+  drops you, then swings back and settles (about 0.4 s). It does not catch you again on the way
+  back: once it is "loose" it carries no one until it is nearly level and slow.
+- **A touch on the tip spins it.** A player on the last 18 px of either end (the ember-tinted caps)
+  sets it turning at 0.36 rad/tick. It spins three turns, slowing down, and comes to rest
+  exactly level. A player on a tip has 5 ticks of coyote time to jump off.
+- **It is never a wall.** Only its top face is solid, and only while it is near level and slow.
+  A player beside it or under it passes through, and it never pushes anyone sideways.
+- **Rest is exactly level.** The beam looks the same upside down, so a half turn is level too.
+  It snaps to exactly 0 when unloaded, within 0.005 of level and slower than 0.002 rad/tick.
+
+Measured in the real sim (`tools/check-runner.js` and a drop test, every plank length):
+
+| Touch | What happens | Turns | Times |
+| --- | --- | --- | --- |
+| Landing on a tip | Spins, slowing, and stops level | 3.0 (2.98 to 3.00 in the checker) | turns of 21, 27 to 28 and 43 ticks (0.35 s, 0.46 s, 0.72 s); at rest 105 to 106 ticks (1.75 s) after the touch |
+| Landing past the safe zone, short of the tip | Tips the player off, swings back, settles | 0.01 | at rest 23 to 34 ticks after the landing |
+| Landing in the middle | Rocks a little and holds the player | 0 | leans 0 to 5 degrees with the player standing |
+
+State per plank (sent 60 times a second): `s`, the sine of its angle with the cosine kept
+non-negative; `w`, its turn rate; `f`, 1 while it is loose. The step is plain arithmetic and
+`Math.sqrt`: the turn is a rotation by `w` with polynomial sine and cosine, renormalised. No trig,
+so the server and every browser compute the same bits.
+
+The constants are `PLANK` in `shared/runner.js`:
+
+| Constant | Value | What |
+| --- | --- | --- |
+| `near`, `far` | 0.0004, 0.005 | torque per px from the middle, inside and beyond the safe zone |
+| `kick` | 0.36 rad/tick | turn rate a touch on the tip gives it |
+| `tip` | 18 px | the tip, at each end |
+| `hold`, `holdDamp` | 0.15, 0.35 | spring toward level and damping while it can't pass upright (it rocks) |
+| `spin`, `spinDamp` | 0.06, 0.008 | the same while it can (it spins); the switch is "enough speed to pass upright" |
+| `land`, `hop` | 0.00015, 0.0003 | the push of a landing (per px from the middle, per px/tick of fall) and of a jump off |
+| `stand`, `standW` | 0.3, 0.1 | beyond this sine or turn rate it is loose and carries no one |
+| `firmS`, `firmW` | 0.08, 0.05 | once loose, it carries people again only this close to level and this slow |
+
+The time to rest was tuned for the worst case: a touch while the beam is still rocking gives
+2.98 to 3.02 turns and rest within 110 ticks.
+
+The generator: one plank of 6 to 8 tiles (two of 6 tiles at difficulty over 0.55), gaps of 1 or
+2 tiles, sometimes a tile below the ledge. The run-up before it is 2 tiles longer (4 with two
+planks): someone may have just set it spinning, and a second arrival needs room to wait about
+1.7 s. The intro plank (at 120 tiles) is 6 tiles with 1-tile gaps and a wider safe zone.
+
+The art (`drawPlank` in `public/js/runner-render.js`): the chain ends in a hanger that holds the
+axle; the hub glows with the speed of the turn; after-images and a faint arc trail the tips
+while it spins. The rune inlay dims while the plank is loose. Screenshots:
+`docs/img/runner/runner-plank-*.png` (at rest, a player in the middle, tipping, mid-spin, the
+slow last turn, a crossing), taken with `tools/playtest/runner-plank-shots.mjs`.
+
+## Distance milestones
+
+Signs every 50 m (tiles from the spawn column) on the back wall. They used to be drawn into the
+cached stone pages, by the page that owned their column, 66 px above the first filled tile from
+the top of the column. That failed three ways: a sign whose column starts a page (150, 550, 950,
+1350 m on every course) was cut in half at the page edge; over a pit it sat at the bottom of the
+screen, in the fog; in a shard gallery it sat above the ceiling. Now they are drawn every frame,
+after the stone, on the floor nearest their distance (up to 12 columns away) whose ground has
+three clear rows above the whole plate. Before and after, on the same course (seed 1, the old
+generator): `docs/img/runner/runner-milestone-{150,200,600}-{before,after}-{1280,1920}.png`.
 
 ## Checks
 
@@ -131,10 +207,18 @@ Two machines can share the 50 seeds with `SEEDS=1-25` and `SEEDS=26-50`; the sum
 3. **Second arrival**: for chunks with planks, slabs or shards, the other character runs the
    chunk 10 to 130 ticks earlier; the tested one arrives with a 12-tile lead into whatever state
    the parts were left in, and must clear the chunk alive. The time lost is reported.
-4. **Parked partner**: the other character stands on each plank's near end, middle and far end.
-5. **Back to rest**: after every run and after random abuse (hopping, standing on ends, falling
-   off), every plank, slab and shard must be back at rest within a bound.
-6. **Equal difficulty**: average clear time per kind for Sol and for Luna.
+4. **Parked partner**: the other character stands still in each plank's safe zone (its near
+   edge, the middle, its far edge) while the tested one crosses. Farther out the plank throws
+   them off, so they can't park there; those cases are the abuse below.
+5. **Plank abuse**: the other character lands on the near tip, lands on the far tip, or lands in
+   the middle and hops there, starting 10 to 150 ticks before the tested one arrives. The tested
+   one must clear the chunk alive.
+6. **Tip touch**: every tip landing from test 5 must spin the plank 2.5 to 3.5 turns and leave it
+   exactly level (`s === 0`).
+7. **Back to rest**: after every run and after random abuse (hopping, standing on ends, falling
+   off), every plank, slab and shard must be back at rest within a bound (planks: 120 ticks,
+   exactly level and still).
+8. **Equal difficulty**: average clear time per kind for Sol and for Luna.
 
 Only "cleared alive" counts as a pass. Whether a chunk is cleared before the scroll catches up is
 a statistic (one search at the normal budget, no retry); the whole-course run shows that the lead
@@ -146,7 +230,10 @@ lost on slow chunks is made up again.
 or let go of right at set times), all in the real sim. A macro's steps run as written, and only
 the last one is stretched until the player stands. With a deadline, it drops any node that could
 not reach the goal in time even at full running speed (not on swing chunks, where riding the
-lantern can be faster than running).
+lantern can be faster than running). One macro stands still until every plank in the chunk
+carries people again (at most 150 ticks), so it can wait out a plank the other player set
+spinning. For the abuse setups the search heads for a given x
+(`toward`) instead of as far right as it can.
 
 ### Latest result (Nov 2026, after the faster opening)
 
