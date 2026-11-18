@@ -62,6 +62,7 @@ export class Runner3DDebugRenderer {
     const items = [];
     for (let i = S.lo; i < S.hi; i++) {
       const o = L.objs[i];
+      if (!o) break;
       if (o.z1 < zmin || o.z0 > cz + FAR) continue;
       items.push({ d: o.z1, o });   // far edge: a floor is drawn before whoever stands on it
     }

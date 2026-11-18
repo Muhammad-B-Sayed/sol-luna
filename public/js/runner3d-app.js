@@ -7,7 +7,7 @@
 // loaded on first use; without it, or with ?r3ddebug=1, the 2D debug view draws instead.
 // The HUD is DOM over that canvas.
 import {
-  buildRunner3d, createRunner3dState, stepRunner3d, cloneRunner3d, newSeed, survival, distance, speedAt,
+  buildRunner3d, createRunner3dState, stepRunner3d, cloneRunner3d, ensureGenerated, newSeed, survival, distance, speedAt,
   WHY3, R3_COUNT, R3_PLAY, R3_OVER, COUNT_TICKS, DRAW, LEAD_MAX,
 } from '/shared/runner3d.js';
 import { Runner3DDebugRenderer } from './runner3d-debug.js';
@@ -54,6 +54,7 @@ export class Runner3DMode {
   begin(seed, st) {
     this.L = buildRunner3d(seed);
     this.S = st ? cloneRunner3d(st) : createRunner3dState(this.L);
+    this.cover(this.S);
     this.prev = this.capture(this.S);
     this.off = [{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }];
     this.results = false; this.paused = false; this.acc = 0;
@@ -146,6 +147,10 @@ export class Runner3DMode {
   // -------------------------------------------------------------------------
   // simulation
 
+  // A server state can name objects (up to S.hi) that this client's lazily generated course
+  // doesn't have yet: generate up to them before stepping or drawing.
+  cover(S) { while (this.L.objs.length < S.hi) ensureGenerated(this.L, this.L.z + 1); }
+
   capture(S) { return { zone: S.zone, p: S.p.map(p => ({ x: p.x, y: p.y, z: p.z })) }; }
 
   tickLocal() {
@@ -185,6 +190,7 @@ export class Runner3DMode {
     if (!this.active || !this.online || !m.st || m.st.mode !== 'runner3d' || m.st.seed !== this.S.seed) return;
     const before = this.capture(this.S);
     const ns = m.st, me = this.app.me;
+    this.cover(ns);
     this.remoteBits = m.inp[1 - me] | 0;
     this.pending = this.pending.filter(([s]) => s > (m.ack[me] | 0));
     const inp = [0, 0];
