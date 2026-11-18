@@ -35,12 +35,14 @@ controls are world directions.
   it slowly downhill (5% of the slope per tick), so it is felt, but a player can always walk
   against it.
 - Falling: a player more than 9 units below the last ground they stood on is lost.
-- Lead cap: a standing player more than `LEAD_MAX` = 32 units ahead of the dusk can't walk
-  forward until it closes in (sideways and back still work). In the air nothing is taken away,
-  so a jump over a pit is never cut short; you just can't speed up. A standing jump still
-  clears every gap thanks to air control, so the cap only ever costs time. A hard stop sits at
-  `LEAD_HARD` = 46, out of reach (a full jump from the cap lands well short of it). This keeps
-  the dusk a live threat and the active object window small.
+- Lead cap: a player standing on a run-up (the plain stone before each feature) more than
+  `LEAD_MAX` = 32 units ahead of the dusk can't walk forward until it closes in (sideways and
+  back still work). Nobody is ever held in the air or inside a feature, so a jump is never cut
+  short and nobody is frozen on a crumbling slab, in a blade's path or among thorns. A
+  standing jump from the very edge of a run-up still clears every gap (air control), so the
+  cap only ever costs time. At top speed 32 units is about 4.6 s of lead. This keeps the dusk
+  a live threat and the active object window small (12 units behind the dusk to 76 ahead of
+  it, or 30 past the leading player).
 
 ## Determinism and the wire
 
@@ -96,8 +98,8 @@ difficulty.
 | Chain slab | Slab hung on chains over a pit, tilting on two axes toward the weight on it | Gaps on and off sized for the slab at full tilt | Checked with the other player arriving earlier, abusing it, and parked on its edges, middle and corners | Damped spring back to exactly level (snaps to 0 below 2e-4), bounded 150 ticks; solid from above only, so it can't wedge | Same for both |
 | Stepping stones | Three lanes of stones over a pit with some missing | Every stone reachable from a stone in the row before (lanes at most one apart), gaps ≤ limit | Stateless | Stateless | Same for both |
 | Twin beams | Two narrow beams side by side, breaking into pieces with jogs at higher difficulty | Beam gaps ≤ limit minus 2 | Stateless | Stateless | Same for both (both beams open to both) |
-| Ember slabs | Floating slabs that crack once stood on, fall away and re-form | Crack time 40 to 26 ticks is plenty to land and jump; gaps ≤ limit | Gone for 40 ticks, back after 20 more once nobody is in its space; checked for second arrivals and abuse | Fixed timers | Same for both |
-| Eclipse stones (new) | Two lanes of stones; in every row one is sun (only Sol stands on it) and one is moon (only Luna) | Every row-to-row jump, straight or across lanes, ≤ limit | Stateless | Stateless | Sol's route is Luna's reflected left-right |
+| Ember slabs | Floating slabs, each split into two halves side by side, that crack once stood on, fall away and re-form | Crack time 40 to 26 ticks is plenty to land and jump; gaps ≤ limit | A player cracks only the half they stand on, so one pass always leaves a half for the player behind; a broken half is gone 30 ticks and back 12 later once nobody is in its space | Fixed timers | Same for both |
+| Eclipse stones (new) | Two lanes of stones; in every row one is sun (only Sol stands on it) and one is moon (only Luna) | Every row-to-row jump ≤ limit; a lane switch (a diagonal jump from a small stone, with no room to turn) gets a shorter row gap | Stateless | Stateless | Sol's route is Luna's reflected left-right |
 | Thorn sweeper | A low thorn arm (or bar) turning over a round floor around a post | The bar is 0.55 high: a jump is above it for 46 ticks | Fixed clock, players don't move it | Clock only | Same for both |
 | Pendulums | Blades swinging sideways across a narrow bridge | The swing carries the blade fully clear of the bridge at each end | Fixed clock | Clock only | Same for both |
 | Orbiting stones (new, 3D) | Four stones circling a pillar over a pit; step on as one passes the ledge, ride or hop between stones, step off on the far side | A stone passes the ledge every quarter turn; hops between neighbouring stones are short | Fixed clock | Clock only | Same for both |

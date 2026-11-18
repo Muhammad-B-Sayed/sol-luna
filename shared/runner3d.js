@@ -483,14 +483,18 @@ const FEAT = {
     g.z = cz + R + s + (intro ? 0.4 : g.rf(0.4, lerp(0.8, 1.5, d)));
     g.cx = cx; g.w = g.rf(2.5, 4);
   },
-  // Thorn curtains across the course with an opening that slides from side to side.
+  // Thorn curtains across the course with an opening that slides from side to side. Curtains
+  // in one section share a clock, each phased by the running time from the first, so a
+  // player who follows the opening through one finds the next at the same place.
   gate(g, d, intro) {
     if (g.w < 3) g.w = 3;
     const w = g.w, cx = g.cx, count = intro ? 1 : 1 + g.ri(0, 1 + Math.round(d));
+    const gw = lerp(1.3, 1.0, intro ? 0 : d), P = g.ri(160, 210) - Math.round(40 * (intro ? 0 : d)), ph0 = g.ri(0, P - 1);
     g.floor(1.5);
+    const z1st = g.z;
     for (let k = 0; k < count; k++) {
-      const gw = lerp(1.3, 0.9, intro ? 0 : d), P = g.ri(170, 220) - Math.round(50 * (intro ? 0 : d));
-      g.obj({ k: 'gate', x0: cx - w, x1: cx + w, z0: g.z, z1: g.z + 0.5, y: g.y, cx, A: w - gw - 0.3, gw, th: 4.6, P, ph: g.ri(0, P - 1) });
+      const lag = Math.round((g.z - z1st) / P3.maxSpeed);
+      g.obj({ k: 'gate', x0: cx - w, x1: cx + w, z0: g.z, z1: g.z + 0.5, y: g.y, cx, A: w - gw - 0.3, gw, th: 4.6, P, ph: ((ph0 - lag) % P + P) % P });
       g.floor(k < count - 1 ? g.rf(4, 6.5) : 2);
     }
   },
@@ -501,7 +505,7 @@ const FEAT = {
     const lanes = intro ? [cx] : d > 0.5 ? [cx - 2 * w / 3, cx, cx + 2 * w / 3] : [cx - w / 2, cx + w / 2];
     const z0 = g.z, r = 0.7, vo = lerp(0.05, 0.085, intro ? 0 : d);
     for (const lx of lanes) {
-      const P = Math.round(lerp(170, 110, intro ? 0 : d)) + g.ri(-15, 15);
+      const P = Math.round(lerp(180, 130, intro ? 0 : d)) + g.ri(-15, 15);
       g.obj({ k: 'orb', x0: lx - r, x1: lx + r, z0: z0 + 0.5, z1: z0 + len - 0.5, y: g.y, lx, r, vo, P, ph: g.ri(0, P - 1), zs: z0 + len - 0.5 - r, ze: z0 + 0.5 + r });
     }
     g.floor(len);
@@ -818,7 +822,7 @@ function updateCrumble(S, o, i) {
   if (st.st === 1 && st.t >= o.crack) { st.st = 2; st.t = 0; }
   else if (st.st === 2 && st.t >= CRUMBLE.gone) { st.st = 3; st.t = 0; }
   else if (st.st === 3 && st.t >= CRUMBLE.reform &&
-    !S.p.some(p => p.alive && p.x + HW > o.x0 && p.x - HW < o.x1 && p.z + HW > o.z0 && p.z - HW < o.z1 && p.y < o.y + 0.05 && p.y + P3.h > o.y - 0.5)) {
+    !S.p.some(p => p.alive && p.x + HW > o.x0 && p.x - HW < o.x1 && p.z + HW > o.z0 && p.z - HW < o.z1 && p.y < o.y - 0.02 && p.y + P3.h > o.y - 0.5)) {
     st.st = 0; st.t = 0;
   }
 }
