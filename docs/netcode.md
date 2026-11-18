@@ -132,10 +132,11 @@ the harness (numbers below):
   model they won 1 level of 32. 13 levels had deaths on the server (33 in all). The server cut
   5,688 inputs and let go of keys 54 times. 359 key presses landed on another tick than the
   client meant and 157 were never applied. Your own player was corrected by up to 103 px.
-- **Dodgeball:** in 380 throws, 19 throws left the hand on another tick or at another angle than
-  the thrower's own screen showed, and once a player's own screen showed them hit and the server
-  then said they had dodged. Until now that case was only read in the code, never measured. 200
-  key presses landed off their tick (19 jumps, 70 throw buttons), 33 were dropped.
+- **Dodgeball:** in 389 throws, 11 left the hand on another tick or at another angle than the
+  thrower's own screen showed. 225 key presses landed off their tick (38 jumps, 66 throw
+  buttons) and 25 were dropped. In another run of 380 throws, a player's own screen once showed
+  them hit and the server then said they had dodged. Until now that case was only read in the
+  code, never measured.
 
 Even without any jitter the old server shifted co-op inputs: it starts stepping before the
 first inputs arrive, so the first ones are applied about 14 ticks late. With a steady 40 ms and
@@ -302,20 +303,25 @@ Dodgeball: 12 runs of 90 s. Bots read their own screen: holding the ball they wa
 for a random time (or tap) and release; a ball thrown at them gets a random reaction (a jump, a
 jump back, a run back, or nothing) 0 to 11 ticks after they first see it.
 
-| Dodgeball, 12 x 90 s | Before | After | Before, 10% CPU | After, 10% CPU |
+| Dodgeball, 12 x 90 s | Before | After (2 runs) | Before, 10% CPU | After, 10% CPU |
 | --- | --- | --- | --- | --- |
-| throws (hits) | 380 (118) | 385 (104) | 379 (111) | 379 (109) |
-| your own screen showed you hit, the server said dodge | 1 | 0 | 0 | 0 |
+| throws (hits) | 389 (117) | 758 (230) | 371 (99) | 379 (109) |
+| your own screen showed you hit, the server said dodge | 0 (1 in another run of 380) | 0 | 0 | 0 |
 | your own screen showed you dodge, the server said hit | 0 | 0 | 0 | 0 |
-| your own throw left on another tick or angle than shown | 19 | 0 | 18 | 0 |
-| thrower's screen showed a miss, the server said hit | 5 | 0 | 2 | 0 |
-| key presses off their tick (jumps, throw buttons) / never applied, of about 2,500 | 200 (19, 70) / 33 | 0 / 0 | 224 (39, 76) / 50 | 0 / 0 |
-| keys let go / inputs cut | 34 / 2,342 | 0 / 0 | 45 / 1,950 | 0 / 0 |
-| ticks a player's keys were held | 13,497 | 4 | 12,342 | 0 |
-| inputs drained between points | 11,124 | 451 | 10,067 | 415 |
-| your player: largest correction | 38 px | 18 px | 33 px | 22 px |
+| your own throw left on another tick or angle than shown | 11 | 0 | 14 | 0 |
+| thrower's screen showed a miss, the server said hit | 1 | 0 | 0 | 0 |
+| key presses off their tick (jumps, throw buttons) / never applied | 225 (38, 66) / 25 of 2,504 | 0 / 0 of 4,817 | 223 (50, 68) / 37 of 2,520 | 0 / 0 of 2,411 |
+| keys let go / inputs cut | 37 / 2,222 | 0 / 0 | 30 / 2,257 | 0 / 0 |
+| ticks a player's keys were held | 13,237 | 2 | 12,467 | 0 |
+| inputs drained between points | 10,778 | 838 | 9,704 | 415 |
+| your player: largest correction | 39 px | 34 px | 39 px | 22 px |
 
-The remaining corrections are the drain between points (one tick of walking in the ready freeze).
+"Thrower's screen showed a miss" is about the other player: the thrower sees them a round trip
+late, so a run seen as a dodge can turn out a hit. It happened 0 to 4 times in 390 throws over
+other runs after the fix, and 1 to 5 before.
+
+The remaining corrections of your own player come from the drain between points (one tick of
+walking in the ready freeze).
 
 The dodge windows (`tools/dodge-latency.js`, the latest reaction that still escapes, back wall /
 spawn / near net / spawn to spawn; local play 267 / 233 / 83 / 200 ms):
