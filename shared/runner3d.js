@@ -11,14 +11,17 @@
 //   L.objs[]  every piece of the world, sorted by activation z (z0). Common fields:
 //             { k, x0, x1, z0, z1, y }  footprint (min/max; for moving kinds the whole area the
 //             object can occupy) and its base height, plus per-kind fields. See KIND_DOC.
+//   L.zmx[i]  the largest z1 of objs[0..i] (for finding the objects around a z quickly).
 //   L.secs[]  sections { i, kind, intro, z0, z1, d, o0, o1, y, sx, sz }: o0..o1 = its objects,
 //             (sx, y, sz) = where a player stands at its start (its run-up), d = difficulty.
 //   L.spawn   [{x,y,z},{x,y,z}] for Sol and Luna.
 // S = createRunner3dState(L): plain JSON (it is sent over the wire as is).
 //   { mode:'runner3d', seed, tick, phase, phaseT, zone, v, lo, hi, o, p, best, dead, why, win, sb }
 //   zone  z of the dusk wall behind the players; a player with p.z < zone is lost ('zone').
-//   v     current zone speed (units/tick).  lo..hi = active object index window.
-//   o     { [objIndex]: state } for stateful objects in the window only.
+//   v     current zone speed (units/tick).  lo..hi = the objects generated and still in play
+//         (lo: first one not yet behind the dusk; hi: generated up to 30 past the leader).
+//   o     { [objIndex]: state } only for stateful objects near a player (12 behind to 30 ahead)
+//         or not yet back at rest, so it stays small however far apart the players are.
 //   p[i]  { x, y, z, vx, vy, vz, gr, gref, gs, alive, jumpN, coy, jh, jb, fy }
 //         x,z = centre, y = feet. gr = standing, gref = index of the object stood on (-1 none),
 //         gs = sub-part (stone number on a carousel), jb = jump buffer, fy = last ground height.
@@ -38,15 +41,13 @@ export const TICK_RATE = 60;
 export const HALF_W = 5;          // nominal half width of the course (units)
 export const FALL_Y = -14;        // below this a player is lost ('fall')
 export const FALL_DEPTH = 9;      // ... and also this far below the last ground they stood on
-// Lead cap. A player standing on a run-up (floor skin 1: plain safe stone before each
-// feature) more than LEAD_MAX ahead of the zone can't walk forward until the zone closes in
-// (sideways and back still work). Nothing is ever held in the air or inside a feature, so a
-// jump is never cut short and nobody is frozen on a crumbling slab or in a blade's path. A
-// standing jump from the edge of a run-up still clears every gap (air control), so the cap
-// only costs time. LEAD_HARD is how far past the zone objects are always active (a player
-// can be further ahead inside a long feature; the window follows them too).
+// There is no lead cap: a player may run as far ahead of the dusk as they can survive. LEAD_MAX
+// is only the HUD meter's full scale (units of lead that fill it); nothing enforces it.
 export const LEAD_MAX = 32;
-export const LEAD_HARD = LEAD_MAX + 14;
+// Objects get state (S.o) while they are within WIN_BACK behind to WIN_AHEAD ahead of an alive
+// player, or while they are not yet back at rest. Each player's collision looks only at the
+// objects around them (see firstFrom), so two players far apart cost no more than two together.
+const WIN_BACK = 12, WIN_AHEAD = 30;
 
 // Player box and movement: the 2D game's PHYS divided by the tile size, so the jump feels the same.
 export const P3 = {
@@ -71,7 +72,7 @@ export const WHY3 = {
 // Object kinds. Each sim author keeps this table current; the renderer has one view per kind
 // and draws an unknown kind as a plain box over its footprint.
 export const KIND_DOC = {
-  floor: 'static stone slab, solid on all sides. Top at y, { h } thickness below y. { skin }: 0 plain, 1 run-up (where the lead cap holds a player), 2 landing, 3 stepping stone, 4 narrow beam, 5 post or pillar. pose: static.',
+  floor: 'static stone slab, solid on all sides. Top at y, { h } thickness below y. { skin }: 0 plain, 1 run-up (safe plain stone before a feature), 2 landing, 3 stepping stone, 4 narrow beam, 5 post or pillar. pose: static.',
   pool: 'liquid set into the floor. { el: 0 sun | 1 moon | 2 shade }. Liquid surface at y; its stone bottom (solid) is POOL_DEP below. Deadly when your feet sink below y - 0.12 over it: sun kills Luna, moon kills Sol, shade both. pose: static.',
   spikes: 'crystal thorns standing on the floor at y, deadly to both. Thorn tips at y + th. pose: static.',
   ramp: 'sloped slab, walkable. Top rises linearly from y at z0 to y1 at z1. { h } thickness. pose: static.',
@@ -548,6 +549,7 @@ function genSection(L) {
   const added = L.objs.splice(o0);
   added.sort((a, b) => a.z0 - b.z0);
   L.objs.push(...added);
+  for (let k = o0; k < L.objs.length; k++) L.zmx[k] = Math.max(k ? L.zmx[k - 1] : -Infinity, L.objs[k].z1);
   L.last = kind;
   L.secs.push({ i, kind, intro, z0, z1: L.z, d: diffAt(Math.max(0, z0)), o0, o1: L.objs.length, y, sx, sz });
 }
@@ -560,7 +562,7 @@ export function sectionAt(L, z) {
 
 export function buildRunner3d(seed) {
   const L = {
-    runner3d: true, seed: seed >>> 0, objs: [], secs: [], z: 0, y: 0, cx: 0, w: HALF_W, last: '', seen: {},
+    runner3d: true, seed: seed >>> 0, objs: [], zmx: [], secs: [], z: 0, y: 0, cx: 0, w: HALF_W, last: '', seen: {},
     rnd: mulberry32((seed >>> 0) ^ 0x3D51),
     spawn: [{ x: -1.2, y: 0, z: 0 }, { x: 1.2, y: 0, z: 0 }],
   };
@@ -647,17 +649,38 @@ const mkPlayer = (s) => ({
   x: s.x, y: s.y, z: s.z, vx: 0, vy: 0, vz: 0, gr: true, gref: -1, gs: 0, alive: true, jumpN: 0, coy: 0, jh: 0, jb: 0, fy: s.y,
 });
 
+// First object index whose footprint may reach z or beyond (objects before it all end before z).
+export function firstFrom(L, z) {
+  const m = L.zmx;
+  let lo = 0, hi = m.length;
+  while (lo < hi) { const k = (lo + hi) >> 1; if (m[k] < z) lo = k + 1; else hi = k; }
+  return lo;
+}
+// where a scan over the objects around a player at z, reaching back `back` units, starts
+const scanFrom = (L, S, z, back) => Math.max(S.lo, firstFrom(L, z - back));
+
 function activate(L, S) {
-  let far = S.zone + LEAD_HARD;
+  let far = S.zone + 46;
   for (const p of S.p) if (p.alive && p.z > far) far = p.z;
   far += 30;
   ensureGenerated(L, far + 40);
-  while (S.hi < L.objs.length && L.objs[S.hi].z0 < far) {
-    const st = initObj(L.objs[S.hi]);
-    if (st) S.o[S.hi] = st;
-    S.hi++;
-  }
+  while (S.hi < L.objs.length && L.objs[S.hi].z0 < far) S.hi++;
   while (S.lo < S.hi && L.objs[S.lo].z1 < S.zone - 12) { delete S.o[S.lo]; S.lo++; }
+  // stateful objects around each player get their (rest) state
+  for (const p of S.p) {
+    if (!p.alive) continue;
+    for (let i = scanFrom(L, S, p.z, WIN_BACK); i < S.hi; i++) {
+      const o = L.objs[i];
+      if (o.z0 > p.z + WIN_AHEAD) break;
+      if (STATEFUL[o.k] && !S.o[i]) S.o[i] = initObj(o);
+    }
+  }
+  // ... and lose it again once they are at rest with nobody around
+  for (const k in S.o) {
+    const o = L.objs[k];
+    if (!atRest(L, S, k)) continue;
+    if (!S.p.some(p => p.alive && o.z1 >= p.z - WIN_BACK && o.z0 <= p.z + WIN_AHEAD)) delete S.o[k];
+  }
 }
 
 export function createRunner3dState(L, { sandbox = false } = {}) {
@@ -701,7 +724,7 @@ function topAt(L, S, i, who, x, z) {
 // Highest surface under the player with its top in [lo, hi]: [top, index, sub] or null.
 function support(L, S, who, x, z, lo, hi) {
   let best = -Infinity, bi = -1, bs = 0;
-  for (let i = S.lo; i < S.hi; i++) {
+  for (let i = scanFrom(L, S, z, HW); i < S.hi; i++) {
     const o = L.objs[i];
     if (o.z0 >= z + HW) break;   // objects are sorted by z0
     if (o.z1 <= z - HW || o.x0 >= x + HW || o.x1 <= x - HW) continue;
@@ -724,7 +747,7 @@ function support(L, S, who, x, z, lo, hi) {
 function moveAxis(L, S, p, ax, dv) {
   if (ax === 0) p.x += dv; else p.z += dv;
   const tol = p.y + (p.gr ? P3.stepUp : AIR_TOL);
-  for (let i = S.lo; i < S.hi; i++) {
+  for (let i = scanFrom(L, S, p.z, HW + 0.5); i < S.hi; i++) {
     const o = L.objs[i];
     if (o.z0 >= p.z + HW) break;
     if (!WALL[o.k]) continue;
@@ -747,9 +770,8 @@ function stepPlayer(L, S, who, bits) {
   const n = dx && dz ? DIAG : 1;
   const acc = p.gr ? P3.accel : P3.airAccel, dec = p.gr ? P3.decel : P3.airDecel;
   const tx = dx * n * P3.maxSpeed;
-  let tz = dz * n * P3.maxSpeed;
+  const tz = dz * n * P3.maxSpeed;
   p.vx = approach(p.vx, tx, dx ? (p.vx * tx < 0 ? acc * P3.turnBoost : acc) : dec);
-  if (tz > 0 && p.gr && p.z - S.zone > LEAD_MAX && p.gref >= 0 && L.objs[p.gref].skin === 1) tz = 0;
   p.vz = approach(p.vz, tz, dz ? (p.vz * tz < 0 ? acc * P3.turnBoost : acc) : dec);
 
   // jump: coyote time, a short buffer for early presses, and holding jump re-jumps on landing
@@ -768,7 +790,7 @@ function stepPlayer(L, S, who, bits) {
 
   let ny = p.y + p.vy;
   if (p.vy > 0) {   // head against the underside of a static slab
-    for (let i = S.lo; i < S.hi; i++) {
+    for (let i = scanFrom(L, S, p.z, HW); i < S.hi; i++) {
       const o = L.objs[i];
       if (o.z0 >= p.z + HW) break;
       if (o.k !== 'floor') continue;
@@ -792,8 +814,8 @@ function stepPlayer(L, S, who, bits) {
 // Objects and hazards
 
 function updateObjects(L, S) {
-  for (let i = S.lo; i < S.hi; i++) {
-    const o = L.objs[i];
+  for (const k in S.o) {   // integer keys: ascending order, the same everywhere
+    const i = +k, o = L.objs[i];
     if (o.k === 'crumble') { updateCrumble(S, o, i); continue; }
     if (o.k !== 'tilt') continue;
     const st = S.o[i];
@@ -833,7 +855,7 @@ const boxHit = (p, ins, x0, x1, y0, y1, z0, z1) =>
   p.x + HW - ins > x0 && p.x - HW + ins < x1 && p.z + HW - ins > z0 && p.z - HW + ins < z1 && p.y < y1 && p.y + P3.h > y0;
 
 function hazard(L, S, who, p) {
-  for (let i = S.lo; i < S.hi; i++) {
+  for (let i = scanFrom(L, S, p.z, 1.5); i < S.hi; i++) {
     const o = L.objs[i];
     if (o.z0 > p.z + 1.5) break;
     if (!near(o, p.x, p.z, 1.5)) continue;
