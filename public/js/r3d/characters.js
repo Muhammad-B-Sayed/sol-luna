@@ -155,12 +155,12 @@ export class Character {
   // glowing crescent on the back of the hood (what the camera behind her sees) and a short cape.
   buildCrescent(head, M) {
     const P = this.P;
-    const hoodMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, side: THREE.DoubleSide,
-      emissive: 0x0a1c48, emissiveIntensity: 1 }), { rim: col(0x6fb8ff).multiplyScalar(0.6), dissolve: this.dis, key: 'hood' });
+    const hoodMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, side: THREE.DoubleSide,
+      emissive: 0x081638, emissiveIntensity: 1 }), { rim: col(0x6fb8ff).multiplyScalar(0.28), dissolve: this.dis, key: 'hood' });
     this.mats.hood = hoodMat;
     const open = 1.7;   // opening at the face (-z), radians
     const hoodG = new THREE.SphereGeometry(0.405, 24, 14, Math.PI * 1.5 + open / 2, Math.PI * 2 - open, 0, Math.PI * 0.68);
-    grad(hoodG, -0.2, 0.4, 0x1b2f6e, 0x3f6fd0);
+    grad(hoodG, -0.2, 0.4, 0x16285e, 0x3460bc);
     const hood = new THREE.Mesh(hoodG, hoodMat); hood.position.set(0, 0.02, 0.02); head.add(hood);
     // drooping point: a bent cone of three segments
     const tip = this.tip = new THREE.Group(); tip.position.set(0, 0.3, 0.16); tip.rotation.x = 1.0; head.add(tip);
