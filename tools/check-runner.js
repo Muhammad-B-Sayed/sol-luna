@@ -205,8 +205,9 @@ function checkChunks(seed, ka, kb) {
     for (const who of [0, 1]) {
       const S = cloneRunner(snap.get(Tk));
       place(S, who, c); park(S, 1 - who);
-      let r = search(L, S, who, { goal, deadline: Tn, budget: BUDGET, o0: c.o0, o1: c.o1 });
-      if (!r.ok) {   // slower than the scroll here: it must still be clearable alive
+      // in time for the scroll? (only a statistic, so no retry with a bigger budget)
+      let r = search1(L, cloneRunner(S), who, { goal, deadline: Tn, budget: BUDGET, o0: c.o0, o1: c.o1 });
+      if (!r.ok) {   // slower than the scroll here, or the bot didn't find the fast line: it must still be clearable alive
         const S2 = cloneRunner(snap.get(Tk)); place(S2, who, c); park(S2, 1 - who);
         r = search(L, S2, who, { goal, budget: BUDGET, o0: c.o0, o1: c.o1 });
       }
