@@ -539,7 +539,7 @@ def tidelock():
     # start hall (rows 24-27, floor 28)
     paint(C, 15, 26, 15, 27); paint(C, 19, 24, 38, 27); paint(C, 16, 24, 18, 27)
     put(C, 31, 27, '/'); paint(C, 32, 27, 38, 27, '#')   # the hall's east end is a step higher
-    put(C, 34, 26, '3'); put(C, 28, 27, 'a'); put(C, 17, 27, 'b')   # Luna starts on the lift, Sol under the chute: both have a full jump's headroom
+    put(C, 34, 26, '3'); put(C, 18, 27, 'a'); put(C, 16, 27, 'b')   # both start on the 3-wide orange lift, under its open shaft: a full jump's headroom wherever they stand on it
     for x, y in ((1, 2), (33, 8), (38, 15), (22, 11), (11, 22)):
         put(C, x, y, 's')
     for x, y in ((6, 15), (8, 8), (37, 6), (19, 11), (38, 24)):
