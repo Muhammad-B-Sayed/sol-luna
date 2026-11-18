@@ -41,7 +41,20 @@ export const DODGE = {
   pointTicks: 100,    // pause after a hit
   liveMax: 75,        // a live ball that somehow never bounces dies after this
   restMax: 150,       // a dead ball is forced to settle after this
+  // Online wind-up (fix C). A player with a round trip sees a remote throw about 1.1 round
+  // trips late. So a throw at them stays in the thrower's hand that many ticks after the
+  // release (the wind-up), then flies at full speed. The release reaches their screen during
+  // the wind-up, and they see the launch on time and the whole flight, as in local play.
+  windMax: 9,         // 150 ms: the longest wind-up
 };
+
+// Wind-up for throws at a player whose round trip to the server is rttMs: about 1.1 round
+// trips (the round trip, plus the 2-tick snapshot interval and the input queue; the latency
+// harness measures it), capped at windMax ticks. 0 when local or rttMs is unknown.
+export function windupFor(rttMs) {
+  const t = Math.round(1.1 * Math.max(0, +rttMs || 0) / (1000 / 60));
+  return Math.min(DODGE.windMax, t);
+}
 
 export const NET = WORLD_W / 2;
 export const DP_READY = 0, DP_PLAY = 1, DP_POINT = 2, DP_OVER = 3;
@@ -141,6 +154,8 @@ export function createDodge(seed = 1) {
     clockOwner: -1, clock: DODGE.shotClock,
     serve: -1, lastHit: null,
     throwN: 0, hitN: 0, pickN: 0, turnN: 0, point: 0,
+    lag: [0, 0],     // wind-up (ticks) for throws at each player; online the server sets it between points
+    wind: 0, windN: 0, windSlope: 0,   // a throw winding up: ticks left, its full length, its aim
   };
   S.d = D;
   D.serve = rand(D) < 0.5 ? SOL : LUNA;
@@ -156,6 +171,7 @@ function givePoint(S, who) {
   S.p = fresh.p;
   D.phase = DP_READY; D.t = 0;
   D.aim = [-1, -1];
+  D.wind = 0;
   D.serve = who;
   hold(S, who);
   D.clockOwner = who; D.clock = DODGE.shotClock;
@@ -183,18 +199,29 @@ export function stepDodge(L, S, inputs) {
   const D = S.d;
   D.t++;
   const play = D.phase === DP_PLAY || D.phase === DP_READY;
-  const inp = play ? inputs : [0, 0];
+  const inp = play ? inputs.slice() : [0, 0];
+  // during a wind-up the thrower is planted: their keys do nothing, so where the ball leaves
+  // from follows from the state at the release, which the other screen already knows
+  if (D.wind > 0) inp[D.holder] = 0;
   stepPlayersOnly(L, S, inp);
   keepToHalves(S);
 
   if (D.phase === DP_READY && D.t >= DODGE.ready) { D.phase = DP_PLAY; D.t = 0; }
 
+  // the wind-up ends: the ball leaves the hand with the aim it was released with
+  if (D.wind > 0 && --D.wind === 0) throwBall(S, D.holder, D.windSlope);
+
   // aiming and throwing
   for (const who of [SOL, LUNA]) {
     const down = (inp[who] & IN_ACT) !== 0;
     if (D.holder !== who || D.phase !== DP_PLAY) { if (D.holder !== who) D.aim[who] = -1; continue; }
+    if (D.wind > 0) continue;
     if (down) D.aim[who] = D.aim[who] < 0 ? 0 : D.aim[who] + 1;
-    else if (D.aim[who] >= 0) { throwBall(S, who, aimSlope(D.aim[who])); D.aim[who] = -1; }
+    else if (D.aim[who] >= 0) {
+      const slope = aimSlope(D.aim[who]), w = D.lag ? D.lag[1 - who] | 0 : 0;
+      D.aim[who] = -1;
+      if (w > 0) { D.wind = w; D.windN = w; D.windSlope = slope; } else throwBall(S, who, slope);
+    }
   }
 
   stepBall(S);
@@ -307,6 +334,7 @@ function pickUp(S) {
 
 function shotClock(S) {
   const D = S.d;
+  if (D.wind > 0) return;   // a released throw is committed: the clock waits for it
   const own = ownerOf(D);
   if (own < 0) return;
   if (own !== D.clockOwner) { D.clockOwner = own; D.clock = DODGE.shotClock; return; }

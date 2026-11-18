@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, createState, step, PH_WON } from '../shared/sim.js';
-import { COURT, createDodge, stepDodge } from '../shared/dodge.js';
+import { COURT, createDodge, stepDodge, windupFor, DP_READY } from '../shared/dodge.js';
 import { buildRunner, createRunnerState, stepRunner, newSeed } from '../shared/runner.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -73,6 +73,26 @@ function send(ws, msg) {
   out(ws, JSON.stringify(msg));
 }
 
+// Round-trip time, measured by the server with WebSocket protocol pings. Browsers answer these
+// inside the network stack, so page scripts can't delay them to fake a high ping. The median of
+// the last 8 samples (one every 500 ms) ignores single spikes. Dodgeball sizes the throw wind-up
+// at each player from it (windupFor in shared/dodge.js). DODGE_WINDUP=off turns that off.
+const WINDUP = process.env.DODGE_WINDUP !== 'off';
+function rttPing(ws) {
+  const b = Buffer.alloc(8); b.writeDoubleLE(performance.now());
+  const go = () => { if (ws.readyState === 1) ws.ping(b); };
+  LAG ? setTimeout(go, LAG) : go();   // the stamp is taken before the test lag
+}
+function rttPong(ws, data) {
+  if (!data || data.length !== 8) return;
+  ws.rttS.push(performance.now() - data.readDoubleLE(0));
+  if (ws.rttS.length > 8) ws.rttS.shift();
+}
+function rttOf(ws) {
+  const a = ws.rttS.slice().sort((x, y) => x - y);
+  return a.length ? a[a.length >> 1] : 0;
+}
+
 class Room {
   constructor(code) {
     this.code = code;
@@ -128,6 +148,13 @@ class Room {
         this.cur[ch] = b; this.ack[ch] = s; this.starve[ch] = 0;
       } else if (++this.starve[ch] > 10) this.cur[ch] = 0; // no input arriving: let go of the keys
     }
+    // Dodgeball: the wind-up for throws at each player follows their round trip. It changes
+    // only in the ready freeze at the start of a point, when nobody can throw.
+    if (this.L.dodge && this.S.d.phase === DP_READY) {
+      const lag = [0, 0];
+      if (WINDUP) for (const c of this.clients) lag[c.char] = windupFor(rttOf(c.ws));
+      this.S.d.lag = lag;
+    }
     (this.mode === 'runner' ? stepRunner : this.L.dodge ? stepDodge : step)(this.L, this.S, this.cur);
     if (this.S.tick % 2 === 0) {
       this.broadcast({ t: 's', ack: this.ack, inp: this.cur, st: this.S });
@@ -140,10 +167,13 @@ const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 4096 });
 wss.on('connection', (ws) => {
   ws.room = null;
   ws.isAlive = true;
-  ws.on('pong', () => { ws.isAlive = true; });
+  ws.rttS = [];
+  ws.on('pong', (data) => { ws.isAlive = true; LAG ? setTimeout(() => rttPong(ws, data), LAG) : rttPong(ws, data); });
+  rttPing(ws);
+  ws.rttT = setInterval(() => rttPing(ws), 500);
 
   ws.on('message', (data) => (LAG ? setTimeout(() => onMessage(ws, data), LAG) : onMessage(ws, data)));
-  ws.on('close', () => leave(ws));
+  ws.on('close', () => { clearInterval(ws.rttT); leave(ws); });
 });
 
 function onMessage(ws, data) {
