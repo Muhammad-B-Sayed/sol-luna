@@ -7,7 +7,7 @@
 // loaded on first use; without it, or with ?r3ddebug=1, the 2D debug view draws instead.
 // The HUD is DOM over that canvas.
 import {
-  buildRunner3d, createRunner3dState, stepRunner3d, cloneRunner3d, ensureGenerated, newSeed, survival, distance, speedAt,
+  buildRunner3d, createRunner3dState, stepRunner3d, cloneRunner3d, ensureGenerated, newSeed, survival, distance, speedAt, sectionAt,
   WHY3, R3_COUNT, R3_PLAY, R3_OVER, COUNT_TICKS, DRAW, LEAD_MAX,
 } from '/shared/runner3d.js';
 import { Runner3DDebugRenderer } from './runner3d-debug.js';
@@ -22,6 +22,26 @@ const OFF_MAX = 3;         // units: drop a visual correction bigger than this
 const URGENT = 8, CRITICAL = 4;   // units between a player and the dusk
 // read once at load: joining a room rewrites the URL to /CODE and drops the query
 const DEBUG_VIEW = new URLSearchParams(location.search).has('r3ddebug');
+// one line the first time each obstacle kind comes up, per player: [Sol's, Luna's] or one for both
+const TIPS = {
+  gaps: 'Gaps ahead. Run and jump across.',
+  steps: 'Stairs. Low steps you walk, tall ones you jump.',
+  thorns: 'Thorns! Slip through the opening, or jump the low ones.',
+  pools: ['Sun pools are safe for you. Moon and shade pools are not.', 'Moon pools are safe for you. Sun and shade pools are not.'],
+  tilt: 'Chained slabs tip toward your weight. Keep to the middle.',
+  stones: 'Stepping stones. Pick a lane and keep hopping.',
+  crumble: 'Ember slabs crack under your feet. Keep moving!',
+  sweeper: 'A thorn arm sweeps the floor. Jump it, or slip in behind it.',
+  eclipse: ['Only the gold stones hold you. The blue ones are Luna\'s.', 'Only the blue stones hold you. The gold ones are Sol\'s.'],
+  beams: 'Narrow beams over the abyss. Steady now.',
+  pendulum: 'Blades swing across the bridge. Time your run.',
+  carousel: 'Stones circle the pillar. Hop on as one passes, off on the far side.',
+  gate: 'The gap in the thorn curtain slides. Run through the gap.',
+  orbs: 'Orbs roll your way. Step into another lane, or jump them.',
+};
+const TIP_AHEAD = 9;      // units: a section's tip shows when its start is this close ahead
+const TIP_TICKS = 240;    // how long a tip stays up
+const HELD_TIP = 'Too far ahead. The twilight holds you until the dusk comes closer.';
 
 export class Runner3DMode {
   // ctx: { input, net, sfx, show(id), toast(msg), app, quit() }
@@ -60,6 +80,7 @@ export class Runner3DMode {
     this.results = false; this.paused = false; this.acc = 0;
     this.pending = []; this.seq = 0; this.remoteBits = 0;
     this.heard = null; this.lastDrawn = null;
+    this.tipSeen = [{}, {}]; this.tipShown = [null, null];
     this.corr = { max: 0, back: 0, viewBack: 0, n: 0 };
     this.active = true;
     this.input.mode3d = true;
@@ -268,6 +289,23 @@ export class Runner3DMode {
     if (cur.cd && cur.cd !== h.cd) sfx.click();
     if (cur.phase === R3_PLAY && h.phase === R3_COUNT) sfx.door();
     if (cur.alive.some((a, i) => !a && h.alive[i])) sfx.die();
+    if (cur.phase === R3_PLAY) {
+      const mine = this.online ? [this.app.me] : [0, 1];
+      // the dusk closing in: a tick that quickens as it nears your player
+      const gap = Math.min(...mine.map(i => (S.p[i].alive ? S.p[i].z - S.zone : 1e9)));
+      if (gap < URGENT) {
+        const every = Math.round(12 + (gap / URGENT) * 30);
+        if (!this.duskT || cur.tick - this.duskT >= every || cur.tick < this.duskT) { this.duskT = cur.tick; sfx.tock(); }
+      }
+      // an ember slab cracking under one of your players
+      for (const i of mine) {
+        const p = S.p[i], o = p.alive && p.gr && p.gref >= 0 ? S.o[p.gref] : null;
+        if (o && o.st === 1 && o.t === 0) sfx.lever();
+        const held = this.isHeld(i);
+        if (held && !this.wasHeld?.[i]) sfx.click();
+        (this.wasHeld ||= [false, false])[i] = held;
+      }
+    }
     if (cur.phase === R3_OVER && h.phase !== R3_OVER) setTimeout(() => (S.win === DRAW ? sfx.door() : sfx.win()), 500);
   }
 
@@ -278,7 +316,7 @@ export class Runner3DMode {
     const el = document.createElement('div');
     el.id = 'r3Hud'; el.hidden = true; el.setAttribute('aria-hidden', 'true');
     const pl = (k) => `<div class="r3-pl ${k}"><div class="r3-name"></div><div class="r3-dist"></div>`
-      + `<div class="r3-meter"><i></i><span></span></div></div><div class="r3-edge ${k}"></div>`;
+      + `<div class="r3-meter"><i></i><span></span></div><div class="r3-held">held by the twilight</div></div><div class="r3-edge ${k}"></div><div class="r3-tip ${k}"></div>`;
     el.innerHTML = `<div class="r3-split"></div><div class="r3-top"><b class="r3-time"></b><span class="r3-pace"></span><span class="r3-ping"></span></div>`
       + pl('sol') + pl('luna') + '<div class="r3-count"></div><div class="r3-banner"></div>';
     this.canvas.after(el);
@@ -289,6 +327,7 @@ export class Runner3DMode {
       pl: ['sol', 'luna'].map(k => ({
         box: q(`.r3-pl.${k}`), name: q(`.r3-pl.${k} .r3-name`), dist: q(`.r3-pl.${k} .r3-dist`),
         meter: q(`.r3-pl.${k} .r3-meter`), fill: q(`.r3-pl.${k} .r3-meter i`), gap: q(`.r3-pl.${k} .r3-meter span`), edge: q(`.r3-edge.${k}`),
+        tip: q(`.r3-tip.${k}`), held: q(`.r3-pl.${k} .r3-held`),
       })),
     };
     this.hudCache = new Map();
@@ -326,6 +365,13 @@ export class Runner3DMode {
       const warn = p.alive && mine && S.phase === R3_PLAY ? Math.max(0, Math.min(1, (URGENT + 2 - gap) / (URGENT + 2 - CRITICAL / 2))) : 0;
       this.set(e.edge, 'opacity', warn.toFixed(2));
       this.set(e.edge, 'class', `r3-edge ${i ? 'luna' : 'sol'}${warn > 0.6 ? ' pulse' : ''}`);
+      // held by the lead cap: standing on a run-up more than LEAD_MAX ahead of the dusk
+      const held = this.isHeld(i);
+      this.set(e.held, 'opacity', held ? '1' : '0');
+      // a one-line tip the first time each obstacle kind comes up
+      const tip = mine && p.alive && S.phase === R3_PLAY ? this.tipFor(i) : null;
+      this.set(e.tip, 'text', tip || '');
+      this.set(e.tip, 'opacity', tip ? '1' : '0');
     }
     // countdown, then "Run!"
     let txt = '', op = 0, sc = 1;
@@ -343,6 +389,26 @@ export class Runner3DMode {
     this.set(H.banner, 'text', over ? (S.win === DRAW ? 'A draw!' : `${NAME[S.win]} wins!`) : '');
     this.set(H.banner, 'class', `r3-banner ${S.win === SOL ? 'solc' : S.win === LUNA ? 'lunac' : ''}`);
     this.set(H.banner, 'opacity', over ? Math.min(1, S.phaseT / 20).toFixed(2) : '0');
+  }
+
+  isHeld(i) {
+    const S = this.S, p = S.p[i], o = p.alive && p.gr && p.gref >= 0 ? this.L.objs[p.gref] : null;
+    return !!o && o.skin === 1 && p.z - S.zone > LEAD_MAX - 0.3 && S.phase === R3_PLAY;
+  }
+
+  // the tip player i should see now (or null): the next section's kind the first time it comes up,
+  // or the lead-cap note the first time the cap holds them
+  tipFor(i) {
+    const S = this.S, p = S.p[i], seen = this.tipSeen[i], cur = this.tipShown[i];
+    if (cur && S.tick < cur.until && S.tick >= cur.from) return cur.text;
+    const sec = sectionAt(this.L, p.z + TIP_AHEAD);
+    let text = null, key = null;
+    if (this.isHeld(i) && !seen.held) { key = 'held'; text = HELD_TIP; }
+    else if (sec && TIPS[sec.kind] && !seen[sec.kind] && sec.z0 > p.z - 2) { key = sec.kind; const t = TIPS[sec.kind]; text = Array.isArray(t) ? t[i] : t; }
+    if (!key) return null;
+    seen[key] = 1;
+    this.tipShown[i] = { text, from: S.tick, until: S.tick + TIP_TICKS };
+    return text;
   }
 
   // touch: a left-thumb pad for 8-way movement and a jump button (touch devices only)
