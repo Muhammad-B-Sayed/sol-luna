@@ -104,6 +104,8 @@ export class Runner3DMode {
     this.loadRenderer();
     if (this.RR) this.RR.reset(this.L);
     this.showControls();
+    // the menu button that started the match must not keep focus: Enter is Sol's jump
+    if (document.activeElement?.tagName === 'BUTTON') document.activeElement.blur();
     const h = $('#hint');
     h.textContent = this.online
       ? `Run forward and stay ahead of the dusk. Last one standing wins. You are ${NAME[this.app.me]}: arrows or WASD, jump with Space.`

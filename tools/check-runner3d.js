@@ -162,7 +162,7 @@ function checkSeed(seed) {
     for (const who of [0, 1]) for (const t0 of starts) {
       const go = (stop) => {
         const S = snapAt(t0); place(S, who, c); park(S, 1 - who); S.p[who].vz = P3.maxSpeed;
-        return solve(L, S, who, { until: goal, budget: BUDGET, o0: c.o0, o1: c.o1, flow: { ...FLOW, stop } });
+        return solve(L, S, who, { until: goal, budget: BUDGET, o0: c.o0, o1: c.o1, flow: { ...FLOW, stop }, rungs: stop === FLOW.stop ? 5 : 2 });
       };
       fk.n++;
       const r = go(FLOW.stop);

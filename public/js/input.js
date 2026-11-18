@@ -35,8 +35,10 @@ export class Input {
       if (e.code in SOL_KEYS || e.code in LUNA_KEYS || e.code === 'Space') {
         if (!e.target.closest || !e.target.closest('input')) e.preventDefault();
       }
-      // Runner 3D only (mode3d is 'local' or 'online'): its keys don't scroll or press buttons
-      if (this.mode3d && (e.code in (this.mode3d === 'online' ? ANY_3D : SOL_3D) || e.code in LUNA_3D)) e.preventDefault();
+      // Runner 3D only (mode3d is 'local' or 'online'): its keys don't scroll the page. Enter on a
+      // focused button (Rematch, Resume) still presses it.
+      const onButton = (e.code === 'Enter' || e.code === 'NumpadEnter') && e.target.closest && e.target.closest('button');
+      if (this.mode3d && !onButton && (e.code in (this.mode3d === 'online' ? ANY_3D : SOL_3D) || e.code in LUNA_3D)) e.preventDefault();
       if (!this.down.has(e.code) && this.rel.has(e.code)) this.gap.set(e.code, now());
       this.down.add(e.code);
     });
