@@ -487,6 +487,15 @@ def tidelock():
     8. In the latch hall Luna drops to her moon lane and the pink latch (Sol's door gate opens) and
        takes the chute. Sol lifts her up with the orange plate; he jumps the lift hole into the
        west arm, and both walk to their doors at the ends of the two arms."""
+    # PLAN AND PROGRESS (rebuild for the lower gravity; delete this block when the full gate passes)
+    # - [x] 7-row band layout (previous agent, c160047); gated layout numbers OK (34% stone, 9 floor rows)
+    # - [x] merged low-gravity into respace-26
+    # - [ ] stalactite over the purple stone (x17-18 rows 1-2) bonks the jump: replace it with a
+    #       one-row roof rock at x31-33 row 1 so the top band's empty block stays <= 120
+    # - [ ] rewrite ring() / SCRIPTS[26] in act3.bot.js for the new coordinates: levers purple x21,
+    #       green x24, tide plates x15/x23, orange plates (19,17) and (23,27), latches (22,19) white
+    #       and (22,22) pink, chute x28, tide lift x10-11 rows 21->14, start lift x16-18 rows 28->17
+    # - [ ] FAST gate, ROOF 0, then full gate; then FAST 23,24,25; delete tools/.lay26.mjs
     L = Lv('Tidelock', 115, 'Purple and green make four codes; each code opens one crossing. '
            'Walk right through a lever to turn it on, left to turn it off, and jump over it to leave it.')
     C = canvas()
