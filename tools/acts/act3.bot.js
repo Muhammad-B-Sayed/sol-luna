@@ -157,7 +157,7 @@ const rideWithCrate = (x0, f, cc, side) => seek(LUNA, `luna and crate on lift ${
   { key: `lfc${x0},${f},${cc},${side}`, h: (S, p) => Math.abs(cx(S.b[0]) - cc) * 13 + Math.abs(cx(p) - (cc + side * 1.2)) * 5 });
 SCRIPTS[27] = () => [
   // 0. split start: yellow gates, each opened from the other side
-  press(SOL, 4, 27), goto(LUNA, 28, 26), press(LUNA, 29, 26), goto(SOL, 12, 27), board(SOL, 13, 28),
+  press(SOL, 4, 27), pushTo(LUNA, 0, 32, { y: 26, tol: 0.25 }), press(LUNA, 30, 26),   // she shoves the crate through her gate goto(SOL, 12, 27), board(SOL, 13, 28),
   // 1. Luna: crate onto E1, hop over it in the open shaft, purple for Sol's W1
   rideWithCrate(33, 27, 35.5, -1), grab(LUNA, 37, 26), press(LUNA, 38, 26), waitPlat(13, 28),
   goto(SOL, 12, 21),
@@ -187,8 +187,8 @@ SCRIPTS[27] = () => [
   grab(LUNA, 38, 3, K), goto(LUNA, 23, 3, K),            // back west over E4 while Sol still holds it up
   // 9. the core: Luna holds pink, Sol rides D1 down, gem, onto the counterweight D2
   board(SOL, 17, 4, 3), press(LUNA, 8, 3, K), waitPlat(17, 4),
-  grab(SOL, 23, 11, K), board(SOL, 21, 16), goto(LUNA, 10, 3, K), waitPlat(21, 28, false),
+  grab(SOL, 23, 11, K), board(SOL, 21, 16), goto(LUNA, 10, 3, K), grab(SOL, 19, 19, K), waitPlat(21, 28, false),   // step off the sinking counterweight into a niche
   press(SOL, 20, 27, K), waitPlat(21, 28),
   goto(LUNA, 18, 15, K), grab(LUNA, 20, 8, K), board(LUNA, 21, 16),
-  door(SOL, K), waitPlat(21, 28, false), door(LUNA, K), win(),
+  door(SOL, K), grab(LUNA, 19, 22, K), door(LUNA, K), win(),
 ];
