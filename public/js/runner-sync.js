@@ -134,6 +134,7 @@ export class RunnerSync {
     while (this.acc >= DT && n < MAX_TICKS_PER_FRAME) { this.acc -= DT; n++; this.tick(readBits()); }
     this.alpha = Math.min(1, this.acc / DT);
     this.clock(now, dt);
+    this.ease(dt);
     return n;
   }
 
@@ -160,14 +161,21 @@ export class RunnerSync {
       if (k === f && d > 0 && vf > 0) d = Math.min(d, 0.6 * vf);
       v[k] -= d; if (Math.abs(v[k]) < 0.002) v[k] = 0;
     }
-    // the other player's offset: a fifth per tick, at most sim.ease; drawn ahead along the run
-    // (an extension past late snapshots overshot) it is paid off no faster than they run, so
-    // they slow down on screen instead of stepping back (sim.creep when they stand still)
+  }
+
+  // the other player's offset, eased on frame time (they are drawn on real time, and catch-up
+  // ticks after a stall must not speed it up): a fifth per 1/60 s, at most sim.ease; drawn
+  // ahead along the run (an extension past late snapshots overshot) it is paid off no faster
+  // than they run, so they slow down on screen instead of stepping back (sim.creep when they
+  // stand still)
+  ease(dt) {
+    const w = Math.min(2, dt / DT), f = this.sim.fwd;
     const r = this.roff, q = this.snaps[this.snaps.length - 1].st.p[1 - this.me], vq = Math.max(0, q['v' + f] || 0);
-    for (const k of this.sim.dims) {
-      let d = clamp(r[k] * 0.2, -this.sim.ease, this.sim.ease);
-      if (k === f && d > 0) d = Math.min(d, Math.max(0.6 * vq, this.sim.creep));
-      r[k] -= d; if (Math.abs(r[k]) < 0.002) r[k] = 0;
+    const k = 1 - Math.pow(0.8, w);
+    for (const d0 of this.sim.dims) {
+      let d = clamp(r[d0] * k, -this.sim.ease * w, this.sim.ease * w);
+      if (d0 === f && d > 0) d = Math.min(d, Math.max(0.6 * vq, this.sim.creep) * w);
+      r[d0] -= d; if (Math.abs(r[d0]) < 0.002) r[d0] = 0;
     }
   }
 
