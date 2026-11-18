@@ -62,7 +62,7 @@ export const DODGE = {
   // trips late. So a throw at them stays in the thrower's hand that many ticks after the
   // release (the wind-up), then flies at full speed. The release reaches their screen during
   // the wind-up, and they see the launch on time and the whole flight, as in local play.
-  windMax: 9,         // 150 ms: the longest wind-up
+  windMax: 12,        // 200 ms: the longest wind-up (covers a 75 ms one-way link at 36 px/tick)
 };
 
 // Wind-up for throws at a player: how late their screen shows a remote throw, capped at

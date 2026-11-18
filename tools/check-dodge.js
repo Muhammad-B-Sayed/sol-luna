@@ -470,7 +470,7 @@ console.log('\n6. Determinism');
 console.log('\n7. Online wind-up (fix C)');
 {
   ok(windupFor(0) === 0 && windupFor(undefined) === 0 && windupFor(0, 0) === 0, 'no round trip, no wind-up (local play is unchanged)');
-  ok(windupFor(40) === 3 && windupFor(80) === 5 && windupFor(80, 1) === 6 && windupFor(150) === 9 && windupFor(400, 5) === DODGE.windMax,
+  ok(windupFor(40) === 3 && windupFor(80) === 5 && windupFor(80, 1) === 6 && windupFor(150) === 10 && windupFor(400, 5) === DODGE.windMax,
     `wind-up = 1.1 round trips + queue, in ticks, capped at ${DODGE.windMax} (${windupFor(40)}/${windupFor(80)}/${windupFor(80, 1)}/${windupFor(150)}/${windupFor(400, 5)} at 40/80/80+1/150/400+5 ms)`);
   const tp = { x: FLOOR[SOL].lo + 60, y: FLOOR[SOL].y }, vp = { x: FLOOR[LUNA].hi, y: FLOOR[LUNA].y };
   // one throw: hold `hold` ticks, release, then thrower input `tIn(t)` and victim input `vIn(t)` t ticks after the release

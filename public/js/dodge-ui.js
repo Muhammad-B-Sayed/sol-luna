@@ -49,9 +49,7 @@ export function drawDodgeHud(g, S, { online = false, me = SOL, rtt = 0 } = {}) {
   // corners
   g.font = `500 13px ${FONT}`;
   g.textAlign = 'left'; g.fillStyle = 'rgba(240,230,255,0.75)';
-  // fix C: how long your throws wind up against the other player's lag (left corner: the right one sits under the chat button)
-  const wu = online && D.lag && D.lag[1 - me] > 0 ? ` · your throws wind up ${Math.round(D.lag[1 - me] * 1000 / 60)} ms` : '';
-  g.fillText(`Dodgeball · first to ${DODGE.toWin}${wu}`, 14, 19);
+  g.fillText(`Dodgeball · first to ${DODGE.toWin}`, 14, 19);
   if (online) {
     g.textAlign = 'right'; g.fillStyle = 'rgba(240,230,255,0.6)';
     g.fillText(`${me === SOL ? 'You are Sol' : 'You are Luna'} · ${Math.round(rtt)} ms`, WORLD_W - 14, 19);

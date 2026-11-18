@@ -401,7 +401,7 @@ node tools/check-runner.js               # Runner fairness proof, 50 seeds to 17
   than needed. Dodgeball rooms drain it between points (section 9). Co-op and Runner could do the
   same where inputs are ignored (death, results) or by dropping an input equal to the held keys.
   Found with `tools/dodge-filmstrip.cjs`; `DODGE_LOG=1` prints the depth for dodge rooms.
-- **Dodgeball wind-up cap:** throws wind up at most 150 ms (`DODGE.windMax`). Past about 68 ms
+- **Dodgeball wind-up cap:** throws wind up at most 200 ms (`DODGE.windMax` = 12 ticks). Past about 68 ms
   one-way the defender loses the excess (4-5 ticks at 100 ms one-way). Raise it only if players
   on bad links complain; the thrower pays for it.
 - **3D Runner:** being built on another branch. Once merged, it is documented in `docs/runner3d.md`.
@@ -496,7 +496,7 @@ A competitive mode on one single-screen court, Sol on the left and Luna on the r
   server in the ready freeze). The release reaches the target's screen during the wind-up, so
   they see the launch on time and the whole flight: the dodge window equals local up to about
   68 ms one-way (re-measured at 36 px/tick on the new court: identical at 0, 20 and 40 ms; at
-  75 ms the near-net window drops from 5 ticks to 2, and raising `windMax` to 12 would cover it;
+  75 ms the near-net window drops from 5 ticks to 2, which is why `windMax` is now 12 (200 ms); re-measure at 75 ms to confirm;
   `docs/dodge-latency.md`). During the wind-up the thrower is planted (keys ignored) and the aim is
   locked, so the launch follows from the state at the release; the shot clock waits.
   - Thrower's screen: the wind-up shows on the release frame (lean back, ball drawn back over the
