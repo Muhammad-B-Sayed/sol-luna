@@ -130,7 +130,7 @@ export const SCRIPTS = {
   // Counterweights: one colour sends one lift up and the other down; the crate is the last weight.
   9: () => [
     grab(SOL, 6, 25), goto(SOL, 11, 27),            // Sol onto W0
-    mv(LUNA, 27), grab(LUNA, 24, 25), grab(LUNA, 37, 25), press(LUNA, 33, 27),   // Luna drops down, holds P0a: W0 up, E0 down
+    grab(LUNA, 24, 25), grab(LUNA, 37, 25), press(LUNA, 33, 27),   // Luna, on the floor below the pocket, holds P0a: W0 up, E0 down
     waitPlat(11, 28),
     flip(SOL, 23, 21), mv(SOL, 27),           // Sol crosses F1 through L2 onto E0
     goto(LUNA, 31, 27),                             // Luna lets go: E0 carries Sol to F2
