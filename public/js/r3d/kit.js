@@ -12,7 +12,7 @@ export const toV = (x, y, z, v = new THREE.Vector3()) => v.set(x, y, -z);
 // ---------------------------------------------------------------------------
 // Palette (from the 2D game: render.js, runner-render.js)
 export const PAL = {
-  stoneTop: 0x9a8cc4, stoneTop2: 0x8a7cb6, stoneSide: 0x564a7c, stoneDeep: 0x231a3a, trim: 0xd8ccff,
+  stoneTop: 0x7a6ca6, stoneTop2: 0x6c5f98, stoneSide: 0x463a68, stoneDeep: 0x1a1230, trim: 0xd8ccff,
   sunHi: 0xfff1a8, sun: 0xffb02e, sunDeep: 0xe2531c, moonHi: 0xeaffff, moon: 0x7fd6ff, moonDeep: 0x2f6fd8,
   shadeHi: 0x9dffb9, shade: 0x3a7d55, shadeDeep: 0x1d1530, thorn: 0xb04fa8, thornHi: 0xffc2ec, thornDeep: 0x3b2a5c,
   fog: 0x2e2348, dusk: 0x0d0818, ember: 0x5dff9a, duskViolet: 0x3b1a5c,

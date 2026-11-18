@@ -12,7 +12,7 @@ const NOISE = `
   float fbm(vec2 p) { float a = 0.5, s = 0.0; for (int k = 0; k < 4; k++) { s += a * vn(p); p = p * 2.03 + 11.7; a *= 0.5; } return s; }
 `;
 
-export const BEND = 0.035;   // sim z offset of the wall at lateral x: zone + BEND * x^2
+export const BEND = 0.02;   // sim z offset of the wall at lateral x: zone + BEND * x^2
 
 export class DuskZone {
   constructor() {

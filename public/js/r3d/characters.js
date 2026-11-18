@@ -14,9 +14,9 @@ const LOOK = [
     emissive: col(0x5a2400),
   },
   { // Luna
-    head: [0xffffff, 0xcdeeff, 0x7fb4ef], body: [0xbfe9ff, 0x4c8fe0], limb: 0x1d3a6b, eye: 0x14284d, cheek: 0x96aaff,
-    rim: col(0x9fdcff).multiplyScalar(0.85), core: 0xe8f8ff, glow: col(0x6ec0ff), light: 0x80c8ff,
-    emissive: col(0x0c2a50),
+    head: [0xf4fbff, 0xb8dcff, 0x6c9ee6], body: [0x8cc4ff, 0x2f5fb8], limb: 0x1a2f5c, eye: 0x14284d, cheek: 0x96aaff,
+    rim: col(0x7fc8ff).multiplyScalar(0.55), core: 0xe8f8ff, glow: col(0x6ec0ff), light: 0x80c8ff,
+    emissive: col(0x081a38),
   },
 ];
 
@@ -48,7 +48,7 @@ export class Character {
       white: mk({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.6 }),
       cheek: mk({ color: P.cheek, transparent: true, opacity: 0.55, emissive: P.cheek, emissiveIntensity: 0.25 }),
       core: mk({ color: P.core, emissive: P.core, emissiveIntensity: 2.4 }),
-      ray: mk({ vertexColors: true, emissive: who === SOL ? 0xff7a10 : 0x3a8fff, emissiveIntensity: who === SOL ? 1.3 : 0.5 }),
+      ray: mk({ vertexColors: true, emissive: who === SOL ? 0xff7a10 : 0x6ab8ff, emissiveIntensity: who === SOL ? 1.3 : 1.1 }),
     };
     const M = this.mats;
     const root = this.root = new THREE.Group();
