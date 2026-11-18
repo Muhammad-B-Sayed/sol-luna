@@ -208,7 +208,7 @@ VIEWS.spikes = {
   update(v, o, st, pose, ctx) {
     const u = v.userData;
     const tw = 0.5 + 0.5 * Math.sin(ctx.time * 3 + ctx.idx);
-    ctx.glow.add(v.position.x, v.position.y + u.th * 0.6, v.position.z, Math.max(u.w, u.d) * 0.8 + 0.8, 0xff5ad0, 0.2 + 0.08 * tw);
+    ctx.glow.add(v.position.x, v.position.y + u.th * 0.5, v.position.z, Math.min(2.2, Math.min(u.w, u.d) + 0.6), 0xff5ad0, 0.08 + 0.04 * tw);
     if (Math.random() < ctx.dt * 1.5) {
       ctx.glow.add(v.position.x + (Math.random() - 0.5) * u.w, v.position.y + u.th, v.position.z + (Math.random() - 0.5) * u.d, 0.6, 0xffffff, 0.9);
     }

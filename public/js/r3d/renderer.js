@@ -69,6 +69,11 @@ class CamRig {
       target.x += Math.sin(time * 0.3) * 0 + (this.i ? 1 : -1) * 4.5 * e; target.y += 4 * e; target.z += 5 * e;
     }
     if (!alive) { target.y += 1.2; look.set(p.x, Math.max(p.y, this.y - 4), -p.z); }
+    if (this.override) {   // debug close-ups (demo ?cam=dx,dy,dz): offset from the player in sim units, looking at them
+      const [dx, dy, dz] = this.override;
+      target.set(p.x + dx, p.y + dy, -(p.z + dz)); look.set(p.x, p.y + 0.75, -p.z);
+      this.pos = null;
+    }
     if (this.pos == null) { this.pos = target.clone(); this.look.copy(look); }
     const kp = Math.min(1, dt * (alive ? 9 : 2)), kl = Math.min(1, dt * (alive ? 10 : 3));
     this.pos.x += (target.x - this.pos.x) * kp;
