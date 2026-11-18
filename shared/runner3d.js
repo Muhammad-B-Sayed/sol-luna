@@ -31,6 +31,8 @@
 //   per kind are listed in KIND_DOC after "pose:". tick may be fractional (smooth drawing of
 //   clocked kinds); stateful kinds read S.o[i] (rest pose when it is not in the window).
 // trig(a) -> [sin a, cos a] with the same polynomial the sim uses (any a in radians).
+// tiltTop(o, st, x) -> height of a spinning slab's top face at x (st = S.o[i], may be missing),
+//   or NaN where nobody can stand on it. TILT holds its constants.
 // firstFrom(L, z) -> the first object index whose footprint may reach z (a binary search on
 //   L.zmx): scan from there while objs[i].z0 is below your far end to visit the objects near z.
 // No lead cap: nothing stops a player holding forward. P3.mantle: a standing player who walks into
