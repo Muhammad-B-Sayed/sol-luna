@@ -167,7 +167,7 @@ export const SCRIPTS = {
     waitPlat(37, 28), grab(SOL, 37, 4), goto(SOL, 32, 7),
     goto(LUNA, 34, 27), waitPlat(37, 28, false), goto(LUNA, 37, 27),   // Luna down the east ramp onto the lift
     press(SOL, 35, 7), waitPlat(37, 28),            // Sol holds P4b: the lift brings Luna up
-    goto(LUNA, 36, 7),
+    goto(LUNA, 34, 7),                              // fully off the lift, or it takes her back down
     press(SOL, 29, 7),                              // Sol through G3 to P6: G6 opens
     grab(LUNA, 30, 3), door(LUNA),
     door(SOL), win(),

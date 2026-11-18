@@ -556,7 +556,8 @@ def stone_raft():
     L.gate(33, 6, 7, '~', 4, 4).r(32, 2, 34, 2)            # G3 (pink)
     L.plate(35, 7, 3)                                      # P4b
     # ---- the deck: dock (row 11), the ferry, the island with its shelf, the lake (row 17)
-    L.clear(3, 8, 11, 10).p(4, 10, 'a').p(7, 10, 'k')
+    L.clear(3, 8, 11, 10).p(7, 10, 'k')
+    L.clear(3, 11, 3, 13).p(3, 13, 'a')                   # Sol's well: full headroom over the spawn, too narrow for the crate
     L.clear(12, 8, 20, 16).clear(21, 8, 25, 10).clear(26, 9, 35, 15).clear(26, 16, 34, 16)
     L.r(26, 11, 28, 11)                                    # the shelf over the east stretch
     L.pool(12, 17, 9, 'X').pool(26, 17, 9, 'X')

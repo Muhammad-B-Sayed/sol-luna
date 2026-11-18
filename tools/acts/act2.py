@@ -441,7 +441,7 @@ def closing_time():
         L.clear(x0, 1, x1, 8).clear(x0, 10, x1, 18).clear(x0, 20, x1, 27)
 
     # ---- bottom left: Sol's pocket, PB, a step and a ledge under HB, airlock X
-    L.r(1, 20, 3, 25).r(4, 23, 6, 25)                     # the pocket's roof; its top under HB is the ledge
+    L.r(1, 20, 3, 21).r(3, 22, 3, 25).r(4, 23, 6, 25)    # the pocket's roof (6 free rows over the spawn); its top under HB is the ledge
     L.p(2, 27, 'a')
     vdoor(L, 4, 26, 2)                                    # GS (orange)
     L.plate(10, 27, 2)                                    # PB
