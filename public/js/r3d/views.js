@@ -278,6 +278,7 @@ function crumbleTex() {
     g.stroke();
   }
   _crumbleTex = new THREE.CanvasTexture(c);
+  _crumbleTex.wrapS = _crumbleTex.wrapT = THREE.RepeatWrapping;
   return _crumbleTex;
 }
 VIEWS.crumble = {
@@ -285,7 +286,7 @@ VIEWS.crumble = {
     const [, , w, d] = mid(o);
     const mat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, map: materials().stone.map, roughness: 0.85,
       emissive: 0xff6a20, emissiveMap: crumbleTex(), emissiveIntensity: 0.6 }), { glow: true, key: 'crum' });
-    const grp = stoneSlab(o, idx, { h: 0.5, inlay: false, runes: false, glow: 0.4, top: col(0x8a6f8e), side: col(0x4a3048), mat });
+    const grp = stoneSlab(o, idx, { h: 0.5, inlay: false, runes: false, glow: 0.4, top: col(0x7a5a6e), side: col(0x3e2238), mat });
     grp.userData.mats = [mat];
     grp.userData.base = grp.position.clone();
     grp.userData.w = w; grp.userData.d = d; grp.userData.lastSt = 0;
@@ -349,7 +350,7 @@ VIEWS.eclipse = {
   },
   update(v, o, st, pose, ctx) {
     const u = v.userData;
-    ctx.glow.add(u.cx, o.y + 0.05, -u.cz, Math.max(u.w, u.d) * 1.6, u.el ? 0x70c8ff : 0xffa040, 0.24 + 0.05 * Math.sin(ctx.time * 2.5 + ctx.idx));
+    ctx.glow.add(u.cx, o.y + 0.05, -u.cz, Math.max(u.w, u.d) * 1.05, u.el ? 0x70c8ff : 0xffa040, 0.12 + 0.03 * Math.sin(ctx.time * 2.5 + ctx.idx));
     v.children[1].children[0].material.opacity = 0.22 + 0.1 * Math.sin(ctx.time * 3 + ctx.idx);
   },
 };
@@ -430,7 +431,7 @@ VIEWS.pendulum = {
     const cap = new THREE.Mesh(capG, materials().gold); cap.position.set(o.px, o.py, -o.pz); root.add(cap);
     const legH = o.py + 0.45 + 30;
     const legG = new THREE.CylinderGeometry(0.22, 0.28, legH, 8).translate(0, -legH / 2, 0);
-    for (const sx of [-1, 1]) { const l = new THREE.Mesh(legG, materials().stoneFlat); l.position.set(o.px + sx * span / 2, o.py + 0.3, -o.pz); root.add(l); }
+    for (const sx of [-1, 1]) { const l = new THREE.Mesh(legG, materials().stonePlain); l.position.set(o.px + sx * span / 2, o.py + 0.3, -o.pz); root.add(l); }
     root.userData = { geos: [rodG, bladeG, edgeG, hubG, lintG, capG, legG], piv };
     void idx;
     return root;
@@ -490,7 +491,7 @@ VIEWS.gate = {
     const vineMat = patchWorld(new THREE.MeshStandardMaterial({ color: 0x2a1238, emissive: 0x4a1048, emissiveIntensity: 0.8, roughness: 0.7, transparent: true, opacity: 0.75 }), { key: 'vine' });
     const vines = [0, 1].map(() => { const m = new THREE.Mesh(vineG, vineMat); m.position.set(0, o.y, zc); root.add(m); return m; });
     const postG = new THREE.BoxGeometry(0.7, th + 0.8, 0.9).translate(0, (th + 0.8) / 2 - 0.4, 0);
-    for (const x of [o.x0 - 0.35, o.x1 + 0.35]) { const p = new THREE.Mesh(postG, materials().stoneFlat); p.position.set(x, o.y, zc); root.add(p); }
+    for (const x of [o.x0 - 0.35, o.x1 + 0.35]) { const p = new THREE.Mesh(postG, materials().stonePlain); p.position.set(x, o.y, zc); root.add(p); }
     const lintG = slabGeometry(w + 1.6, 0.9, 0.6, { glow: 0.5 });
     const lint = new THREE.Mesh(lintG, materials().stone); lint.position.set((o.x0 + o.x1) / 2, o.y + th + 0.6, zc); root.add(lint);
     // glowing edges of the opening
@@ -520,8 +521,7 @@ VIEWS.gate = {
     });
     u.im.count = k; u.im.instanceMatrix.needsUpdate = true;
     u.edges[0].position.x = gx - gw; u.edges[1].position.x = gx + gw;
-    for (const x of [gx - gw, gx + gw]) ctx.glow.add(x, o.y + 1.2, u.zc, 1.6, 0x60ff9a, 0.35);
-    ctx.glow.add(gx, o.y + 0.9, u.zc, gw * 2.4, 0x9dffb9, 0.12);
+    for (const x of [gx - gw, gx + gw]) for (const h of [0.6, 1.8, 3.0]) ctx.glow.add(x, o.y + h, u.zc, 0.7, 0x60ff9a, 0.25);
   },
 };
 

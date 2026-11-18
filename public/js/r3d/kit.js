@@ -272,6 +272,7 @@ export function materials() {
     blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), { additive: true, key: 'im' });
   _mats.runes = patchWorld(new THREE.MeshBasicMaterial({ map: T.runes, color: col(0xc9b6ff).multiplyScalar(1.3), transparent: true,
     blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), { additive: true, key: 'ru' });
+  _mats.stonePlain = patchWorld(new THREE.MeshStandardMaterial({ color: 0x5c5084, roughness: 0.85, metalness: 0.05, flatShading: true }), { key: 'sp' });
   _mats.metal = patchWorld(new THREE.MeshStandardMaterial({ color: 0x6e6390, roughness: 0.45, metalness: 0.7 }), { key: 'me' });
   _mats.gold = patchWorld(new THREE.MeshStandardMaterial({ color: 0xc89a4a, roughness: 0.35, metalness: 0.8, emissive: 0x2a1500 }), { key: 'go' });
   return _mats;

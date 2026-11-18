@@ -187,7 +187,7 @@ export class Character {
     const pos = capeG.attributes.position;
     for (let k = 0; k < pos.count; k++) { const x = pos.getX(k), y = pos.getY(k); pos.setZ(k, 0.09 * Math.cos(x / 0.23 * 1.3) * (1 + y)); pos.setX(k, x * (1 - y * 0.55)); }
     capeG.computeVertexNormals();
-    grad(capeG, -0.52, 0, 0x4f86e0, 0x1b2f6e);
+    grad(capeG, -0.52, 0, 0x2a4fa8, 0x14245a);
     const cape = this.cape = new THREE.Mesh(capeG, hoodMat);
     cape.position.set(0, 0.74, 0.17);
     this.body.add(cape);
