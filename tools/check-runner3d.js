@@ -359,9 +359,10 @@ function checkSeed(seed) {
           if (sd) {   // the spin itself, with nobody else about
             const S1 = snapAt(Tk - 150); place(S1, a, c); park(S1, 1 - a);
             for (const bits of r.plan) tick(L, S1, a, bits, null);
+            tick(L, S1, a, 0, null);   // the slab feels the touch on the next tick
             park(S1, a);
             const st = S1.o[i];
-            let turn = 0, last = 0, t = 0;
+            let turn = st.w, last = 0, t = 0;
             const times = [];
             for (; t < 600 && !(st.s === 0 && st.a === 0 && st.w === 0 && t > 0); t++) {
               stepRunner3d(L, S1, [0, 0]); turn += st.w;

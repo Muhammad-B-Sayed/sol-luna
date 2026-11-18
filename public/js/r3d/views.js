@@ -354,7 +354,7 @@ VIEWS.tilt = {
       g.visible = sp > 0.2;
       if (!g.visible) return;
       g.rotation.z = -(rot - w * (0.45 + 0.45 * k));
-      g.material.opacity = (k ? 0.07 : 0.12) * sp;
+      g.material.opacity = (k ? 0.12 : 0.22) * sp;
     });
     // the ring shudders while the slab turns hard
     const sh = 0.012 * sp * Math.sin(ctx.time * 47 + ctx.idx);
