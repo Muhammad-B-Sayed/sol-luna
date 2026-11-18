@@ -406,10 +406,10 @@ change one, keep the room's shape and its place on the difficulty curve, and say
 
 ## Status and thin margins (Nov 17, 2026)
 
-Gravity dropped to 0.33 on Nov 17 and every level was re-spaced for the higher jump. All levels
-except 27 pass the full gate, solo check included, as reported by the commits that re-spaced
-them. A `FAST=1` gate over all 32 on the merged branch (Nov 17, evening) passed every level
-except 27, with 0 roof hits on every passing bot route. 27 Leapfrog
+Gravity dropped to 0.33 on Nov 17 and every level was re-spaced for the higher jump. On the
+evening of Nov 17 the full gate, solo check included, passed all 31 levels other than 27, with
+0 roof hits on every bot route. The solo search hit its state limit without a solo finish in 12,
+14, 15, 19 and 25. 27 Leapfrog
 Spire is being rebuilt on another branch; on this branch it fails the ROOF line (7 hits) and the
 time floor (bot 58.8 s against 76 s). The pictures in `docs/img/level-N.jpg` predate the re-spacing.
 

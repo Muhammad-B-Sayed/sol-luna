@@ -304,10 +304,10 @@ node tools/check-dodge.js                # Dodgeball rules, ~5 s
 node tools/check-runner.js               # Runner fairness proof, 50 seeds to 1700 tiles, ~5 min on 6 jobs
 ```
 
-- **Levels.** All levels except 27 pass the full gate (Nov 17, 2026, as reported by the commits
-  that re-spaced them). A `FAST=1` gate over all 32 on the merged branch passed every level
-  except 27, with 0 roof hits on every passing bot route. 27 Leapfrog Spire is being rebuilt on another branch; its last WIP fails the time
-  floor. Margins that sit at or near a limit are in `docs/level-plan.md` under "Status and thin margins".
+- **Levels.** On Nov 17, 2026 the full gate, solo check included, passed all 31 levels other
+  than 27, with 0 roof hits on every bot route. It took 20 and 44 minutes on two processes. 27
+  Leapfrog Spire is being rebuilt on another branch; the version here fails ROOF and the time
+  floor. Margins at or near a limit are in `docs/level-plan.md` under "Status and thin margins".
 - **The bot.** `coop-bot.js` plays every level with two scripted players. The search phases
   (`goto`, `grab`, `press`, `flip`, `pushTo`, `seek`, `walk`) find inputs with the real physics;
   hand phases (`wait`, `mv`, `push`, `hop`, `hopTo`, `jumpWhen`, `leap`, `both`) cover moments that
@@ -316,9 +316,10 @@ node tools/check-runner.js               # Runner fairness proof, 50 seeds to 17
     overshoots, walks back and reverts the lever. Keep players out from under descending lifts.
   - A search that fails with "gave up after the time limit" on a busy machine usually passes
     when run alone.
-- **Solo check.** The gate searches 300k states per character (500k on crate levels); 
+- **Solo check.** The gate searches 300k states per character (500k on crate levels);
   `check-solo.js` searches 400k (1.5M). A pass is a bounded search, not a proof: a solo route
-  deeper than the limit can't be ruled out.
+  deeper than the limit can't be ruled out. On Nov 17 the gate's search hit its limit without a
+  solo finish in 12, 14, 15, 19 and 25.
 - **Stale tools.** `check-deps.js` still asserts dependency tables for the first-pass rooms at
   levels 14, 19 and 26, which are now different levels. Its results mean nothing for the current
   rooms. `check-all.sh` runs it, plus `check-levels.js` on every level; use the gate instead.
