@@ -179,7 +179,7 @@ const FEAT = {
     const count = !intro && d > 0.55 && g.rand() < 0.4 ? 2 : 1;
     const drop = !intro && d > 0.4 && g.rand() < 0.5 ? 1 : 0;    // plank a tile below the ledge
     const safe = intro ? 36 : Math.round(lerp(34, 30, d));
-    g.ground(intro ? 1 : 2);
+    g.ground(intro ? 1 : count > 1 ? 4 : 2);   // room to wait: two planks can both be set spinning
     let gap = intro ? 1 : g.ri(1, 2);
     const top = (g.h + drop) * TS;
     for (let k = 0; k < count; k++) {
