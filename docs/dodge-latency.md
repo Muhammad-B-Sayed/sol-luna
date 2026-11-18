@@ -73,10 +73,22 @@ Broken test, not a game bug. The match play-out loop had a fixed budget of 600 p
 comes to rest where the bots can't reach (they never jump) costs a 6 s shot clock before the
 turnover. When the budget ran out at 4-3 the script waited 5 s for the winner card and failed.
 Reproduced by resetting the score before the play-out: `FAILED page.waitForSelector: Timeout
-5000ms exceeded`, score 4-3, 2 turnovers. Fix: the budget is now progress (a point in the last
-30 s, 4 min in all) and the card wait is 15 s. Side finding: some of those misses are taps that
-became aimed throws (vy -2.4) because a stalled frame ran catch-up ticks with the key still
-down; real but minor, not fixed here.
+5000ms exceeded`, score 4-3, 2 turnovers.
+
+Second cause, found when two headless browsers ran at once (frames about 100 ms apart): the
+script's taps were a fixed 40 ms press with about 60 ms between taps. The game samples the
+keys once per frame (`Input.local()`), so the gap often fell between two frames and the key
+looked held for seconds (`aim` reached 152 ticks). The aim swung, the throws flew at random
+angles (vy up to 13.7) and missed, and no point was scored for 30 s.
+
+Fix (two commits on the study branch): the play-out budget is now progress (any throw, pickup,
+turnover or point in the last 30 s, 4 min in all), the card wait is 15 s, and a tap holds the
+key until the game is aiming and releases it until the game has thrown.
+
+So it was the test, not the game-over flow. But the second cause points at a real, minor
+input weakness worth a separate fix: a release, or a whole quick tap, that falls between two
+frames is lost, so on a slow device a tap can become an aimed throw or be missed. A fix would
+latch key presses and releases between samples. Not changed here.
 
 ## Online browser check on the study branch
 

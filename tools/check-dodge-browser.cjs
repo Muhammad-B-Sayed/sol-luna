@@ -18,19 +18,20 @@ async function errorsOf(page, bag) {
   page.on('console', m => { if (m.type() === 'error') bag.push(m.text()); });
   page.on('pageerror', e => bag.push(String(e)));
 }
-const D = (page) => page.evaluate(() => { const d = window.__app.S && window.__app.S.d; return d && JSON.parse(JSON.stringify({ phase: d.phase, t: d.t, holder: d.holder, score: d.score, ball: d.ball, throwN: d.throwN, hitN: d.hitN, winner: d.winner, serve: d.serve, aim: d.aim })); });
+const D = (page) => page.evaluate(() => { const d = window.__app.S && window.__app.S.d; return d && JSON.parse(JSON.stringify({ phase: d.phase, t: d.t, holder: d.holder, score: d.score, ball: d.ball, throwN: d.throwN, hitN: d.hitN, turnN: d.turnN, pickN: d.pickN, winner: d.winner, serve: d.serve, aim: d.aim })); });
 // Play-out budget. It used to be a fixed count of loop passes (600 local, 800 online), about 31 s
 // of play at ~52 ms a pass. A 9-point match takes about 28 s, and each missed ball that stops
 // where the bots can't reach costs a 6 s shot clock, so the local run often stopped at 4-3 and
 // then timed out waiting for the winner card. Now the budget is game progress: keep going while
-// a point was scored in the last 30 s, up to 4 minutes in all.
+// something happened (a throw, pickup, turnover or point) in the last 30 s, 4 minutes in all.
 async function playOut(dPage, pass) {
-  const t0 = Date.now(); let lastPoint = Date.now(), hits = -1;
+  const t0 = Date.now(); let lastPoint = Date.now(), prog = '';
   for (;;) {
     const d = await dPage();
     if (d.phase === 3) return d;
-    if (d.hitN !== hits) { hits = d.hitN; lastPoint = Date.now(); }
-    if (Date.now() - lastPoint > 30000) throw new Error(`no point scored for 30 s (score ${d.score.join('-')}, phase ${d.phase}, holder ${d.holder}, ball ${JSON.stringify(d.ball)})`);
+    const now = [d.hitN, d.throwN, d.turnN, d.pickN].join();   // anything happening at all
+    if (now !== prog) { prog = now; lastPoint = Date.now(); }
+    if (Date.now() - lastPoint > 30000) throw new Error(`no throw, pickup or point for 30 s (score ${d.score.join('-')}, phase ${d.phase}, holder ${d.holder}, ball ${JSON.stringify(d.ball)})`);
     if (Date.now() - t0 > 240000) throw new Error(`match not over after 4 min (score ${d.score.join('-')})`);
     await pass(d);
   }
@@ -60,8 +61,17 @@ async function freezeShot(page, file, { past = 140, freeze, unfreeze, clip = tru
   return d;
 }
 
-async function tapAct(page, who, ms = 40) {
-  await page.keyboard.down(KEY[who].act); await sleep(ms); await page.keyboard.up(KEY[who].act);
+// A tap the game is sure to see as a tap. The game samples the keys once per frame, so on a
+// slow page (two headless browsers sharing the CPU: ~100 ms frames) a fixed 40 ms press could
+// be missed, and the 60 ms gap between taps could fall between frames, so the key looked held
+// for seconds and the aim swung (random-angle throws that missed). Hold until the game starts
+// aiming, release until it has thrown.
+async function tapAct(page, who, key = KEY[who].act) {
+  const st = () => page.evaluate((w) => { const d = window.__app.S && window.__app.S.d; return d ? { aim: d.aim[w], holder: d.holder, phase: d.phase } : null; }, who);
+  await page.keyboard.down(key);
+  for (let i = 0; i < 100; i++) { const s = await st(); if (!s || s.aim >= 0 || s.holder !== who || s.phase !== 1) break; await sleep(10); }
+  await page.keyboard.up(key);
+  for (let i = 0; i < 100; i++) { const s = await st(); if (!s || s.aim < 0 || s.holder !== who) break; await sleep(10); }
 }
 
 async function local() {
@@ -202,7 +212,7 @@ async function online() {
   }
   // play out the match: the holder taps
   await playOut(() => D(A), async (d) => {
-    if (d.phase === 1 && d.holder >= 0) { const p = pageOf(d.holder); await p.keyboard.down('KeyS'); await sleep(50); await p.keyboard.up('KeyS'); await sleep(80); }
+    if (d.phase === 1 && d.holder >= 0) { await tapAct(pageOf(d.holder), d.holder, 'KeyS'); await sleep(80); }   // either key set works online
     else if (d.phase === 1 && d.holder < 0 && d.ball.st >= 2) {
       const owner = d.ball.x < 480 ? 0 : 1, p = pageOf(owner);
       const px = await p.evaluate((o) => window.__app.S.p[o].x + 10, owner);
