@@ -30,7 +30,7 @@
 //     T_k); clocked kinds (sweeper, pendulum, carousel, gate, orbs) are tried at 12 arrival times,
 //     T_k - 0, 25, ..., 275 ticks, so every phase of their clocks is met. A failed try is retried
 //     with a bigger debt allowed (30, 60, 120, 240 ticks) to report how long a wait it needed.
-//     FLOW_ONLY=1 runs only this test.
+//     FLOW_ONLY=1 runs only this test; KIND=gate (with FLOW_ONLY) only that kind's sections.
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import {
@@ -58,7 +58,7 @@ const BUF = 12, BUF_MAX = 20;
 const DELTAS = [10, 25, 40, 60, 90, 130];
 const BUDGET = +(process.env.BUDGET || 1500);
 const V = !!process.env.V;
-const FLOW_ONLY = !!process.env.FLOW_ONLY;
+const FLOW_ONLY = !!process.env.FLOW_ONLY, FLOW_KIND = FLOW_ONLY ? process.env.KIND || '' : '';
 const CLOCKED = { sweeper: 1, pendulum: 1, carousel: 1, gate: 1, orbs: 1 };
 const FLOW_STARTS = Array.from({ length: 12 }, (_, i) => i * 25);
 const FLOW_WAITS = [30, 60, 120, 240];
@@ -158,6 +158,7 @@ function checkSeed(seed) {
   const flow = { kinds: {}, fails: [] };
   for (let k = 0; k < K; k++) {
     const c = secs[k], goal = sectionGoal(L, k + 1);
+    if (FLOW_KIND && c.kind !== FLOW_KIND) continue;
     const fk = flow.kinds[c.kind] ||= { n: 0, fail: 0, waits: [], slow: 0 };
     const starts = CLOCKED[c.kind] ? FLOW_STARTS.map(d => T[k] - d).filter(t => snap.has(t)) : [T[k]];
     for (const who of [0, 1]) for (const t0 of starts) {

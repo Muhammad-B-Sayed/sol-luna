@@ -26,8 +26,11 @@ and its numbers, 5 determinism and netcode, 6 files and hooks, 7 rendering, 8 re
   move diagonally at the same total speed.
 - Movement is the 2D game's physics divided by 24 (`P3`): run 8.1 units/s, a running jump
   rises about 4.1 units and stays in the air 0.8 s. Coyote time 5 ticks, a 6-tick jump buffer,
-  and holding jump jumps again on landing. Step-up 0.5 units (low steps are walked, higher
-  ones jumped).
+  and holding jump jumps again on landing. Step-up 0.5 units: lower steps are walked.
+- Mantle: a standing player who walks into a ledge up to 1.5 units high (`P3.mantle`) hops up
+  onto it on their own and keeps their speed, so no step or ledge you can walk into stops you
+  dead. Taller ledges are jumped. Anyone rising past a ledge face that low keeps their speed while
+  pressed against it, so a jump into a step face carries on over it.
 - The player is a box 0.72 wide and 1.4 tall. Players pass through each other.
 - Static stone is solid on every side. Moving and tilting parts are solid from above only, so
   nothing can ever pin or wedge a player.
@@ -35,24 +38,29 @@ and its numbers, 5 determinism and netcode, 6 files and hooks, 7 rendering, 8 re
   it slowly downhill (5% of the slope per tick), so it is felt, but a player can always walk
   against it.
 - Falling: a player more than 9 units below the last ground they stood on is lost.
-- Lead cap: a player standing on a run-up (the plain stone before each feature) more than
-  `LEAD_MAX` = 32 units ahead of the dusk can't walk forward until it closes in (sideways and
-  back still work). Nobody is ever held in the air or inside a feature, so a jump is never cut
-  short and nobody is frozen on a crumbling slab, in a blade's path or among thorns. A
-  standing jump from the very edge of a run-up still clears every gap (air control), so the
-  cap only ever costs time. At top speed 32 units is about 4.6 s of lead. This keeps the dusk
-  a live threat and the active object window small (12 units behind the dusk to 76 ahead of
-  it, or 30 past the leading player).
+- No lead cap. A player may run as far ahead of the dusk as they can survive. Nothing holds a
+  player who is holding forward. (Until November 2026 a lead cap stopped a player on a run-up
+  more than 32 units ahead of the dusk. At the start, when the dusk moves at 31% of run speed,
+  that held a running player on almost every run-up. It is gone.) The dusk never depends on the
+  players, so a leader can never push it onto the other.
 
 | | Move (the camera never turns, so up is always forward) | Jump |
 | --- | --- | --- |
-| Sol, local | arrow keys | Right Shift, `/`, Numpad 0 |
-| Luna, local | W A S D | Space, Left Shift |
-| Online | either set drives your own character | any of the above, Space included |
+| Sol, same keyboard (left half) | arrow keys | **Enter** or **Right Shift** (also `/`, Right Ctrl, Numpad 0) |
+| Luna, same keyboard (right half) | W A S D | **Space** (also Left Shift) |
+| Online | either set drives your own character | Space (also Shift, `/`, Right Ctrl, Numpad 0). Enter opens the chat |
 | Gamepad | left stick or d-pad (pad 0 is Sol, pad 1 is Luna locally; any pad online) | A |
 | Touch (online only) | left thumb pad, 8 directions | the round button |
 
 `Esc` or `P` pauses, and `R` starts a new course, the same as the 2D runner.
+
+The countdown shows each player's keys large on their own half: their name in their colour,
+the four move keys as key caps and the jump key. Online it shows the one card that applies
+(either set of move keys, Space to jump, or the thumb pad and button on a touch device). After
+the countdown each player's box keeps a small "jump: Enter" or "jump: Space" until that player
+has jumped once. The game keeps these keys from scrolling the page only while the mode runs, and
+never while you type in a text field or the chat. Enter on a focused button (Rematch, Resume)
+still presses it.
 
 ## 2. Speed and difficulty
 
@@ -181,8 +189,12 @@ The sim is unchanged on the polish branch (`r3d-polish`), so these numbers still
   of each quadrant, error below 1e-13) and `wave()` (a smooth back-and-forth polynomial). The
   server (Node) and every browser compute the same numbers.
 - The course is generated section by section from the seed, on demand.
-- `S` is plain JSON. Only stateful objects in the active window (from 12 units behind the dusk
-  to 30 units past `LEAD_HARD`) have state in `S.o`.
+- `S` is plain JSON. Only stateful objects near a player (12 units behind to 30 ahead of each
+  alive player), or not yet back at rest, have state in `S.o`. So the state stays small however
+  far apart the players are. `S.lo..S.hi` is the range of objects generated and not yet behind
+  the dusk; collision never scans it whole. `L.zmx[i]` is the largest `z1` of `L.objs[0..i]`, and
+  `firstFrom(L, z)` finds by binary search the first object that can reach `z`, so each player's
+  collision looks only at the objects around them.
 
 Online play uses the same scheme as the 2D runner. The client predicts with its own input and
 the last known remote input. On each snapshot it replays its unacknowledged inputs and carries
@@ -225,17 +237,18 @@ Measured with the real renderer on this machine's GPU, two headless clients and 
 | `shared/runner3d.js` | The sim: course generator, obstacles, `stepRunner3d`, `objPose`. Runs in the browser and on the server. The CONTRACT header is the interface for the renderer and the app. |
 | `tools/runner3d-bot.js` | Search bot over the real sim. `node tools/runner3d-bot.js 1,2,3 1700` runs it down whole courses. |
 | `tools/check-runner3d.js` | The fairness checker (section 4). |
-| `public/js/runner3d-app.js` | `Runner3DMode`: local loop, online prediction, DOM HUD (tips, held note), sounds, touch pad, pause and results. |
+| `public/js/runner3d-app.js` | `Runner3DMode`: local loop, online prediction, DOM HUD (tips, control cards, jump reminders), sounds, touch pad, pause and results. |
 | `public/js/runner3d-debug.js` | A 2D-canvas debug view with the renderer's API (`?r3ddebug=1`, or when WebGL fails). |
-| `public/js/r3d/renderer.js` | `Runner3DRenderer`, the entry the app imports: cameras, streaming of object views, blob shadows, death effects, lead veil, bloom, auto quality, shader warm-up. |
+| `public/js/r3d/renderer.js` | `Runner3DRenderer`, the entry the app imports: cameras, streaming of object views around each drawn player, blob shadows, death effects, bloom, auto quality, shader warm-up. |
 | `public/js/r3d/views.js` | One view per object kind: `VIEWS[kind] = { make, update }`. |
 | `public/js/r3d/kit.js` | Sim-to-three mapping (`toV`: z is negated, only here), palette, shared uniforms, textures, `patchWorld` (dusk, creeping shadow, glow, rim, dissolve), slabs, chains, `GlowField`. |
 | `public/js/r3d/characters.js` | Sol and Luna, procedural, with their animation and death effects. |
 | `public/js/r3d/world.js` | Sky, abyss, mist, motes, pillars, arches, lanterns, distant silhouettes. |
-| `public/js/r3d/zone.js` | The dusk wall, tendrils, floor glow, vignette, and the lead-cap veil. |
+| `public/js/r3d/zone.js` | The dusk wall, tendrils, floor glow and vignette. |
 | `public/js/r3d/fx.js` | Particles. |
 | `public/js/r3d/boxes.js` | Debug overlay of the sim's collision shapes (`?boxes=1`). |
 | `public/r3d-demo.html` | The renderer on its own, with bots (section 9). |
+| `tools/r3d-far.js` | Sim tick time and state size with the players 0, 100 and 400 units apart. |
 | `tools/runner3d-browser.js`, `tools/r3d-shots.js`, `tools/r3d-perf.js`, `tools/r3d-eval.js`, `tools/r3d-glprobe.js` | Browser checks and look and speed tools (section 9). |
 
 Hooks in the shared shell files. Each is a few lines next to the matching 2D runner hook.
@@ -374,10 +387,8 @@ trust.
   the zone speed per tick, so about 6 to 8.6 units), with a faint ember line at its front. It
   enters the frame before the wall does. The screen vignette closes in from 12 units, the HUD
   meter and edge glow turn red from 8, and a tick sound quickens as the dusk nears your player.
-- **The lead cap.** A shimmering violet veil rises across the run-up just past where the cap
-  stops a player, fading in from 3 units before it and brightening while they are held. The
-  player's HUD box shows "held by the twilight", a click plays, and the first time it happens a
-  tip explains it.
+- **Controls.** Large control cards on each half during the countdown, then a jump-key reminder
+  in each box until that player's first jump (section 1).
 - **First-time tips.** Each player gets one line the first time each obstacle kind comes up,
   shown 9 units before its run-up in that player's half of the screen (bottom, clear of the
   action) for 4 s.
@@ -396,6 +407,7 @@ NOSERVER=1 PORT=3470 node tools/r3d-shots.js [names] # renderer screenshots (doc
 PORT=3470 node tools/r3d-perf.js                     # frame times; SECS, SIZES, ZS, VIEWS, Q
 PORT=3470 node tools/r3d-eval.js "seed=7&kind=gate" "__r3d.S.tick"   # run expressions in the demo
 node tools/r3d-glprobe.js                            # which WebGL renderer each set of Chromium flags gets
+node tools/r3d-far.js                                # sim tick time and state size, players 0/100/400 apart
 ```
 
 - **Browser test.** `ONLY=local|online|webgl`, `RENDER=debug|webgl|both`, `OUT`, `GL_FLAGS`
