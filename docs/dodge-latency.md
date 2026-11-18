@@ -78,6 +78,14 @@ Reproduced by resetting the score before the play-out: `FAILED page.waitForSelec
 became aimed throws (vy -2.4) because a stalled frame ran catch-up ticks with the key still
 down; real but minor, not fixed here.
 
+## Online browser check on the study branch
+
+`LAG_MS=40`: passes (winner screens, rematch, no console errors; drawn ball never steps back).
+`LAG_MS=80`: fails twice out of two, in `freezeShot` on the watching client: the watcher's state
+goes from "held" straight to "dead after a hit" for a spawn-to-spawn throw, so the ball is never
+live on that screen. That is the latency problem itself (baseline: 4 ticks visible at 75 ms,
+none at 100 ms), so the check is left as it is and used as a symptom test on the fix branches.
+
 ## Work log
 
 - Branch created, code read.
@@ -85,5 +93,7 @@ down; real but minor, not fixed here.
   own replay (the thrower's prediction). Fixed: judged on the raw server snapshot.
 - Baseline done (above).
 - Local browser check: cause found and fixed (above).
-- Fix A and fix B code written on their branches (WIP). Next: checks in tools/check-dodge.js,
-  harness tables for both, browser checks, comparison.
+- Fix A and fix B code written on their branches, with checks in tools/check-dodge.js
+  (section 7 on each branch, passing). Browser check fix committed on the study branch
+  (4d398db). Harness has an asymmetric mode (--asym 10,100) for fairness.
+- Next: harness tables for A (running) and B, asym runs, browser checks per branch, comparison.
