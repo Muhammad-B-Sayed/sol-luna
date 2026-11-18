@@ -23,13 +23,21 @@
 //  6. Equal difficulty: clear times per kind for Sol and for Luna.
 //  7. Determinism: both course routes played together twice give the same state; the same run
 //     with the state sent through JSON.parse(JSON.stringify(S)) every 250 ticks matches too.
+//  8. Flow: a never-stop bot (runner3d-bot.js FLOW: forward progress may stay under a quarter of
+//     run speed for at most 15 ticks in a row; it may slow, steer, strafe and jump) arrives at the
+//     section's start at full speed and must clear it. Kinds without a clock are tried once (at
+//     T_k); clocked kinds (sweeper, pendulum, carousel, gate, orbs) are tried at 12 arrival times,
+//     T_k - 0, 25, ..., 275 ticks, so every phase of their clocks is met. A failed try is retried
+//     with longer stops allowed (30, 60, 120, 240 ticks) to report how long a wait it needed.
+//     FLOW_ONLY=1 runs only this test.
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import {
   buildRunner3d, createRunner3dState, stepRunner3d, cloneRunner3d, ensureGenerated, STATEFUL, atRest, restBound,
   COUNT_TICKS, speedAt, ZONE_START, objPose, IN_F, IN_B, IN_L, IN_R, IN_J,
 } from '../shared/runner3d.js';
-import { solve as solve0, tick, sectionGoal, onRunup } from './runner3d-bot.js';
+import { solve as solve0, tick, sectionGoal, onRunup, FLOW } from './runner3d-bot.js';
+import { P3 } from '../shared/runner3d.js';
 
 // solve() with time and effort accounting per test (PROF=1 prints it per section)
 const PROF = !!process.env.PROF, prof = {};
@@ -49,6 +57,10 @@ const BUF = 12, BUF_MAX = 20;
 const DELTAS = [10, 25, 40, 60, 90, 130];
 const BUDGET = +(process.env.BUDGET || 1500);
 const V = !!process.env.V;
+const FLOW_ONLY = !!process.env.FLOW_ONLY;
+const CLOCKED = { sweeper: 1, pendulum: 1, carousel: 1, gate: 1, orbs: 1 };
+const FLOW_STARTS = Array.from({ length: 12 }, (_, i) => i * 25);
+const FLOW_WAITS = [30, 60, 120, 240];
 
 function park(S, who) { const p = S.p[who]; p.alive = false; p.x = 0; p.z = -1e5; p.y = -1e5; p.gr = false; p.gref = -1; }
 function place(S, who, c) {
@@ -130,6 +142,7 @@ function checkSeed(seed) {
   for (let k = 0; k <= K; k++) {
     need.add(T[k]);
     for (const d of [...DELTAS, 150]) if (T[k] - d >= COUNT_TICKS) need.add(T[k] - d);
+    if (k < K && CLOCKED[secs[k].kind]) for (const d of FLOW_STARTS) if (T[k] - d >= COUNT_TICKS) need.add(T[k] - d);
   }
   const snap = new Map();
   {
@@ -138,6 +151,30 @@ function checkSeed(seed) {
     while (S.tick <= last) { if (need.has(S.tick)) snap.set(S.tick, cloneRunner3d(S)); stepRunner3d(L, S, [0, 0]); }
   }
   const snapAt = (t) => cloneRunner3d(snap.get(t));
+
+  // 8. flow: the never-stop bot, arriving at full speed
+  tag = 'flow';
+  const flow = { kinds: {}, fails: [] };
+  for (let k = 0; k < K; k++) {
+    const c = secs[k], goal = sectionGoal(L, k + 1);
+    const fk = flow.kinds[c.kind] ||= { n: 0, fail: 0, waits: [], slow: 0 };
+    const starts = CLOCKED[c.kind] ? FLOW_STARTS.map(d => T[k] - d).filter(t => snap.has(t)) : [T[k]];
+    for (const who of [0, 1]) for (const t0 of starts) {
+      const go = (stop) => {
+        const S = snapAt(t0); place(S, who, c); park(S, 1 - who); S.p[who].vz = P3.maxSpeed;
+        return solve(L, S, who, { until: goal, budget: BUDGET, o0: c.o0, o1: c.o1, flow: { ...FLOW, stop } });
+      };
+      fk.n++;
+      const r = go(FLOW.stop);
+      if (r.ok) { fk.slow = Math.max(fk.slow, r.maxSlow); continue; }
+      fk.fail++;
+      let wait = Infinity;
+      for (const w of FLOW_WAITS) if (go(w).ok) { wait = w; break; }
+      fk.waits.push(wait);
+      flow.fails.push({ test: 'flow', seed, k, kind: c.kind, z: +c.z0.toFixed(1), who, arrive: T[k] - t0, wait: wait === Infinity ? 'none' : wait });
+    }
+  }
+  if (FLOW_ONLY) return { seed, secs: K, flowOnly: true, flow, course: [], courseFail: [], first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, restFail: [], speed: 0, zEnd: 0, tMax: T[K], det: null };
 
   // 1. the whole course, per character
   tag = 'course';
@@ -168,7 +205,7 @@ function checkSeed(seed) {
   }
 
   const res = {
-    seed, secs: K, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {},
+    seed, secs: K, flow, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {},
     course: course.map(r => ({ who: r.who, minLead: r.minLead })), courseFail: course.flatMap(r => r.fails), rest: {}, abuse: {},
     speed: speedAt(secs[K - 1].z0 - ZONE_START), zEnd: secs[K - 1].z1, tMax: T[K], det: null,
   };
@@ -284,8 +321,13 @@ function checkSeed(seed) {
 }
 
 function merge(all) {
-  const tot = { restFail: [], course: [], courseFail: [], seeds: all.length, secs: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, zEnd: 0, tMax: 0, det: [] };
+  const tot = { flow: { kinds: {}, fails: [] }, flowOnly: all.some(r => r.flowOnly), restFail: [], course: [], courseFail: [], seeds: all.length, secs: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, zEnd: 0, tMax: 0, det: [] };
   for (const r of all) {
+    for (const [k, v] of Object.entries(r.flow.kinds)) {
+      const t = tot.flow.kinds[k] ||= { n: 0, fail: 0, waits: [], slow: 0 };
+      t.n += v.n; t.fail += v.fail; t.waits.push(...v.waits); t.slow = Math.max(t.slow, v.slow);
+    }
+    tot.flow.fails.push(...r.flow.fails);
     tot.secs += r.secs; tot.first += r.first; tot.second += r.second; tot.parked += r.parked;
     tot.firstFail.push(...r.firstFail); tot.secondFail.push(...r.secondFail); tot.parkedFail.push(...r.parkedFail);
     tot.lost.push(...r.lost); tot.slack.push(...r.slack);
@@ -307,9 +349,27 @@ function merge(all) {
 
 const pct = (arr, q) => { if (!arr.length) return 0; const a = [...arr].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(q * a.length))]; };
 
+function flowReport(t) {
+  const F = t.flow, n = Object.values(F.kinds).reduce((a, v) => a + v.n, 0), bad = F.fails.length;
+  console.log(`  flow            ${n - bad}/${n} tries cleared by the never-stop bot (forward progress under ${(FLOW.min * 60).toFixed(1)} u/s for at most ${FLOW.stop} ticks in a row), arriving at full speed`);
+  console.log('    kind      tries  forced waits  longest slow stretch  waits needed (ticks)');
+  for (const [k, v] of Object.entries(F.kinds)) {
+    const w = {}; for (const x of v.waits) w[x] = (w[x] || 0) + 1;
+    console.log(`    ${k.padEnd(9)} ${String(v.n).padStart(5)}  ${String(v.fail).padStart(5)} (${(100 * v.fail / Math.max(1, v.n)).toFixed(1).padStart(4)}%)  ${String(v.slow).padStart(8)} t            ${Object.entries(w).map(([a, b]) => `<=${a}: ${b}`).join(', ')}`);
+  }
+  for (const f of F.fails.slice(0, 30)) console.log('  FAIL', JSON.stringify(f));
+  return !bad;
+}
+
 function report(t, secs) {
+  if (t.flowOnly) {
+    console.log(`\nRunner 3D flow check: ${t.seeds} seeds, ${t.secs} sections to z ${ZMAX}. ${secs.toFixed(0)} s.`);
+    const ok = flowReport(t);
+    console.log(ok ? '\nPASS' : '\nFAIL');
+    return ok;
+  }
   const detBad = t.det.filter(d => d.ok === false), detSkip = t.det.filter(d => d.ok === null);
-  const ok = !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length && !detBad.length && !detSkip.length &&
+  const ok = !t.flow.fails.length && !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length && !detBad.length && !detSkip.length &&
     Object.values(t.rest).every(v => !v.fail) && Object.values(t.abuse).every(v => !v.fail);
   console.log(`\nRunner 3D check: ${t.seeds} seeds, ${t.secs} sections to z ${ZMAX} (full difficulty at 1100, top zone speed from 1600), top zone speed ${t.speed.toFixed(4)} u/tick, ${(t.tMax / 60).toFixed(0)} s in. ${secs.toFixed(0)} s.`);
   const leads = t.course.map(r => r.minLead);
@@ -325,6 +385,7 @@ function report(t, secs) {
     const b = Math.max(1, v.both);
     console.log(`  ${k.padEnd(9)} ${String(v.n).padStart(8)}  ${(v.time[0] / b / 60).toFixed(2).padStart(6)}s  ${(v.time[1] / b / 60).toFixed(2).padStart(7)}s  ${String(v.maxDiff).padStart(10)} t  ${String(v.minSlack).padStart(7)} t  ${v.v.toFixed(4)}`);
   }
+  flowReport(t);
   for (const key of ['rest', 'abuse']) for (const [k, v] of Object.entries(t[key])) {
     console.log(`  ${key === 'rest' ? 'rest after a run ' : 'rest after abuse '} ${k.padEnd(8)} ${v.n} objects, slowest ${v.max} ticks after the last touch, over bound: ${v.fail}${v.off ? `, ${v.off} left the window first` : ''}`);
   }
@@ -352,9 +413,9 @@ if (isMainThread && JOBS === 1 && process.env.SEED && !process.env.SEED.includes
         const ts = Date.now();
         w.on('message', (r) => {
           results.push(r);
-          const bad = r.courseFail.length + r.firstFail.length + r.secondFail.length + r.parkedFail.length + (r.det && !r.det.ok ? 1 : 0);
+          const bad = r.flow.fails.length + r.courseFail.length + r.firstFail.length + r.secondFail.length + r.parkedFail.length + (r.det && !r.det.ok ? 1 : 0);
           console.log(`seed ${String(r.seed).padStart(3)}: ${r.secs} sections, ${r.first + r.second + r.parked} runs, ${bad ? bad + ' FAILED' : 'ok'} (${((Date.now() - ts) / 1000).toFixed(0)} s)`);
-          for (const f of [...r.courseFail, ...r.firstFail, ...r.secondFail, ...r.parkedFail]) console.log('    fail', JSON.stringify(f));
+          for (const f of [...r.flow.fails, ...r.courseFail, ...r.firstFail, ...r.secondFail, ...r.parkedFail]) console.log('    fail', JSON.stringify(f));
         });
         w.on('error', (e) => { crashed++; console.error('seed', seed, e); });
         w.on('exit', () => { running--; if (next >= seeds.length && !running) resolve(); else spawn(); });
