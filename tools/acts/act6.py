@@ -63,7 +63,7 @@ def heart_of_twilight():
        4-tile jump up into their own lobe to stand at their doors.
 
     Signature jumps: the 4-tile climbs to the corner shelves in band 0 and into the lobes, and
-    the 4-wide leaps over the lift holes on the top floor and in band 1."""
+    the 4-wide leaps over the lift holes on the top floor."""
     L = Lv('Heart of Twilight', 100, 'The heart opens only when both crates sit in their sockets and both levers are set.')
     C = canvas()
     # ---- the top floor (stand 6): the ferry runs over a shade pit, a step up from either landing

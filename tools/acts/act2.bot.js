@@ -255,33 +255,33 @@ export const SCRIPTS = {
   // The Operator
   22: () => [
     // round 1: Sol works the deck, Luna runs the course
-    flip(SOL, 7, 5),                                 // P on: B1 out over the shade
-    grab(SOL, 10, 2, { keep: true }),
-    grab(LUNA, 2, 13), goto(LUNA, 10, 26),           // Luna down A and over B1
-    grab(LUNA, 14, 20), goto(LUNA, 12, 8),           // up the ladder in B
-    grab(LUNA, 17, 19), goto(LUNA, 23, 26),          // through the moon pool, down C, onto the lift
-    flip(SOL, 16, 5), waitPlat(23, 27),              // G on: the lift takes her up
-    grab(LUNA, 29, 11),
-    flip(LUNA, 28, 27),                              // yellow: her alcove unlocks
-    press(LUNA, 30, 27),                             // PE: the deck's door opens
-    goto(SOL, 33, 4, { keep: true }),                // Sol out onto the landing
-    grab(SOL, 38, 18, { keep: true }),
-    flip(SOL, 35, 27),                               // the rescue lever: the end cell opens
-    goto(LUNA, 37, 26, { keep: true }),              // Luna out into the foot room
-    press(SOL, 38, 26),                              // PT: Sol holds the deck's door open
-    grab(LUNA, 33, 8, { keep: true }), goto(LUNA, 30, 4, { keep: true }),
-    press(LUNA, 25, 4),                              // PD: Luna holds it for him
-    goto(SOL, 29, 4, { keep: true }),
+    flip(SOL, 13, 6),                                // P on: B1 out over the shade
+    grab(SOL, 17, 3, { keep: true }),
+    grab(LUNA, 7, 20), goto(LUNA, 12, 26),           // Luna down the well and over B1
+    grab(LUNA, 12, 10), goto(LUNA, 14, 12),          // up the ladder in B
+    grab(LUNA, 18, 21), goto(LUNA, 23, 26),          // through the moon pool, down C, onto the lift
+    flip(SOL, 22, 6, true, { keep: [1] }), waitPlat(23, 27),   // G on: the lift takes her up
+    grab(LUNA, 29, 13),
+    flip(LUNA, 28, 26),                              // yellow: her alcove's gate sinks
+    press(LUNA, 30, 26),                             // PE: the deck's door opens
+    goto(SOL, 34, 6, { keep: true }),                // Sol out onto the gallery's landing
+    grab(SOL, 38, 16, { keep: true }),
+    flip(SOL, 34, 27),                               // the rescue lever: the end cell opens
+    goto(LUNA, 33, 27, { keep: true }),              // Luna out to the gallery's foot
+    press(SOL, 38, 27),                              // PT: Sol holds the deck's door open
+    grab(LUNA, 37, 3, { keep: true }), goto(LUNA, 30, 6, { keep: true }),
+    press(LUNA, 24, 6),                              // PD: Luna holds it for him
+    goto(SOL, 31, 6, { keep: true }),
     // round 2: Luna works the deck, Sol runs
-    grab(LUNA, 12, 2, { keep: true }),
-    grab(SOL, 2, 22),                                // Sol west along the deck (G and P go off) and down A
-    flip(LUNA, 7, 5),                                // P on: B1 out
-    goto(SOL, 10, 26), grab(SOL, 8, 18), goto(SOL, 12, 8),
-    within(flip(LUNA, 7, 5, false), 1, 2, 31, 5),    // P off: B2 out over the moon pool
-    grab(SOL, 20, 14), goto(SOL, 23, 26),            // over B2, down C, onto the lift
-    flip(LUNA, 16, 5), waitPlat(23, 27),             // G on: up he goes
-    grab(SOL, 30, 11), door(SOL),                    // he falls onto his shelf
-    door(LUNA), win(),
+    within(flip(SOL, 13, 6, false), 10, 1, 31, 6),   // Sol west along the deck: G and P go off
+    grab(SOL, 4, 13),                                // and down the well
+    within(flip(LUNA, 13, 6), 10, 1, 31, 6),         // P on: B1 out
+    goto(SOL, 12, 26), grab(SOL, 15, 19), goto(SOL, 14, 12),
+    within(flip(LUNA, 13, 6, false), 10, 1, 31, 6),  // P off: B2 out over the moon pool
+    grab(SOL, 20, 16), goto(SOL, 23, 26),            // over B2, down C, onto the lift
+    within(flip(LUNA, 22, 6), 10, 1, 31, 6), waitPlat(23, 27),   // G on: up he goes
+    grab(SOL, 30, 13), door(SOL),                    // he falls onto his shelf
+    grab(LUNA, 6, 2), door(LUNA), win(),             // she leaps the well mouth to her alcove
   ],
 
   // Clockwork
