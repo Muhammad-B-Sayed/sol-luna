@@ -68,12 +68,12 @@
   {
    "name": "in play: Space/Enter do nothing to menus",
    "ok": true,
-   "info": "[0,37,\"game\",\"BODY\"]"
+   "info": "[0,40,\"game\",\"BODY\"]"
   },
   {
    "name": "Esc pauses, focus on Resume",
    "ok": true,
-   "info": "{\"screen\":\"pause\",\"paused\":true,\"focus\":\"pResume\",\"tick\":37}"
+   "info": "{\"screen\":\"pause\",\"paused\":true,\"focus\":\"pResume\",\"tick\":41}"
   },
   {
    "name": "paused: timer frozen",

@@ -156,6 +156,12 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
   - Predicts every tick with its own input and the last known remote input, and sends `{t:'i', s, b}`.
   - On each snapshot it takes the server state, replays its own unacked inputs, and carries the
     visual difference as a decaying offset (`app.off`), so there's no visible snap.
+  - The partner is predicted from their last known keys, so a jump heard one round trip late
+    leaves a 60-180 px error. Their offset is carried whole (up to 240 px) and paid back at most
+    6 px per tick; your own character keeps the tight 64 px / 0.8 decay. Same in the Runner
+    (`runner-app.js`). Measured Nov 17 with `tools/playtest/online-browser.mjs` and
+    `runner-online.mjs`: the drawn partner moves at most 13 px per frame at `LAG_MS=80` and 150
+    (was 108-133 px), and your own character's backward correction stays 0 px.
   - It interpolates between ticks for high-refresh displays.
 - **Messages:**
 
@@ -177,6 +183,10 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
 - The background and stone are cached once per level/resize in `buildStatic()`. Liquids, gems,
   doors, mechanisms, characters and particles draw every frame.
 - Sound and particles are triggered by observing state changes, which keeps them robust to rollback.
+- A step-up (out of a pool, onto a step) is drawn as a short ease (`app.lift` in `main.js`), not
+  a one-frame 14 px pop. Rendering only.
+- The start hint is placed per room at run time (`placeHint()`), away from players, doors and
+  mechanisms. `node tools/playtest/hint-overlap.mjs` checks all 32 levels.
 - The HUD is drawn on the canvas; the menus are DOM.
 - The title screen runs a demo of level 1 behind the menu.
 
