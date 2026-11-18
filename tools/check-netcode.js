@@ -9,8 +9,11 @@
 //   SERVER_ROOT=dir ...                                run the server from another checkout (the baseline)
 //   JSON=out.json ...                                  also write every match as JSON
 //   KIND=coop SEEDS=1,2 node tools/check-netcode.js   online co-op levels 1 and 2 with the recorded bot
-//                                                     inputs (node tools/playtest/record-bot.mjs 1,2):
-//                                                     counts deaths and wins shown and then taken back
+//                                                     inputs (node tools/playtest/record-bot.mjs 1,2),
+//                                                     pass or fail (see coopVerdict)
+//   KIND=dodge SEEDS=1,2,3 node tools/check-netcode.js  Dodgeball, bots that throw and dodge, pass or fail
+//   SCHEME=base ...                                    co-op and Dodgeball: the 4be5032 client (net-coop.js),
+//                                                     with SERVER_ROOT set to a 4be5032 server for the baseline
 //
 // Network model, per client link (both directions): one-way delay BASE ms (40) plus uniform
 // jitter of +-JIT ms (15) per message, delivered in order (TCP). Spikes: on average every SPIKE
@@ -43,8 +46,10 @@ import * as R2 from '../shared/runner.js';
 import * as R3 from '../shared/runner3d.js';
 import { pairTracks } from './net-bots.js';
 import { Old2D, Old3D, Coop } from './net-old-clients.js';
+import { CoopClient } from './net-coop.js';
 import { LEVELS } from '../shared/levels.js';
-import { buildLevel } from '../shared/sim.js';
+import { buildLevel, IN_LEFT, IN_RIGHT, IN_UP, IN_ACT, SOL } from '../shared/sim.js';
+import { COURT, DP_PLAY, DP_OVER, B_LIVE, B_DEAD, B_REST, sideOf } from '../shared/dodge.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const env = process.env;
@@ -115,12 +120,12 @@ function startServer(port) {
   const args = ['server/index.js'];
   const cmd = CPU ? 'systemd-run' : process.execPath;
   const argv = CPU ? ['--user', '--scope', '-q', '-p', `CPUQuota=${CPU}%`, '-p', 'CPUWeight=10000', process.execPath, ...args] : args;
-  const p = spawn(cmd, argv, { cwd: env.SERVER_ROOT || ROOT, env: { ...env, PORT: String(port), LAG_MS: env.SERVER_LAG || '0', TEST_SEED: '1', NET_LOG: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  const p = spawn(cmd, argv, { cwd: env.SERVER_ROOT || ROOT, env: { ...env, PORT: String(port), LAG_MS: env.SERVER_LAG || '0', TEST_SEED: '1', NET_LOG: '1', NET_TRACE: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
   return new Promise((resolve, reject) => {
     let buf = '';
     p.stdout.on('data', (d) => {
       buf += d; if (buf.includes('listening')) resolve(p);
-      for (const ln of String(d).split('\n')) if (ln.startsWith('net ')) serverLog.push(ln);
+      for (const ln of String(d).split('\n')) if (ln.startsWith('net trace ')) addTrace(ln); else if (ln.startsWith('net ')) serverLog.push(ln);
     });
     p.on('exit', (c) => reject(new Error('server exited ' + c)));
     setTimeout(() => reject(new Error('server did not start')), 8000);
@@ -131,6 +136,42 @@ function startServer(port) {
 // one client: socket over the modelled link, a 60 Hz frame loop, the sync code, a meter
 
 const serverLog = [];   // the server's NET_LOG lines (input holds, skips, late keys per match)
+// NET_TRACE: every key change the server applied, by room code: "round ch seq" -> the tick it was applied to
+const traces = new Map();
+function addTrace(ln) {
+  const [, , code, round, ch, s, tick] = ln.trim().split(/\s+/);
+  if (!traces.has(code)) traces.set(code, new Map());
+  traces.get(code).set(`${round} ${ch} ${s}`, +tick);
+}
+// the server's input counters for a room: summed over its NET_LOG lines (one per level or match)
+function roomStats(code) {
+  const out = { waits: 0, waitMax: 0, held: 0, skipped: 0, late: 0, released: 0, trimmed: 0, drained: 0, dropped: 0 };
+  for (const ln of serverLog) {
+    if (!ln.startsWith(`net ${code} `)) continue;
+    const w = /waited for late inputs (\d+) times \(longest (\d+) ticks\)/.exec(ln);
+    if (w) { out.waits += +w[1]; out.waitMax = Math.max(out.waitMax, +w[2]); }
+    for (const k of ['held', 'skipped', 'late', 'released', 'trimmed', 'drained', 'dropped']) for (const m of ln.matchAll(new RegExp(`${k} (\\d+)`, 'g'))) out[k] += +m[1];
+  }
+  return out;
+}
+// key changes the client sent against the ticks the server applied them to (after the first second;
+// Dodgeball: only during play). moved: applied on another tick than the prediction did; dropped:
+// never applied though the server went past them
+function inputTicks(c, code) {
+  const tr = traces.get(code) || new Map(), out = { changes: 0, moved: 0, dropped: 0, jumpsMoved: 0, actsMoved: 0 };
+  for (const [round, intended, ack] of c.rounds) {
+    let prev = 0;
+    for (const [s, [tick, b, ph]] of intended) {
+      const ch = b ^ prev; prev = b;
+      if (!ch || tick < 60 || s > ack || (c.kind === 'dodge' && ph !== DP_PLAY)) continue;
+      out.changes++;
+      const at = tr.get(`${round} ${c.me} ${s}`);
+      if (at === undefined) out.dropped++;
+      else if (at !== tick) { out.moved++; if (ch & IN_UP) out.jumpsMoved++; if (ch & IN_ACT) out.actsMoved++; }
+    }
+  }
+  return out;
+}
 let Sync = null;   // public/js/runner-sync.js, loaded for SCHEME=new
 async function loadSync() {
   if (SCHEME === 'old' || Sync) return;
@@ -150,16 +191,24 @@ function makeClient(kind, port, seed, idx, track, meter) {
     const m = JSON.parse(data);
     if (m.t === 'room') c.me = m.you;
     if (m.t === 'start') c.begin(m);
-    else if (m.t === 's' && c.sync) { meter.snap(m, performance.now()); c.sync.onSnapshot(m, performance.now()); }
+    else if (m.t === 's' && c.sync) {
+      meter.snap(m, performance.now());
+      if (c.rounds.length) c.rounds[c.rounds.length - 1][2] = m.ack[c.me] | 0;
+      c.sync.onSnapshot(m, performance.now());
+    }
     (c.handlers[m.t] || []).forEach(f => f(m));
   }));
   c.on = (t, f) => (c.handlers[t] ||= []).push(f);
   c.open = new Promise((res) => ws.on('open', res));
+  c.rounds = [];   // [server input round, intended ticks, last ack] per start (co-op and Dodgeball)
   c.begin = (m) => {
-    if (kind === 'coop') {
-      c.sync = new Coop(buildLevel(LEVELS[m.level], m.level), m.st, c.me, c.send, { neverKill: SCHEME !== 'old' });
+    if (kind === 'coop' || kind === 'dodge') {
+      const L = kind === 'dodge' ? COURT : buildLevel(LEVELS[m.level], m.level);
+      if (SCHEME === 'old') c.sync = new Coop(L, m.st, c.me, c.send, { neverKill: false });
+      else c.sync = new CoopClient(L, m.st, c.me, c.send, { scheme: SCHEME === 'base' ? 'base' : 'new', onState: meter.state });
+      c.rounds.push([c.rounds.length + 2, c.sync.intended || new Map(), 0]);
       meter.begin(c.me);
-      c.loop();
+      if (!c.looping) { c.looping = true; c.loop(); }
       return;
     }
     const L = SIM[kind].build(m.seed);
@@ -180,9 +229,10 @@ function makeClient(kind, port, seed, idx, track, meter) {
       while (c.inbox.length) c.inbox.shift()();
       now = performance.now();
       const dt = now - last; last = now;
-      const readBits = () => track[c.sync.predTick()] ?? 0;
+      const bot = typeof c.track === 'function';   // Dodgeball: a bot that reads the screen, once per tick
+      const readBits = bot ? () => c.track(c) : () => c.track[c.sync.predTick()] ?? 0;
       const n = c.sync.frame(dt, readBits, now);
-      meter.frame(c.sync.draw(now), n, now, readBits());
+      meter.frame(c.sync.draw(now), n, now, bot ? 0 : readBits());
       const next = t0 + Math.ceil((performance.now() - t0 + 0.5) / DT) * DT;
       setTimeout(go, Math.max(0, next - performance.now()));
     };
@@ -319,27 +369,73 @@ function makeMeter(kind) {
 // ---------------------------------------------------------------------------
 // one match
 
-// co-op: the recorded bot inputs of one level; count deaths and wins shown and then taken back
-// (the death or win phase, then play again on the same attempt)
+// co-op: the recorded bot inputs of one level (they win it locally with no death), played by
+// world tick: any input the server applies on another tick than the client meant shifts the
+// plan. Measured per client: deaths and wins shown and then taken back (the death or win phase,
+// then play again on the same attempt), own corrections, and the partner as drawn against the
+// server's path (main.js draws them from the prediction, in the present). The server: won or
+// not, deaths (attempts), its input counters, and key changes applied off their tick.
+function coopMeter() {
+  const M = { undoDead: 0, undoWon: 0, deadShown: 0, prev: null, srv: null, path: new Map(), samples: [], me: -1 };
+  M.begin = (me) => { M.me = me; };
+  M.state = null;
+  M.frame = (d, n, now) => {
+    const S = d.S, cur = { ph: S.phase, tries: S.tries };
+    if (M.prev && M.prev.tries === cur.tries) {
+      if (M.prev.ph === PH_DEAD_ && cur.ph === 0) M.undoDead++;
+      if (M.prev.ph === 2 && cur.ph === 0) M.undoWon++;
+    }
+    if (cur.ph === PH_DEAD_ && (!M.prev || M.prev.ph !== PH_DEAD_)) M.deadShown++;
+    M.prev = cur;
+    const o = 1 - M.me;
+    M.samples.push(d.v && S.phase === 0 && S.p[o].alive ? { t: now, T: d.T, tries: S.tries, pos: [d.v.p[o].x, d.v.p[o].y] } : null);
+  };
+  M.snap = (m) => {
+    const st = m.st;
+    M.srv = { phase: st.phase, tries: st.tries, tick: st.tick };
+    M.path.set(st.tick, { tries: st.tries, ok: st.phase === 0, p: st.p.map(p => [p.x, p.y]), alive: st.p.map(p => p.alive) });
+  };
+  M.at = (i, T, tries) => {
+    const a = Math.floor(T);
+    let lo = null, hi = null;
+    for (let k = a; k >= a - 6; k--) if (M.path.has(k)) { lo = k; break; }
+    for (let k = a + 1; k <= a + 7; k++) if (M.path.has(k)) { hi = k; break; }
+    if (lo === null || hi === null) return null;
+    const A = M.path.get(lo), B = M.path.get(hi);
+    if (A.tries !== tries || B.tries !== tries || !A.ok || !B.ok || !A.alive[i] || !B.alive[i]) return null;
+    const f = (T - lo) / (hi - lo);
+    return A.p[i].map((v, j) => v + (B.p[i][j] - v) * f);
+  };
+  M.report = (corr) => {
+    const o = 1 - M.me;
+    let maxPop = 0, off = 0, n = 0, maxOff = 0, pops = 0;
+    for (let k = 1; k < M.samples.length; k++) {
+      const a = M.samples[k - 1], b = M.samples[k];
+      if (!a || !b || a.tries !== b.tries) continue;
+      const sa = M.at(o, a.T, a.tries), sb = M.at(o, b.T, b.tries);
+      if (!sa || !sb) continue;
+      if (Math.hypot(sb[0] - sa[0], sb[1] - sa[1]) > 40) continue;   // a respawn or teleport
+      n++;
+      const w = Math.max(1, (b.t - a.t) / DT);
+      const pop = Math.max(0, Math.hypot(b.pos[0] - a.pos[0], b.pos[1] - a.pos[1]) - Math.hypot(sb[0] - sa[0], sb[1] - sa[1])) / w;
+      maxPop = Math.max(maxPop, pop);
+      if (pop > 6) pops++;
+      const e = Math.hypot(b.pos[0] - sb[0], b.pos[1] - sb[1]);
+      maxOff = Math.max(maxOff, e);
+      if (e > 4) off++;
+    }
+    return { frames: n, maxPop: +maxPop.toFixed(2), pops, offPct: n ? +(100 * off / n).toFixed(1) : 0, maxOff: +maxOff.toFixed(1),
+      corrMax: +corr.reduce((m, c) => Math.max(m, c[0]), 0).toFixed(2), corrN: corr.filter(c => c[0] > 0.5).length };
+  };
+  return M;
+}
+
 async function coopMatch(level, port) {
   const rec = JSON.parse(fs.readFileSync(path.join(ROOT, `tools/playtest/inputs/level-${level}.json`), 'utf8'));
   const bits = [];
   for (const [a, b, k] of rec.rle) for (let i = 0; i < k; i++) bits.push([a, b]);
   const tracks = [bits.map(x => x[0]), bits.map(x => x[1])];
-  const meters = [0, 1].map(() => {
-    const M = { undoDead: 0, undoWon: 0, deadShown: 0, prev: null, srv: null, snap() {}, begin() {} };
-    M.frame = (d) => {
-      const S = d.S, cur = { ph: S.phase, tries: S.tries };
-      if (M.prev && M.prev.tries === cur.tries) {
-        if (M.prev.ph === PH_DEAD_ && cur.ph === 0) M.undoDead++;
-        if (M.prev.ph === 2 && cur.ph === 0) M.undoWon++;
-      }
-      if (cur.ph === PH_DEAD_ && (!M.prev || M.prev.ph !== PH_DEAD_)) M.deadShown++;
-      M.prev = cur;
-    };
-    M.snap = (m) => { M.srv = { phase: m.st.phase, tries: m.st.tries, tick: m.st.tick }; };
-    return M;
-  });
+  const meters = [coopMeter(), coopMeter()];
   const A = makeClient('coop', port, level, 0, tracks[0], meters[0]);
   const B = makeClient('coop', port, level, 1, tracks[1], meters[1]);
   await Promise.all([A.open, B.open]);
@@ -358,11 +454,115 @@ async function coopMatch(level, port) {
     }, 100);
   });
   A.close(); B.close();
-  return { kind: 'coop', seed: level, scheme: SCHEME, server: meters[0].srv, clients: [A, B].map((c, i) => ({ who: c.me ? 'Luna' : 'Sol', undoDead: meters[i].undoDead, undoWon: meters[i].undoWon, deathsShown: meters[i].deadShown, stalls: c.stalls, spikes: c.ln.spikes })) };
+  await new Promise(r => setTimeout(r, 300));   // the server's NET_LOG line for a level not won comes on leave
+  const srv = meters[0].srv;
+  return { kind: 'coop', seed: level, scheme: SCHEME, wonLocal: rec.wonTick, server: { ...srv, won: srv?.phase === 2, deaths: srv?.tries ?? 0, input: roomStats(code) },
+    clients: [A, B].map((c, i) => ({ who: c.me ? 'Luna' : 'Sol', undoDead: meters[i].undoDead, undoWon: meters[i].undoWon, deathsShown: meters[i].deadShown,
+      ...meters[i].report(c.sync.corr || []), ticks: inputTicks(c, code), stalls: c.stalls, spikes: c.ln.spikes })) };
+}
+
+// Dodgeball: bots that read their own screen (the client's prediction). Holding the ball they
+// walk a little, aim for a random time (or tap) and release; a live ball at them gets a random
+// reaction (a jump, a jump back, a run back, or nothing) a random 0-11 ticks after they first
+// see it; a ball loose on their side is fetched. The host sends a rematch after each match.
+function dodgeBot(r, me) {
+  const st = { plan: null, react: null };
+  const back = me === SOL ? IN_LEFT : IN_RIGHT, fwd = me === SOL ? IN_RIGHT : IN_LEFT;
+  return (c) => {
+    const S = c.sync.S, D = S.d;
+    if (!D || D.phase !== DP_PLAY) { st.plan = null; st.react = null; return 0; }
+    const p = S.p[me], ball = D.ball;
+    if (D.holder === me && D.wind === 0) {
+      if (!st.plan) st.plan = { walk: r() < 0.5 ? back : fwd, wt: Math.floor(r() * 30), hold: r() < 0.3 ? 0 : Math.floor(r() * 80), t: 0 };
+      const P = st.plan;
+      P.t++;
+      if (P.t <= P.wt) return P.walk;
+      if (P.t <= P.wt + P.hold + 1) return IN_ACT;
+      if (P.t > P.wt + P.hold + 60) st.plan = null;   // still holding long after the release: try again
+      return 0;
+    }
+    if (D.holder !== me) st.plan = null;
+    if (ball.st === B_LIVE && ball.by !== me) {
+      if (!st.react || st.react.n !== D.throwN) st.react = { n: D.throwN, at: Math.floor(r() * 12), kind: Math.floor(r() * 4), t: 0 };
+      const R = st.react;
+      R.t++;
+      return R.t > R.at ? [IN_UP, IN_UP | back, back, 0][R.kind] : 0;
+    }
+    if ((ball.st === B_DEAD || ball.st === B_REST) && sideOf(ball.x) === me) {
+      const cx = p.x + p.w / 2;
+      return ball.x < cx - 4 ? IN_LEFT : ball.x > cx + 4 ? IN_RIGHT : 0;
+    }
+    return 0;
+  };
+}
+
+// The outcome of every throw: on the server (raw snapshots) and as first shown on each screen.
+// A throw is settled when its ball is no longer live (and, on the thrower's screen, not stopped in
+// the other player waiting for the server's word): a hit if the hit count went up since the throw.
+function dodgeMeter() {
+  const M = { me: -1, round: -1, srv: [], shown: [], srvD: null };
+  const settle = (T, D) => {
+    const n = D.throwN;
+    if (!n) return;
+    const e = T[n] ||= { hb: D.hitN, by: D.ball.by, hitN: null };
+    if (e.hitN !== null) return;
+    if (D.hitN > e.hb || (D.ball.st !== B_LIVE && D.ball.pv < 0 && D.wind === 0)) e.hitN = D.hitN;
+  };
+  M.begin = (me) => { M.me = me; M.round++; M.srv.push({}); M.shown.push({}); };
+  M.snap = (m) => { M.srvD = { phase: m.st.d.phase, t: m.st.d.t, score: m.st.d.score.slice(), round: M.round }; settle(M.srv[M.round], m.st.d); };
+  M.state = (S) => { if (M.round >= 0 && S.d) settle(M.shown[M.round], S.d); };
+  M.frame = () => {};
+  M.report = () => {
+    const out = { throws: 0, hits: 0, ownHitUndone: 0, ownDodgeUndone: 0, thrDodgeUndone: 0 };
+    M.srv.forEach((T, k) => {
+      for (const [n, e] of Object.entries(T)) {
+        if (e.hitN === null) continue;
+        const hit = e.hitN > e.hb, sh = M.shown[k][n];
+        out.throws++; if (hit) out.hits++;
+        if (!sh || sh.hitN === null) continue;
+        const shownHit = sh.hitN > e.hb;
+        if (shownHit === hit) continue;
+        if (e.by !== M.me) { if (shownHit) out.ownHitUndone++; else out.ownDodgeUndone++; }
+        else if (!shownHit) out.thrDodgeUndone++;
+      }
+    });
+    return out;
+  };
+  return M;
+}
+
+async function dodgeMatch(seed, port) {
+  const meters = [dodgeMeter(), dodgeMeter()];
+  const A = makeClient('dodge', port, seed, 0, dodgeBot(rng(seed * 31 + 1), SOL), meters[0]);
+  const B = makeClient('dodge', port, seed, 1, null, meters[1]);
+  await Promise.all([A.open, B.open]);
+  const room = new Promise((res) => A.on('room', (m) => { if (m.players.length === 1) res(m.code); }));
+  A.send({ t: 'create', name: 'A' });
+  const code = await room;
+  const both = new Promise((res) => A.on('room', (m) => { if (m.players.length === 2) res(); }));
+  B.send({ t: 'join', code, name: 'B' });
+  await both;
+  B.track = dodgeBot(rng(seed * 31 + 2), B.me);
+  A.track = dodgeBot(rng(seed * 31 + 1), A.me);
+  A.send({ t: 'start', mode: 'dodge' });
+  const t0 = performance.now();
+  let asked = -1, matches = 0;
+  await new Promise((res) => {
+    const iv = setInterval(() => {
+      const d = meters[0].srvD;
+      if (d && d.phase === DP_OVER && d.t > 90 && asked !== d.round) { asked = d.round; matches++; A.send({ t: 'restart' }); }
+      if (performance.now() - t0 > SECS * 1000) { clearInterval(iv); res(); }
+    }, 100);
+  });
+  A.close(); B.close();
+  await new Promise(r => setTimeout(r, 300));
+  return { kind: 'dodge', seed, scheme: SCHEME, server: { matches, input: roomStats(code) },
+    clients: [A, B].map((c, i) => ({ who: c.me ? 'Luna' : 'Sol', ...meters[i].report(), ticks: inputTicks(c, code), corrMax: +(c.sync.corr || []).reduce((m, x) => Math.max(m, x[0]), 0).toFixed(1), stalls: c.stalls, spikes: c.ln.spikes })) };
 }
 
 async function match(kind, seed, port) {
   if (kind === 'coop') return coopMatch(seed, port);
+  if (kind === 'dodge') return dodgeMatch(seed, port);
   const tEnd = 180 + SECS * 60;
   const plan = pairTracks(kind, seed, tEnd);
   const meters = [makeMeter(kind), makeMeter(kind)];
@@ -397,8 +597,12 @@ async function match(kind, seed, port) {
 // ---------------------------------------------------------------------------
 
 function line(r) {
-  if (r.kind === 'coop') return `coop level ${r.seed} [${r.scheme}]: server ${r.server?.phase === 2 ? 'won' : 'not won'} (attempt ${r.server?.tries}, tick ${r.server?.tick})\n` +
-    r.clients.map(c => `    ${c.who.padEnd(4)}: deaths shown ${c.deathsShown}, of them taken back ${c.undoDead}; wins taken back ${c.undoWon}; stalls ${c.stalls} spikes ${c.spikes}`).join('\n');
+  const inl = (i) => `server waited ${i.waits}x (longest ${i.waitMax} ticks), held ${i.held}, skipped ${i.skipped}, late ${i.late}, released ${i.released}, trimmed ${i.trimmed}, drained ${i.drained}, dropped ${i.dropped}`;
+  const tk = (t) => `key changes ${t.changes}, off their tick ${t.moved} (jumps ${t.jumpsMoved}, throws ${t.actsMoved}), dropped ${t.dropped}`;
+  if (r.kind === 'coop') return `coop level ${r.seed} [${r.scheme}]: server ${r.server.won ? 'won' : 'NOT won'}, ${r.server.deaths} deaths (tick ${r.server.tick}); ${inl(r.server.input)}\n` +
+    r.clients.map(c => `    ${c.who.padEnd(4)}: deaths shown ${c.deathsShown}, taken back ${c.undoDead}; wins taken back ${c.undoWon}; ${tk(c.ticks)}; own corr max ${c.corrMax} px (${c.corrN} over 0.5); partner pop max ${c.maxPop} px/f (${c.pops} over 6), off>4 ${c.offPct}% (max ${c.maxOff}); stalls ${c.stalls} spikes ${c.spikes}`).join('\n');
+  if (r.kind === 'dodge') return `dodge seed ${r.seed} [${r.scheme}]: ${r.server.matches} matches; ${inl(r.server.input)}\n` +
+    r.clients.map(c => `    ${c.who.padEnd(4)}: throws ${c.throws} (hits ${c.hits}); on own screen: hit shown then undone ${c.ownHitUndone}, dodge shown then hit ${c.ownDodgeUndone}; as thrower: miss shown then hit ${c.thrDodgeUndone}; ${tk(c.ticks)}; own corr max ${c.corrMax} px; stalls ${c.stalls} spikes ${c.spikes}`).join('\n');
   const s = r.server;
   const head = `${r.kind} seed ${r.seed} [${r.scheme}]: server ${s.phase === 2 ? `over at ${s.tick} (${['Sol', 'Luna', 'draw'][s.win] || '?'} wins${s.lostEarly ? `, ${s.dead.map((d, i) => d >= 0 ? ['Sol', 'Luna'][i] : null).filter(Boolean).join('+')} died before the plan's end ${r.planEnd}` : ''})` : `still running at ${s.tick}`}`;
   const u = TH[r.kind].unit;
@@ -409,7 +613,31 @@ function line(r) {
 
 // pass or fail (SCHEME=new)
 function verdict(r) {
-  if (r.kind === 'coop') return r.clients.flatMap(c => (c.undoDead || c.undoWon ? [`${c.who}: a death or win shown and taken back`] : []));
+  if (r.kind === 'coop') {
+    // co-op: the bots win as they do locally, no death, no input released, trimmed, dropped or
+    // applied off its tick, nothing shown and taken back
+    const bad = [], i = r.server.input;
+    if (!r.server.won) bad.push('server: not won');
+    if (r.server.deaths) bad.push(`server: ${r.server.deaths} deaths`);
+    if (i.released || i.trimmed || i.dropped) bad.push(`server: inputs released ${i.released}, trimmed ${i.trimmed}, dropped ${i.dropped}`);
+    for (const c of r.clients) {
+      if (c.undoDead || c.undoWon) bad.push(`${c.who}: a death or win shown and taken back`);
+      if (c.ticks.moved || c.ticks.dropped) bad.push(`${c.who}: ${c.ticks.moved} key changes off their tick, ${c.ticks.dropped} dropped`);
+    }
+    return bad;
+  }
+  if (r.kind === 'dodge') {
+    // Dodgeball: nobody's own screen shows a hit or a dodge the server then contradicts; every
+    // jump and throw lands on its tick
+    const bad = [], i = r.server.input;
+    if (i.released || i.trimmed || i.dropped) bad.push(`server: inputs released ${i.released}, trimmed ${i.trimmed}, dropped ${i.dropped}`);
+    for (const c of r.clients) {
+      if (c.ownHitUndone || c.ownDodgeUndone) bad.push(`${c.who}: own screen contradicted ${c.ownHitUndone + c.ownDodgeUndone}x`);
+      if (c.ticks.moved || c.ticks.dropped) bad.push(`${c.who}: ${c.ticks.moved} key changes off their tick, ${c.ticks.dropped} dropped`);
+      if (c.throws < 5) bad.push(`${c.who}: only ${c.throws} throws`);
+    }
+    return bad;
+  }
   const th = TH[r.kind], bad = [];
   if (r.server.lostEarly) bad.push(`server: a player died before the plan's end (inputs applied off their tick)`);
   for (const c of r.clients) {
@@ -432,7 +660,7 @@ const results = [];
 const jobs = [];
 for (const kind of KINDS) for (const seed of SEEDS) jobs.push([kind, seed]);
 // plan first (cached), so planning never stalls a running match
-for (const [kind, seed] of jobs) if (kind !== 'coop') pairTracks(kind, seed, 180 + SECS * 60, { log: V ? console.log : () => {} });
+for (const [kind, seed] of jobs) if (kind !== 'coop' && kind !== 'dodge') pairTracks(kind, seed, 180 + SECS * 60, { log: V ? console.log : () => {} });
 console.log(`check-netcode: scheme ${SCHEME}, one-way ${NET.base}±${NET.jit} ms, spikes every ~${NET.spike} s of ${NET.spikeMin}-${NET.spikeMax} ms, client stalls every ~${NET.stall} s of ${NET.stallMin}-${NET.stallMax} ms${CPU ? `, server CPU quota ${CPU}%` : ''}, ${SECS} s matches`);
 let next = 0, fails = 0;
 await Promise.all(Array.from({ length: Math.min(CONC, jobs.length) }, async () => {
