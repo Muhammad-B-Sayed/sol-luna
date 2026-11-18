@@ -327,20 +327,31 @@ export class RunnerSync {
       const ride = sim.ride(this.L, P, tNow, sa.st, T, sa.st.p[o]) || this.zero();
       // stepping on or off a moving part: carry the change as an easing offset, not a pop
       const key = sa.st.p[o].gr ? sa.st.p[o].gref : -1;
+      const rv = this.lastRide && this.lastRide.key === key ? this.lastRide.v : ride;   // its offset last frame, same part
       if (this.lastRide && this.lastRide.key !== key) for (const k of sim.dims) this.roff[k] += this.lastRide.v[k] - ride[k];
       this.lastRide = { key, v: ride };
       for (const k of sim.dims) theirs[k] += ride[k] + this.roff[k];
-      if (A.p[o].alive || T < A.dead[o]) sim.front(sa.st.p[o], theirs, scroll);
-      // never drawn moving back along the run faster than the server's own path did (plus the
-      // slow pay-back, sim.creep); what is held back stays in the offset
-      const f = sim.fwd, rawF = theirs[f] - this.roff[f];
-      if (this.lastTheirs && this.lastRawF !== undefined) {
-        const w = Math.min(2, Math.max(1, (this.frameDt || DT) / DT));
-        const floor = this.lastTheirs[f] + Math.min(0, rawF - this.lastRawF) - sim.creep * w;
-        if (theirs[f] < floor) { this.roff[f] += floor - theirs[f]; theirs[f] = floor; }
+      // Continuity: from one frame to the next the drawing may differ from "last frame plus the
+      // server's own motion" (both measured on the newest data, so a late snapshot replacing an
+      // extension is not motion) by at most sim.ease; along the run it never goes back faster
+      // than the server's path did (plus the slow pay-back, sim.creep). What is held back stays
+      // in the offset and eases out, so no source of error can make a pop.
+      if (this.lastTheirs && this.lastT !== undefined) {
+        const w = Math.min(2, Math.max(1, (this.frameDt || DT) / DT)), f = sim.fwd;
+        const rNow = this.remoteRaw(T), rPrev = this.remoteRaw(this.lastT);
+        for (const k of sim.dims) {
+          const moved = rNow[k] + ride[k] - (rPrev[k] + rv[k]);
+          const exp = this.lastTheirs[k] + moved, lim = sim.ease * w;
+          let lo = exp - lim;
+          const hi = exp + lim;
+          if (k === f) lo = Math.max(lo, this.lastTheirs[f] + Math.min(0, moved) - sim.creep * w);
+          if (theirs[k] < lo) { this.roff[k] += lo - theirs[k]; theirs[k] = lo; }
+          else if (theirs[k] > hi) { this.roff[k] -= theirs[k] - hi; theirs[k] = hi; }
+        }
       }
-      this.lastRawF = rawF;
-    } else this.lastRawF = undefined;
+      this.lastT = T;
+      if (A.p[o].alive || T < A.dead[o]) sim.front(sa.st.p[o], theirs, scroll);
+    } else this.lastT = undefined;
     this.lastTheirs = theirs;
     this.lastR = { T };
     // once the end is shown, everyone stays where they were drawn
@@ -368,7 +379,7 @@ export class RunnerSync {
     const v = { p: me === 0 ? [mine, theirs] : [theirs, mine] };
     v[sim === SIM2D ? 'cam' : 'zone'] = scroll;
     const r2 = (o) => sim.dims.map(k => +o[k].toFixed(2));
-    const dbg = { ex: +(T - A.tick).toFixed(1), roff: +Math.hypot(...sim.dims.map(k => this.roff[k])).toFixed(2), ride: this.lastRide?.key ?? -1,
+    const dbg = this.debug && { ex: +(T - A.tick).toFixed(1), roff: +Math.hypot(...sim.dims.map(k => this.roff[k])).toFixed(2), ride: this.lastRide?.key ?? -1,
       T: +T.toFixed(2), newest: A.tick, theirs: r2(theirs), ro: r2(this.roff), sa: sa.tick };
     return { S, v, T, alpha, results: false, me: raw, dbg };
   }

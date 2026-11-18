@@ -6,6 +6,7 @@
 //   KIND=3d SEEDS=1 node tools/check-netcode.js       one runner, one seed
 //   SCHEME=old node tools/check-netcode.js            the baseline (no pass or fail)
 //   CPU=10 node tools/check-netcode.js                server under a 10% CPU quota (systemd-run)
+//   SERVER_ROOT=dir ...                                run the server from another checkout (the baseline)
 //   JSON=out.json ...                                  also write every match as JSON
 //
 // Network model, per client link (both directions): one-way delay BASE ms (40) plus uniform
@@ -108,7 +109,7 @@ function startServer(port) {
   const args = ['server/index.js'];
   const cmd = CPU ? 'systemd-run' : process.execPath;
   const argv = CPU ? ['--user', '--scope', '-q', '-p', `CPUQuota=${CPU}%`, '-p', 'CPUWeight=10000', process.execPath, ...args] : args;
-  const p = spawn(cmd, argv, { cwd: ROOT, env: { ...env, PORT: String(port), LAG_MS: '0', TEST_SEED: '1', NET_LOG: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  const p = spawn(cmd, argv, { cwd: env.SERVER_ROOT || ROOT, env: { ...env, PORT: String(port), LAG_MS: '0', TEST_SEED: '1', NET_LOG: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
   return new Promise((resolve, reject) => {
     let buf = '';
     p.stdout.on('data', (d) => {
@@ -151,7 +152,7 @@ function makeClient(kind, port, seed, idx, track, meter) {
   c.begin = (m) => {
     const L = SIM[kind].build(m.seed);
     if (SCHEME === 'old') c.sync = new (kind === '2d' ? Old2D : Old3D)(L, m.st, c.me, c.send);
-    else c.sync = Sync.createSync(kind === '2d' ? Sync.SIM2D : Sync.SIM3D, { L, st: m.st, me: c.me, send: c.send, now: performance.now() });
+    else { c.sync = Sync.createSync(kind === '2d' ? Sync.SIM2D : Sync.SIM3D, { L, st: m.st, me: c.me, send: c.send, now: performance.now() }); c.sync.debug = V; }
     meter.begin(c.me);
     c.loop();
   };
