@@ -194,8 +194,7 @@ export class RunnerSync {
     while (this.arr.length && this.arr[0][0] < now - CLOCK_WIN) this.arr.shift();
     // the server ended the match: keep running your prediction until the end is shown here
     // (the server's players stand still from now on; replaying would only pull yours back)
-    if (st.phase === sim.OVER && this.P.phase !== sim.OVER && this.overSeen) return;
-    if (st.phase === sim.OVER) this.overSeen = true;
+    if (st.phase === sim.OVER) { if (this.overSeen) return; this.overSeen = true; }
     // replay your unapplied inputs on the server's state
     const before = this.pos(this.P.p[me]), scroll0 = sim.scroll(this.P);
     this.remoteBits = m.inp[o] | 0;
