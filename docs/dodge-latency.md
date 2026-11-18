@@ -333,3 +333,11 @@ isn't built or measured here; the projection follows from the baseline's `late` 
 - Harness tables for A (re-run after the same-path fix) and B, fairness runs, browser checks
   per branch (all pass, including online at 80 ms where the study branch fails), comparison
   and recommendation written. Done.
+- Final checks. `node tools/check-dodge.js` passes on all three branches (35 / 46 / 47 checks).
+  Browser checks after the tap fix: study local passes 4/4 with two browsers at once; fix A
+  local and online (80 ms) pass; fix B local and online (80 ms) pass. Study online at 40 ms
+  passes 2 of 3; the failure is the latency symptom (the watcher's state goes from "held" to
+  "dead after a hit" without a live frame), and at 80 ms it fails every time. Fix A's online
+  check also failed once at 80 ms in the same place while two browsers shared the CPU, then
+  passed when run alone.
+
