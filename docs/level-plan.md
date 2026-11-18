@@ -4,9 +4,9 @@ All 32 levels are being rebuilt from nothing. This file is the brief for whoever
 
 ## Why
 
-The owner rejected the old levels. His words: the level design is "atrocious", levels have
-"almost no verticality", they "barely change", there is "no creativity", and the difficulty
-steps are "abysmally small". He is right, and the numbers say so:
+The owner rejected the old levels. In their words, the level design is "atrocious", levels
+have "almost no verticality", they "barely change", there is "no creativity", and the
+difficulty steps are "abysmally small". The numbers agree:
 
 - 28 of the 32 old levels were 80% or more empty air. Level 1 used only the bottom row.
 - Levels 1 to 13 all had two controls. Par time crept from 30 s to 45 s over those 13 levels.
@@ -21,8 +21,9 @@ that fills the 38x28 screen. You climb through stacked, broken-up floors. You ca
 doors long before you can reach them. A plate on one floor moves a lift two floors away.
 Every room has its own shape and its own idea, and each one asks more than the one before.
 
-Look at `docs/img/level-1.jpg` (the new level 1, the pilot) and at the reference frames named
-in the briefs below. Those show the density to aim for. Compare with any old screenshot in
+Look at `docs/img/level-1.jpg` (level 1, the pilot) and at the reference frames named
+in the briefs below. Those show the density to aim for. The pictures in `docs/img` were taken
+before the Nov 17 re-spacing, so their layouts are out of date. Compare with any old screenshot in
 `git show HEAD:docs/img/level-4.jpg` to see what we are leaving behind.
 
 ## Originality
@@ -54,18 +55,21 @@ node tools/gate.js 7                   # the full gate. A level is done when thi
   a bug, work around it and say so in your report.
 - Do not run git commands that change anything, and do not commit. Do not start the game
   server, Chrome or `tools/capture.sh`. The planner takes the pictures afterwards.
-- This machine has 8 GB of RAM and three of you share it. Run one node process at a time.
-  Never run `tools/check-all.sh`. The solo check on a crate level can take 800 MB, so run
-  the full gate on crate levels one at a time, and use `FAST=1` while iterating.
+- The machine is shared. Run at most two gate processes at once, and never run
+  `tools/check-all.sh` (it is stale anyway). The solo check on a crate level can take 800 MB,
+  so run the full gate on crate levels one at a time, and use `FAST=1` while iterating.
+- Each bot search stops after 90 s of wall-clock time. On a loaded machine a gate can fail with
+  "gave up after the time limit". Re-run that level alone before changing anything.
 
 ### What the gate checks
 
 | Group | Check |
 | --- | --- |
-| LAYOUT | Stone fills 25-65% of the screen. No empty block over 80 cells. Enough distinct floor heights (6 to 8, by tier) spanning 20+ rows. No flat stone floor longer than 18 cells. At most one floor that runs nearly the full width. 21+ of 24 screen sectors have floor. |
+| LAYOUT | Stone fills 25-65% of the screen. No empty block over 120 cells (floors 7 rows apart leave 6-high spaces). Enough distinct floor heights (6 to 8, by tier) spanning 20+ rows. No flat stone floor longer than 18 cells. At most one floor that runs nearly the full width. 21+ of 24 screen sectors have floor. |
 | ROUTE | In the bot's winning run the players visit 21-23 of the 24 screen sectors between them, and each player visits 12-16 alone. |
 | DEPTH | Bot time, number of plate presses and lever flips, number of controls and gems all meet the tier's minimum. Par is set from the bot's time. |
-| CO-OP | The bot wins and collects every gem. Neither player can reach their door alone. |
+| CO-OP | The bot wins and collects every gem. Neither player can reach their door alone (the solo check; `FAST=1` skips it). |
+| ROOF | No climb or crossing on the bot's route hits a roof. `node tools/check-headroom.js <n>` lists the ones that do. |
 
 Tiers are four levels each. Minimum bot time by tier: 30, 38, 45, 52, 60, 68, 76, 85 s.
 Minimum control uses: 4, 6, 8, 10, 12, 14, 17, 20. Gems: 4-8, 4-8, 6-10, 6-10, 6-10, 8-12,
@@ -97,7 +101,7 @@ or whether it is fair. Those are your job, and the planner will review each map 
    it moves should usually be on different floors, both visible.
 5. **Give the room a silhouette.** Each brief names a shape. Build that shape, with chunky
    irregular stone: split-height floors, ramps, ledges, pockets, pillars, shafts. Level 1
-   is a zigzag of five floors. No other level may reuse that skeleton.
+   is a zigzag of four floors. No other level may reuse that skeleton.
 6. **Vary where things start and end.** Doors at the top, in the middle, at the bottom, far
    apart, side by side. Players starting together, apart, on different floors.
 7. **Gems pull players into corners.** Put them on detours and in pockets, never on the
@@ -127,9 +131,19 @@ Movement, with the current physics. Do not change physics.
 Things that bite:
 
 - **A ceiling over the take-off kills the jump.** Standing on a floor with only 3 free rows
-  above, you cannot climb 2. Every climb and crossing on the route needs 6 free rows above it, so
-  floors that are stacked straight on top of each other must be 7 rows apart. Open the ceiling above the take-off cell as well as above the
-  landing. Level 1 hit this.
+  above, you cannot climb 2. Every climb and crossing on the route needs 6 free rows above it,
+  so floors stacked straight on top of each other must be 7 rows apart: four bands on floors
+  28, 21, 14 and 7, or two staggered columns on 28/21/14/7 and 25/18/11/4. Open the ceiling
+  above the take-off cell as well as above the landing. Level 1 hit this. Rows where nobody
+  jumps (walk-only corridors, wading tunnels) can stay 2 or 3 rows high.
+- **Slot stones take headroom.** `gate()` builds a 3-wide stone pillar around the gate's slot,
+  so it covers the cells on both sides of the gate. Next to a ledge, that pillar is the ledge's roof. Use a
+  `floorgate()` there, which sinks into the floor instead.
+- **Ramps and pools.** Leave one flat tile between a ramp and a pool.
+- **Flush bridges** (a platform that rises 1 tile out of a pool) must sit level with the floor on
+  both sides, so players walk across it. A bridge a tile above or below a bank is a step that
+  needs a jump.
+- **One-way pits.** A pit is one way only if it is 5 rows deep. At 4 rows a player climbs back out.
 - **Levers work by walking through them.** Walking right through a lever turns it on.
   Walking left turns it off. Place levers where the route passes them once, to the right,
   or at a dead end on the left (arrive going left, leave going right). A lever needs open
@@ -160,13 +174,19 @@ Things that bite:
   corner, and it slides 28 px clear of the wall. A quick hop or running jump climbs it as
   before, and a crate resting on a plate is never kicked, so sockets still hold. Lifts and
   other crates don't count as walls.
-  A 2-wide, 1-deep socket with the plate at the bottom keeps a crate on its plate.
+  A 2-wide, 1-deep socket with the plate at the bottom keeps a crate on its plate. In a 2-wide
+  socket against a wall, put the plate on the wall side: the crate settles against the wall.
+  A crate is 26 px, a step of 1.08 tiles. Stood on it, a player climbs 4 more tiles, so a ledge
+  5 above the floor can be reached only from a crate. Levels 28 and 29 use this.
 - **Six groups** (0-5), colours purple, green, orange, white, pink, yellow. Players match
   controls to effects by colour, so do not reuse one group for unrelated things.
 - **Bot search phases** move one player while the other stands still. That is how most
   co-op steps work anyway (one holds, one moves). For moves that need both at once, use the
   hand phases. A failed search prints how close it got, which usually points at the broken
-  jump. Searches are cached, so re-running a script is instant until the level changes.
+  jump. Searches are cached, so re-running a script is instant until the level or `PHYS`
+  changes. `seek()` finds its cache entry by the goal function's source text, so a helper that
+  builds goals from its arguments must pass `{ args: [...] }` (or `{ key }`); otherwise two
+  different goals share one entry and the second replays the first's inputs.
 
 ## The campaign
 
