@@ -529,7 +529,7 @@ function dodgeMeter() {
     const e = T[n] ||= { hb: D.hitN, by: D.ball.by, hitN: null, launch: null };
     // where the throw left: its launch tick and its slope (the same on every screen that knows it)
     // (the slope at the launch: the ball gains DODGE.liveGrav of fall speed per tick of flight)
-    if (!e.launch && D.ball.st === B_LIVE && !D.ball.bank) e.launch = `${S.tick - D.ball.t} ${((D.ball.vy - DODGE.liveGrav * D.ball.t) / D.ball.vx).toFixed(3)}`;
+    if (!e.launch && D.ball.st === B_LIVE && !D.ball.bank) e.launch = `${S.tick - D.ball.t} ${(Math.round(1000 * (D.ball.vy - DODGE.liveGrav * D.ball.t) / D.ball.vx) / 1000 + 0).toFixed(3)}`;   // + 0: no -0
     if (e.hitN !== null) return;
     if (D.hitN > e.hb || (D.ball.st !== B_LIVE && D.ball.pv < 0 && D.wind === 0)) e.hitN = D.hitN;
   };

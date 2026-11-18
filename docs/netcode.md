@@ -181,9 +181,8 @@ changes keep the wind-up exact:
   round trip ahead has already sent its first inputs of play.
 - The wind-up (`D.lag`) is set until 35 ticks before the freeze ends, not until its last tick. A
   client a round trip ahead was already playing the point with the old value, so a throw in the
-  first moments of play wound up longer or shorter on the thrower's screen than on the server.
-  20 ticks was not enough: during a spike a client can go that long without a snapshot (1 or 2
-  throws in 100 still differed). With 35, none did in 390.
+  first moments of play could wind up longer or shorter on the thrower's screen than on the
+  server. 35 ticks covers a round trip plus a 300 ms spike, when a client hears nothing new.
 - The queue depth for the wind-up is sampled once per `advance()`, so a catch-up after a wait
   counts once, as what is left, and can't make the wind-up longer.
 
