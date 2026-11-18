@@ -320,8 +320,9 @@ jump back, a run back, or nothing) 0 to 11 ticks after they first see it.
 late, so a run seen as a dodge can turn out a hit. It happened 0 to 4 times in 390 throws over
 other runs after the fix, and 1 to 5 before.
 
-The remaining corrections of your own player come from the drain between points (one tick of
-walking in the ready freeze).
+Your own player is still corrected now and then, though every input keeps its tick. I did not
+break these down. The likely sources: the drain between points moves walking in the ready
+freeze by one tick, and a ball that a spike kept off your screen shows its hit and knock-back late.
 
 The dodge windows (`tools/dodge-latency.js`, the latest reaction that still escapes, back wall /
 spawn / near net / spawn to spawn; local play 267 / 233 / 83 / 200 ms):
