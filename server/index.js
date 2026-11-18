@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, createState, step, PH_WON } from '../shared/sim.js';
-import { COURT, createDodge, stepDodge, windupFor, DP_READY, DP_POINT, DP_OVER } from '../shared/dodge.js';
+import { COURT, createDodge, stepDodge, windupFor, DP_READY, DP_POINT, DP_OVER, dodgeViewFor } from '../shared/dodge.js';
 import { buildRunner, createRunnerState, stepRunner, newSeed } from '../shared/runner.js';
 import { buildRunner3d, createRunner3dState, stepRunner3d } from '../shared/runner3d.js';
 
@@ -282,7 +282,10 @@ class Room {
       // that many of its inputs equal to the held keys when it replays, as the server will)
       this.broadcast({ t: 's', ack: this.ack, inp: this.cur, d: this.debt, q: this.q.map(q => q.length), qm, st: this.S });
     } else if (this.S.tick % 2 === 0) {
-      this.broadcast({ t: 's', ack: this.ack, inp: this.cur, st: this.S });
+      // Dodgeball: each player's snapshot withholds the other player's aim while they hold the
+      // button, so a modified client cannot read the angle before the release.
+      if (this.L.dodge) this.clients.forEach(c => send(c.ws, { t: 's', ack: this.ack, ...dodgeViewFor(this.S, this.cur, c.char) }));
+      else this.broadcast({ t: 's', ack: this.ack, inp: this.cur, st: this.S });
     }
   }
 }

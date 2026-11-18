@@ -518,11 +518,9 @@ A competitive mode on one single-screen court, Sol on the left and Luna on the r
     counter and their held action bit (the server broadcasts one state to both clients), so a
     modified client could read the angle. `dodgeViewFor(S, inp, viewer)` in `shared/dodge.js`
     builds the per-viewer copy with both withheld (checked: nothing leaks while aiming, and the
-    throw launches on the defender's screen on the same tick as on the server). To use it,
-    `Room.tick` in `server/index.js` sends dodge snapshots per client instead of broadcasting:
-    `this.clients.forEach(c => send(c.ws, { t: 's', ack: this.ack, ...dodgeViewFor(this.S, this.cur, c.char) }))`.
-    Not wired in here because `server/index.js` was being rewritten for the runner sync at the
-    time. Cost: two serializations per snapshot instead of one in dodge rooms.
+    throw launches on the defender's screen on the same tick as on the server). `Room.tick` in
+    `server/index.js` sends dodge snapshots per client through it, at the cost of a second encode
+    per snapshot in dodge rooms.
   - Server: protocol pings every 500 ms per socket (median of 8); in dodge rooms it drains a
     standing input queue after a hit and in the ready freeze (`Room.dodgeQueue`).
     `DODGE_WINDUP=off` turns the wind-up off; `DODGE_LOG=1` logs round trips, queue and wind-up.
