@@ -168,28 +168,29 @@ SCRIPTS[27] = () => [
   rideWithCrate(27, 21, 28.0, 1),                    // the crate west onto E2
   goto(SOL, 12, 21), waitPlat(33, 27, false),        // Sol lets go: E1 sinks
   // 3. green twice: Sol's gate, then W2
-  press(LUNA, 32, 20), goto(SOL, 6, 21), goto(LUNA, 30, 20),
-  grab(SOL, 1, 21), board(SOL, 3, 22), press(LUNA, 32, 20), waitPlat(3, 22), grab(SOL, 1, 15), goto(SOL, 6, 15), rideWithCrate(27, 21, 28.0, 1),
+  press(LUNA, 32, 20), ...walk(SOL, 10, 6, 21), goto(LUNA, 31, 20), goto(LUNA, 30, 20),   // low rooms: walk, never hop
+  ...walk(SOL, 4, 2, 21), grab(SOL, 1, 21), goto(SOL, 3, 21), goto(SOL, 4, 21), press(LUNA, 32, 20), waitPlat(3, 22),
+  goto(SOL, 3, 15), goto(SOL, 2, 15), grab(SOL, 1, 15), ...walk(SOL, 3, 5, 15), goto(SOL, 6, 15), rideWithCrate(27, 21, 28.0, 1),
   // 4. Sol holds white: E2 takes Luna and the crate to floor 15; she hops west over it and pushes it to E3
   press(SOL, 7, 15), waitPlat(27, 21),
   grab(LUNA, 25, 14), pushTo(LUNA, 0, 36, { y: 14, tol: 0.5 }), goto(LUNA, 34, 14),
   goto(SOL, 8, 15), waitPlat(27, 21, false),
   // 5. purple twice: Sol's gate, then W3
-  press(LUNA, 31, 14), goto(SOL, 12, 15), goto(LUNA, 33, 14),
-  board(SOL, 13, 16), press(LUNA, 31, 14), waitPlat(13, 16), goto(SOL, 11, 9), goto(LUNA, 34, 14),
+  press(LUNA, 31, 14), ...walk(SOL, 10, 12, 15), goto(LUNA, 33, 14), waitPlat(13, 16, false),
+  goto(SOL, 13, 15), goto(SOL, 14, 15), press(LUNA, 31, 14), waitPlat(13, 16), goto(SOL, 11, 9), goto(LUNA, 34, 14),
   // 6. Sol locks E3 up with the orange lever and steps onto W4
   flip(SOL, 2, 9, true), board(SOL, 3, 10), waitPlat(33, 15),
   // 7. the crate down the chute onto the green socket: W4 takes Sol up
   seek(LUNA, 'crate down the chute onto the socket', (S, p) => S.b[0].gr && cx(S.b[0]) > 37 && Math.abs(bot(S.b[0]) - 14) < 0.3 && p.gr && bot(p) < 9.5,
     { key: 'chute27b', h: (S, p) => Math.abs(cx(S.b[0]) - 38) * 13 + Math.abs(bot(S.b[0]) - 14) * 3 + Math.abs(cx(p) - cx(S.b[0])) * 3 }),
-  waitPlat(3, 10),
+  press(LUNA, 31, 8, K), waitPlat(3, 10),             // Luna holds yellow on floor 9: Sol's floor gate on the top sinks
   // 8. Sol holds white at the top: E4 brings Luna up
-  grab(SOL, 1, 3, K), board(LUNA, 27, 9, 4), press(SOL, 25, 3, K), waitPlat(27, 9),
-  grab(LUNA, 38, 3, K), goto(LUNA, 23, 3, K),            // back west over E4 while Sol still holds it up
+  goto(SOL, 2, 3, K), grab(SOL, 1, 3, K), ...walk(SOL, 3, 13, 3, K), board(LUNA, 27, 9, 4), ...walk(SOL, 15, 25, 3, K), press(SOL, 25, 3, K), waitPlat(27, 9),
+  ...walk(LUNA, 30, 36, 3, K), grab(LUNA, 38, 3, K), ...walk(LUNA, 36, 24, 3, K), goto(LUNA, 23, 3, K),   // back west over E4 while Sol still holds it up
   // 9. the core: Luna holds pink, Sol rides D1 down, gem, onto the counterweight D2
-  board(SOL, 17, 4, 3), press(LUNA, 8, 3, K), waitPlat(17, 4),
-  grab(SOL, 23, 11, K), board(SOL, 21, 16), goto(LUNA, 10, 3, K), grab(SOL, 19, 19, K), waitPlat(21, 28, false),   // step off the sinking counterweight into a niche
+  ...walk(SOL, 23, 19, 3, K), goto(SOL, 18, 3, K), ...walk(LUNA, 21, 15, 3, K), press(LUNA, 13, 3, K), waitPlat(17, 4),
+  grab(SOL, 23, 11, K), board(SOL, 21, 16), goto(LUNA, 15, 3, K), grab(SOL, 19, 19, K), waitPlat(21, 28, false),   // step off the sinking counterweight into a niche
   press(SOL, 20, 27, K), waitPlat(21, 28),
   goto(LUNA, 18, 15, K), grab(LUNA, 20, 8, K), board(LUNA, 21, 16),
-  door(SOL, K), grab(LUNA, 19, 22, K), door(LUNA, K), win(),
+  goto(SOL, 19, 27, K), door(SOL, K), grab(LUNA, 19, 22, K), door(LUNA, K), win(),
 ];
