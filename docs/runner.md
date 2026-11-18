@@ -44,19 +44,30 @@ the lobby (other versus modes can add a button there), plus the runner pause and
 
 ## Difficulty ramp
 
-Scroll speed depends on distance scrolled (players run at 3.25 px/tick = 8.1 tiles/s):
+Scroll speed depends on distance scrolled (players run at 3.25 px/tick = 8.1 tiles/s). The table
+in `shared/runner.js` is `SPEED = [[0, 1.35], [100, 1.67], [350, 1.95], [700, 2.35], [1100, 2.6],
+[1600, 2.75]]` (tiles, px/tick):
 
 | Time | Distance | Scroll | Difficulty |
 | --- | --- | --- | --- |
-| 0:00 | 0 tiles | 1.00 px/tick (2.5 tiles/s) | 0.00 |
-| 0:30 | 87 | 1.32 | 0.08 |
-| 1:00 | 198 | 1.62 | 0.18 |
-| 1:30 | 330 | 1.91 | 0.30 |
-| 2:00 | 481 | 2.10 | 0.44 |
-| 2:30 | 645 | 2.29 | 0.59 |
-| 3:00 | 823 | 2.43 | 0.75 |
-| 4:00 | 1204 | 2.63 | 1.00 |
+| 0:00 | 0 tiles | 1.35 px/tick (3.4 tiles/s) | 0.00 |
+| 0:15 | 54 | 1.52 | 0.05 |
+| 0:30 | 114 | 1.69 | 0.10 |
+| 0:45 | 179 | 1.76 | 0.16 |
+| 1:00 | 246 | 1.83 | 0.22 |
+| 1:30 | 390 | 2.00 | 0.35 |
+| 2:00 | 546 | 2.17 | 0.50 |
+| 2:30 | 716 | 2.36 | 0.65 |
+| 3:00 | 897 | 2.47 | 0.82 |
+| 4:00 | 1284 | 2.66 | 1.00 |
 | 5:00+ | 1600+ | 2.75 (85% of run speed, the cap) | 1.00 |
+
+The opening was changed in Nov 2026 after play: the old start, `[0, 1.0], [120, 1.45]`, took
+about 1:30 to get going (1.00 at 0:00, 1.32 at 0:30, 1.62 at 1:00, 1.91 at 1:30). Now the first
+100 tiles (about 30 s) climb from 1.35 to 1.67, then the climb slows to the old curve's
+steepness and meets it at 350 tiles (1.95). From 350 tiles on the table is unchanged; the course
+gets there about 10 s sooner than before. Difficulty and the obstacle introductions are still by
+distance, so they also come a little sooner in time (thorns 3 s sooner, shards 12 s sooner).
 
 Difficulty (0 to 1 over the first 1100 tiles) sets the safety margin kept below the measured jump
 limits: 4 tiles at the start, 1 tile at full difficulty, never less. It also lengthens features
@@ -67,6 +78,10 @@ Obstacles are introduced one at a time, each first appearing as an easy "intro" 
 gaps and steps (start), thorns (30 tiles), shade pool (60), twin pools (90), chain plank (120),
 ember slabs (170), eclipse stones (220), star well (280), swinging lantern (340), falling
 shards (400). After that each chunk is a weighted random pick (never the same kind twice in a row).
+The scroll reaches those distances at 0:09 (thorns), 0:17, 0:24, 0:31, 0:43, 0:54, 1:07, 1:20 and
+1:32 (shards); with the old, slower opening it was 0:11, 0:22, 0:31, 0:40, 0:53, 1:05, 1:19, 1:32
+and 1:44. Each new kind still arrives 7 to 13 s after the one before, so the intro distances were
+left as they were.
 
 ## Obstacles and the four fairness rules
 
@@ -133,41 +148,45 @@ the last one is stretched until the player stands. With a deadline, it drops any
 not reach the goal in time even at full running speed (not on swing chunks, where riding the
 lantern can be faster than running).
 
-### Latest result (Nov 2026)
+### Latest result (Nov 2026, after the faster opening)
 
 ```
-Runner check: 50 seeds, 5652 chunks to 1700 tiles (full difficulty at 1100), top scroll speed 2.75 px/tick, 314 s in. 308 s.
-  whole course    100/100 runs (Sol and Luna, every seed) reached 1700 tiles; smallest lead over the left edge at a chunk start: 6.5 tiles (median of per-run minimums 17.5)
-  single chunk    11304/11304 cleared alive from a 12-tile lead; 186 of them slower than the scroll (repaid by later chunks)
+Runner check: 50 seeds, 5652 chunks to 1700 tiles (full difficulty at 1100), top scroll speed 2.75 px/tick, 302 s in. 586 s.
+  whole course    100/100 runs (Sol and Luna, every seed) reached 1700 tiles; smallest lead over the left edge at a chunk start: 10.8 tiles (median of per-run minimums 17.3)
+  single chunk    11304/11304 cleared alive from a 12-tile lead; 180 of them slower than the scroll (repaid by later chunks)
   second arrival  17832/17832 cleared
   parked partner  4950/4950 cleared
-  spare time at a chunk's exit vs. the scroll (ticks): min -58, median 23
+  spare time at a chunk's exit vs. the scroll (ticks): min -58, median 22
   time lost by second arrivals vs the deadline (ticks, + = later): median -24, 95% 24, max 132
   kind      chunks  sol avg  luna avg  max |sol-luna|  min spare  top speed
-  start         50    6.25s     6.25s           0 t      133 t  1.10
+  start         50    6.25s     6.25s           0 t       50 t  1.43
   gaps         858    2.10s     2.10s           0 t        0 t  2.75
   steps        465    2.06s     2.06s           2 t      -58 t  2.75
   flat         218    2.36s     2.36s           0 t        0 t  2.75
-  thorns       509    1.91s     1.91s           0 t      -14 t  2.75
+  thorns       509    1.90s     1.90s           0 t      -14 t  2.75
   shade        365    1.35s     1.35s           0 t       -3 t  2.75
   twin         496    1.97s     1.95s          39 t        0 t  2.75
   plank        649    2.40s     2.40s           2 t       -5 t  2.75
   crumble      494    2.17s     2.17s           0 t      -40 t  2.75
   eclipse      439    2.67s     2.66s          50 t       -6 t  2.75
   vent         317    1.99s     1.99s           0 t      -29 t  2.75
-  swing        445    1.80s     1.80s           0 t      -48 t  2.75
+  swing        445    1.80s     1.80s           1 t      -47 t  2.75
   shards       347    2.73s     2.73s           2 t        1 t  2.75
   rest after a run  plank  1650 objects, slowest 99 ticks after the last touch, over bound: 0
   rest after a run  slab   1350 objects, slowest 95 ticks after the last touch, over bound: 0
   rest after a run  shard  646 objects, slowest 223 ticks after the last touch, over bound: 0, 892 scrolled away first
-  rest after abuse  plank  1334 objects, slowest 99 ticks after the last touch, over bound: 0, 113 scrolled away first
-  rest after abuse  slab   805 objects, slowest 95 ticks after the last touch, over bound: 0, 11 scrolled away first
-  rest after abuse  shard  405 objects, slowest 251 ticks after the last touch, over bound: 0, 1602 scrolled away first
+  rest after abuse  plank  1331 objects, slowest 99 ticks after the last touch, over bound: 0, 112 scrolled away first
+  rest after abuse  slab   803 objects, slowest 95 ticks after the last touch, over bound: 0, 11 scrolled away first
+  rest after abuse  shard  406 objects, slowest 251 ticks after the last touch, over bound: 0, 1604 scrolled away first
 
 PASS
 ```
 
-That run took 308 s with 6 jobs on a shared, busy 16-core Linux machine (434 s on a busier run).
+That run took 586 s with 6 jobs on a shared 16-core Linux machine with a load average of about 35
+(308 s on a quieter run with the old table). Compared with the old table, the start chunk's
+spare time fell from 133 to 50 ticks (it now scrolls at up to 1.43 px/tick instead of 1.10) and
+the smallest lead at a chunk start rose from 6.5 to 10.8 tiles; everything else is the same or
+within a tick or two.
 
 ### The 1700-tile failures, and why they were the bot
 

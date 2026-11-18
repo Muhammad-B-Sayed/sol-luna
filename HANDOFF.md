@@ -485,7 +485,11 @@ PORT=3217 node server/index.js & PORT=3217 OUT=docs/img/runner node tools/runner
 - `sim.js` changes for it are additive: `tileAt` checks `L.tileFn`, and five internals are exported.
 - The checker runs seeds in parallel worker threads (`JOBS`, default CPU count minus one, at most 8)
   and splits each seed's chunk tests into `PARTS` units (default 3). The 50-seed, 1700-tile proof
-  is clean and took 308 s on 6 jobs on a busy machine.
+  is clean (586 s on 6 jobs on a heavily loaded machine, Nov 2026).
+- Scroll speed (Nov 2026): `SPEED` in `shared/runner.js` starts at 1.35 px/tick and reaches 1.67
+  at 100 tiles (about 30 s), then climbs slowly to meet the old curve at 350 tiles (1.95); the
+  rest is unchanged. The old opening (1.0 rising to 1.45 at 120 tiles) felt like waiting. The
+  time table is in `docs/runner.md`.
 
 The 3D runner is section 11.
 

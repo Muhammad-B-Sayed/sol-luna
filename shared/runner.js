@@ -30,7 +30,8 @@ const EPS = 0.001;
 export const AHEAD = 10 * TS;
 
 // Scroll speed (px/tick) by distance scrolled, in tiles. The players run 3.25 px/tick.
-const SPEED = [[0, 1.0], [120, 1.45], [350, 1.95], [700, 2.35], [1100, 2.6], [1600, 2.75]];
+// A quicker first 100 tiles (about 30 s), then the slower climb, joining the old curve at 350.
+const SPEED = [[0, 1.35], [100, 1.67], [350, 1.95], [700, 2.35], [1100, 2.6], [1600, 2.75]];
 export function speedAt(cam) {
   const t = cam / TS;
   for (let k = 1; k < SPEED.length; k++) {
