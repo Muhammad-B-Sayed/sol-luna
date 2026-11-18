@@ -504,7 +504,7 @@ def tidelock():
     paint(C, 1, 7, 4, 7)                              # the hole the NW steps climb through
     put(C, 13, 7, 'X' * 16)                           # the N pit; stones rise from row 8
     paint(C, 17, 8, 18, 8); paint(C, 23, 8, 24, 8)
-    paint(C, 31, 7, 32, 7)                            # the drop into the NE basin
+    paint(C, 29, 7, 30, 7)                            # the drop into the NE basin, right after the pit
     paint(C, 7, 1, 10, 3, '#'); paint(C, 34, 1, 38, 3, '#')   # roof rocks over floor that is only walked
     paint(C, 31, 1, 33, 1, '#')                       # and a one-row lip past the pit (keeps the band's air <= 120)
     # NW basin (rows 8-13, floor 14): the tide lift arrives at the east, steps climb at the west
@@ -543,8 +543,8 @@ def tidelock():
     # start hall (rows 24-27, floor 28)
     paint(C, 15, 26, 15, 27); paint(C, 19, 24, 38, 27); paint(C, 16, 24, 18, 27)
     put(C, 31, 27, '/'); paint(C, 32, 27, 38, 27, '#')   # the hall's east end is a step higher
-    put(C, 23, 27, '3'); put(C, 25, 27, 'a'); put(C, 27, 27, 'b')
-    for x, y in ((1, 2), (29, 8), (38, 15), (22, 11), (11, 22)):
+    put(C, 34, 26, '3'); put(C, 25, 27, 'a'); put(C, 22, 27, 'b')
+    for x, y in ((1, 2), (33, 8), (38, 15), (22, 11), (11, 22)):
         put(C, x, y, 's')
     for x, y in ((6, 15), (8, 8), (37, 6), (19, 11), (38, 24)):
         put(C, x, y, 'm')

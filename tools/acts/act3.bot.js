@@ -129,18 +129,19 @@ const ring = (R, O, latch, g) => [
   opFlip(O, 21, true, A0), opFlip(O, 24, true, B1),   // W: both on
   goto(R, 10.5, 20, K),                               // through the W lock onto the tide lift
   ...g.hub, press(O, 23, 16, K), waitPlat(10, 21),    // the operator raises the tide
-  goto(R, 7, 13, K), ...g.nw, goto(R, 3, 10, K), goto(R, 1, 7, K), ...g.top, goto(R, 11, 6, K),   // up the NW basin to the top band
+  goto(R, 7, 13, K), ...g.nw, goto(R, 3, 10, K), goto(R, 1, 7, K), ...g.top, ...walk(R, 5, 11, 6, K),   // up the NW basin to the top band
   opFlip(O, 21, false, A0),                           // N: the stepping stones rise
-  goto(R, 30, 6, K), ...g.ne, goto(R, 33, 13, K),     // across the pit, down into the NE basin
+  ...g.ne, goto(R, 31, 13, K),                        // across the pit and down the hole into the NE basin
   opFlip(O, 21, true, A0), opFlip(O, 24, false, B1),  // E
-  goto(R, 37.5, 13, K), ...g.se, goto(R, 37, 20, K),  // through the E lock, down into the SE
-  opFlip(O, 21, false, A0),                           // S again: the south bridge
+  goto(R, 37, 13, K), ...g.se, goto(R, 37, 20, K),  // through the E lock, down into the SE
+  opFlip(O, 21, false, A0), inHub(goto(O, 22, 16, K)),   // S again: the south bridge; off the orange plate
   goto(R, 28, 19, K), ...latch, goto(R, 28, 27),      // latch hall, latch, chute
 ];
 SCRIPTS[26] = () => [
-  goto(LUNA, 17, 27), press(SOL, 23, 27), waitPlat(16, 28), goto(LUNA, 20, 16),   // Sol sends Luna up
+  mv(LUNA, 17.5), mv(SOL, 34.5), press(SOL, 34, 26), waitPlat(16, 28), goto(LUNA, 20, 16),   // Sol sends Luna up
+  goto(SOL, 30, 27), waitPlat(16, 28, false),
   ring(SOL, LUNA, [flip(SOL, 22, 19, true), goto(SOL, 27, 22, K)], {
-    sw: [grab(SOL, 11, 22, K)], up: [], top: [grab(SOL, 1, 2, K)], hub: [inHub(grab(LUNA, 19, 11, K))], nw: [], ne: [grab(SOL, 29, 8, K)], se: [grab(SOL, 38, 15, K)] }),
+    sw: [grab(SOL, 11, 22, K)], up: [], top: [grab(SOL, 1, 2, K)], hub: [inHub(grab(LUNA, 19, 11, K))], nw: [], ne: [goto(SOL, 31, 13, K), grab(SOL, 33, 8, K)], se: [grab(SOL, 38, 15, K)] }),
   goto(SOL, 17, 27), inHub(press(LUNA, 19, 16, K)), waitPlat(16, 28), goto(SOL, 20, 16, K),   // Luna lifts Sol up
   mv(LUNA, 17.5), waitPlat(16, 28, false), goto(LUNA, 21, 27),                  // and drops down the shaft
   ring(LUNA, SOL, [goto(LUNA, 27, 22, K), flip(LUNA, 22, 22, true)], {
