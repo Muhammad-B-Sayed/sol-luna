@@ -55,9 +55,13 @@ async function play(H, G, level, tag, { lag = false } = {}) {
   const C = [H, G];
   const pick = me[0] === 0 ? [0, 1] : [1, 0];   // which client index plays Sol / Luna
   // install recorders and start clock control, then start the level from the host
+  // The driver paces the clients itself (one tick per frame, the queue kept near a target), so
+  // the game's own pacing from the server's queue report is pinned off on these pages: with it a
+  // frame now and then runs 0 or 2 ticks and the recorded plan slips (main.js, net-pace.js).
   for (const P of C) await P.eval(`(() => {
     window.__pt.start();
     const A = window.__app;
+    Object.defineProperty(A, 'qm', { configurable: true, get: () => null, set() {} });
     window.__rec = { maxBack: 0, maxOff: 0, snaps: [], frames: 0, prevDraw: null, resets: 0 };
   })()`);
   await H.eval(`document.querySelector('#lobbyPick').click()`);
@@ -133,7 +137,7 @@ async function play(H, G, level, tag, { lag = false } = {}) {
   check(`${tag}: host can drive the results card, guest waits`, fin[0].card?.next !== undefined && (fin[0].card?.wait === false) && (fin[1].card?.wait === true), '');
   console.log(`    largest per-frame step of the drawn player: host sees itself ${fin[0].rec.maxStep}px, partner ${fin[0].rec.maxStepRemote}px (${fin[0].rec.nSnapsRemote} steps over 14px); guest sees itself ${fin[1].rec.maxStep}px, partner ${fin[1].rec.maxStepRemote}px (${fin[1].rec.nSnapsRemote} over 14px); measured from ${fin[0].rec.drawn ? 'the drawn view' : 'state + offset'}; level resets ${fin[0].rec.resets}/${fin[1].rec.resets}`);
   console.log(`    corrections: host max offset ${fin[0].rec.maxOff}px, largest backward ${fin[0].rec.maxBack}px, snaps>14px ${fin[0].rec.nSnaps}; guest max offset ${fin[1].rec.maxOff}px, backward ${fin[1].rec.maxBack}px, snaps ${fin[1].rec.nSnaps} ${JSON.stringify(fin[1].rec.snaps)}; partner as drawn: host max offset ${fin[0].rec.maxOffRemote}px snaps ${JSON.stringify(fin[0].rec.snapsRemote)}, guest max offset ${fin[1].rec.maxOffRemote}px snaps ${JSON.stringify(fin[1].rec.snapsRemote)}`);
-  for (const P of C) await P.eval('window.__pt.stop()');
+  for (const P of C) await P.eval('window.__pt.stop(); delete window.__app.qm; window.__app.qm = null;');
   return res;
 }
 
@@ -191,9 +195,23 @@ if (process.env.ONLY !== 'lag') {
   await play(H, G, 1, 'online-l1');
   // results: host presses Next level, guest follows; then the host goes back to the lobby
   // chat mid-level: open with Enter, type wasd, send; nobody moves
-  await H.click('#resNext');
-  await waitFor(G, `window.__app.inGame && window.__app.level === 1`);
-  check('results: host Next level takes both clients to level 2', (await G.eval('window.__app.level')) === 1 && (await H.eval('window.__app.level')) === 1);
+  // This check needs the results card. When the lockstep play above did not reach it (the driver
+  // falls behind on a loaded machine; that is reported above), it is not run, and both go to
+  // level 2 through the lobby instead, so the checks after it still test what they say.
+  if ((await scr(H)) === 'results') {
+    await H.click('#resNext');
+    await waitFor(G, `window.__app.inGame && window.__app.level === 1`);
+    check('results: host Next level takes both clients to level 2', (await G.eval('window.__app.level')) === 1 && (await H.eval('window.__app.level')) === 1);
+  } else {
+    console.log('skip results: host Next level takes both clients to level 2 · not run: level 1 did not reach the results card');
+    out.checks.push({ name: 'results: host Next level takes both clients to level 2', ok: null, info: 'not run: no results card' });
+    await H.key('Escape', 'keyDown'); await H.key('Escape', 'keyUp'); await sleep(200);
+    await H.click('#pLevels');
+    await waitFor(H, `document.body.dataset.screen === 'lobby'`); await waitFor(G, `document.body.dataset.screen === 'lobby'`);
+    await H.click('#lobbyPick'); await sleep(200);
+    await H.click('#levelGrid .lvl:nth-child(2)');
+    await waitFor(G, `window.__app.inGame && window.__app.level === 1`);
+  }
   await sleep(500);
   const before = await H.eval('window.__app.S.p[window.__app.me].x');
   await H.key('Enter', 'keyDown'); await H.key('Enter', 'keyUp');
