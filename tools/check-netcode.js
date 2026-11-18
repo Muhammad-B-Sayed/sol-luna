@@ -369,6 +369,7 @@ await loadSync();
 const loopLag = { max: 0, over50: 0 };
 { let t = performance.now(); setInterval(() => { const n = performance.now(), d = n - t - 5; t = n; if (d > loopLag.max) loopLag.max = d; if (d > 50) { loopLag.over50++; if (env.LAGLOG) console.log(`loop lag ${Math.round(d)} ms at ${Math.round(n)}`); } }, 5).unref(); }
 const srv = await startServer(PORT);
+const tStart = performance.now();
 const results = [];
 const jobs = [];
 for (const kind of KINDS) for (const seed of SEEDS) jobs.push([kind, seed]);
@@ -388,6 +389,12 @@ await Promise.all(Array.from({ length: Math.min(CONC, jobs.length) }, async () =
     }
   }
 }));
+// the server process's CPU time (it runs one room per match, CONC at a time)
+try {
+  const f = fs.readFileSync(`/proc/${srv.pid}/stat`, 'utf8').split(') ')[1].split(' ');
+  const cpu = (+f[11] + +f[12]) / 100, wall = (performance.now() - tStart) / 1000;
+  console.log(`server CPU: ${cpu.toFixed(1)} s in ${wall.toFixed(0)} s (${(100 * cpu / wall).toFixed(1)}% of one core) for ${jobs.length} matches, ${Math.min(CONC, jobs.length)} at a time`);
+} catch {}
 srv.kill();
 if (V || env.NETLOG) for (const l of serverLog) console.log(l);
 console.log(`harness event loop: longest delay ${Math.round(loopLag.max)} ms, ${loopLag.over50} over 50 ms`);

@@ -137,7 +137,10 @@ class Room {
     this.nst = [0, 1].map(() => ({ held: 0, skipped: 0, late: 0, released: 0, trimmed: 0 }));   // NET_LOG=1 prints these
   }
   netLog() {
-    if (process.env.NET_LOG && this.runner && this.nst) console.log(`net ${this.code} ${this.mode} tick ${this.S?.tick}: waited for late inputs ${this.waits} times (longest ${this.waitMax} ticks); ` + this.nst.map((n, i) => `${['Sol', 'Luna'][i]} held ${n.held} skipped ${n.skipped} late ${n.late} released ${n.released} trimmed ${n.trimmed}`).join(' | '));
+    if (!process.env.NET_LOG || !this.runner || !this.nst) return;
+    const u = process.cpuUsage(), secs = process.uptime();
+    console.log(`net cpu: the server used ${((u.user + u.system) / 1e4 / secs).toFixed(1)}% of one core over ${secs.toFixed(0)} s, ${rooms.size} rooms`);
+    console.log(`net ${this.code} ${this.mode} tick ${this.S?.tick}: waited for late inputs ${this.waits} times (longest ${this.waitMax} ticks); ` + this.nst.map((n, i) => `${['Sol', 'Luna'][i]} held ${n.held} skipped ${n.skipped} late ${n.late} released ${n.released} trimmed ${n.trimmed}`).join(' | '));
   }
   get runner() { return this.mode === 'runner' || this.mode === 'runner3d'; }
   // Runner rooms (docs/netcode.md). Each client predicts its own player from its own inputs, one
