@@ -40,7 +40,7 @@ export class Character {
     this.P = P;
     this.dis = { uDissolve: { value: 0 }, uDissolveCol: { value: col(0xffffff) }, uDark: { value: 0 } };
     const mk = (opts) => patchWorld(new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.0, ...opts }),
-      { rim: P.rim, dissolve: this.dis, key: 'ch' + who });
+      { rim: P.rim, dissolve: this.dis, key: 'ch' + who, creep: false });
     this.mats = {
       skin: mk({ vertexColors: true, emissive: P.emissive, emissiveIntensity: 1 }),
       limb: mk({ color: P.limb, emissive: P.emissive, emissiveIntensity: 0.4 }),
@@ -156,7 +156,7 @@ export class Character {
   buildCrescent(head, M) {
     const P = this.P;
     const hoodMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, side: THREE.DoubleSide,
-      emissive: 0x081638, emissiveIntensity: 1 }), { rim: col(0x6fb8ff).multiplyScalar(0.28), dissolve: this.dis, key: 'hood' });
+      emissive: 0x081638, emissiveIntensity: 1 }), { rim: col(0x6fb8ff).multiplyScalar(0.28), dissolve: this.dis, key: 'hood', creep: false });
     this.mats.hood = hoodMat;
     const open = 1.7;   // opening at the face (-z), radians
     const hoodG = new THREE.SphereGeometry(0.405, 24, 14, Math.PI * 1.5 + open / 2, Math.PI * 2 - open, 0, Math.PI * 0.68);

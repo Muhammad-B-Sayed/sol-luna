@@ -15,10 +15,11 @@ import { OutputPass } from '../../vendor/three/addons/postprocessing/OutputPass.
 import { U, PAL, col, GlowField, textures, LIQ3 } from './kit.js';
 import { Character } from './characters.js';
 import { makeSky, makeAbyss, makeMotes, makeMist, WorldDeco } from './world.js';
-import { DuskZone, makeVignette, BEND } from './zone.js';
+import { DuskZone, makeVignette, BEND, LeadVeil } from './zone.js';
 import { FX } from './fx.js';
 import { viewFor, disposeView, VIEWS } from './views.js';
 import * as R3 from '/shared/runner3d.js';
+import { SimBoxes } from './boxes.js';
 
 export { VIEWS };
 
@@ -70,10 +71,14 @@ class CamRig {
       target.x += Math.sin(time * 0.3) * 0 + (this.i ? 1 : -1) * 4.5 * e; target.y += 4 * e; target.z += 5 * e;
     }
     if (!alive) { target.y += 1.2; look.set(p.x, Math.max(p.y, this.y - 4), -p.z); }
-    if (this.override) {   // debug close-ups (demo ?cam=dx,dy,dz): offset from the player in sim units, looking at them
-      const [dx, dy, dz] = this.override;
-      target.set(p.x + dx, p.y + dy, -(p.z + dz)); look.set(p.x, p.y + 0.75, -p.z);
+    if (this.override) {   // debug close-ups (demo ?cam=dx,dy,dz[,ahead[,side]]): offset from the player in sim units, looking at them (or ahead of them)
+      const [dx, dy, dz, ah = 0, sd = 0] = this.override;
+      target.set(p.x + dx, p.y + dy, -(p.z + dz)); look.set(p.x + sd, p.y + 0.75, -(p.z + ah));
       this.pos = null;
+    }
+    if (this.fixed) {   // debug: a fixed camera { eye: [x,y,z], at: [x,y,z] } in sim units
+      const { eye: e, at: a } = this.fixed;
+      target.set(e[0], e[1], -e[2]); look.set(a[0], a[1], -a[2]); this.pos = null;
     }
     if (this.pos == null) { this.pos = target.clone(); this.look.copy(look); }
     const kp = Math.min(1, dt * (alive ? 9 : 2)), kl = Math.min(1, dt * (alive ? 10 : 3));
@@ -119,6 +124,8 @@ export class Runner3DRenderer {
     this.mist = [makeMist(0), makeMist(1)]; for (const m of this.mist) scene.add(m);
     this.deco = new WorldDeco(scene);
     this.zoneFx = new DuskZone(); scene.add(this.zoneFx.group);
+    this.veils = [new LeadVeil(), new LeadVeil()]; for (const v of this.veils) scene.add(v.mesh);
+    this.held = [0, 0];
     this.glow = new GlowField(700); scene.add(this.glow.mesh);
     this.fx = new FX(scene);
     this.objRoot = new THREE.Group(); scene.add(this.objRoot);
@@ -140,6 +147,12 @@ export class Runner3DRenderer {
     this.ft = []; this.ftAcc = 0;
     this.buildComposer();
     this.resize(this.cssW, this.cssH, window.devicePixelRatio || 1);
+  }
+
+  // debug overlay of the sim's collision shapes (demo ?boxes=1)
+  setDebugBoxes(on) {
+    if (on && !this.boxes) { this.boxes = new SimBoxes(); this.scene.add(this.boxes.lines); }
+    else if (!on && this.boxes) { this.scene.remove(this.boxes.lines); this.boxes.dispose(); this.boxes = null; }
   }
 
   setQuality(q) {
@@ -317,6 +330,7 @@ export class Runner3DRenderer {
     const ctx = { time, dt, S, L, fx: this.fx, glow: this.glow, idx: 0, alpha, tick: S.tick - 1 + alpha };
     this.S = S; this.tick = ctx.tick;
     this.streamViews(S, zMin, zMax, ctx);
+    if (this.boxes) this.boxes.update(L, S, ctx.tick);
 
     // characters
     const over = S.phase === (R3.R3_OVER ?? 2);
@@ -356,7 +370,20 @@ export class Runner3DRenderer {
     // lanterns and keystones glow
     for (const l of this.deco.lanterns) this.glow.add(l.x, l.y, l.z, 1.5, l.c, 0.32 + 0.05 * Math.sin(time * 4 + l.z));
 
+    // lead cap: a veil across the run-up where the cap holds a player (see LEAD_MAX in the sim)
+    for (let i = 0; i < 2; i++) {
+      const p = S.p[i], q = view.p[i], lead = q.z - view.zone;
+      const o = p.alive && p.gr && p.gref >= 0 ? L.objs[p.gref] : null;
+      const on = o && o.skin === 1 && lead > R3.LEAD_MAX - 3;
+      const k = on ? Math.min(1, (lead - (R3.LEAD_MAX - 3)) / 2.5) : 0;
+      // held: at the cap and not moving forward
+      const h = on && lead > R3.LEAD_MAX - 0.2 && p.vz < 0.02 ? 1 : 0;
+      this.held[i] += (h - this.held[i]) * Math.min(1, realDt * 8);
+      this.veils[i].set(o ? o.x0 : 0, o ? o.x1 : 1, o ? o.y : 0, view.zone + R3.LEAD_MAX + 0.95, k, this.held[i]);
+    }
+
     // dusk zone
+    U.uCreep.value = 4 + S.v * 40;
     const zy = this.courseY(view.zone + 2);
     this.zoneFx.update(view.zone, zy);
     if (dt > 0) {

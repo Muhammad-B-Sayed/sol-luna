@@ -45,12 +45,15 @@ const SHOTS = [
   ['chars-run', 'seed=7&z=20&cam=2.6,1.0,1.2', 60],
   ['chars-luna', 'seed=7&count=1&me=1&cam=-0.9,1.1,3.4', 30],
 ];
-// one shot per obstacle kind (the demo starts a few units before the first object of that kind)
-for (const k of ['ramp', 'tilt', 'crumble', 'eclipse', 'sweeper', 'pendulum', 'carousel', 'gate', 'orb']) SHOTS.push(['kind-' + k, `seed=7&kind=${k}`, 60]);
+// two shots per section kind: its easy intro and a hard instance past z 900 (the demo starts on its run-up)
+const SEC_KINDS = ['gaps', 'steps', 'thorns', 'pools', 'tilt', 'stones', 'crumble', 'sweeper', 'eclipse', 'beams', 'pendulum', 'carousel', 'gate', 'orbs'];
+for (const k of SEC_KINDS) SHOTS.push(['kind-' + k, `seed=7&kind=${k}`, 70], ['hard-' + k, `seed=7&kind=${k}&after=900`, 70]);
 const want = process.argv.slice(2);
 const list = want.length ? SHOTS.filter(s => want.some(w => s[0].includes(w))) : SHOTS;
 const extraKinds = (process.env.KINDS || '').split(',').filter(Boolean);
 for (const k of extraKinds) list.push(['kind-' + k, `seed=7&kind=${k}`, 60]);
+// ad hoc shots: ADHOC='[["name", "demo query", steps, "optional page-side setup"], ...]'
+if (process.env.ADHOC) for (const s of JSON.parse(process.env.ADHOC)) list.push(s);
 
 let server = null;
 if (process.env.NOSERVER !== '1') {
