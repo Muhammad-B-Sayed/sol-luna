@@ -56,7 +56,8 @@ class OldBase {
   }
   cover() {}
   // what this client shows: the state (alive, phase, winner) and the drawn positions
-  draw() { const alpha = Math.min(1, this.acc / DT); return { S: this.S, v: this.view(alpha), T: this.S.tick - 1 + alpha, alpha, results: this.results }; }
+  draw() { const alpha = Math.min(1, this.acc / DT); return { S: this.S, v: this.view(alpha), T: this.S.tick - 1 + alpha, alpha, results: this.results, me: this.rawMe(alpha) }; }
+  rawMe(alpha) { const a = this.prev.p[this.me], b = this.S.p[this.me], o = {}; for (const k in a) o[k] = a[k] + (b[k] - a[k]) * alpha; return o; }
 }
 
 export class Old2D extends OldBase {

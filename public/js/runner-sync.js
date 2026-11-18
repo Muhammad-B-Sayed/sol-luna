@@ -25,7 +25,7 @@ import * as R3 from '../../shared/runner3d.js';
 const DT = 1000 / 60;
 const MAX_TICKS_PER_FRAME = 8;
 const MAX_BACKLOG = 1000;        // ms of missed ticks a client catches up after a stall
-const EXTRAP = 10;               // ticks the other player may be drawn past the newest snapshot
+const EXTRAP = 8;                // ticks the other player may be drawn past the newest snapshot
 const KEEP = 150;                // snapshots kept (2.5 s at 60 Hz)
 const CLOCK_WIN = 3000;          // ms of snapshot arrivals used to place the playback clock
 
@@ -37,7 +37,7 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const SIM2D = {
   mode: 'runner', OVER: R2.RPH_OVER, PLAY: R2.RPH_PLAY,
   step: R2.stepRunner, clone: R2.cloneRunner,
-  dims: ['x', 'y'], fwd: 'x', teleport: 40, offMax: 64, cover() {},
+  dims: ['x', 'y'], fwd: 'x', teleport: 40, offMax: 64, ease: 4, creep: 0.2, cover() {},
   scroll: (S) => S.cam,
   // a rider on a swing or a plank, drawn on it where it is now (Sn at tn) rather than then (Sp at tp)
   ride(L, Sn, tn, Sp, tp, p) {
@@ -58,7 +58,7 @@ export const SIM2D = {
 export const SIM3D = {
   mode: 'runner3d', OVER: R3.R3_OVER, PLAY: R3.R3_PLAY,
   step: R3.stepRunner3d, clone: R3.cloneRunner3d,
-  dims: ['x', 'y', 'z'], fwd: 'z', teleport: 2, offMax: 3,
+  dims: ['x', 'y', 'z'], fwd: 'z', teleport: 2, offMax: 3, ease: 0.16, creep: 0.008,
   cover(L, S) { while (L.objs.length < S.hi) R3.ensureGenerated(L, L.z + 1); },
   scroll: (S) => S.zone,
   ride(L, Sn, tn, Sp, tp, p) {
@@ -160,7 +160,15 @@ export class RunnerSync {
       if (k === f && d > 0 && vf > 0) d = Math.min(d, 0.6 * vf);
       v[k] -= d; if (Math.abs(v[k]) < 0.002) v[k] = 0;
     }
-    for (const k of this.sim.dims) { this.roff[k] *= 0.8; if (Math.abs(this.roff[k]) < 0.002) this.roff[k] = 0; }
+    // the other player's offset: a fifth per tick, at most sim.ease; drawn ahead along the run
+    // (an extension past late snapshots overshot) it is paid off no faster than they run, so
+    // they slow down on screen instead of stepping back (sim.creep when they stand still)
+    const r = this.roff, q = this.snaps[this.snaps.length - 1].st.p[1 - this.me], vq = Math.max(0, q['v' + f] || 0);
+    for (const k of this.sim.dims) {
+      let d = clamp(r[k] * 0.2, -this.sim.ease, this.sim.ease);
+      if (k === f && d > 0) d = Math.min(d, Math.max(0.6 * vq, this.sim.creep));
+      r[k] -= d; if (Math.abs(r[k]) < 0.002) r[k] = 0;
+    }
   }
 
   onSnapshot(m, now) {
@@ -175,6 +183,10 @@ export class RunnerSync {
     if (this.snaps.length > KEEP) this.snaps.shift();
     this.arr.push([now, now - st.tick * DT]);
     while (this.arr.length && this.arr[0][0] < now - CLOCK_WIN) this.arr.shift();
+    // the server ended the match: keep running your prediction until the end is shown here
+    // (the server's players stand still from now on; replaying would only pull yours back)
+    if (st.phase === sim.OVER && this.P.phase !== sim.OVER && this.overSeen) return;
+    if (st.phase === sim.OVER) this.overSeen = true;
     // replay your unapplied inputs on the server's state
     const before = this.pos(this.P.p[me]), scroll0 = sim.scroll(this.P);
     this.remoteBits = m.inp[o] | 0;
@@ -248,7 +260,9 @@ export class RunnerSync {
       const k = Math.min(Math.ceil(T), this.P.tick);
       const q = this.predR.get(k);
       if (!q || k <= a.tick || !a.st.p[o].alive) return A;
-      B = q; tb = k;
+      B = Object.assign({}, q); tb = k;
+      const f = this.sim.fwd;
+      if (B[f] < A[f]) B[f] = A[f];   // an extension never moves them back along the run
     }
     const f = Math.min(1, (T - a.tick) / (tb - a.tick));
     const out = {};
@@ -281,6 +295,8 @@ export class RunnerSync {
     // you
     let mine;
     const pk = P.pk && P.pk[me];
+    const raw = {};   // your predicted position between ticks, without the correction offset
+    for (const k of sim.dims) raw[k] = this.prev.p[k] + (P.p[me][k] - this.prev.p[k]) * alpha;
     if (shownDead[me]) mine = this.pos(A.p[me]);
     else if (pk && A.p[me].alive) {
       mine = this.pos(pk);
@@ -303,7 +319,11 @@ export class RunnerSync {
       this.lastRide = { key, v: ride };
       for (const k of sim.dims) theirs[k] += ride[k] + this.roff[k];
       if (A.p[o].alive || T < A.dead[o]) sim.front(sa.st.p[o], theirs, scroll);
+      // drawn past the newest snapshot: never back along the run
+      const f = sim.fwd;
+      if (T > A.tick && this.lastTheirs && theirs[f] < this.lastTheirs[f]) theirs[f] = this.lastTheirs[f];
     }
+    this.lastTheirs = theirs;
     this.lastR = { T };
     // once the end is shown, everyone stays where they were drawn
     if (over) {
@@ -329,6 +349,7 @@ export class RunnerSync {
     delete S.pk; delete S.pred;
     const v = { p: me === 0 ? [mine, theirs] : [theirs, mine] };
     v[sim === SIM2D ? 'cam' : 'zone'] = scroll;
-    return { S, v, T, alpha, results: false };
+    const dbg = { ex: +(T - A.tick).toFixed(1), roff: +Math.hypot(...sim.dims.map(k => this.roff[k])).toFixed(2), ride: this.lastRide?.key ?? -1 };
+    return { S, v, T, alpha, results: false, me: raw, dbg };
   }
 }

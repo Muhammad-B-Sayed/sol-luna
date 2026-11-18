@@ -21,7 +21,8 @@
 //                 not (or not yet, at the moment shown). "undo" = it was shown and then taken back.
 //   remote        the other player as drawn, each frame, against the server's own path at the
 //                 tick the drawing stands for: largest step per frame (per 1/60 s), largest step
-//                 beyond what the server's motion explains ("pop"), backward steps while the
+//                 beyond the server's own step over that frame ("pop", per 1/60 s), backward steps
+//                 (per 1/60 s) while the
 //                 server's player moved forward, share of frames more than OFF off the path, and
 //                 how far behind your own present the other player is drawn.
 //   local         corrections of your own player at each snapshot (largest, largest backward
@@ -218,10 +219,10 @@ function makeMeter(kind) {
     M.shown.over = over;
     M.frameLog.push({ t: now, tick: S.tick, dead: [!S.p[0].alive, !S.p[1].alive], over, results: !!d.results });
     // the other player as drawn
-    if (S.p[o].alive && S.phase === 1 && d.v) M.samples.push({ t: now, T: d.T, pos: vec(kind, d.v.p[o]), now: S.tick - 1 + (d.alpha ?? 1) });
+    if (S.p[o].alive && S.phase === 1 && d.v) M.samples.push({ t: now, T: d.T, pos: vec(kind, d.v.p[o]), now: S.tick - 1 + (d.alpha ?? 1), dbg: d.dbg });
     else M.samples.push(null);
     // your own player as drawn, while holding forward
-    if (S.p[me].alive && S.phase === 1 && d.v) M.local.push({ pos: vec(kind, d.v.p[me]), fwd: !!(bits & SIM[kind].F) });
+    if (S.p[me].alive && S.phase === 1 && d.v) M.local.push({ pos: vec(kind, d.v.p[me]), raw: vec(kind, d.me || S.p[me]), fwd: !!(bits & SIM[kind].F) });
     else M.local.push(null);
   };
   // the server's position of player i at a (fractional) tick, from the snapshots
@@ -266,8 +267,12 @@ function makeMeter(kind) {
       const dd = sub(b.pos, a.pos), ds = sub(sb, sa);
       const w = Math.max(1, (b.t - a.t) / DT);
       maxStep = Math.max(maxStep, len(dd) / w);
-      maxPop = Math.max(maxPop, len(sub(dd, ds)));
-      if (dd[fi] < -th.back && ds[fi] >= -0.01) { back++; maxBack = Math.max(maxBack, -dd[fi]); }
+      // a pop: the drawing moved further in one frame than the server's player did (a missed
+      // jump while extending is an error of place, counted in "off", not a jolt)
+      const pop = Math.max(0, len(dd) - len(ds)) / w;
+      maxPop = Math.max(maxPop, pop);
+      if (V && pop > th.pop) console.log(`  pop ${pop.toFixed(2)} at T ${b.T.toFixed(1)} dd ${dd.map(v => v.toFixed(2))} ds ${ds.map(v => v.toFixed(2))} ${JSON.stringify(b.dbg)} prev ${JSON.stringify(a.dbg)}`);
+      if (dd[fi] / w < -th.back && ds[fi] >= -0.01) { back++; maxBack = Math.max(maxBack, -dd[fi]); if (V) console.log(`  back ${(-dd[fi]).toFixed(2)} at T ${b.T.toFixed(1)} ds ${ds[fi].toFixed(2)} ${JSON.stringify(b.dbg)}`); }
       const e = len(sub(b.pos, sb));
       maxOff = Math.max(maxOff, e);
       if (e > th.off) off++;
@@ -278,8 +283,9 @@ function makeMeter(kind) {
     for (let k = 1; k < M.local.length; k++) {
       const a = M.local[k - 1], b = M.local[k];
       if (!a || !b || !b.fwd) continue;
-      const d = b.pos[fi] - a.pos[fi];
-      if (d < -th.back) { lback++; lmax = Math.max(lmax, -d); }
+      // backward on screen, more than the predicted player itself moved back (a tilt, a wall)
+      const d = b.pos[fi] - a.pos[fi], dr = b.raw[fi] - a.raw[fi];
+      if (d < -th.back && d - dr < -th.back) { lback++; lmax = Math.max(lmax, -d); if (V) console.log(`  own back ${(-d).toFixed(2)} (prediction ${dr.toFixed(2)}) at frame ${k}`); }
     }
     const cmax = corr.reduce((m, c) => Math.max(m, c[0]), 0), cback = corr.reduce((m, c) => Math.max(m, c[1]), 0);
     const cn = corr.filter(c => c[0] > th.corrBack).length;

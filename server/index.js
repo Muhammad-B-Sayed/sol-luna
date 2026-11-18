@@ -96,7 +96,7 @@ function rttOf(ws) {
 
 const RUN_HOLD = 30;     // runner: ticks the last keys are held while no input arrives (0.5 s)
 const RUN_QMAX = 120;    // runner: longest input queue kept
-const RUN_WAIT = 18;     // runner: ticks the room waits for a late player's inputs before it holds their keys (300 ms)
+const RUN_WAIT = 24;     // runner: ticks the room waits for a late player's inputs before it holds their keys (400 ms)
 
 class Room {
   constructor(code) {
