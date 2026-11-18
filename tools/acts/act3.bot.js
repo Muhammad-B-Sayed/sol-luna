@@ -160,7 +160,7 @@ SCRIPTS[27] = () => [
   press(SOL, 4, 27), pushTo(LUNA, 0, 32, { y: 26, tol: 0.25 }), press(LUNA, 30, 26),   // she shoves the crate through her gate
   goto(SOL, 12, 27), board(SOL, 13, 28),
   // 1. Luna: crate onto E1, hop over it in the open shaft, purple for Sol's W1
-  rideWithCrate(33, 27, 35.5, -1), grab(LUNA, 37, 26), grab(LUNA, 38, 22),   // a climb of 4 up the open shaft press(LUNA, 38, 26), waitPlat(13, 28),
+  rideWithCrate(33, 27, 35.5, -1), grab(LUNA, 37, 26), grab(LUNA, 38, 22), press(LUNA, 38, 26), waitPlat(13, 28),   // the moon gem: a climb of 4 up the open shaft
   goto(SOL, 12, 21),
   rideWithCrate(33, 27, 34.0, 1),
   // 2. Sol holds orange: E1 takes Luna and the crate up to floor 21
