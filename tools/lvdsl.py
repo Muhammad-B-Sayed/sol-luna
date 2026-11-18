@@ -13,6 +13,8 @@ Map legend:
   = - _ + ~ :  moving-platform cells of group 0-5 (movement given with mv())
 """
 
+import sys
+
 PLATE_CH, LEVER_CH, PLAT_CH = '123456', '!@$%^&', '=-_+~:'
 
 W, H = 38, 28
@@ -28,6 +30,7 @@ class Lv:
     def set(self, x, y, c):
         assert 1 <= x <= W and 1 <= y <= H, (self.name, x, y, c)
         self.g[y][x] = c
+        return self
 
     def r(self, x0, y0, x1, y1, c='#'):
         for y in range(min(y0, y1), max(y0, y1) + 1):
@@ -84,17 +87,24 @@ class Lv:
 
     def gate(self, x, y0, y1, ch, g, slot_top):
         """Vertical gate cells at column x rows y0..y1 that rise into a slot whose top is slot_top.
-        Builds a stone pillar around the slot."""
+        Builds a stone pillar around the slot.
+        This sets the whole group's movement to (0, -h). If the group already moves some other way
+        (an earlier mv() or a gate of another height), that is overwritten and a warning is printed."""
         h = y1 - y0 + 1
         self.r(x - 1, slot_top - 1, x + 1, y0 - 1)
         self.clear(x, slot_top, x, y0 - 1)
         self.r(x, y0, x, y1, ch)
         assert y0 - slot_top >= h, 'slot too short'
+        if g in self.moves and self.moves[g] != [0, -h]:
+            print(f'warning: {self.name}: gate({x}, {y0}, {y1}) sets group {g} to move (0, {-h}), '
+                  f'overwriting its earlier move {tuple(self.moves[g])}', file=sys.stderr)
         self.mv(g, 0, -h)
         return self
 
     def plat(self, x, y, w, h, dx, dy, g, inv=False):
-        """Explicit platform (lets one group drive several platforms in different directions)."""
+        """Explicit platform (lets one group drive several platforms in different directions).
+        It only records the platform: it does not clear the map cells it covers or the cells it moves
+        through, and stone left there stays solid. Clear them yourself (floorgate() clears its slot)."""
         self.plats.append([x, y, w, h, dx, dy, g, 1 if inv else 0])
         return self
 
