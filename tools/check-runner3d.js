@@ -23,12 +23,13 @@
 //  6. Equal difficulty: clear times per kind for Sol and for Luna.
 //  7. Determinism: both course routes played together twice give the same state; the same run
 //     with the state sent through JSON.parse(JSON.stringify(S)) every 250 ticks matches too.
-//  8. Flow: a never-stop bot (runner3d-bot.js FLOW: forward progress may stay under a quarter of
-//     run speed for at most 15 ticks in a row; it may slow, steer, strafe and jump) arrives at the
+//  8. Flow: a never-stop bot (runner3d-bot.js FLOW: it owes a quarter of run speed in forward
+//     progress every tick and may never be more than 15 ticks of standing still behind on that;
+//     it may slow, steer, strafe and jump, but never wait) arrives at the
 //     section's start at full speed and must clear it. Kinds without a clock are tried once (at
 //     T_k); clocked kinds (sweeper, pendulum, carousel, gate, orbs) are tried at 12 arrival times,
 //     T_k - 0, 25, ..., 275 ticks, so every phase of their clocks is met. A failed try is retried
-//     with longer stops allowed (30, 60, 120, 240 ticks) to report how long a wait it needed.
+//     with a bigger debt allowed (30, 60, 120, 240 ticks) to report how long a wait it needed.
 //     FLOW_ONLY=1 runs only this test.
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
@@ -351,11 +352,11 @@ const pct = (arr, q) => { if (!arr.length) return 0; const a = [...arr].sort((x,
 
 function flowReport(t) {
   const F = t.flow, n = Object.values(F.kinds).reduce((a, v) => a + v.n, 0), bad = F.fails.length;
-  console.log(`  flow            ${n - bad}/${n} tries cleared by the never-stop bot (forward progress under ${(FLOW.min * 60).toFixed(1)} u/s for at most ${FLOW.stop} ticks in a row), arriving at full speed`);
-  console.log('    kind      tries  forced waits  longest slow stretch  waits needed (ticks)');
+  console.log(`  flow            ${n - bad}/${n} tries cleared by the never-stop bot (owes ${(FLOW.min * 60).toFixed(1)} u/s of forward progress, at most ${FLOW.stop} ticks of standing still behind), arriving at full speed`);
+  console.log('    kind      tries  forced waits  largest debt  waits needed (ticks)');
   for (const [k, v] of Object.entries(F.kinds)) {
     const w = {}; for (const x of v.waits) w[x] = (w[x] || 0) + 1;
-    console.log(`    ${k.padEnd(9)} ${String(v.n).padStart(5)}  ${String(v.fail).padStart(5)} (${(100 * v.fail / Math.max(1, v.n)).toFixed(1).padStart(4)}%)  ${String(v.slow).padStart(8)} t            ${Object.entries(w).map(([a, b]) => `<=${a}: ${b}`).join(', ')}`);
+    console.log(`    ${k.padEnd(9)} ${String(v.n).padStart(5)}  ${String(v.fail).padStart(5)} (${(100 * v.fail / Math.max(1, v.n)).toFixed(1).padStart(4)}%)  ${v.slow.toFixed(1).padStart(8)} t    ${Object.entries(w).map(([a, b]) => `<=${a}: ${b}`).join(', ')}`);
   }
   for (const f of F.fails.slice(0, 30)) console.log('  FAIL', JSON.stringify(f));
   return !bad;
