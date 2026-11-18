@@ -4,8 +4,12 @@
 //
 //   PORT=3420 node server/index.js &                       (LAG_MS=80 to test prediction)
 //   PORT=3420 CHROME=/usr/bin/chromium node tools/runner3d-browser.js
-// Env: OUT (screenshots, default docs/img/runner3d), ONLY=local|online, DEBUG3D=1 (force the
-// 2D debug view), GL_FLAGS (extra Chromium flags, e.g. "--use-angle=swiftshader --enable-unsafe-swiftshader"
+// The play checks run on the 2D debug view (?r3ddebug=1): headless WebGL here is SwiftShader, and
+// the real renderer draws about 0.5 frames a second at 1280x720, far too slow to play a match.
+// A second pass then loads the real renderer, checks it draws without errors and takes the
+// screenshots; that pass fast-forwards the sim inside the page where it needs the match to move.
+// Env: OUT (screenshots, default docs/img/runner3d), ONLY=local|online|webgl, RENDER=debug|webgl|both
+// (default both: debug play checks, then the WebGL pass), GL_FLAGS (extra Chromium flags, e.g. "--use-angle=swiftshader --enable-unsafe-swiftshader"
 // where headless has no WebGL; here the default headless build has WebGL2 and those flags drop it
 // to about 12 fps), MAX_VIEW_BACK (units the drawn local player may move backwards, default 0.05).
 import { spawn, execSync } from 'node:child_process';
@@ -20,7 +24,9 @@ const CHROME = process.env.CHROME || (process.platform === 'darwin'
 const BASE = `http://localhost:${process.env.PORT || 3420}`;
 const OUT = process.env.OUT || 'docs/img/runner3d';
 const ONLY = process.env.ONLY || '';
-const QS = process.env.DEBUG3D ? '?r3ddebug=1' : '';
+const RENDER = process.env.RENDER || 'both';
+const QS = RENDER === 'webgl' ? '' : '?r3ddebug=1';
+const FP = RENDER === 'both' ? 'debug-' : '';   // screenshot prefix of the play checks when the WebGL pass also runs
 const MAX_VIEW_BACK = +(process.env.MAX_VIEW_BACK || 0.05);
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -126,11 +132,11 @@ const ST = `(() => { const r = window.__runner3d, S = r.S; if (!S) return null; 
 const screen = (P) => P.eval('document.body.dataset.screen');
 
 try {
-  if (ONLY !== 'online') {
+  if (ONLY !== 'online' && ONLY !== 'webgl') {
     // ---------------------------------------------------------------- local split screen
     console.log('Local split screen');
     const A = await page(BASE + '/' + QS);
-    await A.shot('menu');
+    await A.shot(FP + 'menu');
     await A.click('#btnRunner3d');
     await A.waitFor('window.__runner3d.rendKind !== ""', 8000);
     await sleep(300);
@@ -140,7 +146,7 @@ try {
     const vis = await A.eval(`(() => ({ g2: getComputedStyle(document.querySelector('#game')).display, g3: getComputedStyle(document.querySelector('#game3d')).display, hud: getComputedStyle(document.querySelector('#r3Hud')).display }))()`);
     check('local: 3D canvas and HUD shown, 2D canvas hidden', vis.g2 === 'none' && vis.g3 === 'block' && vis.hud === 'block', JSON.stringify(vis));
     await sleep(1200);
-    await A.shot('local-countdown');
+    await A.shot(FP + 'local-countdown');
     await A.waitFor('window.__runner3d.S.phase === 1', 5000);
     const s0 = await A.eval(ST);
     // Sol forward (arrow up) only
@@ -173,7 +179,7 @@ try {
           && (otherPressed || b.p[other].jumpN === a.p[other].jumpN), `jumps ${a.p[who].jumpN}→${b.p[who].jumpN}, y ${b.p[who].y}`);
       }
     }
-    await A.shot('local-split');
+    await A.shot(FP + 'local-split');
     // pause and resume
     await A.tap('Escape');
     await sleep(200);
@@ -193,11 +199,11 @@ try {
     const s5 = await A.eval(ST);
     check('local: the player who stands still loses, the other wins', gotOver && s5.win === 0 && s5.p[0].alive && !s5.p[1].alive, JSON.stringify({ win: s5.win, alive: s5.p.map(p => p.alive) }));
     await sleep(500);
-    await A.shot('local-over');
+    await A.shot(FP + 'local-over');
     await A.waitFor(`document.body.dataset.screen === 'r3Results'`, 5000);
     const res = await A.eval(`[...document.querySelectorAll('#r3Title, #r3Sol, #r3Luna')].map(e => e.textContent.trim()).join(' | ')`);
     check('local: results card shows the winner, times and distances', /Sol wins/.test(res) && /\d+ m/.test(res) && /dusk/.test(res), res);
-    await A.shot('results');
+    await A.shot(FP + 'results');
     const seedBefore = s5.seed;
     await A.tap('Enter');   // the rematch button has focus
     await sleep(500);
@@ -216,7 +222,7 @@ try {
     const t0 = await A.eval('window.__app.S?.tick'); await A.hold(['ArrowRight'], 400);
     const co = await A.eval(`({ t: window.__app.S?.tick, name: window.__app.L?.name, x: window.__app.S?.p[0].x, screen: document.body.dataset.screen })`);
     check('co-op: level 1 runs on the 2D canvas', co.screen === 'game' && co.t > t0 && !!co.name, JSON.stringify(co));
-    await A.shot('coop-after-runner3d');
+    await A.shot(FP + 'coop-after-runner3d');
     await A.tap('Escape'); await sleep(200); await A.click('#pQuit'); await sleep(300);
     await A.click('#btnDodge'); await sleep(600);
     const dg = await A.eval(`({ dodge: !!window.__app.L?.dodge, t: window.__app.S?.tick })`);
@@ -232,7 +238,7 @@ try {
     await A.close();
   }
 
-  if (ONLY !== 'local') {
+  if (ONLY !== 'local' && ONLY !== 'webgl') {
     // ---------------------------------------------------------------- online room
     console.log('Online room (two clients)');
     const H = await page(BASE + '/' + QS);
@@ -244,7 +250,7 @@ try {
     const G = await page(BASE + '/' + code + QS);
     await H.waitFor(`!document.querySelector('#lobbyRunner3d').disabled`, 8000);
     check('online: Runner 3D button disabled alone, enabled with two players', before && !(await H.eval(`document.querySelector('#lobbyRunner3d').disabled`)));
-    await H.shot('lobby');
+    await H.shot(FP + 'lobby');
     await G.click('#lobbyRunner3d');
     await H.waitFor('window.__runner3d.active && window.__runner3d.rendKind !== ""', 8000);
     await G.waitFor('window.__runner3d.active && window.__runner3d.rendKind !== ""', 8000);
@@ -258,7 +264,7 @@ try {
     const OZ = (i) => `window.__runner3d.S.p[${i}].z`;
     await H.key('ArrowUp', 'keyDown'); await G.key('KeyW', 'keyDown');
     await H.waitFor(`${OZ(hostMe)} > 6 && ${OZ(guestMe)} > 6`, 8000, 30);
-    await H.shot('online-host'); await G.shot('online-guest');
+    await H.shot(FP + 'online-host'); await G.shot(FP + 'online-guest');
     await H.key('ArrowUp', 'keyUp'); await G.key('KeyW', 'keyUp');
     for (let k = 0; k < 2; k++) {
       await H.waitFor('window.__runner3d.S.p.every(p => p.gr)', 5000, 30);
@@ -280,7 +286,7 @@ try {
     const w = await Promise.all([H, G].map(P => P.eval(`[...document.querySelectorAll('#r3Title, #r3Sol, #r3Luna')].map(e => e.textContent.trim()).join(' | ')`)));
     const hostName = hostMe ? 'Luna' : 'Sol';
     check('online: both see the same result, the host wins', w[0] && w[0] === w[1] && w[0].startsWith(hostName + ' wins'), JSON.stringify(w));
-    await G.shot('online-results');
+    await G.shot(FP + 'online-results');
     const corr = await Promise.all([H, G].map(P => P.eval('window.__runner3d.corr')));
     console.log('    prediction corrections of the own player (units): ' + corr.map((c, i) => `${i ? 'guest' : 'host'} max ${c.max.toFixed(4)} back ${c.back.toFixed(4)} drawn-back ${c.viewBack.toFixed(4)} over ${c.n} snapshots`).join('; '));
     check('online: the local player is never drawn moving backwards', corr.every(c => c.viewBack <= MAX_VIEW_BACK), corr.map(c => c.viewBack.toFixed(4)).join(', '));
@@ -297,6 +303,62 @@ try {
     check('online: back to the room lobby on both', back.every(b => b.screen === 'lobby' && !b.active && !b.r3d), JSON.stringify(back));
     const rerr = await Promise.all([H, G].map(P => P.eval('window.__runner3d.renderErrors')));
     check('online: no renderer errors', rerr.every(e => !e.length), rerr.flat().slice(0, 2).join(' | '));
+    await H.close(); await G.close();
+  }
+
+  if (RENDER !== 'debug' && (!ONLY || ONLY === 'webgl')) {
+    // ---------------------------------------------------------------- the real renderer
+    console.log('WebGL renderer (screenshots)');
+    const slow = 60000;
+    const FF = (n, bits, toEnd = false) => `(async () => {   // fast-forward the local sim n ticks
+      const R = await import('/shared/runner3d.js'); const r = window.__runner3d, f = (${bits});
+      for (let k = 0; k < ${n} && (${toEnd} || r.S.phase !== 2); k++) { r.S = R.stepRunner3d(r.L, r.S, f(r.S.tick)); }
+      r.prev = r.capture(r.S); r.heard = null; return r.S.phase;
+    })()`;
+    const A = await page(BASE + '/');
+    await A.shot('menu');
+    await A.click('#btnRunner3d');
+    const loaded = await A.waitFor('window.__runner3d.rendKind !== ""', slow);
+    const kind = await A.eval('window.__runner3d.rendKind');
+    check('webgl: the title button loads the real renderer', loaded && kind === 'webgl', kind);
+    // Sol runs and hops, Luna runs a little slower
+    await A.eval(FF(330, `(t) => [8 | (t % 70 === 0 ? 4 : 0), t % 3 ? 8 : 0]`));
+    const f0 = await A.eval('window.__runner3d.frames || 0');
+    await A.waitFor(`(window.__runner3d.frames || 0) > ${f0 + 2}`, slow);
+    await A.shot('local-split');
+    // Sol keeps running, Luna stops: Luna is caught
+    await A.eval(FF(4000, `(t) => [8 | (t % 70 === 0 ? 4 : 0), 0]`));
+    await A.eval(FF(68, `() => [0, 0]`, true));   // the results card opens 70 ticks after the end
+    const res = await A.waitFor(`document.body.dataset.screen === 'r3Results'`, slow);
+    await A.waitFor(`(window.__runner3d.frames || 0) > ${(await A.eval('window.__runner3d.frames || 0')) + 1}`, slow);
+    check('webgl: the results card shows over the 3D view', res);
+    await A.shot('results');
+    const le = await A.eval('window.__runner3d.renderErrors');
+    check('webgl: local split screen draws without renderer errors', !le.length, le.slice(0, 2).join(' | '));
+    await A.click('#r3Menu');
+    await A.close();
+
+    const H = await page(BASE + '/');
+    await H.click('#btnHost');
+    let code = '';
+    for (let k = 0; k < 60 && !code; k++) { await sleep(250); code = await H.eval(`window.__app.room?.code || ''`); }
+    const G = await page(BASE + '/' + code);
+    await H.waitFor(`!document.querySelector('#lobbyRunner3d').disabled`, slow);
+    await H.shot('lobby');
+    // build the renderers before the match: at this machine's frame rate it would take the whole match
+    await Promise.all([H, G].map(P => P.eval('window.__runner3d.loadRenderer().then(() => window.__runner3d.rendKind)')));
+    await H.click('#lobbyRunner3d');
+    const ok = await H.waitFor('window.__runner3d.rendKind === "webgl"', slow) && await G.waitFor('window.__runner3d.rendKind === "webgl"', slow);
+    check('webgl: both online clients load the real renderer', ok);
+    // here the clients draw far slower than the server's real-time 60 Hz, so the match can't be
+    // played in this pass: the shots show both views during the server's countdown
+    await Promise.all([H, G].map(P => P.waitFor('(window.__runner3d.frames || 0) > 1', slow)));
+    await H.shot('online-host'); await G.shot('online-guest');
+    console.log('    online shots taken at server tick', await H.eval('window.__runner3d.S?.tick'), '(the countdown is 180)');
+    const oe = await Promise.all([H, G].map(P => P.eval('window.__runner3d.renderErrors')));
+    check('webgl: online views draw without renderer errors', oe.every(e => !e.length), oe.flat().slice(0, 2).join(' | '));
+    await H.eval(`window.__runner3d.net.send({ t: 'menu' })`);
+    await sleep(500);
     await H.close(); await G.close();
   }
 } catch (e) {

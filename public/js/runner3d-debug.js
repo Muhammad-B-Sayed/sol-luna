@@ -63,7 +63,7 @@ export class Runner3DDebugRenderer {
     for (let i = S.lo; i < S.hi; i++) {
       const o = L.objs[i];
       if (o.z1 < zmin || o.z0 > cz + FAR) continue;
-      items.push({ d: Math.max(o.z0, zmin), o });
+      items.push({ d: o.z1, o });   // far edge: a floor is drawn before whoever stands on it
     }
     S.p.forEach((p, i) => { if (view.p[i].z > zmin) items.push({ d: view.p[i].z, p: i }); });
     items.sort((a, b) => b.d - a.d);

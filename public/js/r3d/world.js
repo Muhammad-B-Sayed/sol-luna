@@ -26,10 +26,10 @@ export function makeSky() {
         float side = d.x;
         vec3 warm = vec3(0.75, 0.28, 0.2), cool = vec3(0.12, 0.25, 0.55);
         float band = exp(-max(e, 0.0) * 5.5);
-        c += warm * band * smoothstep(0.1, -0.9, side) * 0.55;
+        c += warm * band * smoothstep(0.1, -0.9, side) * 0.38;
         c += cool * band * smoothstep(-0.1, 0.9, side) * 0.45;
         float sd = max(dot(d, uSun), 0.0), md = max(dot(d, uMoon), 0.0);
-        c += vec3(1.0, 0.5, 0.2) * pow(sd, 12.0) * 0.9 + vec3(1.0, 0.65, 0.3) * pow(sd, 200.0) * 1.5;
+        c += vec3(1.0, 0.45, 0.2) * pow(sd, 16.0) * 0.45 + vec3(1.0, 0.6, 0.3) * pow(sd, 220.0) * 1.1;
         c += vec3(0.35, 0.6, 1.0) * pow(md, 30.0) * 0.35;
         // soft drifting cloud bands
         vec2 q = vec2(atan(d.x, -d.z) * 3.0, e * 9.0);

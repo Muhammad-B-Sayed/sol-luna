@@ -55,7 +55,7 @@ class CamRig {
   }
   // p: interpolated sim position of the followed player; vz sim forward speed; split: tall viewport
   update(p, vz, alive, dt, split, aspect, intro, time) {
-    const back = split ? 6.6 : 6.0, up = split ? 3.7 : 3.2, ahead = split ? 6.5 : 5.5;
+    const back = split ? 6.0 : 5.3, up = split ? 3.3 : 2.75, ahead = split ? 6.5 : 5.5;
     const kAhead = Math.max(0, vz / MAX_SPEED);
     if (alive || this.pos == null) {
       const ty = p.y;
@@ -90,7 +90,7 @@ export class Runner3DRenderer {
     this.canvas = canvas;
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', alpha: false });
     r.toneMapping = THREE.ACESFilmicToneMapping;
-    r.toneMappingExposure = 1.05;
+    r.toneMappingExposure = 0.95;
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.autoClear = false;
     this.quality = 'auto'; this.level = 'high';
@@ -101,8 +101,8 @@ export class Runner3DRenderer {
     textures();
 
     // lights: soft key from behind the camera, warm (sun) and cool (moon) rims from ahead
-    scene.add(new THREE.HemisphereLight(0x8f7cc8, 0x1a1028, 1.1));
-    const key = new THREE.DirectionalLight(0xe8dcff, 1.5); key.position.set(-3, 10, 8); scene.add(key); scene.add(key.target);
+    scene.add(new THREE.HemisphereLight(0x6a58a8, 0x140c22, 0.75));
+    const key = new THREE.DirectionalLight(0xd8c8ff, 1.15); key.position.set(-3, 10, 8); scene.add(key); scene.add(key.target);
     const warm = new THREE.DirectionalLight(0xffa860, 1.6); warm.position.set(-8, 3, -6); scene.add(warm);
     const cool = new THREE.DirectionalLight(0x70b8ff, 1.5); cool.position.set(8, 4, -6); scene.add(cool);
     this.dirLights = [key, warm, cool];
@@ -144,7 +144,7 @@ export class Runner3DRenderer {
     const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 });
     this.composer = new EffectComposer(this.renderer, rt);
     this.composer.addPass(new ViewportsPass(this));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.45, 0.82);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.4, 0.86);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
   }
@@ -173,14 +173,27 @@ export class Runner3DRenderer {
   }
 
   // the highest surface top under (x, z) at or below feet height + margin; null over a gap
-  groundAt(x, z, yMax) {
+  groundAt(x, z, yMax, who = -1, S = this.S, tick = S ? S.tick : 0) {
     const L = this.L; let best = null;
-    for (const [i, v] of this.views) {
+    const inside = (x0, x1, z0, z1) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
+    for (const [i] of this.views) {
       const o = L.objs[i];
-      if (o.k === 'spikes') continue;
-      const b = v.ground;
-      const x0 = b ? b.x0 : o.x0, x1 = b ? b.x1 : o.x1, z0 = b ? b.z0 : o.z0, z1 = b ? b.z1 : o.z1, y = b ? b.y : o.y;
-      if (x < x0 || x > x1 || z < z0 || z > z1 || y > yMax) continue;
+      if (o.x1 < x || o.x0 > x || o.z1 < z || o.z0 > z) continue;
+      let y = null;
+      switch (o.k) {
+        case 'floor': case 'pool': y = o.y; break;
+        case 'ramp': y = o.y + (o.y1 - o.y) * Math.max(0, Math.min(1, (z - o.z0) / (o.z1 - o.z0))); break;
+        case 'eclipse': if (who < 0 || (o.el ? 1 : 0) === who) y = o.y; break;
+        case 'tilt': { const st = S && S.o[i]; y = o.y + (st ? st.a * (x - o.cx) + st.b * (z - o.cz) : 0); break; }
+        case 'crumble': { const st = S && S.o[i]; if (!st || st.st <= 1) y = o.y; break; }
+        case 'carousel': {
+          let pose = null; try { pose = R3.objPose(L, S, i, tick); } catch {}
+          if (pose) for (const s of pose.stones) if (inside(s.x - o.s, s.x + o.s, s.z - o.s, s.z + o.s)) y = o.y;
+          break;
+        }
+        default: break;
+      }
+      if (y == null || y > yMax) continue;
       if (best == null || y > best.y) best = { y, o };
     }
     return best;
@@ -257,7 +270,7 @@ export class Runner3DRenderer {
       fx.burst(x, y + 0.6, z, fx.cols.thorn, 50, 4.5, 0.9, 0.11, 6);
       fx.burst(x, y + 0.6, z, i ? fx.cols.moon : fx.cols.sun, 24, 3, 0.8, 0.08, 4);
     } else if (why === 'pool') {
-      const g = this.groundAt(q.x, q.z, q.y + 0.6);
+      const g = this.groundAt(q.x, q.z, q.y + 0.6, i, S);
       const el = g && g.o.k === 'pool' ? (g.o.el ?? 0) : (i ? 0 : 1);
       info.poolCol = col((LIQ3[el] || LIQ3[0]).glow);
       fx.splash(x, y, z, col(LIQ3[el].hi).multiplyScalar(2), 40);
@@ -291,6 +304,7 @@ export class Runner3DRenderer {
     // fractional tick of this frame: the view's zone lags S.zone by (1 - alpha) ticks of zone travel
     const alpha = S.v > 1e-6 ? Math.max(0, Math.min(1, 1 - (S.zone - view.zone) / S.v)) : 1;
     const ctx = { time, dt, S, L, fx: this.fx, glow: this.glow, idx: 0, alpha, tick: S.tick - 1 + alpha };
+    this.S = S; this.tick = ctx.tick;
     this.streamViews(S, zMin, zMax, ctx);
 
     // characters
@@ -308,13 +322,13 @@ export class Runner3DRenderer {
       const gk = deadT >= 0 ? Math.max(0, 1 - deadT * 1.5) : 1;
       const gc = i ? col(0x6ec0ff) : col(0xffa040);
       if (gk > 0) {
-        this.glow.add(q.x, q.y + 0.75, -q.z, 2.6, gc, (0.33 + 0.05 * Math.sin(time * 3 + i)) * gk);
-        this.glow.add(q.x, q.y + 1.05, -q.z, 1.1, i ? col(0xd8f4ff) : col(0xfff0a0), 0.3 * gk);
+        this.glow.add(q.x, q.y + 0.8, -q.z, 1.9, gc, (0.16 + 0.03 * Math.sin(time * 3 + i)) * gk);
+        this.glow.add(q.x, q.y + 0.55, -q.z, 0.7, i ? col(0xd8f4ff) : col(0xfff0a0), 0.22 * gk);
       }
       this.plights[i].position.set(q.x, q.y + 0.9, -q.z);
       this.plights[i].intensity = 6 * gk;
       // blob shadow on the surface below; none over a gap, which shows the gap
-      const g = p.alive || deadT < 0.4 ? this.groundAt(q.x, q.z, q.y + 0.3) : null;
+      const g = p.alive || deadT < 0.4 ? this.groundAt(q.x, q.z, q.y + 0.3, i, S, this.tick) : null;
       const sh = this.shadows[i];
       if (g && vis) {
         const hgt = Math.max(0, q.y - g.y), k = Math.max(0, 1 - hgt / 7);
@@ -329,7 +343,7 @@ export class Runner3DRenderer {
     }
 
     // lanterns and keystones glow
-    for (const l of this.deco.lanterns) this.glow.add(l.x, l.y, l.z, 2.2, l.c, 0.55 + 0.08 * Math.sin(time * 4 + l.z));
+    for (const l of this.deco.lanterns) this.glow.add(l.x, l.y, l.z, 1.5, l.c, 0.32 + 0.05 * Math.sin(time * 4 + l.z));
 
     // dusk zone
     const zy = this.courseY(view.zone + 2);

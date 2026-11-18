@@ -20,6 +20,8 @@ const RESULT_DELAY = 70;   // ticks of the final moment before the results card
 const TELEPORT = 2;        // units: don't interpolate across a jump this big
 const OFF_MAX = 3;         // units: drop a visual correction bigger than this
 const URGENT = 8, CRITICAL = 4;   // units between a player and the dusk
+// read once at load: joining a room rewrites the URL to /CODE and drops the query
+const DEBUG_VIEW = new URLSearchParams(location.search).has('r3ddebug');
 
 export class Runner3DMode {
   // ctx: { input, net, sfx, show(id), toast(msg), app, quit() }
@@ -107,7 +109,7 @@ export class Runner3DMode {
   // no WebGL) falls back to the debug view on a fresh canvas.
   loadRenderer() {
     if (this.rendP) return this.rendP;
-    const force = new URLSearchParams(location.search).has('r3ddebug');
+    const force = DEBUG_VIEW;
     this.rendP = (async () => {
       let R = null;
       if (!force) {
@@ -126,6 +128,12 @@ export class Runner3DMode {
       if (this.L) this.RR.reset(this.L);
     })();
     return this.rendP;
+  }
+
+  // warm the module cache before a match so the countdown isn't spent downloading three.js
+  prefetch() {
+    if (this.pre || DEBUG_VIEW) return;
+    this.pre = import('/js/r3d/renderer.js').catch(() => {});
   }
 
   useDebug() {
@@ -233,7 +241,7 @@ export class Runner3DMode {
     this.lastDrawn = v.p[this.app.me]?.z ?? null;
     this.hud(v);
     if (this.RR) {
-      try { this.RR.draw(this.L, this.S, v, now / 1000, { split: !this.online, me: this.online ? this.app.me : 0, paused: this.paused }); }
+      try { this.RR.draw(this.L, this.S, v, now / 1000, { split: !this.online, me: this.online ? this.app.me : 0, paused: this.paused }); this.frames = (this.frames || 0) + 1; }
       catch (e) {
         this.renderErrors.push(String(e?.stack || e));
         console.error('Runner 3D: renderer failed, switching to the debug view.', e);
@@ -403,7 +411,8 @@ export class Runner3DMode {
   wire() {
     $('#btnRunner3d').onclick = () => { this.sfx.unlock(); this.sfx.ui(); this.startLocal(); };
     $('#lobbyRunner3d').onclick = () => { this.sfx.ui(); this.net.send({ t: 'start', mode: 'runner3d' }); };
-    this.net.on('room', (m) => { $('#lobbyRunner3d').disabled = m.players.length < 2; });
+    this.net.on('room', (m) => { $('#lobbyRunner3d').disabled = m.players.length < 2; if (m.players.length === 2) this.prefetch(); });
+    for (const ev of ['pointerenter', 'focus']) $('#btnRunner3d').addEventListener(ev, () => this.prefetch());
     this.net.on('s', (m) => this.onSnapshot(m));
     this.net.on('start', (m) => { if (m.mode !== 'runner3d') this.stop(); });
     this.net.on('menu', () => this.stop());

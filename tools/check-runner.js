@@ -2,8 +2,9 @@
 // by both characters, at the scroll speed that chunk actually has.
 //
 //   node tools/check-runner.js                 50 seeds, course to 1700 tiles (full difficulty and top speed)
-//   SEEDS=10 TILES=600 JOBS=2 node tools/check-runner.js
+//   SEEDS=11-20 TILES=600 JOBS=4 node tools/check-runner.js
 //   SEED=17 V=1 node tools/check-runner.js     one seed, print every chunk
+//   SEED=20 CHUNKS=80-82 COURSE=0 V=1 node tools/check-runner.js   chunk tests for a few chunks
 //
 // Tests, for every chunk k of every seed:
 //  1. First arrival. The bot stands on the chunk's start ledge at tick T_k, when the left edge
@@ -22,6 +23,8 @@
 //     abuse (a player hopping about on it, standing on the ends, falling off).
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
+import { writeFileSync } from 'node:fs';
+import { availableParallelism } from 'node:os';
 import { TS } from '../shared/sim.js';
 import {
   buildRunner, createRunnerState, stepRunner, cloneRunner, ensureGenerated, STATEFUL, oidObj,
@@ -35,9 +38,19 @@ function search(L, S, who, opts) {
   return r.ok ? r : search1(L, S, who, { ...opts, budget: (opts.budget || BUDGET) * 4 });
 }
 
-const SEEDS = +(process.env.SEEDS || 50);
-const TILES = +(process.env.TILES || 1700);
-const JOBS = +(process.env.JOBS || 3);
+// SEEDS=50 (1..50) or SEEDS=11-20; SEED=4,7 picks seeds; JOBS worker threads (default: cores - 1,
+// at most 8); PARTS splits each seed's chunk tests into that many work units; CHUNKS=80-82 runs
+// the chunk tests for those chunks only; COURSE=0 skips the whole-course runs; DUMP=dir writes
+// the state at each whole-course failure there (JSON, for tools that replay it).
+const env = process.env;
+const range = (v) => { const [a, b] = String(v).split('-').map(Number); return b === undefined ? [1, a] : [a, b]; };
+const SEED_RANGE = range(env.SEEDS || 50);
+const TILES = +(env.TILES || 1700);
+const JOBS = +(env.JOBS || Math.max(1, Math.min(8, availableParallelism() - 1)));
+const PARTS = +(env.PARTS || 3);
+const CHUNKS = env.CHUNKS ? range(env.CHUNKS) : null;
+const COURSE = env.COURSE !== '0';
+const DUMP = env.DUMP || '';
 const BUF = 12 * TS;
 const BUF_MAX = 20 * TS;
 const DELTAS = [10, 25, 40, 60, 90, 130];
@@ -100,7 +113,8 @@ function restCheck(L, S, c, removeAt, inputs, out) {
   }
 }
 
-function checkSeed(seed) {
+// Everything a work unit of one seed needs: the course, chunk entry ticks and ghost snapshots.
+function prepSeed(seed) {
   const L = buildRunner(seed);
   ensureGenerated(L, (TILES + 60) * TS);
   const chunks = L.chunks.filter(c => c.x1 <= TILES);
@@ -128,9 +142,19 @@ function checkSeed(seed) {
     const last = Math.max(...need);
     while (S.tick <= last) { if (need.has(S.tick)) snap.set(S.tick, cloneRunner(S)); stepRunner(L, S, [0, 0]); }
   }
+  return { L, chunks, ghost, T, snap };
+}
 
-  // the whole course in one go, per character: wait on a start ledge only when more than
-  // BUF_MAX ahead of the left edge, otherwise go straight on with whatever lead is left
+function emptyRes(seed, chunks, T = []) {
+  const n = chunks.length;
+  return { seed, chunks: 0, nChunks: n, speed: n ? speedAt(chunks[n - 1].x0 * TS) : 0, tMax: n ? T[n - 1] : 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [],
+    lost: [], slack: [], kinds: {}, course: [], courseFail: [], rest: {}, abuse: {} };
+}
+
+// The whole course in one go, for one character: wait on a start ledge only when more than
+// BUF_MAX ahead of the left edge, otherwise go straight on with whatever lead is left.
+function checkCourse(seed, who) {
+  const { L, chunks, ghost, T, snap } = prepSeed(seed);
   const capT = [];
   {
     const S = cloneRunner(ghost);
@@ -140,8 +164,8 @@ function checkSeed(seed) {
       stepRunner(L, S, [0, 0]);
     }
   }
-  const course = [];
-  for (const who of [0, 1]) {
+  const res = emptyRes(seed, chunks, T);
+  {
     let S = createRunnerState(L, { sandbox: true });
     park(S, 1 - who);
     const run = { who, minLead: Infinity, fails: [] };
@@ -154,16 +178,24 @@ function checkSeed(seed) {
       const r = search(L, S, who, { goal, budget: BUDGET, o0: c.o0, o1: c.o1 });
       if (r.ok) { S = r.S; continue; }
       run.fails.push({ test: 'course', seed, k, kind: c.kind, x0: c.x0, who, lead: +(lead / TS).toFixed(1) });
+      if (DUMP) writeFileSync(`${DUMP}/course-${seed}-${k}-${who}.json`, JSON.stringify(S));
       S = cloneRunner(snap.get(T[k + 1]) || snap.get(T[k]));   // carry on from the next chunk
       park(S, 1 - who);
       place(S, who, L.chunks[k + 1]);
     }
-    course.push(run);
+    res.course = [{ who, minLead: run.minLead }];
+    res.courseFail = run.fails;
   }
+  return res;
+}
 
-  const res = { seed, chunks: chunks.length, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [],
-    lost: [], slack: [], kinds: {}, course: [], courseFail: [], rest: {}, abuse: {}, speed: speedAt(chunks[chunks.length - 1].x0 * TS), tMax: T[chunks.length - 1] };
-  for (let k = 0; k < chunks.length; k++) {
+// Tests 2 to 6 for chunks [ka, kb) of one seed.
+function checkChunks(seed, ka, kb) {
+  const { L, chunks, T, snap } = prepSeed(seed);
+  const res = emptyRes(seed, chunks, T);
+  kb = Math.min(kb, chunks.length);
+  res.chunks = Math.max(0, kb - ka);
+  for (let k = ka; k < kb; k++) {
     const c = chunks[k], next = L.chunks[k + 1];
     const goal = next.x0 * TS, Tk = T[k], Tn = T[k + 1];
     const kinfo = res.kinds[c.kind] ||= { n: 0, time: [0, 0], maxDiff: 0, minSlack: Infinity, v: 0 };
@@ -173,8 +205,9 @@ function checkSeed(seed) {
     for (const who of [0, 1]) {
       const S = cloneRunner(snap.get(Tk));
       place(S, who, c); park(S, 1 - who);
-      let r = search(L, S, who, { goal, deadline: Tn, budget: BUDGET, o0: c.o0, o1: c.o1 });
-      if (!r.ok) {   // slower than the scroll here: it must still be clearable alive
+      // in time for the scroll? (only a statistic, so no retry with a bigger budget)
+      let r = search1(L, cloneRunner(S), who, { goal, deadline: Tn, budget: BUDGET, o0: c.o0, o1: c.o1 });
+      if (!r.ok) {   // slower than the scroll here, or the bot didn't find the fast line: it must still be clearable alive
         const S2 = cloneRunner(snap.get(Tk)); place(S2, who, c); park(S2, 1 - who);
         r = search(L, S2, who, { goal, budget: BUDGET, o0: c.o0, o1: c.o1 });
       }
@@ -262,13 +295,14 @@ function checkSeed(seed) {
       restCheck(L, S, c, track.length, (t) => { const a = [0, 0]; a[who] = track[t - Tk] ?? 0; return a; }, res.abuse);
     }
   }
-  res.course = course.map(r => ({ who: r.who, minLead: r.minLead }));
-  res.courseFail = course.flatMap(r => r.fails);
   return res;
 }
 
 function merge(all) {
-  const tot = { course: [], courseFail: [], seeds: all.length, chunks: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, tMax: 0 };
+  const tot = { course: [], courseFail: [], seeds: new Set(all.map(r => r.seed)).size, chunks: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, tMax: 0 };
+  const nChunks = new Map();
+  for (const r of all) nChunks.set(r.seed, r.nChunks);
+  tot.courseChunks = [...nChunks.values()].reduce((a, b) => a + b, 0);
   for (const r of all) {
     tot.chunks += r.chunks; tot.first += r.first; tot.second += r.second; tot.parked += r.parked;
     tot.firstFail.push(...r.firstFail); tot.secondFail.push(...r.secondFail); tot.parkedFail.push(...r.parkedFail);
@@ -293,9 +327,10 @@ const pct = (arr, q) => { if (!arr.length) return 0; const a = [...arr].sort((x,
 function report(t, secs) {
   const ok = !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length &&
     Object.values(t.rest).every(v => !v.fail) && Object.values(t.abuse).every(v => !v.fail);
-  console.log(`\nRunner check: ${t.seeds} seeds, ${t.chunks} chunks to ${TILES} tiles (full difficulty at ${1100}), top scroll speed ${t.speed.toFixed(2)} px/tick, ${(t.tMax / 60).toFixed(0)} s in. ${secs.toFixed(0)} s.`);
+  console.log(`\nRunner check: ${t.seeds} seeds, ${t.chunks || t.courseChunks} chunks to ${TILES} tiles (full difficulty at ${1100}), top scroll speed ${t.speed.toFixed(2)} px/tick, ${(t.tMax / 60).toFixed(0)} s in. ${secs.toFixed(0)} s.`);
   const leads = t.course.map(r => r.minLead / TS);
-  console.log(`  whole course    ${t.course.length - new Set(t.courseFail.map(f => f.seed * 2 + f.who)).size}/${t.course.length} runs (Sol and Luna, every seed) reached ${TILES} tiles; smallest lead over the left edge at a chunk start: ${Math.min(...leads).toFixed(1)} tiles (median of per-run minimums ${pct(leads, 0.5).toFixed(1)})`);
+  if (!t.course.length) console.log('  whole course    skipped (COURSE=0)');
+  else console.log(`  whole course    ${t.course.length - new Set(t.courseFail.map(f => f.seed * 2 + f.who)).size}/${t.course.length} runs (Sol and Luna, every seed) reached ${TILES} tiles; smallest lead over the left edge at a chunk start: ${Math.min(...leads).toFixed(1)} tiles (median of per-run minimums ${pct(leads, 0.5).toFixed(1)})`);
   console.log(`  single chunk    ${t.first - t.firstFail.length}/${t.first} cleared alive from a ${BUF / TS}-tile lead; ${t.slack.filter(x => x < 0).length} of them slower than the scroll (repaid by later chunks)`);
   console.log(`  second arrival  ${t.second - t.secondFail.length}/${t.second} cleared`);
   console.log(`  parked partner  ${t.parked - t.parkedFail.length}/${t.parked} cleared`);
@@ -315,29 +350,55 @@ function report(t, secs) {
 
 if (isMainThread) {
   const t0 = Date.now();
-  const seeds = process.env.SEED ? process.env.SEED.split(',').map(Number) : Array.from({ length: SEEDS }, (_, i) => i + 1);
-  const results = [];
+  const seeds = env.SEED ? env.SEED.split(',').map(Number)
+    : Array.from({ length: SEED_RANGE[1] - SEED_RANGE[0] + 1 }, (_, i) => SEED_RANGE[0] + i);
+  // work units: per seed, the two whole-course runs (the longest units, so they go first) and
+  // the chunk tests split into PARTS ranges
+  const units = [];
+  if (COURSE) for (const seed of seeds) for (const who of [0, 1]) units.push({ seed, who });
+  for (const seed of seeds) {
+    if (CHUNKS) { units.push({ seed, ka: CHUNKS[0], kb: CHUNKS[1] + 1 }); continue; }
+    for (let j = 0; j < PARTS; j++) units.push({ seed, part: j });
+  }
+  const results = [], bySeed = new Map();
   let next = 0, running = 0;
   await new Promise((resolve) => {
     const spawn = () => {
-      while (running < JOBS && next < seeds.length) {
-        const seed = seeds[next++];
+      while (running < JOBS && next < units.length) {
+        const u = units[next++];
         running++;
-        const w = new Worker(fileURLToPath(import.meta.url), { workerData: { seed } });
+        const w = new Worker(fileURLToPath(import.meta.url), { workerData: u });
+        const tu = Date.now();
         w.on('message', (r) => {
           results.push(r);
-          const bad = r.courseFail.length + r.firstFail.length + r.secondFail.length + r.parkedFail.length;
-          console.log(`seed ${String(r.seed).padStart(3)}: ${r.chunks} chunks, ${r.first + r.second + r.parked} runs, ${bad ? bad + ' FAILED' : 'ok'}`);
-          for (const f of [...r.courseFail, ...r.firstFail, ...r.secondFail, ...r.parkedFail]) console.log('    fail', JSON.stringify(f));
+          const bad = [...r.courseFail, ...r.firstFail, ...r.secondFail, ...r.parkedFail];
+          const what = u.who !== undefined ? `course ${u.who ? 'luna' : 'sol '}` : `chunks ${r.ka}-${r.kb - 1}`;
+          console.log(`seed ${String(r.seed).padStart(3)} ${what}: ${r.chunks ? r.chunks + ' chunks, ' : ''}${r.first + r.second + r.parked} runs, ${bad.length ? bad.length + ' FAILED' : 'ok'}  (${((Date.now() - tu) / 1000).toFixed(0)} s)`);
+          for (const f of bad) console.log('    fail', JSON.stringify(f));
+          const n = (bySeed.get(r.seed) || 0) + 1; bySeed.set(r.seed, n);
         });
-        w.on('error', (e) => { console.error('seed', seed, e); });
-        w.on('exit', () => { running--; if (next >= seeds.length && !running) resolve(); else spawn(); });
+        w.on('error', (e) => { console.error('unit', JSON.stringify(u), e); results.push({ ...emptyRes(u.seed, []), crashed: true }); });
+        w.on('exit', () => { running--; if (next >= units.length && !running) resolve(); else spawn(); });
       }
     };
     spawn();
   });
-  const ok = report(merge(results), (Date.now() - t0) / 1000);
+  const ok = report(merge(results), (Date.now() - t0) / 1000) && !results.some(r => r.crashed);
   process.exit(ok ? 0 : 1);
 } else {
-  parentPort.postMessage(checkSeed(workerData.seed));
+  const u = workerData;
+  let r;
+  if (u.who !== undefined) r = checkCourse(u.seed, u.who);
+  else {
+    let { ka, kb } = u;
+    if (ka === undefined) {
+      const L = buildRunner(u.seed);
+      ensureGenerated(L, (TILES + 60) * TS);
+      const n = L.chunks.filter(c => c.x1 <= TILES).length;
+      ka = Math.floor(n * u.part / PARTS); kb = Math.floor(n * (u.part + 1) / PARTS);
+    }
+    r = checkChunks(u.seed, ka, kb);
+    r.ka = ka; r.kb = Math.min(kb, ka + r.chunks);
+  }
+  parentPort.postMessage(r);
 }
