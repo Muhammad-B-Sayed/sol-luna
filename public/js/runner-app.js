@@ -52,6 +52,7 @@ export class RunnerMode {
     this.active = true;
     this.show(null);
     const h = $('#hint');
+    h.removeAttribute('style');   // co-op levels place the hint per room (main.js); the runner keeps the default
     h.textContent = this.online
       ? `Run right and stay ahead of the dusk. Last one standing wins. You are ${NAME[this.app.me]}.`
       : 'Run right and stay ahead of the dusk. Last one standing wins. Sol: arrows · Luna: WASD';

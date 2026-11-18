@@ -1,5 +1,5 @@
 // Sol & Luna — app shell: menus, local co-op loop, online prediction/reconciliation.
-import { buildLevel, createState, step, cloneState, PH_PLAY, PH_DEAD, PH_WON, SOL, LUNA, TICK_RATE, WORLD_W, WORLD_H, rankFor } from '/shared/sim.js';
+import { buildLevel, createState, step, cloneState, PH_PLAY, PH_DEAD, PH_WON, SOL, LUNA, TICK_RATE, WORLD_W, WORLD_H, TS, rankFor } from '/shared/sim.js';
 import { LEVELS } from '/shared/levels.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
@@ -65,6 +65,7 @@ function fit() {
   const W = wrap.clientWidth, H = wrap.clientHeight;
   const s = Math.min(W / WORLD_W, H / WORLD_H);
   R.resize(Math.floor(WORLD_W * s), Math.floor(WORLD_H * s));
+  if (app.L && !runner.active) placeHint();
 }
 window.addEventListener('resize', fit);
 
@@ -137,8 +138,58 @@ function beginLevel(level, st) {
   show(null);
   $('#hint').textContent = app.L.hint || '';
   $('#hint').classList.toggle('on', !!app.L.hint);
+  placeHint();
   clearTimeout(beginLevel.h);
   beginLevel.h = setTimeout(() => $('#hint').classList.remove('on'), 6000);
+}
+
+// The start hint goes where it covers the least of what matters at the start: both players and
+// doors first, then crates, levers, plates and gems, then pools and lifts (what hints talk
+// about). It tries full-width spots from top to bottom of the room, then half-width spots at
+// either side, and prefers the bottom edge, then the top, when several are equally clear.
+// Dodgeball keeps its own spot from style.css.
+function placeHint() {
+  const h = $('#hint');
+  h.removeAttribute('style');
+  const L = app.L, S = app.S;
+  if (!L || L.dodge || !h.classList.contains('on') || !L.doors) return;
+  const cr = cv.getBoundingClientRect(), sr = $('#stage').getBoundingClientRect();
+  const s = cr.width / WORLD_W;
+  if (!s) return;
+  const items = [];   // [x, y, w, h, weight] in world px
+  const pad = (x, y, w, hh, m, wt) => items.push([x - m, y - m, w + 2 * m, hh + 2 * m, wt]);
+  S.p.forEach(p => pad(p.x, p.y, p.w, p.h, 18, 100));   // room to see them move off
+  L.doors.forEach(d => pad(d.cx - 16, d.bottom - 48, 32, 48, 8, 100));
+  S.b.forEach(b => pad(b.x, b.y, b.w || 26, b.h || 26, 2, 30));
+  L.levers.forEach(v => pad(v.x, v.y, TS, TS, 2, 30));
+  L.buttons.forEach(b => pad(b.x, b.floor - 8, b.w, 8, 2, 30));
+  L.gems.forEach(g => pad(g.x - 9, g.y - 9, 18, 18, 0, 20));
+  L.plats.forEach((q, i) => pad(S.pl[i]?.x ?? q.x0, S.pl[i]?.y ?? q.y0, q.w, q.h, 0, 4));
+  for (let i = 0; i < L.tiles.length; i++) if (L.tiles[i] >= 4 && L.tiles[i] <= 6) pad((i % (WORLD_W / TS)) * TS, Math.floor(i / (WORLD_W / TS)) * TS, TS, TS, 0, 2);
+  const cost = (x, y, w, hh) => {
+    let c = 0;
+    for (const [ix, iy, iw, ih, wt] of items) {
+      const ox = Math.min(x + w, ix + iw) - Math.max(x, ix), oy = Math.min(y + hh, iy + ih) - Math.max(y, iy);
+      if (ox > 0 && oy > 0) c += wt * (ox * oy) / (iw * ih);
+    }
+    return c;
+  };
+  const top = 46, gap = 6;   // below the timer plaque; a little off the room's edges
+  let best = null;
+  for (const half of [false, true]) {
+    if (half) h.style.maxWidth = `${Math.floor(cr.width * 0.46)}px`;
+    const w = h.offsetWidth / s, hh = h.offsetHeight / s;
+    const xs = half ? [gap, WORLD_W - gap - w] : [(WORLD_W - w) / 2];
+    for (const x of xs) for (let y = top; y <= WORLD_H - gap - hh; y += 6) {
+      const edge = Math.min(WORLD_H - gap - hh - y, y - top + 3) / WORLD_H;   // bottom edge first, then top
+      const c = cost(x, y, w, hh) + edge * 0.5 + (half ? 0.3 : 0);
+      if (!best || c < best.c) best = { c, x, y, w, half };
+    }
+  }
+  h.style.maxWidth = best.half ? `${Math.floor(cr.width * 0.46)}px` : '';
+  h.style.left = `${cr.left - sr.left + (best.x + best.w / 2) * s}px`;
+  h.style.top = `${cr.top - sr.top + best.y * s}px`;
+  h.style.bottom = 'auto';
 }
 
 function startLocal(level) {
