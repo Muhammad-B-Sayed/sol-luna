@@ -340,7 +340,7 @@ const FEAT = {
       const gap = intro ? 1.5 : g.rf(1.5, Math.min(2.75, maxGap(drop && !k ? -1 : 0, d) - 1));
       g.z += gap;
       const cz = g.z + hz, R = Math.sqrt(hx * hx + h * h);
-      g.obj({ k: 'tilt', x0: cx - R, x1: cx + R, z0: g.z, z1: g.z + 2 * hz, y, cx, cz, hx, hz, T, chain: 7 });
+      g.obj({ k: 'tilt', x0: cx - R, x1: cx + R, z0: g.z, z1: g.z + 2 * hz, y, cx, cz, hx, hz, T, chain: 12 });
       g.z += 2 * hz;
     }
     const r = intro || d < 0.3 ? 0 : g.rf(-1, 0.5, 0.5);

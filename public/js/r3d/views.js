@@ -266,9 +266,9 @@ function tiltFaceBands(hx, hz, h) {
   return B.build();
 }
 // a static InstancedMesh of chain links along several segments [a, b] (three space)
-function chainLinks(segs, s = 0.22) {
+function chainLinks(segs, s = 0.3) {
   const per = segs.map(([a, b]) => Math.max(1, Math.round(a.distanceTo(b) / (s * 0.82))));
-  const im = new THREE.InstancedMesh(new THREE.TorusGeometry(s * 0.5, s * 0.14, 4, 8), materials().metal, per.reduce((x, y) => x + y, 0));
+  const im = new THREE.InstancedMesh(new THREE.TorusGeometry(s * 0.5, s * 0.14, 4, 6), materials().metal, per.reduce((x, y) => x + y, 0));
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), qa = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), d = new THREE.Vector3();
   let k = 0;
   segs.forEach(([a, b], j) => {
@@ -312,7 +312,7 @@ VIEWS.tilt = {
       const g = new THREE.Mesh(slabG, m); g.visible = false; g.position.copy(spin.position); root.add(g); return g;
     });
     // the static frame: a bronze ring at each end with a crossbar and hub at the axle
-    const Rr = Math.max(R + 1.6, 4.2), zr = o.hz + 0.22, top = o.chain ?? 7;
+    const Rr = Math.max(R + 1.6, 4.2), zr = o.hz + 0.22, top = o.chain ?? 12;   // lintels high above the cameras
     const bronze = [];
     for (const zs of [-1, 1]) {
       bronze.push(new THREE.TorusGeometry(Rr, 0.13, 6, 56).translate(0, 0, zs * zr));

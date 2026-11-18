@@ -33,11 +33,11 @@ and its numbers, 5 determinism and netcode, 6 files and hooks, 7 rendering, 8 re
   ledge face that low keeps their speed while pressed against it, so a jump into a step face
   carries on over it. A 1.5 ledge holds a player at its face for about 8 ticks.
 - The player is a box 0.72 wide and 1.4 tall. Players pass through each other.
-- Static stone is solid on every side. Moving and tilting parts are solid from above only, so
+- Static stone is solid on every side. Moving and turning parts are solid from above only, so
   nothing can ever pin or wedge a player.
-- A player stood on an orbiting stone is carried with it. A tilted slab slides what stands on
-  it slowly downhill (5% of the slope per tick), so it is felt, but a player can always walk
-  against it.
+- A player stood on an orbiting stone is carried with it. A spinning slab leaning past 0.12 rad
+  slides what stands on it downhill (0.1 units per tick for each radian past that), and a player
+  can always walk against it.
 - Falling: a player more than 9 units below the last ground they stood on is lost.
 - No lead cap. A player may run as far ahead of the dusk as they can survive, and nothing holds
   a player who is holding forward. Until November 2026 a lead cap stopped a player on a run-up
@@ -88,7 +88,7 @@ shortens run-ups and crack times, speeds up clocks and adds lanes.
 
 Each section is a run-up (3 to 9 units, shorter with difficulty, sometimes changing width
 halfway) followed by one feature. Kinds are introduced one at a time, each first as an easy
-"intro" instance: gaps and steps (start), thorns (30), pools (70), chain slab (110), stepping
+"intro" instance: gaps and steps (start), thorns (30), pools (70), spinning slab (110), stepping
 stones (150), ember slabs (190), thorn sweeper (240), eclipse stones (290), twin beams (340),
 pendulums (390), orbiting stones (440), thorn curtain (500), rolling orbs (560). After that
 each section is a weighted random pick, never the same kind twice in a row.
@@ -105,7 +105,7 @@ difficulty.
 | Steps | Stairs up or down, ramps, drops, width changes | Rises ≤ 1.5 per step: 0.5 is walked, higher ones are climbed by walking into them (the mantle) or jumped. Ramps at most 1:2 | Stateless | Stateless | Same for both |
 | Thorns | Hedges blocking part of the width (dodge through the opening, or jump them) and low strips across the whole width (jump) | Openings ≥ 1.6 wide; rows spaced so a diagonal run reaches the next opening; strips ≤ 2.5 deep | Stateless | Stateless | Same for both |
 | Pools | Twin channels: a sun channel and a moon channel side by side with a neutral strip, swapping sides at higher difficulty, shade bars across them; shade ponds; a sun/moon checkerboard | Every hostile stretch is either walkable around (the strip) or ≤ the gap limit | Stateless | Stateless | Mirrored: Sol's channel is Luna's channel reflected, and the checkerboard has an even column count so its mirror swaps the colours |
-| Chain slab | Slab hung on chains over a pit, tilting on two axes toward the weight on it | Gaps on and off sized for the slab at full tilt | Checked with the other player arriving earlier, abusing it, and parked on its edges, middle and corners | Damped spring back to exactly level (snaps to 0 below 2e-4), bounded 150 ticks; solid from above only, so it can't wedge | Same for both |
+| Spinning slab | A two-faced stone slab over a pit, turning on an axle along the course. Stand on its centre band and it only rocks; touch an outer band and it spins about three turns and stops level, sun or moon face up | A ledge as wide as the slab leads to it, so a straight run lands on the centre band. Gaps on and off at most 2.75. It only rolls sideways, so its near and far edges never rise or drop | Checked with the other player crossing earlier, abusing it at random, touching each edge and corner and the centre then hopping, and parked on its centre band. A second arrival waits on the ledge at most one spin (about 1.7 s) | A sprung latch holds it level; snapped to exact rest (angle and speed exactly 0) once slow and level with nobody on it. Back at rest within 150 ticks of the last touch (an edge touch: 104). Solid from above only and only while the latch holds it within 0.5 rad of level, so it can't wedge, push or hurt anyone | Same for both |
 | Stepping stones | Three lanes of stones over a pit with some missing | Every stone reachable from a stone in the row before (lanes at most one apart), gaps ≤ limit | Stateless | Stateless | Same for both |
 | Twin beams | Two narrow beams side by side, breaking into pieces with jogs at higher difficulty | Beam gaps ≤ limit minus 2 | Stateless | Stateless | Same for both (both beams open to both) |
 | Ember slabs | Floating slabs, each split into two halves side by side, that crack once stood on, fall away and re-form | Crack time 40 to 26 ticks is plenty to land and jump; gaps ≤ limit | A player cracks only the half they stand on, so one pass always leaves a half for the player behind; a broken half is gone 30 ticks and back 12 later once nobody is in its space | Fixed timers | Same for both |
@@ -115,6 +115,77 @@ difficulty.
 | Orbiting stones (new, 3D) | Four stones circling a pillar over a pit; step on as one passes the ledge, ride or hop between stones, step off on the far side | A stone passes the ledge every quarter turn; hops between neighbouring stones are short | Fixed clock | Clock only | Same for both |
 | Thorn curtain (new, 3D) | A thorn curtain across the course, too tall to jump, with an opening that slides from side to side | Opening 3.0 wide at the start, 2.4 at full difficulty, sliding slowly: one period is 260 to 320 ticks, 40 fewer at full difficulty, so it moves at most about half of run speed. 3 units of floor before the first curtain to line up on. A player who runs and steers toward the opening as it is now gets through every time. Curtains in one section share a clock phased by running time, so following the opening through one lines you up with the next | Fixed clock | Clock only | Same for both |
 | Rolling orbs | Orbs rolling down lanes toward the players on fixed clocks | Dodge between lanes, or jump (an orb is 1.4 tall) | Fixed clock | Clock only | Same for both |
+
+### The spinning slab (kind `tilt`)
+
+The owner played the old chain slab and found its tip far too slow: in the original game, touching
+the tip of one sent it spinning about three times, the first two fast and the last slower. The
+slab was rebuilt in November 2026 (branch `runner3d-slab`).
+
+**The rule.** The slab turns on an axle along the course, through the middle of its thickness. It
+only rolls (left side up or down). Where you stand across it decides what it does:
+
+- The **centre band** (within 0.45 of the half width from the middle, marked on both faces by a
+  pale line and two thin edge lines): your weight leans it a little against a sprung latch. A
+  player standing still at the band's edge leans it 0.11 rad. A player running across it at full
+  speed leans it at most 0.07 rad, and not at all on the centre line.
+- The **outer bands** (glowing warm, hottest past 0.7 of the half width): standing there kicks it.
+  From 0.45 to 0.7 the kick grows. A small kick only swings it and the latch brings it back. A
+  bigger one frees it to spin. From 0.7 out the kick is full: it spins exactly 3 turns.
+- While it spins, nobody can stand on it. It passes through players beside or under it.
+- When the pins' friction has slowed it enough, the latch catches it on whichever face is up
+  (sun or moon; a half turn counts as rest because the slab is symmetric and both faces are
+  inlaid). It wobbles once and is snapped to exact rest: angle and speed exactly 0.
+
+Why one axis: two pins can only hold one axle, and an axle across the course would make every
+landing from the near ledge an edge touch. Along the course, the line you run on is the axle.
+
+**The numbers** (`TILT` in `shared/runner3d.js`, per tick at 60 Hz, angles in radians):
+
+| Constant | Value | What it does |
+| --- | --- | --- |
+| `T` | 0.6 | Slab thickness. The axle is `T/2` below the top |
+| `LOAD` | 0.01 | Lean per tick from a player at `u` = their offset over the half width: `LOAD * u` |
+| `K`, `C` | 0.045, 0.25 | The latch: a spring back to level and its damping while held |
+| `UC`, `UE` | 0.45, 0.7 | The centre band ends at `UC`; the kick is full from `UE` |
+| `W0` | 0.3 | Full kick: the spin speed it starts at |
+| `WF` | 0.12 | A kick this big frees it; a free spin slower than this is caught |
+| `P` | 4.5e-4 | Pin friction: each tick takes `2P` off the speed squared (constant power), so the turns slow down more and more |
+| `STAND` | 0.5 | It can be stood on only while held and within this of level |
+| `SLIP`, `SLIDE` | 0.12, 0.1 | Past `SLIP` it slides you downhill by `SLIDE` per radian beyond |
+| `EA`, `WA` | 0.02, 0.006 | Snapped to exact rest below these, with nobody on it |
+
+State per slab is `{ a, w, s, f }`: the angle from level on the face up, the angular speed,
+spinning or held, and which face is up. `node tools/r3d-slab.js` measures it:
+
+| Touch at u | Turns | Turn times (ticks) | At rest after the touch |
+| --- | --- | --- | --- |
+| 0 to 0.45 (centre band) | 0 | - | it leans at most 0.11 rad and holds you |
+| 0.5 | 0, a swing to about 1 rad | - | 47 ticks (0.8 s) |
+| 0.6 (mid outer band) | 0.5 | - | 40 ticks |
+| 0.65 | 1.5 | 31 | 70 ticks (1.2 s) |
+| 0.7 to 1 (edge) | 3 | 23, 26, 38 (0.38 s, 0.43 s, 0.63 s) | 104 ticks (1.73 s) |
+
+**The section.** A ledge as wide as the slab (1.5 units, 2 on the intro) leads to it, so a
+straight run lands on the centre band and an edge is a choice. Slabs are 4 to 5 units wide (half
+widths 2 to 2.5, 2.5 on the intro), 3.5 to 5 long, with gaps of 1.5 to 2.75 on and off. Two slabs
+in a row (past difficulty 0.5) are offset sideways by at most 1. The intro is one wide flat slab
+with 1.5-unit gaps. Its tip says to run the bright centre line.
+
+**The art** (`VIEWS.tilt` in `public/js/r3d/views.js`). The slab is two bevelled stone halves
+back to back, so both faces have the trim and glow: the sun inlay on face 0, the moon inlay on
+face 1, the centre line, the band edges and the warm outer bands on both. Its pin bosses with
+four bolt studs turn with it. At each end a large bronze ring (radius at least 4.2, so a jumping
+player passes inside it) carries a crossbar at axle height with a hub the pin turns in. Each ring
+hangs by two chains from a stone lintel on two columns rising from the abyss. While it spins
+fast: two faint after-images trail the turn, sparks fly off the pins and the ring shudders.
+Kicked off its latch, it throws dust; caught, it throws sparks from both hubs. The view uses 9
+draw calls at rest (11 while the after-images show) and 7.8k triangles; the old chain view used
+10 and 11.1k.
+
+![At rest](img/runner3d/render-slab-rest.png) ![Tipping](img/runner3d/render-slab-tip.png)
+![Mid-spin](img/runner3d/render-slab-spin.png) ![Crossing the centre](img/runner3d/render-slab-cross.png)
+![Split screen](img/runner3d/render-slab-split.png)
 
 ## 4. The checker and its final numbers
 
@@ -134,14 +205,24 @@ zone reaches it at z 1600 travelled). It tests, for every section:
 2. **Single section**: each section from its start with a 12-unit lead on the zone must be
    cleared alive. Sections slower than the zone are counted (the whole-course run shows the
    lead is made up again).
-3. **Second arrival** (chain slabs and ember slabs): the other character runs the section 10
-   to 130 ticks earlier, or abuses the parts (hops, stands on edges, falls off) from 130
+3. **Second arrival** (spinning slabs and ember slabs): the other character runs the section
+   10 to 130 ticks earlier, or abuses the parts at random (hops, strafes, falls off) from 130
    ticks earlier; the tested one arrives into whatever state the parts are in and must clear
-   it. The time lost is reported.
-4. **Parked partner** (chain slabs): the other character is held on the near edge, the
-   middle, the far edge and the corners of each slab (full tilt) while the tested one crosses.
-5. **Back to rest**: after every run and after random abuse, every stateful object must be
-   back at exact rest within its bound.
+   it. On each spinning slab the other character also lands on (or steps onto) each spot that
+   can happen: both side edges, the four corners, and the centre followed by hopping, setting
+   off 40 or 100 ticks before the tested one arrives, so the tested one meets the slab spinning,
+   settling or at rest. The time lost is reported, per kind of abuse.
+4. **Parked partner** (spinning slabs): a partner on an outer band flips the slab and falls, so
+   "parked" means standing still where the slab holds them: on the centre line and at the side
+   limits of the centre band (u = -0.4 and +0.4), each at the near end, the middle and the far
+   end. The partner is set there 150 ticks before the tested one arrives and lets go of the
+   keys; the sim decides what happens (a second load on the same side can tip it).
+5. **Back to rest**: after every run, after random abuse and after every edge and corner touch,
+   every stateful object must be back at exact rest within its bound. A spinning slab coming
+   to rest must be exactly level: angle and speed exactly 0, drawn at 0 or pi.
+5b. **Edge touches**: each edge and corner touch is replayed with nobody else about, and the
+   spin it starts must last between 2.5 and 3.5 turns. The turn times and the time to rest are
+   reported.
 6. **Equal difficulty**: average clear time per kind for Sol and for Luna.
 7. **Determinism**: both course routes played together give the same state hash twice, from
    a freshly generated course, and with the state sent through `JSON.parse(JSON.stringify(S))`
@@ -188,7 +269,7 @@ without standing still to wait:
 | Lead cap | A full-speed runner reached 141 of 145 run-ups in the first 600 units more than 32 ahead of the dusk, the first 4.9 s in, and was stopped on each. Hopping across a run-up slipped past it, which nobody would guess | Removed. No cap of any kind |
 | Step-ups | A rise over 0.5 was a wall until you jumped. Rises come in 0.25 steps up to 1.5, so a 0.75 step looked walkable and was not | The mantle: walk into a ledge up to 1.5 high and you hop up onto it, keeping your speed |
 | Thorn curtain | The never-stop bot got through on every try, but only by picking on the run-up where the opening would be. A reactive runner, steering toward the opening as it is, cleared 92% of tries on 30 seeds | Opening 3.0 to 2.4 wide, was 2.6 to 2.0. Slide period 260 to 320 ticks, was 160 to 210. 3 units of floor before the first curtain, was 1.5. The reactive runner clears 100% |
-| Gaps, steps, thorns, pools, chain slabs, stepping stones, ember slabs, eclipse stones, beams | No forced waits | No forced waits |
+| Gaps, steps, thorns, pools, spinning slabs (at rest), stepping stones, ember slabs, eclipse stones, beams | No forced waits | No forced waits |
 | Sweeper, pendulum, orbiting stones, orbs | No forced waits at any of 12 arrival times. A runner times them by slowing on the run-up, never by standing still | Unchanged |
 
 The never-stop bot on this branch's code without the mantle and curtain changes, 4 seeds:
@@ -307,6 +388,7 @@ Measured with the real renderer on this machine's GPU, two headless clients and 
 | `public/js/r3d/boxes.js` | Debug overlay of the sim's collision shapes (`?boxes=1`). |
 | `public/r3d-demo.html` | The renderer on its own, with bots (section 9). |
 | `tools/r3d-far.js` | Sim tick time and state size with the players 0, 100 and 400 units apart. |
+| `tools/r3d-slab.js` | The spinning slab: turns and times for touches across it, a centre crossing, and client prediction of it at 6 and 12 ticks of lag. |
 | `tools/runner3d-browser.js`, `tools/r3d-shots.js`, `tools/r3d-perf.js`, `tools/r3d-eval.js`, `tools/r3d-glprobe.js` | Browser checks and look and speed tools (section 9). |
 
 Hooks in the shared shell files. Each is a few lines next to the matching 2D runner hook.
@@ -353,7 +435,7 @@ checked every kind this way at an easy and a hard instance, and the moving ones 
 | Gaps, steps, beams, stones | Matched | Matched (slab edges are the sim's edges) |
 | Thorns | Matched | Matched (thorn field fills the box, tips at `th`) |
 | Pools | Matched | Matched; plus a per-player danger rim |
-| Chain slab (tilt) | Matched (exact shear of the sim's plane) | Matched |
+| Spinning slab (tilt) | Matched (exact shear of the sim's plane) | Rebuilt as a turning slab (section 7, "The spinning slab"). The top face, the centre band's edges and the start of the full kick match the sim's lines at rest, tipping and mid-spin, in single view and split screen |
 | Ember slabs | Halves matched, but a re-forming half looked solid while it held nobody | Re-forming halves are a see-through outline until they are solid |
 | Eclipse stones | Matched (solid for its own player's camera, ghost for the other) | Matched |
 | Thorn sweeper | Thorns reached 0.56 from the arm's line and 0.8 high; the sim's arm is 0.15 and 0.55 high | Beam and thorns stay within 0.15 and below the bar |
@@ -439,6 +521,9 @@ trust.
 - **Which eclipse stones are yours.** Your own stones are solid stone in your colour; the other
   player's are see-through ghosts on your camera. The first eclipse section shows a tip in each
   player's own words.
+- **Spinning slabs.** The centre band is pale with a bright line down the middle; the outer
+  bands glow warm, hottest where a touch flips it. A spinning slab leaves after-images and
+  throws sparks from its pins, so a player behind can see it is not yet safe to land on.
 - **Ember slabs about to fall.** A whole half glows softly. Once stood on it shakes harder and
   harder, its cracks flare and sparks rise; a crack sound plays for your own player. A fallen half
   drops and fades; a re-forming half is a see-through outline until it is solid again.

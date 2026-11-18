@@ -348,7 +348,7 @@ function checkSeed(seed) {
             return inZ && (sd === 0 ? Math.abs(u) < 0.2 : sd * u >= TILT.UE);
           };
           const S0 = snapAt(Tk - 150); place(S0, a, c); park(S0, 1 - a);
-          const r = solve(L, S0, a, { until: want, budget: BUDGET, o0: c.o0, o1: c.o1, rungs: 5 });
+          const r = solve(L, S0, a, { until: want, budget: BUDGET, o0: c.o0, o1: c.o1, rungs: 3 });
           const name = `edge ${sd ? (sd < 0 ? 'left' : 'right') : 'centre'} ${['near', 'mid', 'far'][zt]}`;
           if (!r.ok) { res.edgeMiss.push({ seed, k, obj: i, by: name, who: a }); continue; }
           const hops = []; for (let t = 0; t < 400; t++) hops.push(t % 40 < 2 ? IN_J : t % 80 < 40 ? IN_L : IN_R);
@@ -477,7 +477,9 @@ function report(t, secs) {
     const sp = t.spins, tt = (j) => sp.map(s => s.times[j]).filter(x => x != null);
     const rng = (a) => a.length ? `${Math.min(...a)}-${Math.max(...a)}` : '-';
     console.log(`  edge touches    ${sp.length - t.spinFail.length}/${sp.length} spun 2.5 to 3.5 turns (turns ${rng(sp.map(s => +s.n.toFixed(2)))}); turn 1 ${rng(tt(0))} ticks, turn 2 ${rng(tt(1))}, turn 3 ${rng(tt(2))}; level and still ${rng(sp.map(s => s.rest))} ticks after the touch`);
-    console.log(`  exact rest      ${t.level.n - t.level.fail.length}/${t.level.n} slabs at rest had angle and speed exactly 0; ${t.edgeMiss.length} edge targets the bot could not reach (skipped)`);
+    const miss = {}; for (const m of t.edgeMiss) miss[m.by] = (miss[m.by] || 0) + 1;
+    console.log(`  exact rest      ${t.level.n - t.level.fail.length}/${t.level.n} slabs at rest had angle and speed exactly 0`);
+    console.log(`  edge targets    ${t.edgeMiss.length} the bot could not reach in its budget (skipped): ${Object.entries(miss).map(([k, v]) => `${k.slice(5)} ${v}`).join(', ') || 'none'}`);
   }
   console.log(`  determinism     ${t.det.filter(d => d.ok).length}/${t.det.length} seeds identical on replay, from a fresh course and through JSON (${detSkip.length} skipped: course run failed)`);
   console.log(`  spare time at a section's exit vs the zone (ticks): min ${Math.min(...t.slack)}, median ${pct(t.slack, 0.5)}`);
