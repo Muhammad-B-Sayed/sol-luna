@@ -68,6 +68,9 @@ kbd { display: inline-block; min-width: 24px; padding: 1px 6px; margin: 0 2px; b
 .lvl.current { box-shadow: 0 0 0 2px var(--accent); }
 .rank-A .rk, .rank.rank-A { color: #ffe08a; } .rank-B .rk, .rank.rank-B { color: #c7d6ff; } .rank-C .rk, .rank.rank-C { color: #d9a98c; }
 .lvl.locked .n::after { content: ''; }
+/* a small padlock on locked levels, so locked doesn't rely on dimming alone */
+.lvl .lock { position: absolute; top: 9px; right: 9px; width: 12px; height: 9px; border-radius: 2px; background: var(--muted); }
+.lvl .lock::before { content: ''; position: absolute; left: 2px; top: -6px; width: 8px; height: 8px; box-sizing: border-box; border: 2px solid var(--muted); border-bottom: 0; border-radius: 4px 4px 0 0; }
 
 .code { font: 800 46px Nunito, system-ui, sans-serif; letter-spacing: 0.25em; padding: 6px 0 6px 0.25em; margin: 0 0 6px; background: rgba(0,0,0,0.3); border-radius: 14px; border: 1px dashed var(--edge); user-select: all; }
 .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 6px; }

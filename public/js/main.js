@@ -90,8 +90,9 @@ function buildLevelGrid(onPick, highlight = -1) {
     const best = progress.best[i];
     const locked = i > progress.unlocked;
     b.className = 'lvl' + (locked ? ' locked' : '') + (best ? ' done rank-' + best.rank : '') + (i === highlight ? ' current' : '');
-    b.innerHTML = `<span class="n">${i + 1}</span><span class="nm">${L.name}</span>${best ? `<span class="rk">${best.rank}</span>` : ''}`;
+    b.innerHTML = `<span class="n">${i + 1}</span><span class="nm">${L.name}</span>${best ? `<span class="rk">${best.rank}</span>` : ''}${locked ? '<span class="lock" aria-hidden="true"></span>' : ''}`;
     b.disabled = locked;
+    if (locked) b.setAttribute('aria-label', `${i + 1}. ${L.name}, locked`);
     b.title = locked ? 'Locked' : L.name + (best ? ` — best ${best.t.toFixed(1)}s` : '');
     b.onclick = () => { sfx.ui(); onPick(i); };
     grid.appendChild(b);
