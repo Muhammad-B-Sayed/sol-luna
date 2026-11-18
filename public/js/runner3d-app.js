@@ -40,7 +40,7 @@ const TIPS = {
   beams: 'Narrow beams over the abyss. Steady now.',
   pendulum: 'Blades swing across the bridge. Time your run.',
   carousel: 'Stones circle the pillar. Hop on as one passes, off on the far side.',
-  gate: 'The gap in the thorn curtain slides. Run through the gap.',
+  gate: 'The gap in the thorn curtain slides. Steer into it as you run.',
   orbs: 'Orbs roll your way. Step into another lane, or jump them.',
 };
 // the keys, shown large on each player's half during the countdown (see controlsHtml)

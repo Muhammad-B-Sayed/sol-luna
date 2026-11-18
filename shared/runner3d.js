@@ -495,8 +495,8 @@ const FEAT = {
   gate(g, d, intro) {
     if (g.w < 3) g.w = 3;
     const w = g.w, cx = g.cx, count = intro ? 1 : 1 + g.ri(0, 1 + Math.round(d));
-    const gw = lerp(1.3, 1.0, intro ? 0 : d), P = g.ri(160, 210) - Math.round(40 * (intro ? 0 : d)), ph0 = g.ri(0, P - 1);
-    g.floor(1.5);
+    const gw = lerp(1.5, 1.2, intro ? 0 : d), P = g.ri(260, 320) - Math.round(40 * (intro ? 0 : d)), ph0 = g.ri(0, P - 1);
+    g.floor(3);
     const z1st = g.z;
     for (let k = 0; k < count; k++) {
       const lag = Math.round((g.z - z1st) / P3.maxSpeed);

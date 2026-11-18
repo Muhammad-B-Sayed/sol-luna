@@ -30,6 +30,9 @@
 //     T_k); clocked kinds (sweeper, pendulum, carousel, gate, orbs) are tried at 12 arrival times,
 //     T_k - 0, 25, ..., 275 ticks, so every phase of their clocks is met. A failed try is retried
 //     with a bigger debt allowed (30, 60, 120, 240 ticks) to report how long a wait it needed.
+//     Thorn curtains also get a reactive runner, with no foresight: always forward, steering
+//     toward where the opening is right now (keeping to the floor underfoot), at the same 12
+//     arrival times. It must clear every curtain, as a player who follows the gap would.
 //     FLOW_ONLY=1 runs only this test; KIND=gate (with FLOW_ONLY) only that kind's sections.
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
@@ -174,6 +177,33 @@ function checkSeed(seed) {
       for (const w of FLOW_WAITS) if (go(w).ok) { wait = w; break; }
       fk.waits.push(wait);
       flow.fails.push({ test: 'flow', seed, k, kind: c.kind, z: +c.z0.toFixed(1), who, arrive: T[k] - t0, wait: wait === Infinity ? 'none' : wait });
+    }
+  }
+  // reactive runner through the thorn curtains
+  flow.reactive = { n: 0, fail: 0 };
+  for (let k = 0; k < K; k++) {
+    const c = secs[k];
+    if (c.kind !== 'gate' || (FLOW_KIND && FLOW_KIND !== 'gate')) continue;
+    const gates = [];
+    for (let i = c.o0; i < c.o1; i++) if (L.objs[i].k === 'gate') gates.push(i);
+    const end = L.secs[k + 1].sz;
+    for (const who of [0, 1]) for (const t0 of FLOW_STARTS.map(d => T[k] - d).filter(t => snap.has(t))) {
+      const S = snapAt(t0); place(S, who, c); park(S, 1 - who);
+      const p = S.p[who];
+      p.vz = P3.maxSpeed;
+      for (let t = 0; p.alive && p.z < end && t < 900; t++) {
+        let b = IN_F;
+        const gi = gates.find(i => L.objs[i].z1 > p.z - 0.4);
+        if (gi != null) {
+          let gx = objPose(L, S, gi).x;
+          const f = p.gref >= 0 ? L.objs[p.gref] : null;
+          if (f && f.k === 'floor') gx = Math.max(f.x0 + 0.45, Math.min(f.x1 - 0.45, gx));
+          if (gx > p.x + 0.12) b |= IN_R; else if (gx < p.x - 0.12) b |= IN_L;
+        }
+        tick(L, S, who, b, null);
+      }
+      flow.reactive.n++;
+      if (!(p.alive && p.z >= end)) { flow.reactive.fail++; flow.fails.push({ test: 'curtain', seed, k, z: +c.z0.toFixed(1), who, arrive: T[k] - t0, why: S.why[who] || 'slow' }); }
     }
   }
   if (FLOW_ONLY) return { seed, secs: K, flowOnly: true, flow, course: [], courseFail: [], first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, restFail: [], speed: 0, zEnd: 0, tMax: T[K], det: null };
@@ -323,13 +353,14 @@ function checkSeed(seed) {
 }
 
 function merge(all) {
-  const tot = { flow: { kinds: {}, fails: [] }, flowOnly: all.some(r => r.flowOnly), restFail: [], course: [], courseFail: [], seeds: all.length, secs: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, zEnd: 0, tMax: 0, det: [] };
+  const tot = { flow: { kinds: {}, fails: [], reactive: { n: 0, fail: 0 } }, flowOnly: all.some(r => r.flowOnly), restFail: [], course: [], courseFail: [], seeds: all.length, secs: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, zEnd: 0, tMax: 0, det: [] };
   for (const r of all) {
     for (const [k, v] of Object.entries(r.flow.kinds)) {
       const t = tot.flow.kinds[k] ||= { n: 0, fail: 0, waits: [], slow: 0 };
       t.n += v.n; t.fail += v.fail; t.waits.push(...v.waits); t.slow = Math.max(t.slow, v.slow);
     }
     tot.flow.fails.push(...r.flow.fails);
+    tot.flow.reactive.n += r.flow.reactive.n; tot.flow.reactive.fail += r.flow.reactive.fail;
     tot.secs += r.secs; tot.first += r.first; tot.second += r.second; tot.parked += r.parked;
     tot.firstFail.push(...r.firstFail); tot.secondFail.push(...r.secondFail); tot.parkedFail.push(...r.parkedFail);
     tot.lost.push(...r.lost); tot.slack.push(...r.slack);
@@ -352,15 +383,16 @@ function merge(all) {
 const pct = (arr, q) => { if (!arr.length) return 0; const a = [...arr].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(q * a.length))]; };
 
 function flowReport(t) {
-  const F = t.flow, n = Object.values(F.kinds).reduce((a, v) => a + v.n, 0), bad = F.fails.length;
+  const F = t.flow, n = Object.values(F.kinds).reduce((a, v) => a + v.n, 0), bad = F.fails.filter(f => f.test === 'flow').length;
   console.log(`  flow            ${n - bad}/${n} tries cleared by the never-stop bot (owes ${(FLOW.min * 60).toFixed(1)} u/s of forward progress, at most ${FLOW.stop} ticks of standing still behind), arriving at full speed`);
   console.log('    kind      tries  forced waits  largest debt  waits needed (ticks)');
   for (const [k, v] of Object.entries(F.kinds)) {
     const w = {}; for (const x of v.waits) w[x] = (w[x] || 0) + 1;
     console.log(`    ${k.padEnd(9)} ${String(v.n).padStart(5)}  ${String(v.fail).padStart(5)} (${(100 * v.fail / Math.max(1, v.n)).toFixed(1).padStart(4)}%)  ${v.slow.toFixed(1).padStart(8)} t    ${Object.entries(w).map(([a, b]) => `<=${a}: ${b}`).join(', ')}`);
   }
+  console.log(`    thorn curtains, reactive runner (steers toward the opening as it is now): ${F.reactive.n - F.reactive.fail}/${F.reactive.n} cleared`);
   for (const f of F.fails.slice(0, 30)) console.log('  FAIL', JSON.stringify(f));
-  return !bad;
+  return !F.fails.length;
 }
 
 function report(t, secs) {
