@@ -49,7 +49,7 @@ import { Old2D, Old3D, Coop } from './net-old-clients.js';
 import { CoopClient } from './net-coop.js';
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, IN_LEFT, IN_RIGHT, IN_UP, IN_ACT, SOL } from '../shared/sim.js';
-import { COURT, DP_PLAY, DP_OVER, B_LIVE, B_DEAD, B_REST, sideOf } from '../shared/dodge.js';
+import { COURT, DODGE, DP_PLAY, DP_OVER, B_LIVE, B_DEAD, B_REST, sideOf } from '../shared/dodge.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const env = process.env;
@@ -489,8 +489,8 @@ function dodgeBot(r, me) {
       return R.t > R.at ? [IN_UP, IN_UP | back, back, 0][R.kind] : 0;
     }
     if ((ball.st === B_DEAD || ball.st === B_REST) && sideOf(ball.x) === me) {
-      const cx = p.x + p.w / 2;
-      return ball.x < cx - 4 ? IN_LEFT : ball.x > cx + 4 ? IN_RIGHT : 0;
+      const cx = p.x + p.w / 2, up = ball.y < p.y - 8 ? IN_UP : 0;   // up on the platform: jump for it
+      return (ball.x < cx - 4 ? IN_LEFT : ball.x > cx + 4 ? IN_RIGHT : 0) | up;
     }
     return 0;
   };
@@ -501,24 +501,29 @@ function dodgeBot(r, me) {
 // the other player waiting for the server's word): a hit if the hit count went up since the throw.
 function dodgeMeter() {
   const M = { me: -1, round: -1, srv: [], shown: [], srvD: null };
-  const settle = (T, D) => {
-    const n = D.throwN;
+  const settle = (T, S) => {
+    const D = S.d, n = D.throwN;
     if (!n) return;
-    const e = T[n] ||= { hb: D.hitN, by: D.ball.by, hitN: null };
+    const e = T[n] ||= { hb: D.hitN, by: D.ball.by, hitN: null, launch: null };
+    // where the throw left: its launch tick and its slope (the same on every screen that knows it)
+    // (the slope at the launch: the ball gains DODGE.liveGrav of fall speed per tick of flight)
+    if (!e.launch && D.ball.st === B_LIVE && !D.ball.bank) e.launch = `${S.tick - D.ball.t} ${((D.ball.vy - DODGE.liveGrav * D.ball.t) / D.ball.vx).toFixed(3)}`;
     if (e.hitN !== null) return;
     if (D.hitN > e.hb || (D.ball.st !== B_LIVE && D.ball.pv < 0 && D.wind === 0)) e.hitN = D.hitN;
   };
   M.begin = (me) => { M.me = me; M.round++; M.srv.push({}); M.shown.push({}); };
-  M.snap = (m) => { M.srvD = { phase: m.st.d.phase, t: m.st.d.t, score: m.st.d.score.slice(), round: M.round }; settle(M.srv[M.round], m.st.d); };
-  M.state = (S) => { if (M.round >= 0 && S.d) settle(M.shown[M.round], S.d); };
+  M.snap = (m) => { M.srvD = { phase: m.st.d.phase, t: m.st.d.t, score: m.st.d.score.slice(), round: M.round }; settle(M.srv[M.round], m.st); };
+  M.state = (S) => { if (M.round >= 0 && S.d) settle(M.shown[M.round], S); };
   M.frame = () => {};
   M.report = () => {
-    const out = { throws: 0, hits: 0, ownHitUndone: 0, ownDodgeUndone: 0, thrDodgeUndone: 0 };
+    const out = { throws: 0, hits: 0, ownHitUndone: 0, ownDodgeUndone: 0, thrDodgeUndone: 0, ownThrowMoved: 0 };
     M.srv.forEach((T, k) => {
       for (const [n, e] of Object.entries(T)) {
         if (e.hitN === null) continue;
         const hit = e.hitN > e.hb, sh = M.shown[k][n];
         out.throws++; if (hit) out.hits++;
+        // the thrower's own screen launched it from another tick or at another angle than the server
+        if (e.by === M.me && sh && sh.launch && e.launch && sh.launch !== e.launch) out.ownThrowMoved++;
         if (!sh || sh.hitN === null) continue;
         const shownHit = sh.hitN > e.hb;
         if (shownHit === hit) continue;
@@ -602,7 +607,7 @@ function line(r) {
   if (r.kind === 'coop') return `coop level ${r.seed} [${r.scheme}]: server ${r.server.won ? 'won' : 'NOT won'}, ${r.server.deaths} deaths (tick ${r.server.tick}); ${inl(r.server.input)}\n` +
     r.clients.map(c => `    ${c.who.padEnd(4)}: deaths shown ${c.deathsShown}, taken back ${c.undoDead}; wins taken back ${c.undoWon}; ${tk(c.ticks)}; own corr max ${c.corrMax} px (${c.corrN} over 0.5); partner pop max ${c.maxPop} px/f (${c.pops} over 6), off>4 ${c.offPct}% (max ${c.maxOff}); stalls ${c.stalls} spikes ${c.spikes}`).join('\n');
   if (r.kind === 'dodge') return `dodge seed ${r.seed} [${r.scheme}]: ${r.server.matches} matches; ${inl(r.server.input)}\n` +
-    r.clients.map(c => `    ${c.who.padEnd(4)}: throws ${c.throws} (hits ${c.hits}); on own screen: hit shown then undone ${c.ownHitUndone}, dodge shown then hit ${c.ownDodgeUndone}; as thrower: miss shown then hit ${c.thrDodgeUndone}; ${tk(c.ticks)}; own corr max ${c.corrMax} px; stalls ${c.stalls} spikes ${c.spikes}`).join('\n');
+    r.clients.map(c => `    ${c.who.padEnd(4)}: throws ${c.throws} (hits ${c.hits}); on own screen: hit shown then undone ${c.ownHitUndone}, dodge shown then hit ${c.ownDodgeUndone}, own throw launched otherwise ${c.ownThrowMoved}; as thrower: miss shown then hit ${c.thrDodgeUndone}; ${tk(c.ticks)}; own corr max ${c.corrMax} px; stalls ${c.stalls} spikes ${c.spikes}`).join('\n');
   const s = r.server;
   const head = `${r.kind} seed ${r.seed} [${r.scheme}]: server ${s.phase === 2 ? `over at ${s.tick} (${['Sol', 'Luna', 'draw'][s.win] || '?'} wins${s.lostEarly ? `, ${s.dead.map((d, i) => d >= 0 ? ['Sol', 'Luna'][i] : null).filter(Boolean).join('+')} died before the plan's end ${r.planEnd}` : ''})` : `still running at ${s.tick}`}`;
   const u = TH[r.kind].unit;
@@ -633,6 +638,7 @@ function verdict(r) {
     if (i.released || i.trimmed || i.dropped) bad.push(`server: inputs released ${i.released}, trimmed ${i.trimmed}, dropped ${i.dropped}`);
     for (const c of r.clients) {
       if (c.ownHitUndone || c.ownDodgeUndone) bad.push(`${c.who}: own screen contradicted ${c.ownHitUndone + c.ownDodgeUndone}x`);
+      if (c.ownThrowMoved) bad.push(`${c.who}: ${c.ownThrowMoved} own throws launched on another tick or angle than shown`);
       if (c.ticks.moved || c.ticks.dropped) bad.push(`${c.who}: ${c.ticks.moved} key changes off their tick, ${c.ticks.dropped} dropped`);
       if (c.throws < 5) bad.push(`${c.who}: only ${c.throws} throws`);
     }

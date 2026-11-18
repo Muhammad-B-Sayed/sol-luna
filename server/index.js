@@ -190,7 +190,11 @@ class Room {
     const q = this.q[ch], h = this.qlog[ch], n = this.nst[ch];
     if (this.starve[ch] > RUN_HOLD && q.length) { this.back[ch] = BACK_TICKS; this.debt[ch] = 0; }   // back after an absence
     if (this.back[ch] > 0) { this.back[ch]--; if (q.length > BACK_KEEP) { n.dropped += q.length - BACK_KEEP; this.ack[ch] = q[q.length - BACK_KEEP - 1][0]; q.splice(0, q.length - BACK_KEEP); } }
-    h.push(q.length); if (h.length > 60) h.shift();
+    // the queue report for pacing counts the ticks the room still owes (due): a room that is behind
+    // real time and steps the moment the late input arrives has no cushion, though the queue
+    // holds that one input, so the clients speed up until the room is back on time and the whole
+    // RUN_WAIT is left for the next spike
+    h.push(q.length - this.due); if (h.length > 60) h.shift();
     while (this.debt[ch] > 0 && q.length && q[0][1] === this.held[ch]) { this.ack[ch] = q.shift()[0]; this.debt[ch]--; n.skipped++; }
     if (this.debt[ch] > 0 && q.length) { this.debt[ch] = 0; n.late++; }
     if (q.length > RUN_QMAX) { n.trimmed += q.length - RUN_QMAX / 2; q.splice(0, q.length - RUN_QMAX / 2); }
