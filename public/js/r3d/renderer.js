@@ -173,14 +173,27 @@ export class Runner3DRenderer {
   }
 
   // the highest surface top under (x, z) at or below feet height + margin; null over a gap
-  groundAt(x, z, yMax) {
+  groundAt(x, z, yMax, who = -1, S = this.S, tick = S ? S.tick : 0) {
     const L = this.L; let best = null;
-    for (const [i, v] of this.views) {
+    const inside = (x0, x1, z0, z1) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
+    for (const [i] of this.views) {
       const o = L.objs[i];
-      if (o.k === 'spikes') continue;
-      const b = v.ground;
-      const x0 = b ? b.x0 : o.x0, x1 = b ? b.x1 : o.x1, z0 = b ? b.z0 : o.z0, z1 = b ? b.z1 : o.z1, y = b ? b.y : o.y;
-      if (x < x0 || x > x1 || z < z0 || z > z1 || y > yMax) continue;
+      if (o.x1 < x || o.x0 > x || o.z1 < z || o.z0 > z) continue;
+      let y = null;
+      switch (o.k) {
+        case 'floor': case 'pool': y = o.y; break;
+        case 'ramp': y = o.y + (o.y1 - o.y) * Math.max(0, Math.min(1, (z - o.z0) / (o.z1 - o.z0))); break;
+        case 'eclipse': if (who < 0 || (o.el ? 1 : 0) === who) y = o.y; break;
+        case 'tilt': { const st = S && S.o[i]; y = o.y + (st ? st.a * (x - o.cx) + st.b * (z - o.cz) : 0); break; }
+        case 'crumble': { const st = S && S.o[i]; if (!st || st.st <= 1) y = o.y; break; }
+        case 'carousel': {
+          let pose = null; try { pose = R3.objPose(L, S, i, tick); } catch {}
+          if (pose) for (const s of pose.stones) if (inside(s.x - o.s, s.x + o.s, s.z - o.s, s.z + o.s)) y = o.y;
+          break;
+        }
+        default: break;
+      }
+      if (y == null || y > yMax) continue;
       if (best == null || y > best.y) best = { y, o };
     }
     return best;
@@ -257,7 +270,7 @@ export class Runner3DRenderer {
       fx.burst(x, y + 0.6, z, fx.cols.thorn, 50, 4.5, 0.9, 0.11, 6);
       fx.burst(x, y + 0.6, z, i ? fx.cols.moon : fx.cols.sun, 24, 3, 0.8, 0.08, 4);
     } else if (why === 'pool') {
-      const g = this.groundAt(q.x, q.z, q.y + 0.6);
+      const g = this.groundAt(q.x, q.z, q.y + 0.6, i, S);
       const el = g && g.o.k === 'pool' ? (g.o.el ?? 0) : (i ? 0 : 1);
       info.poolCol = col((LIQ3[el] || LIQ3[0]).glow);
       fx.splash(x, y, z, col(LIQ3[el].hi).multiplyScalar(2), 40);
@@ -291,6 +304,7 @@ export class Runner3DRenderer {
     // fractional tick of this frame: the view's zone lags S.zone by (1 - alpha) ticks of zone travel
     const alpha = S.v > 1e-6 ? Math.max(0, Math.min(1, 1 - (S.zone - view.zone) / S.v)) : 1;
     const ctx = { time, dt, S, L, fx: this.fx, glow: this.glow, idx: 0, alpha, tick: S.tick - 1 + alpha };
+    this.S = S; this.tick = ctx.tick;
     this.streamViews(S, zMin, zMax, ctx);
 
     // characters
@@ -314,7 +328,7 @@ export class Runner3DRenderer {
       this.plights[i].position.set(q.x, q.y + 0.9, -q.z);
       this.plights[i].intensity = 6 * gk;
       // blob shadow on the surface below; none over a gap, which shows the gap
-      const g = p.alive || deadT < 0.4 ? this.groundAt(q.x, q.z, q.y + 0.3) : null;
+      const g = p.alive || deadT < 0.4 ? this.groundAt(q.x, q.z, q.y + 0.3, i, S, this.tick) : null;
       const sh = this.shadows[i];
       if (g && vis) {
         const hgt = Math.max(0, q.y - g.y), k = Math.max(0, 1 - hgt / 7);
