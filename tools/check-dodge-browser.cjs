@@ -2,13 +2,15 @@
 // Start a server first (LAG_MS adds latency for the online run), then:
 //   node tools/check-dodge-browser.cjs <port> <outDir> local|online
 // PLAYWRIGHT=/path/to/node_modules/playwright if it isn't installed here; CHROME_CHANNEL=chrome
-// (default) drives the installed Google Chrome. It saves screenshots of both balls mid-flight.
+// (default) drives the installed Google Chrome; CHROME=/usr/bin/chromium uses that binary instead.
+// It saves screenshots of both balls mid-flight.
 const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
 const fs = require('fs');
 const [port, out, which] = process.argv.slice(2);
 const URL = `http://localhost:${port}`;
 fs.mkdirSync(out, { recursive: true });
 const log = (...a) => console.log(...a);
+const LAUNCH = { headless: true, ...(process.env.CHROME ? { executablePath: process.env.CHROME } : { channel: process.env.CHROME_CHANNEL || 'chrome' }) };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const KEY = [{ act: 'ArrowDown', jump: 'ArrowUp' }, { act: 'KeyS', jump: 'KeyW' }];
 
@@ -16,7 +18,26 @@ async function errorsOf(page, bag) {
   page.on('console', m => { if (m.type() === 'error') bag.push(m.text()); });
   page.on('pageerror', e => bag.push(String(e)));
 }
-const D = (page) => page.evaluate(() => { const d = window.__app.S && window.__app.S.d; return d && JSON.parse(JSON.stringify({ phase: d.phase, t: d.t, holder: d.holder, score: d.score, ball: d.ball, throwN: d.throwN, hitN: d.hitN, winner: d.winner, serve: d.serve, aim: d.aim })); });
+const D = (page) => page.evaluate(() => { const d = window.__app.S && window.__app.S.d; return d && JSON.parse(JSON.stringify({ phase: d.phase, t: d.t, holder: d.holder, score: d.score, ball: d.ball, throwN: d.throwN, hitN: d.hitN, turnN: d.turnN, pickN: d.pickN, winner: d.winner, serve: d.serve, aim: d.aim })); });
+// Play-out budget. It used to be a fixed count of loop passes (600 local, 800 online), about 31 s
+// of play at ~52 ms a pass. A 9-point match takes about 28 s, and each missed ball that stops
+// where the bots can't reach costs a 6 s shot clock, so the local run often stopped at 4-3 and
+// then timed out waiting for the winner card. Now the budget is game progress: keep going while
+// something happened (a throw, pickup, turnover or point) in the last 30 s, 4 minutes in all.
+async function playOut(dPage, pass) {
+  const t0 = Date.now(); let lastPoint = Date.now(), prog = '';
+  for (;;) {
+    const d = await dPage();
+    if (d.phase === 3) return d;
+    const now = [d.hitN, d.throwN, d.turnN, d.pickN].join();   // anything happening at all
+    if (now !== prog) { prog = now; lastPoint = Date.now(); }
+    if (Date.now() - lastPoint > 30000) throw new Error(`no throw, pickup or point for 30 s (score ${d.score.join('-')}, phase ${d.phase}, holder ${d.holder}, ball ${JSON.stringify(d.ball)})`);
+    if (Date.now() - t0 > 240000) throw new Error(`match not over after 4 min (score ${d.score.join('-')})`);
+    await pass(d);
+  }
+}
+// the winner card shows 40 ticks after the match ends; give slow (throttled) pages room
+const CARD_MS = 15000;
 const waitPlay = (page) => page.waitForFunction(() => { const d = window.__app.S?.d; return d && d.phase === 1 && d.holder >= 0; }, null, { timeout: 15000, polling: 'raf' });
 
 // freeze the frame the moment the ball is `past` px beyond the veil, then screenshot
@@ -40,12 +61,21 @@ async function freezeShot(page, file, { past = 140, freeze, unfreeze, clip = tru
   return d;
 }
 
-async function tapAct(page, who, ms = 40) {
-  await page.keyboard.down(KEY[who].act); await sleep(ms); await page.keyboard.up(KEY[who].act);
+// A tap the game is sure to see as a tap. The game samples the keys once per frame, so on a
+// slow page (two headless browsers sharing the CPU: ~100 ms frames) a fixed 40 ms press could
+// be missed, and the 60 ms gap between taps could fall between frames, so the key looked held
+// for seconds and the aim swung (random-angle throws that missed). Hold until the game starts
+// aiming, release until it has thrown.
+async function tapAct(page, who, key = KEY[who].act) {
+  const st = () => page.evaluate((w) => { const d = window.__app.S && window.__app.S.d; return d ? { aim: d.aim[w], holder: d.holder, phase: d.phase } : null; }, who);
+  await page.keyboard.down(key);
+  for (let i = 0; i < 100; i++) { const s = await st(); if (!s || s.aim >= 0 || s.holder !== who || s.phase !== 1) break; await sleep(10); }
+  await page.keyboard.up(key);
+  for (let i = 0; i < 100; i++) { const s = await st(); if (!s || s.aim < 0 || s.holder !== who) break; await sleep(10); }
 }
 
 async function local() {
-  const browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL || 'chrome', headless: true });
+  const browser = await chromium.launch(LAUNCH);
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 825 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   const errs = []; await errorsOf(page, errs);
@@ -102,9 +132,7 @@ async function local() {
     } catch { log(`local: ${name} missed`); }
   }
   // play the rest of the match: whoever holds the ball taps a flat throw
-  for (let i = 0; i < 600; i++) {
-    const d = await D(page);
-    if (d.phase === 3) break;
+  await playOut(() => D(page), async (d) => {
     if (d.phase === 1 && d.holder >= 0) await tapAct(page, d.holder);
     else if (d.phase === 1 && d.holder < 0 && d.ball.st >= 2) {
       // walk the owner to a loose ball
@@ -113,8 +141,8 @@ async function local() {
       const key = owner === 0 ? (d.ball.x < px ? 'ArrowLeft' : 'ArrowRight') : (d.ball.x < px ? 'KeyA' : 'KeyD');
       await page.keyboard.down(key); await sleep(80); await page.keyboard.up(key);
     } else await sleep(50);
-  }
-  await page.waitForSelector('#dodgeOver.on', { timeout: 5000 });
+  });
+  await page.waitForSelector('#dodgeOver.on', { timeout: CARD_MS });
   const over = { title: await page.textContent('#dgWinner'), sol: await page.textContent('#dgSol'), luna: await page.textContent('#dgLuna') };
   log('local: winner screen:', over.title, over.sol + '-' + over.luna);
   await page.screenshot({ path: `${out}/local-winner.png` });
@@ -134,7 +162,7 @@ async function local() {
 }
 
 async function online() {
-  const browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL || 'chrome', headless: true });
+  const browser = await chromium.launch(LAUNCH);
   const mk = async () => { const c = await browser.newContext({ viewport: { width: 1100, height: 825 }, deviceScaleFactor: 2 }); const p = await c.newPage(); p.errs = []; await errorsOf(p, p.errs); return p; };
   const A = await mk(), B = await mk();
   await A.goto(URL + '/');
@@ -183,18 +211,16 @@ async function online() {
     log(`online: client ${nm} drew ${n} in-flight frames; biggest backward step ${worstBack.toFixed(1)} px, biggest forward step ${worstJump.toFixed(1)} px (state moves 24 px/tick)`);
   }
   // play out the match: the holder taps
-  for (let i = 0; i < 800; i++) {
-    const d = await D(A);
-    if (d.phase === 3) break;
-    if (d.phase === 1 && d.holder >= 0) { const p = pageOf(d.holder); await p.keyboard.down('KeyS'); await sleep(50); await p.keyboard.up('KeyS'); await sleep(80); }
+  await playOut(() => D(A), async (d) => {
+    if (d.phase === 1 && d.holder >= 0) { await tapAct(pageOf(d.holder), d.holder, 'KeyS'); await sleep(80); }   // either key set works online
     else if (d.phase === 1 && d.holder < 0 && d.ball.st >= 2) {
       const owner = d.ball.x < 480 ? 0 : 1, p = pageOf(owner);
       const px = await p.evaluate((o) => window.__app.S.p[o].x + 10, owner);
       const key = d.ball.x < px ? 'ArrowLeft' : 'ArrowRight';
       await p.keyboard.down(key); await sleep(90); await p.keyboard.up(key);
     } else await sleep(60);
-  }
-  await A.waitForSelector('#dodgeOver.on', { timeout: 6000 }); await B.waitForSelector('#dodgeOver.on', { timeout: 6000 });
+  });
+  await A.waitForSelector('#dodgeOver.on', { timeout: CARD_MS }); await B.waitForSelector('#dodgeOver.on', { timeout: CARD_MS });
   const res = async (p) => `${await p.textContent('#dgWinner')} ${await p.textContent('#dgSol')}-${await p.textContent('#dgLuna')}`;
   log('online: winner screens: A:', await res(A), '| B:', await res(B));
   await B.screenshot({ path: `${out}/online-winner.png` });

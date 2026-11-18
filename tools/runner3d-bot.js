@@ -6,8 +6,8 @@ import { cloneRunner3d, stepRunner3d, STATEFUL, IN_L, IN_R, IN_J, IN_F, IN_B } f
 
 const L_ = IN_L, R_ = IN_R, J_ = IN_J, F_ = IN_F, B_ = IN_B;
 export { L_, R_, J_, F_, B_ };
-// [bits, ticks]; ticks -1 = hold until standing. A timed step that ends in the air keeps
-// holding its bits until the player stands (or dies).
+// [bits, ticks]; ticks -1 = hold until standing. If the last step of a macro ends in the air
+// it keeps holding its bits until the player stands (or dies); earlier steps just hand over.
 const FL = F_ | L_, FR = F_ | R_;
 export const MACROS = [
   [[F_, 6]], [[F_, 16]], [[F_, 2]], [[0, 5]], [[0, 18]], [[B_, 5]],
@@ -29,6 +29,11 @@ export const MACROS = [
   [[FL | J_, 1], [FL, 10], [0, -1]], [[FR | J_, 1], [FR, 10], [0, -1]],
   [[F_ | J_, 1], [F_, 12], [FL, -1]], [[F_ | J_, 1], [F_, 12], [FR, -1]],
   [[L_ | J_, 1], [L_, -1]], [[R_ | J_, 1], [R_, -1]],
+  // diagonal take-off then straight, for zigzags between small stones
+  [[FL | J_, 1], [FL, 6], [F_, -1]], [[FR | J_, 1], [FR, 6], [F_, -1]],
+  [[FL | J_, 1], [FL, 16], [F_, -1]], [[FR | J_, 1], [FR, 16], [F_, -1]],
+  // turn on the spot, for a stone too short to turn while running
+  [[FL, 3]], [[FR, 3]],
 ];
 
 class Heap {
@@ -103,9 +108,10 @@ export function search(L, S0, who, opts) {
         if (!p.alive || S.tick > deadline) res = -1;
         else if (done(S, p)) res = 1;
       };
-      for (const [bits, n] of m) {
+      for (let si = 0; si < m.length; si++) {
+        const [bits, n] = m[si];
         if (n > 0) for (let k = 0; k < n && !res; k++) one(bits);
-        if (n < 0 || !p.gr) for (let k = 0; k < 240 && !res; k++) { one(bits); if (p.gr) break; }
+        if (n < 0 || (!p.gr && si === m.length - 1)) for (let k = 0; k < 240 && !res; k++) { one(bits); if (p.gr) break; }
         if (res) break;
       }
       if (res === 1) return { ok: true, plan: unroll(node, runs), tick: S.tick, S, exp };
@@ -121,17 +127,21 @@ export function search(L, S0, who, opts) {
 
 // search() with a ladder of fallbacks: best-first by progress can sink its whole budget into a
 // doomed branch (standing on slabs that are about to crumble), so a failed attempt is retried
-// with a stronger time weight, then from a start nudged by a few ticks of waiting or stepping
-// back. Returns the first success (plans include the nudge).
+// with a stronger time weight, then from a start nudged by a few ticks of strafing, waiting or
+// stepping back. Returns the first success (plans include the nudge).
 export function solve(L, S, who, opts) {
   const B = opts.budget || 1500;
   const tries = [
-    { tw: 0.0013, budget: B }, { tw: 0.03, budget: B }, { tw: 0.01, budget: 2 * B },
+    { tw: 0.0013, budget: B }, { tw: 0.03, budget: B },
+    // sideways first: lining up with a narrow bridge or beam the greedy search may not try
+    { tw: 0.01, budget: B, pre: Array(8).fill(R_) }, { tw: 0.01, budget: B, pre: Array(8).fill(L_) },
+    { tw: 0.01, budget: 2 * B },
     { tw: 0.0013, budget: B, pre: [0, 0, 0, 0, 0, 0] }, { tw: 0.03, budget: B, pre: [B_, B_, B_, B_, B_, B_, B_, B_] },
     { tw: 0.004, budget: 4 * B },
   ];
   let exp = 0;
   for (const t of tries.slice(0, opts.rungs || tries.length)) {
+    if (opts.rungBudget) t.budget = opts.rungBudget;
     let S0 = cloneRunner3d(S);
     const pre = t.pre || [];
     for (const b of pre) tick(L, S0, who, b, opts.other || null, opts.hook || null);
@@ -153,20 +163,17 @@ function unroll(node, last) {
 
 export { STATEFUL };
 
-// Goal test for "made it into section k": standing on its run-up with room to stop (at least
-// 1 unit before the run-up's end), or already standing on something past the run-up.
+// Goal test for "made it into section k": standing on its run-up, with room to stop on the
+// last piece (at least 1 unit before its end), safe to stand idle. Landing past the run-up does not count: that
+// can be a doomed state (full speed, right in front of a thorn strip).
 export function sectionGoal(L, k) {
   const sec = L.secs[k];
-  let first = sec.o0;
   const run = [];
   for (let i = sec.o0; i < sec.o1; i++) if (L.objs[i].k === 'floor' && L.objs[i].skin === 1) run.push(i);
-  for (let i = sec.o0; i < sec.o1; i++) if (!run.includes(i)) { first = i; break; }
-  if (first === sec.o0 && run.length) first = sec.o1;
-  return (S, p) => {
-    if (!p.gr) return false;
-    if (run.includes(p.gref)) return p.z <= L.objs[p.gref].z1 - 1 || p.gref !== run[run.length - 1];
-    return p.gref >= first;
-  };
+  const lastRun = run[run.length - 1];
+  // safe to stand idle: no buffered jump, centre over the slab (any speed stops on it)
+  return (S, p) => p.gr && p.jb === 0 && run.includes(p.gref) && p.x >= L.objs[p.gref].x0 && p.x <= L.objs[p.gref].x1 &&
+    (p.gref !== lastRun || p.z <= L.objs[p.gref].z1 - 1);
 }
 // Standing on the run-up of section k (a safe place to wait)?
 export function onRunup(L, k, p) {

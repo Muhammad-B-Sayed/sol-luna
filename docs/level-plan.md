@@ -256,7 +256,8 @@ change one, keep the room's shape and its place on the difficulty curve, and say
    bottom pair, green the top pair and the bridge over the shade at the top. The players pump
    each other upward; the plates past the east wing's sun channel make Sol the operator in the
    middle. Then a crate pushed onto the top east lift presses a green pad there and holds the
-   pair down, which keeps Sol up and the bridge raised. 8 beats.
+   pair down, which keeps Sol up and the bridge raised. 8 beats. Luna spawns on the east floor
+   by P0a, under the 3-row pocket she used to start in, so her first jump rises the full 99 px.
 10. **Stone Raft.** Shape: a deep shade lake across the middle with an island in it. The dock,
     island and shelf are a low deck; the rooms above each shore and the long gallery underneath
     have full headroom. Sol starts at the bottom of a 1-wide, 3-deep well at the west end of the
@@ -413,7 +414,7 @@ Gravity dropped to 0.33 on Nov 17 and every level was re-spaced for the higher j
 evening of Nov 17 the full gate, solo check included, passed all 32 levels with a fresh bot cache,
 with 0 roof hits on every bot route. The solo search hit its state limit without a solo finish in
 12, 14, 15, 19 and 25, so those five passes are bounded, not proofs. 27 Leapfrog Spire was the
-last to land: bot 79.0 s against a 76 s floor, Sol at exactly 16 sectors, stone 26%.
+last to land: bot 78.3 s against a 76 s floor (after the spawn headroom fix), Sol at exactly 16 sectors, stone 26%.
 The pictures in `docs/img/level-N.jpg` predate the re-spacing.
 
 These margins sit at or near a gate limit. They come from `FAST=1 node tools/gate.js` on Nov 17,
@@ -448,6 +449,10 @@ Known follow-ups:
   can be kicked free.) Crate B into 28's empty east shaft; falling down a crate chute in 32;
   dropping out of 26's control room while the runner is shut in a basin; dropping in 29 before
   the hall above is done. These were listed before the re-spacing and have not been re-checked.
+- **29's first jump still bonks at 86 px.** The top hall stands on row 6 under the outer wall,
+  so a full jump needs the start floor one row lower, in row 7. Every row-7 cell under the start
+  (x 18-21) is in the arc of the jumps over R2's shaft in hall 2: filling x 19-20 gave 5 roof hits.
+  Fixing it needs a rework of the top hall's start or of hall 2's crossing.
 
 ## What to hand back
 

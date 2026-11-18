@@ -1,0 +1,1140 @@
+{
+ "1280x800": {
+  "1": {
+   "hint": "Arrows move Sol, WASD moves Luna. Your own pool is safe. A plate works while you stand on it. A lever stays put.",
+   "players": [
+    [
+     "Sol",
+     71
+    ],
+    [
+     "Luna",
+     71
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    700,
+    640,
+    62
+   ]
+  },
+  "2": {
+   "hint": "Your plates and levers open the other tower. A lever turns on when you walk right through it, off when you walk left.",
+   "players": [
+    [
+     "Sol",
+     69
+    ],
+    [
+     "Luna",
+     100
+    ]
+   ],
+   "doors": [],
+   "gems": 1,
+   "plates": 0,
+   "levers": 1,
+   "crates": 0,
+   "hintBox": [
+    320,
+    699,
+    640,
+    62
+   ]
+  },
+  "3": {
+   "hint": "Black pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    695,
+    640,
+    62
+   ]
+  },
+  "4": {
+   "hint": "You cannot drive the lift you stand on. Your partner's plate moves it.",
+   "players": [
+    [
+     "Sol",
+     92
+    ],
+    [
+     "Luna",
+     92
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    393,
+    712,
+    494,
+    42
+   ]
+  },
+  "5": {
+   "hint": "Raised bridges cover a pool while their plate is held. Your pools mark your way round.",
+   "players": [
+    [
+     "Sol",
+     24
+    ]
+   ],
+   "doors": [
+    [
+     "Luna door",
+     17
+    ]
+   ],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    331,
+    711,
+    617,
+    42
+   ]
+  },
+  "6": {
+   "hint": "Push the crate off ledges to bring it down. Stuck against a wall? Lean on it, then jump into its corner.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "7": {
+   "hint": "Ferries cross the chasm. You can't drive the one you stand on. Don't fall: the chasm is full of shade.",
+   "players": [
+    [
+     "Sol",
+     45
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 2,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "8": {
+   "hint": "Everything you learned this chapter, once each.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    462,
+    710,
+    357,
+    42
+   ]
+  },
+  "9": {
+   "hint": "One colour moves two lifts: one goes up as the other comes down. A weight left on the far end of a sunk lift keeps it down.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "10": {
+   "hint": "A crate dropped in a pool is a stepping stone, but it lands right where it falls. Ferries carry crates too.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 1,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "11": {
+   "hint": "Stand in a pit to hold a plate. Your partner has the lever that lifts its floor, and you with it.",
+   "players": [
+    [
+     "Sol",
+     45
+    ],
+    [
+     "Luna",
+     45
+    ]
+   ],
+   "doors": [],
+   "gems": 2,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "12": {
+   "hint": "A crate down a chute stays on its plate for good. Read the colours before you push.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 1,
+   "crates": 0,
+   "hintBox": [
+    340,
+    710,
+    599,
+    42
+   ]
+  },
+  "13": {
+   "hint": "Walk right through a lever to switch it on, left to switch it off. Which way you go round decides how it ends.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "14": {
+   "hint": "A crate cannot climb, and a lift needs someone on its plate. Take the crate all the way up.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 1,
+   "hintBox": [
+    321,
+    710,
+    639,
+    42
+   ]
+  },
+  "15": {
+   "hint": "One of you works the levers, the other runs. Walk through a lever to flip it, jump over it to leave it alone.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "16": {
+   "hint": "Every arm holds a machine you have met. Each one opens the next: find the order.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    345,
+    710,
+    591,
+    42
+   ]
+  },
+  "17": {
+   "hint": "Your partner raises your stepping stones. The tunnels are too low to jump: wait for the stone.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 3,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "18": {
+   "hint": "Several controls open one door and shut another. Where two gates stand together, run the moment your partner moves.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 2,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "19": {
+   "hint": "A crate cannot cross on its own legs. Send it over, then go round to meet it.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 1,
+   "hintBox": [
+    367,
+    710,
+    545,
+    42
+   ]
+  },
+  "20": {
+   "hint": "Sun water is safe for Sol and moon water for Luna. Every gate you meet is opened by your partner, far away.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 2,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "21": {
+   "hint": "Hold a ferry's plate and it swings across; let go and it swings back. You cannot ride the ferry you are holding.",
+   "players": [],
+   "doors": [],
+   "gems": 2,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "22": {
+   "hint": "One of you works the deck, the other runs the course. Then swap: it will not go the same way twice.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 1,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "23": {
+   "hint": "Each wing mirrors the other, even the levers. What you do on your side changes theirs. The two yellow lifts balance each other.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 2,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "24": {
+   "hint": "The spiral winds in to the doors. One of you works the levers while the other runs; then swap.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "25": {
+   "hint": "The crates are your keys, and a crate never climbs. One of them has to be a step before it is a key.",
+   "players": [
+    [
+     "Sol",
+     100
+    ],
+    [
+     "Luna",
+     100
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 3,
+   "levers": 0,
+   "crates": 2,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "26": {
+   "hint": "Purple and green make four codes; each code opens one crossing. Walk right through a lever to turn it on, left to turn it off, and jump over it to leave it.",
+   "players": [
+    [
+     "Sol",
+     100
+    ],
+    [
+     "Luna",
+     100
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "27": {
+   "hint": "Each lift is worked from the other side. Same colour, same moment: when your partner presses, everything of that colour moves. The crate must reach the chute.",
+   "players": [
+    [
+     "Luna",
+     78
+    ]
+   ],
+   "doors": [
+    [
+     "Sol door",
+     100
+    ],
+    [
+     "Luna door",
+     100
+    ]
+   ],
+   "gems": 0,
+   "plates": 2,
+   "levers": 0,
+   "crates": 1,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "28": {
+   "hint": "Every corner opens one lock. Use each crate before you send it down to the vault.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 2,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    346,
+    710,
+    587,
+    42
+   ]
+  },
+  "29": {
+   "hint": "Every drop is one way. Whoever goes down first needs a white plate held to come back up.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "30": {
+   "hint": "Your paths cross four times. At each crossing one of you holds the way for the other. In an airlock, run the moment your partner steps on.",
+   "players": [
+    [
+     "Sol",
+     100
+    ],
+    [
+     "Luna",
+     100
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "31": {
+   "hint": "One lever below changes the room above. You may have to go back down and set it right.",
+   "players": [],
+   "doors": [],
+   "gems": 2,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    320,
+    690,
+    640,
+    62
+   ]
+  },
+  "32": {
+   "hint": "The heart opens only when both crates sit in their sockets and both levers are set.",
+   "players": [
+    [
+     "Sol",
+     25
+    ],
+    [
+     "Luna",
+     25
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 3,
+   "levers": 0,
+   "crates": 2,
+   "hintBox": [
+    344,
+    710,
+    592,
+    42
+   ]
+  }
+ },
+ "1920x1080": {
+  "1": {
+   "hint": "Arrows move Sol, WASD moves Luna. Your own pool is safe. A plate works while you stand on it. A lever stays put.",
+   "players": [
+    [
+     "Sol",
+     63
+    ],
+    [
+     "Luna",
+     63
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    963,
+    640,
+    62
+   ]
+  },
+  "2": {
+   "hint": "Your plates and levers open the other tower. A lever turns on when you walk right through it, off when you walk left.",
+   "players": [],
+   "doors": [],
+   "gems": 1,
+   "plates": 0,
+   "levers": 1,
+   "crates": 0,
+   "hintBox": [
+    640,
+    960,
+    640,
+    62
+   ]
+  },
+  "3": {
+   "hint": "Black pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    956,
+    640,
+    62
+   ]
+  },
+  "4": {
+   "hint": "You cannot drive the lift you stand on. Your partner's plate moves it.",
+   "players": [
+    [
+     "Sol",
+     67
+    ],
+    [
+     "Luna",
+     67
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    713,
+    974,
+    494,
+    42
+   ]
+  },
+  "5": {
+   "hint": "Raised bridges cover a pool while their plate is held. Your pools mark your way round.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    651,
+    973,
+    617,
+    42
+   ]
+  },
+  "6": {
+   "hint": "Push the crate off ledges to bring it down. Stuck against a wall? Lean on it, then jump into its corner.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "7": {
+   "hint": "Ferries cross the chasm. You can't drive the one you stand on. Don't fall: the chasm is full of shade.",
+   "players": [
+    [
+     "Sol",
+     44
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "8": {
+   "hint": "Everything you learned this chapter, once each.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    782,
+    973,
+    357,
+    42
+   ]
+  },
+  "9": {
+   "hint": "One colour moves two lifts: one goes up as the other comes down. A weight left on the far end of a sunk lift keeps it down.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "10": {
+   "hint": "A crate dropped in a pool is a stepping stone, but it lands right where it falls. Ferries carry crates too.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "11": {
+   "hint": "Stand in a pit to hold a plate. Your partner has the lever that lifts its floor, and you with it.",
+   "players": [
+    [
+     "Sol",
+     44
+    ],
+    [
+     "Luna",
+     44
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "12": {
+   "hint": "A crate down a chute stays on its plate for good. Read the colours before you push.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 1,
+   "crates": 0,
+   "hintBox": [
+    660,
+    973,
+    599,
+    42
+   ]
+  },
+  "13": {
+   "hint": "Walk right through a lever to switch it on, left to switch it off. Which way you go round decides how it ends.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "14": {
+   "hint": "A crate cannot climb, and a lift needs someone on its plate. Take the crate all the way up.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    641,
+    973,
+    639,
+    42
+   ]
+  },
+  "15": {
+   "hint": "One of you works the levers, the other runs. Walk through a lever to flip it, jump over it to leave it alone.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "16": {
+   "hint": "Every arm holds a machine you have met. Each one opens the next: find the order.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    665,
+    973,
+    591,
+    42
+   ]
+  },
+  "17": {
+   "hint": "Your partner raises your stepping stones. The tunnels are too low to jump: wait for the stone.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 2,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "18": {
+   "hint": "Several controls open one door and shut another. Where two gates stand together, run the moment your partner moves.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 2,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "19": {
+   "hint": "A crate cannot cross on its own legs. Send it over, then go round to meet it.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    687,
+    973,
+    545,
+    42
+   ]
+  },
+  "20": {
+   "hint": "Sun water is safe for Sol and moon water for Luna. Every gate you meet is opened by your partner, far away.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "21": {
+   "hint": "Hold a ferry's plate and it swings across; let go and it swings back. You cannot ride the ferry you are holding.",
+   "players": [],
+   "doors": [],
+   "gems": 2,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "22": {
+   "hint": "One of you works the deck, the other runs the course. Then swap: it will not go the same way twice.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 1,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "23": {
+   "hint": "Each wing mirrors the other, even the levers. What you do on your side changes theirs. The two yellow lifts balance each other.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 2,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "24": {
+   "hint": "The spiral winds in to the doors. One of you works the levers while the other runs; then swap.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "25": {
+   "hint": "The crates are your keys, and a crate never climbs. One of them has to be a step before it is a key.",
+   "players": [
+    [
+     "Sol",
+     100
+    ],
+    [
+     "Luna",
+     100
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 3,
+   "levers": 0,
+   "crates": 1,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "26": {
+   "hint": "Purple and green make four codes; each code opens one crossing. Walk right through a lever to turn it on, left to turn it off, and jump over it to leave it.",
+   "players": [
+    [
+     "Sol",
+     100
+    ],
+    [
+     "Luna",
+     100
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "27": {
+   "hint": "Each lift is worked from the other side. Same colour, same moment: when your partner presses, everything of that colour moves. The crate must reach the chute.",
+   "players": [
+    [
+     "Luna",
+     37
+    ]
+   ],
+   "doors": [
+    [
+     "Sol door",
+     76
+    ],
+    [
+     "Luna door",
+     76
+    ]
+   ],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 1,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "28": {
+   "hint": "Every corner opens one lock. Use each crate before you send it down to the vault.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    666,
+    973,
+    587,
+    42
+   ]
+  },
+  "29": {
+   "hint": "Every drop is one way. Whoever goes down first needs a white plate held to come back up.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "30": {
+   "hint": "Your paths cross four times. At each crossing one of you holds the way for the other. In an airlock, run the moment your partner steps on.",
+   "players": [
+    [
+     "Sol",
+     100
+    ],
+    [
+     "Luna",
+     100
+    ]
+   ],
+   "doors": [],
+   "gems": 0,
+   "plates": 1,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "31": {
+   "hint": "One lever below changes the room above. You may have to go back down and set it right.",
+   "players": [],
+   "doors": [],
+   "gems": 2,
+   "plates": 0,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    640,
+    953,
+    640,
+    62
+   ]
+  },
+  "32": {
+   "hint": "The heart opens only when both crates sit in their sockets and both levers are set.",
+   "players": [],
+   "doors": [],
+   "gems": 0,
+   "plates": 3,
+   "levers": 0,
+   "crates": 0,
+   "hintBox": [
+    664,
+    973,
+    592,
+    42
+   ]
+  }
+ }
+}

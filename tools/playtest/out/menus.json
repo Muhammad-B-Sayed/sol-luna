@@ -1,0 +1,1538 @@
+{
+ "checks": [
+  {
+   "name": "title screen shows",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "title: initial focus",
+   "ok": true,
+   "info": "BODY \"Sol & Luna\n      Tem\""
+  },
+  {
+   "name": "title: Tab order",
+   "ok": true,
+   "info": "btnLocal > btnDodge > btnRunner > btnHost > joinCode > BUTTON \"Join\" > btnHow > btnMute > BODY \"Sol & Luna\n      Tem\" > btnLocal"
+  },
+  {
+   "name": "how to play: Esc goes back",
+   "ok": false,
+   "info": "screen after Esc: how"
+  },
+  {
+   "name": "how to play: Back button visible without scrolling at 1280x800",
+   "ok": false,
+   "info": "{\"top\":869,\"bottom\":915,\"viewport\":800}"
+  },
+  {
+   "name": "how to play: Back returns to title",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "level select (fresh): 31 of 32 locked, level 1 focused",
+   "ok": true,
+   "info": "{\"n\":32,\"locked\":31,\"focus\":\"lvl current\"}"
+  },
+  {
+   "name": "level select: Esc goes back",
+   "ok": false,
+   "info": "screen after Esc: levels"
+  },
+  {
+   "name": "level select: locked level 5 does not start",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "level select: Enter on focused level 1 starts it",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "in play: Space/Enter do nothing to menus",
+   "ok": true,
+   "info": "[0,41,\"game\",\"BODY\"]"
+  },
+  {
+   "name": "Esc pauses, focus on Resume",
+   "ok": true,
+   "info": "{\"screen\":\"pause\",\"paused\":true,\"focus\":\"pResume\",\"tick\":41}"
+  },
+  {
+   "name": "paused: timer frozen",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "Esc again resumes",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "P pauses",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "pause: Tab order",
+   "ok": true,
+   "info": "pRestart > pLevels > pQuit > BODY \"Arrows move Sol, WAS\" > pResume > pRestart"
+  },
+  {
+   "name": "pause > Restart level restarts and unpauses",
+   "ok": true,
+   "info": "[\"game\",true,false]"
+  },
+  {
+   "name": "R restarts the level",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "pause > Level select",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "pause > Quit to title",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "mute toggles and survives a reload",
+   "ok": true,
+   "info": "Sound: on -> Sound: off / 1 -> after reload Sound: off"
+  },
+  {
+   "name": "?unlock opens all 32",
+   "ok": true,
+   "info": "{\"locked\":0,\"url\":\"http://localhost:3453/?unlock\"}"
+  },
+  {
+   "name": "?unlock is not saved by itself (expected: progress only saves on a finish)",
+   "ok": true,
+   "info": "{\"locked\":31,\"saved\":null}"
+  },
+  {
+   "name": "results card after a real finish, focus on Next level, progress saved and level 2 unlocked",
+   "ok": true,
+   "info": "{\"screen\":\"results\",\"focus\":\"resNext\",\"time\":\"0:42.1\",\"rank\":\"A\",\"saved\":{\"unlocked\":1,\"best\":{\"0\":{\"t\":42.15,\"gems\":8,\"rank\":\"A\"}}}}"
+  },
+  {
+   "name": "results: Esc does nothing (no way back by keyboard except Tab/Enter)",
+   "ok": true,
+   "info": "results"
+  },
+  {
+   "name": "results: Enter on Next level starts level 2",
+   "ok": true,
+   "info": "[\"game\",1,3]"
+  },
+  {
+   "name": "level 2 starts with nobody moving",
+   "ok": true,
+   "info": "[[194,662],[746,638]]"
+  },
+  {
+   "name": "level select shows level 1 done with its rank",
+   "ok": true,
+   "info": "lvl done rank-A First Light — best 42.1s"
+  },
+  {
+   "name": "death/restart level 1",
+   "ok": true,
+   "info": "Sol walked left from column 37 into the pool at (21,28); before death these differed from a fresh start: gm, lv, pl; after reset tick 0, tries 1, gems, levers, plates, platforms, crates and players all back to the start"
+  },
+  {
+   "name": "death/restart level 10",
+   "ok": true,
+   "info": "no hostile pool on either player's floor: Sol dropped onto the pool at (12,17) (position written into the state); before death these differed from a fresh start: gm, lv, pl, b; after reset tick 0, tries 1, gems, levers, plates, platforms, crates and players all back to the start"
+  },
+  {
+   "name": "death/restart level 20",
+   "ok": true,
+   "info": "Luna walked right from column 7 into the pool at (9,18); before death these differed from a fresh start: gm, pl; after reset tick 0, tries 1, gems, levers, plates, platforms, crates and players all back to the start"
+  },
+  {
+   "name": "death/restart level 26",
+   "ok": true,
+   "info": "no hostile pool on either player's floor: Sol dropped onto the pool at (13,7) (position written into the state); before death these differed from a fresh start: gm; after reset tick 0, tries 1, gems, levers, plates, platforms, crates and players all back to the start"
+  },
+  {
+   "name": "death/restart level 29",
+   "ok": true,
+   "info": "Luna walked right from column 28 into the pool at (30,13); before death these differed from a fresh start: gm, lv, pl, b; after reset tick 0, tries 1, gems, levers, plates, platforms, crates and players all back to the start"
+  }
+ ],
+ "death": [
+  {
+   "n": 1,
+   "how": "Sol walked left from column 37 into the pool at (21,28)",
+   "mid": {
+    "tick": 750,
+    "tries": 0,
+    "phase": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     1,
+     1
+    ],
+    "lv": [
+     -1,
+     1
+    ],
+    "btn": [
+     0,
+     1
+    ],
+    "pl": [
+     [
+      600,
+      120
+     ],
+     [
+      288,
+      432
+     ]
+    ],
+    "b": [],
+    "p": [
+     [
+      887,
+      638
+     ],
+     [
+      735,
+      229
+     ]
+    ]
+   },
+   "reset": {
+    "tick": 0,
+    "tries": 1,
+    "phase": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [
+     -1,
+     -1
+    ],
+    "btn": [
+     0,
+     0
+    ],
+    "pl": [
+     [
+      600,
+      120
+     ],
+     [
+      288,
+      480
+     ]
+    ],
+    "b": [],
+    "p": [
+     [
+      338,
+      662
+     ],
+     [
+      386,
+      662
+     ]
+    ]
+   },
+   "fresh": {
+    "tick": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [
+     -1,
+     -1
+    ],
+    "btn": [
+     0,
+     0
+    ],
+    "pl": [
+     [
+      600,
+      120
+     ],
+     [
+      288,
+      480
+     ]
+    ],
+    "b": [],
+    "p": [
+     [
+      338,
+      662
+     ],
+     [
+      386,
+      662
+     ]
+    ]
+   },
+   "changedMid": [
+    "gm",
+    "lv",
+    "pl"
+   ],
+   "ok": true,
+   "shots": [
+    "docs/img/playtest/menus/death-level-1-dying.jpg",
+    "docs/img/playtest/menus/death-level-1-after-reset.jpg"
+   ]
+  },
+  {
+   "n": 10,
+   "how": "no hostile pool on either player's floor: Sol dropped onto the pool at (12,17) (position written into the state)",
+   "mid": {
+    "tick": 1500,
+    "tries": 0,
+    "phase": 0,
+    "gm": [
+     0,
+     1,
+     0,
+     1,
+     1,
+     1,
+     1,
+     0
+    ],
+    "lv": [
+     1,
+     1,
+     1
+    ],
+    "btn": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      48,
+      72
+     ],
+     [
+      648,
+      144
+     ],
+     [
+      792,
+      96
+     ],
+     [
+      432,
+      264
+     ],
+     [
+      168,
+      576
+     ],
+     [
+      864,
+      672
+     ]
+    ],
+    "b": [
+     [
+      698,
+      392
+     ]
+    ],
+    "p": [
+     [
+      891,
+      638
+     ],
+     [
+      301,
+      558
+     ]
+    ]
+   },
+   "reset": {
+    "tick": 0,
+    "tries": 1,
+    "phase": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [
+     -1,
+     -1,
+     -1
+    ],
+    "btn": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      48,
+      120
+     ],
+     [
+      648,
+      144
+     ],
+     [
+      792,
+      144
+     ],
+     [
+      432,
+      264
+     ],
+     [
+      168,
+      624
+     ],
+     [
+      864,
+      672
+     ]
+    ],
+    "b": [
+     [
+      167,
+      238
+     ]
+    ],
+    "p": [
+     [
+      74,
+      302
+     ],
+     [
+      122,
+      134
+     ]
+    ]
+   },
+   "fresh": {
+    "tick": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [
+     -1,
+     -1,
+     -1
+    ],
+    "btn": [
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      48,
+      120
+     ],
+     [
+      648,
+      144
+     ],
+     [
+      792,
+      144
+     ],
+     [
+      432,
+      264
+     ],
+     [
+      168,
+      624
+     ],
+     [
+      864,
+      672
+     ]
+    ],
+    "b": [
+     [
+      167,
+      238
+     ]
+    ],
+    "p": [
+     [
+      74,
+      302
+     ],
+     [
+      122,
+      134
+     ]
+    ]
+   },
+   "changedMid": [
+    "gm",
+    "lv",
+    "pl",
+    "b"
+   ],
+   "ok": true,
+   "shots": [
+    "docs/img/playtest/menus/death-level-10-dying.jpg",
+    "docs/img/playtest/menus/death-level-10-after-reset.jpg"
+   ]
+  },
+  {
+   "n": 20,
+   "how": "Luna walked right from column 7 into the pool at (9,18)",
+   "mid": {
+    "tick": 1470,
+    "tries": 0,
+    "phase": 0,
+    "gm": [
+     1,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     1
+    ],
+    "lv": [],
+    "btn": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      888,
+      342
+     ],
+     [
+      792,
+      672
+     ],
+     [
+      96,
+      240
+     ],
+     [
+      360,
+      96
+     ],
+     [
+      336,
+      192
+     ],
+     [
+      744,
+      48
+     ],
+     [
+      768,
+      192
+     ],
+     [
+      120,
+      432
+     ],
+     [
+      312,
+      384
+     ],
+     [
+      552,
+      384
+     ],
+     [
+      624,
+      312
+     ],
+     [
+      192,
+      624
+     ],
+     [
+      576,
+      504
+     ],
+     [
+      576,
+      624
+     ]
+    ],
+    "b": [],
+    "p": [
+     [
+      896,
+      308
+     ],
+     [
+      172,
+      398
+     ]
+    ]
+   },
+   "reset": {
+    "tick": 0,
+    "tries": 1,
+    "phase": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [],
+    "btn": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      888,
+      240
+     ],
+     [
+      792,
+      672
+     ],
+     [
+      96,
+      240
+     ],
+     [
+      360,
+      96
+     ],
+     [
+      336,
+      192
+     ],
+     [
+      744,
+      48
+     ],
+     [
+      768,
+      192
+     ],
+     [
+      120,
+      432
+     ],
+     [
+      312,
+      384
+     ],
+     [
+      552,
+      384
+     ],
+     [
+      624,
+      312
+     ],
+     [
+      192,
+      624
+     ],
+     [
+      576,
+      504
+     ],
+     [
+      576,
+      624
+     ]
+    ],
+    "b": [],
+    "p": [
+     [
+      50,
+      638
+     ],
+     [
+      818,
+      62
+     ]
+    ]
+   },
+   "fresh": {
+    "tick": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [],
+    "btn": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      888,
+      240
+     ],
+     [
+      792,
+      672
+     ],
+     [
+      96,
+      240
+     ],
+     [
+      360,
+      96
+     ],
+     [
+      336,
+      192
+     ],
+     [
+      744,
+      48
+     ],
+     [
+      768,
+      192
+     ],
+     [
+      120,
+      432
+     ],
+     [
+      312,
+      384
+     ],
+     [
+      552,
+      384
+     ],
+     [
+      624,
+      312
+     ],
+     [
+      192,
+      624
+     ],
+     [
+      576,
+      504
+     ],
+     [
+      576,
+      624
+     ]
+    ],
+    "b": [],
+    "p": [
+     [
+      50,
+      638
+     ],
+     [
+      818,
+      62
+     ]
+    ]
+   },
+   "changedMid": [
+    "gm",
+    "pl"
+   ],
+   "ok": true,
+   "shots": [
+    "docs/img/playtest/menus/death-level-20-dying.jpg",
+    "docs/img/playtest/menus/death-level-20-after-reset.jpg"
+   ]
+  },
+  {
+   "n": 26,
+   "how": "no hostile pool on either player's floor: Sol dropped onto the pool at (13,7) (position written into the state)",
+   "mid": {
+    "tick": 2100,
+    "tries": 0,
+    "phase": 0,
+    "gm": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     0,
+     0,
+     1,
+     1,
+     0
+    ],
+    "lv": [
+     -1,
+     -1,
+     -1,
+     -1
+    ],
+    "btn": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      240,
+      504
+     ],
+     [
+      384,
+      672
+     ],
+     [
+      192,
+      456
+     ],
+     [
+      216,
+      456
+     ],
+     [
+      840,
+      288
+     ],
+     [
+      864,
+      240
+     ],
+     [
+      312,
+      576
+     ],
+     [
+      336,
+      576
+     ],
+     [
+      408,
+      168
+     ],
+     [
+      552,
+      192
+     ],
+     [
+      696,
+      480
+     ],
+     [
+      768,
+      480
+     ],
+     [
+      336,
+      360
+     ],
+     [
+      648,
+      360
+     ]
+    ],
+    "b": [],
+    "p": [
+     [
+      806,
+      446
+     ],
+     [
+      534,
+      374
+     ]
+    ]
+   },
+   "reset": {
+    "tick": 0,
+    "tries": 1,
+    "phase": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [
+     -1,
+     -1,
+     -1,
+     -1
+    ],
+    "btn": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      240,
+      504
+     ],
+     [
+      384,
+      672
+     ],
+     [
+      192,
+      456
+     ],
+     [
+      216,
+      456
+     ],
+     [
+      840,
+      288
+     ],
+     [
+      864,
+      240
+     ],
+     [
+      312,
+      576
+     ],
+     [
+      336,
+      576
+     ],
+     [
+      408,
+      168
+     ],
+     [
+      552,
+      192
+     ],
+     [
+      696,
+      480
+     ],
+     [
+      768,
+      480
+     ],
+     [
+      336,
+      360
+     ],
+     [
+      648,
+      360
+     ]
+    ],
+    "b": [],
+    "p": [
+     [
+      602,
+      638
+     ],
+     [
+      530,
+      638
+     ]
+    ]
+   },
+   "fresh": {
+    "tick": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [
+     -1,
+     -1,
+     -1,
+     -1
+    ],
+    "btn": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      240,
+      504
+     ],
+     [
+      384,
+      672
+     ],
+     [
+      192,
+      456
+     ],
+     [
+      216,
+      456
+     ],
+     [
+      840,
+      288
+     ],
+     [
+      864,
+      240
+     ],
+     [
+      312,
+      576
+     ],
+     [
+      336,
+      576
+     ],
+     [
+      408,
+      168
+     ],
+     [
+      552,
+      192
+     ],
+     [
+      696,
+      480
+     ],
+     [
+      768,
+      480
+     ],
+     [
+      336,
+      360
+     ],
+     [
+      648,
+      360
+     ]
+    ],
+    "b": [],
+    "p": [
+     [
+      602,
+      638
+     ],
+     [
+      530,
+      638
+     ]
+    ]
+   },
+   "changedMid": [
+    "gm"
+   ],
+   "ok": true,
+   "shots": [
+    "docs/img/playtest/menus/death-level-26-dying.jpg",
+    "docs/img/playtest/menus/death-level-26-after-reset.jpg"
+   ]
+  },
+  {
+   "n": 29,
+   "how": "Luna walked right from column 28 into the pool at (30,13)",
+   "mid": {
+    "tick": 3180,
+    "tries": 0,
+    "phase": 0,
+    "gm": [
+     1,
+     1,
+     1,
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0
+    ],
+    "lv": [
+     1,
+     -1
+    ],
+    "btn": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      168,
+      144
+     ],
+     [
+      312,
+      72
+     ],
+     [
+      576,
+      144
+     ],
+     [
+      720,
+      144
+     ],
+     [
+      792,
+      96
+     ],
+     [
+      96,
+      312
+     ],
+     [
+      432,
+      504
+     ],
+     [
+      696,
+      216
+     ],
+     [
+      720,
+      312
+     ],
+     [
+      168,
+      528
+     ],
+     [
+      408,
+      456
+     ],
+     [
+      744,
+      528
+     ],
+     [
+      816,
+      456
+     ],
+     [
+      240,
+      648
+     ],
+     [
+      432,
+      672
+     ],
+     [
+      816,
+      672
+     ]
+    ],
+    "b": [
+     [
+      451,
+      478
+     ],
+     [
+      699,
+      286
+     ]
+    ],
+    "p": [
+     [
+      125,
+      278
+     ],
+     [
+      679,
+      278
+     ]
+    ]
+   },
+   "reset": {
+    "tick": 0,
+    "tries": 1,
+    "phase": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [
+     -1,
+     1
+    ],
+    "btn": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      168,
+      144
+     ],
+     [
+      312,
+      72
+     ],
+     [
+      576,
+      144
+     ],
+     [
+      720,
+      96
+     ],
+     [
+      792,
+      96
+     ],
+     [
+      96,
+      360
+     ],
+     [
+      432,
+      504
+     ],
+     [
+      696,
+      264
+     ],
+     [
+      720,
+      312
+     ],
+     [
+      168,
+      528
+     ],
+     [
+      408,
+      456
+     ],
+     [
+      744,
+      528
+     ],
+     [
+      816,
+      456
+     ],
+     [
+      240,
+      648
+     ],
+     [
+      432,
+      672
+     ],
+     [
+      816,
+      672
+     ]
+    ],
+    "b": [
+     [
+      239,
+      94
+     ],
+     [
+      863,
+      118
+     ]
+    ],
+    "p": [
+     [
+      458,
+      110
+     ],
+     [
+      482,
+      110
+     ]
+    ]
+   },
+   "fresh": {
+    "tick": 0,
+    "gm": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "lv": [
+     -1,
+     1
+    ],
+    "btn": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "pl": [
+     [
+      168,
+      144
+     ],
+     [
+      312,
+      72
+     ],
+     [
+      576,
+      144
+     ],
+     [
+      720,
+      96
+     ],
+     [
+      792,
+      96
+     ],
+     [
+      96,
+      360
+     ],
+     [
+      432,
+      504
+     ],
+     [
+      696,
+      264
+     ],
+     [
+      720,
+      312
+     ],
+     [
+      168,
+      528
+     ],
+     [
+      408,
+      456
+     ],
+     [
+      744,
+      528
+     ],
+     [
+      816,
+      456
+     ],
+     [
+      240,
+      648
+     ],
+     [
+      432,
+      672
+     ],
+     [
+      816,
+      672
+     ]
+    ],
+    "b": [
+     [
+      239,
+      94
+     ],
+     [
+      863,
+      118
+     ]
+    ],
+    "p": [
+     [
+      458,
+      110
+     ],
+     [
+      482,
+      110
+     ]
+    ]
+   },
+   "changedMid": [
+    "gm",
+    "lv",
+    "pl",
+    "b"
+   ],
+   "ok": true,
+   "shots": [
+    "docs/img/playtest/menus/death-level-29-dying.jpg",
+    "docs/img/playtest/menus/death-level-29-after-reset.jpg"
+   ]
+  }
+ ]
+}

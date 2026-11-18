@@ -256,6 +256,7 @@ def twilight_spiral():
     L.r(14, 22, 28, 22)                                   # the middle's lower roof
     L.plate(27, 27, 1)                                    # PGb (green): Luna holds it from beside her own water
     L.p(18, 27, 'a').p(20, 27, 'b')
+    L.clear(18, 22, 18, 22).clear(20, 22, 20, 22)         # notches in that roof over the spawns: six free rows for the first jump
     L.p(28, 27, '/').r(29, 27, 32, 27).p(33, 27, '\\')   # the same east of the start, with sun water
     L.r(29, 22, 33, 24).pool(29, 27, 3, 'S')
     L.clear(29, 28, 31, 28).plat(29, 28, 3, 1, 0, -1, 1)  # Luna's first bridge (green)
@@ -389,7 +390,7 @@ def sanctum_approach():
     L.r(1, 25, 3, 27)                                     # a step
     L.r(6, 22, 9, 22)                                     # the landing in front of G1
     L.r(1, 19, 2, 21).plate(1, 18, 0)                     # P1 (purple) on the high shelf, nine tiles from G1
-    L.p(5, 27, 'a').p(7, 27, 'b')
+    L.p(5, 27, 'a').p(4, 27, 'b')                         # Luna starts west of Sol, clear of the landing: six free rows
     # ---- the corridor (rows 16-21, floor 22) from G1 to the shaft
     L.clear(10, 16, 32, 21).clear(33, 16, 35, 24)
     L.r(9, 16, 11, 19)
