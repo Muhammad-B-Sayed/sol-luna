@@ -1,0 +1,39 @@
+Local play
+  screenshot docs/img/playtest/runner/runner-menu.png
+  screenshot docs/img/playtest/runner/runner-countdown.png
+ok   local: Runner starts from the title menu
+  screenshot docs/img/playtest/runner/runner-low-difficulty.png
+ok   local: scrolling and both players moved · {"phase":2,"cam":293.5089095145321,"x":[868,868],"alive":[false,false]}
+ok   local: results card with winner, time and distance · {"title":"A draw!","sol":"0:04.8 26 m fell into the abyss","luna":"0:04.8 26 m fell into the abyss"}
+  screenshot docs/img/playtest/runner/runner-results.png
+ok   local: rematch starts a new course · 1251996288 -> 587412657
+  screenshot docs/img/playtest/runner/runner-high-plank.png
+    plank at 1035 tiles, difficulty 0.94, scroll 2.55 px/tick
+  screenshot docs/img/playtest/runner/runner-high-shards.png
+    shards at 980 tiles, difficulty 0.89, scroll 2.52 px/tick
+  screenshot docs/img/playtest/runner/runner-high-swing.png
+    swing at 948 tiles, difficulty 0.86, scroll 2.50 px/tick
+  screenshot docs/img/playtest/runner/runner-high-eclipse.png
+    eclipse at 815 tiles, difficulty 0.74, scroll 2.42 px/tick
+  screenshot docs/img/playtest/runner/runner-high-crumble.png
+    crumble at 958 tiles, difficulty 0.87, scroll 2.51 px/tick
+  screenshot docs/img/playtest/runner/runner-high-vent.png
+    vent at 801 tiles, difficulty 0.73, scroll 2.41 px/tick
+  screenshot docs/img/playtest/runner/runner-high-twin.png
+    twin at 1166 tiles, difficulty 1.00, scroll 2.62 px/tick
+ok   local: quit returns to the title
+Online room (two clients)
+ok   online: host made a room · H965W
+ok   online: guest joined; Runner button enabled
+  screenshot docs/img/playtest/runner/runner-lobby.png
+ok   online: both clients in the same runner match · [{"active":true,"online":true,"seed":1362493908,"me":0},{"active":true,"online":true,"seed":1362493908,"me":1}]
+ok   online: clients agree on positions (both players moved) · [{"tick":428,"cam":252.84753213478078,"p":[[871,495,true],[855,504,true]]},{"tick":427,"cam":251.80818710554553,"p":[[868,487,true],[854,495,true]]}]
+  screenshot docs/img/playtest/runner/runner-online-host.png
+  screenshot docs/img/playtest/runner/runner-online-guest.png
+FAIL online: both see the same result · ["Sol wins! | Sol0:05.828 mstill running | Luna0:04.625 mfell into the abyss","Sol wins! | Sol0:05.728 mstill running | Luna0:04.625 mfell into the abyss"]
+  screenshot docs/img/playtest/runner/runner-online-results.png
+ok   online: rematch gives both a new course · [{"seed":1836159971,"phase":0,"screen":"game"},{"seed":1836159971,"phase":0,"screen":"game"}]
+ok   online: back to the room lobby · ["lobby","lobby"]
+ok   no uncaught page errors
+
+1 problem(s)

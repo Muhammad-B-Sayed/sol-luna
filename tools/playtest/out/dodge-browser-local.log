@@ -1,0 +1,10 @@
+local: court loaded, serve = Luna | hint: Sol: hold ↓ to aim, release to throw · Luna: hold S · Don't get hit!
+local: frame rate during play 60.2 fps
+local: moonball thrown by Luna, frozen at x=431 vx=-24.0
+local: moonball hit, score 0-1
+local: fireball thrown by Sol, frozen at x=529 vx=24.0
+local: fireball hit, score 1-1
+local: winner screen: Luna wins! 4-5
+local: rematch -> 0-0 phase 0 | screen game
+local: co-op level after dodge: {"dodge":false,"name":"First Light","tick":32,"doors":2}
+local: console errors: none
