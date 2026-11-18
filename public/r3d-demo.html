@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runner 3D demo</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d0a18; overflow: hidden; font: 13px system-ui, sans-serif; color: #d8ccff; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #hud { position: fixed; left: 10px; top: 8px; pointer-events: none; text-shadow: 0 1px 2px #000; white-space: pre; line-height: 1.4; }
+  #hud b.s { color: #ffc93c; } #hud b.l { color: #9fe7ff; }
+  #help { position: fixed; right: 10px; bottom: 8px; opacity: 0.7; pointer-events: none; text-align: right; white-space: pre; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"></div>
+<div id="help">Bots run both players. Take over Sol: arrows + Enter (jump). Luna: WASD + Space.
+?seed= ?split=1 ?me=1 ?z= ?kind= ?q=high|low ?count=1 ?bot=0 ?hud=0</div>
+<script type="module">
+import * as R3 from '/shared/runner3d.js';
+import { Runner3DRenderer } from '/js/r3d/renderer.js';
+
+const Q = new URLSearchParams(location.search);
+const num = (k, d) => (Q.has(k) ? Number(Q.get(k)) : d);
+const seed = num('seed', 12345) >>> 0;
+const split = Q.get('split') === '1';
+const me = num('me', 0) ? 1 : 0;
+const canvas = document.getElementById('c');
+const hud = document.getElementById('hud');
+if (Q.get('hud') === '0') { hud.style.display = 'none'; document.getElementById('help').style.display = 'none'; }
+
+const L = R3.buildRunner3d(seed);
+let S = R3.createRunner3dState(L, { sandbox: true });
+if (Q.get('count') !== '1') { S.phase = R3.R3_PLAY; S.phaseT = 0; }
+
+// highest floor-like top under (x, z)
+function topAt(x, z) {
+  let best = null;
+  for (const o of L.objs) {
+    if (o.z0 > z + 1) break;
+    if (o.k === 'spikes' || o.k === 'pool') continue;
+    if (x >= o.x0 && x <= o.x1 && z >= o.z0 && z <= o.z1 && (best == null || o.y > best)) best = o.y;
+  }
+  return best;
+}
+function placeAt(z) {
+  R3.ensureGenerated(L, z + 200);
+  S.zone = z - 9;
+  S.lo = 0;
+  for (let i = 0; i < 2; i++) {
+    const p = S.p[i];
+    let zz = z;
+    for (let k = 0; k < 80 && topAt(p.x, zz) == null; k++) zz += 0.5;
+    p.z = zz; p.y = topAt(p.x, zz) ?? 0; p.vx = p.vy = p.vz = 0; p.gr = true; p.alive = true;
+    S.dead[i] = -1; S.why[i] = '';
+  }
+  S.best = [S.p[0].z, S.p[1].z];
+  R3.stepRunner3d(L, S, [0, 0]);
+}
+if (Q.has('kind')) {
+  const kind = Q.get('kind');
+  let found = null;
+  for (let zz = 100; zz < 4000 && !found; zz += 100) { R3.ensureGenerated(L, zz); found = L.objs.find(o => o.k === kind); }
+  if (found) placeAt(Math.max(0, found.z0 - 7)); else console.warn('no object of kind', kind);
+} else if (Q.has('z')) placeAt(num('z', 0));
+
+// --- input: bots by default; pressing a player's keys hands that player to the keyboard
+const keys = new Set();
+const manual = [Q.get('bot') === '0', Q.get('bot') === '0'];
+const SOLK = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'], LUNK = ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space'];
+addEventListener('keydown', (e) => { keys.add(e.code); if (SOLK.includes(e.code)) manual[0] = true; if (LUNK.includes(e.code)) manual[1] = true; if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault(); });
+addEventListener('keyup', (e) => keys.delete(e.code));
+function keyBits(K) {
+  return (keys.has(K[0]) ? R3.IN_L : 0) | (keys.has(K[1]) ? R3.IN_R : 0) | (keys.has(K[2]) ? R3.IN_F : 0) | (keys.has(K[3]) ? R3.IN_B : 0) | (keys.has(K[4]) ? R3.IN_J : 0);
+}
+// A simple bot: run forward, steer toward safe floor ahead, jump before gaps and hazards.
+function botBits(i) {
+  const p = S.p[i];
+  if (!p.alive) return 0;
+  let b = R3.IN_F;
+  const hazardAt = (x, z) => L.objs.some(o => (o.k === 'spikes' || (o.k === 'pool' && (o.el === 2 || o.el !== i))) && x > o.x0 - 0.4 && x < o.x1 + 0.4 && z > o.z0 - 0.4 && z < o.z1 + 0.4 && o.z0 < p.z + 6 && o.z1 > p.z - 1);
+  const safe = (x, z) => topAt(x, z) != null && !hazardAt(x, z);
+  // pick a lateral lane that has floor a little ahead
+  let tx = p.x, bestScore = -1;
+  for (let dx = -4; dx <= 4; dx += 0.5) {
+    const x = p.x + dx; let s = 0;
+    for (let a = 1; a <= 6; a++) if (safe(x, p.z + a)) s++;
+    s -= Math.abs(dx) * 0.15 + Math.abs(x) * 0.05;
+    if (s > bestScore) { bestScore = s; tx = x; }
+  }
+  if (tx < p.x - 0.2) b |= R3.IN_L; else if (tx > p.x + 0.2) b |= R3.IN_R;
+  const ahead = p.z + 0.9 + p.vz * 4;
+  if (p.gr && (!safe(p.x, ahead) || !safe(p.x, p.z + 0.5))) b |= R3.IN_J;
+  if (!p.gr && p.vy > 0) b |= R3.IN_J;   // hold jump on the way up
+  return b;
+}
+
+// --- loop: fixed 60 Hz sim, interpolated view
+const r = new Runner3DRenderer(canvas);
+if (Q.has('q')) r.setQuality(Q.get('q'));
+r.reset(L);
+const fit = () => r.resize(innerWidth, innerHeight, devicePixelRatio || 1);
+addEventListener('resize', fit); fit();
+
+let prev = R3.cloneRunner3d(S), acc = 0, last = performance.now(), frozen = false, simTime = 0;
+const lerp = (a, b, t) => a + (b - a) * t;
+function respawn() {   // sandbox: a lost player comes back a little ahead of the dusk after 2 s
+  for (let i = 0; i < 2; i++) {
+    if (S.dead[i] >= 0 && S.tick - S.dead[i] > 120) {
+      const p = S.p[i], o = S.p[1 - i];
+      let z = Math.max(S.zone + 6, o.alive ? o.z - 2 : S.zone + 6);
+      for (let k = 0; k < 60 && topAt(L.spawn[i].x, z) == null; k++) z += 0.5;
+      Object.assign(p, { x: L.spawn[i].x, z, y: topAt(L.spawn[i].x, z) ?? 0, vx: 0, vy: 0, vz: 0, gr: true, alive: true });
+      S.dead[i] = -1; S.why[i] = '';
+    }
+  }
+}
+function stepOnce() {
+  prev = R3.cloneRunner3d(S);
+  const bits = [0, 1].map(i => (manual[i] ? keyBits(i ? LUNK : SOLK) : botBits(i)));
+  R3.stepRunner3d(L, S, bits);
+  respawn();
+}
+function view(alpha) {
+  return { zone: lerp(prev.zone, S.zone, alpha), p: S.p.map((q, i) => ({ x: lerp(prev.p[i].x, q.x, alpha), y: lerp(prev.p[i].y, q.y, alpha), z: lerp(prev.p[i].z, q.z, alpha) })) };
+}
+let fpsT = 0, fpsN = 0, fps = 0;
+function frame(now) {
+  const dt = Math.min(0.25, (now - last) / 1000); last = now;
+  if (!frozen) { acc += dt; simTime += dt; while (acc >= 1 / 60) { stepOnce(); acc -= 1 / 60; } }
+  r.renderer.info.reset();
+  r.draw(L, S, view(frozen ? 1 : acc * 60), simTime, { split, me, paused: frozen });
+  fpsN++; fpsT += dt; if (fpsT > 0.5) { fps = fpsN / fpsT; fpsN = 0; fpsT = 0; }
+  if (hud.style.display !== 'none') {
+    const st = r.stats();
+    hud.innerHTML = `<b class="s">Sol</b> ${S.p[0].alive ? Math.round(S.p[0].z) + ' m' : S.why[0]}   <b class="l">Luna</b> ${S.p[1].alive ? Math.round(S.p[1].z) + ' m' : S.why[1]}\n` +
+      `zone ${S.zone.toFixed(1)}  seed ${seed}\n${fps.toFixed(0)} fps  ${st.calls} calls  ${(st.triangles / 1000).toFixed(0)}k tris  ${st.level}  ${st.views} views`;
+  }
+  requestAnimationFrame(frame);
+}
+r.renderer.info.autoReset = false;
+requestAnimationFrame(frame);
+
+// hooks for tools/r3d-shots.js: freeze time, step the sim, read stats
+window.__r3d = {
+  L, get S() { return S; }, r, R3,
+  freeze(v = true) { frozen = v; },
+  step(n = 1) { for (let k = 0; k < n; k++) { stepOnce(); simTime += 1 / 60; } },
+  render() { r.renderer.info.reset(); r.draw(L, S, view(1), simTime, { split, me, paused: false }); return r.stats(); },
+  place: placeAt, manual,
+};
+</script>
+</body>
+</html>
