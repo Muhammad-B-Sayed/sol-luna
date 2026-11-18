@@ -346,6 +346,32 @@ one). With jitter and spikes the 6 trials left are ones where a spike held back 
 the defender's link, so the ball first showed late in its flight. No input rule can show a ball
 the screen hasn't heard of.
 
+Real browsers on `coop-dodge-inputs`. The machine was shared with other heavy jobs the whole
+time (load 9 to 57 on 16 cores), so the timing checks were run more than once, and the
+unchanged code (4be5032) beside them where it mattered:
+
+- `tools/runner-browser.js` and `tools/runner3d-browser.js`: pass.
+- `tools/check-dodge-browser.cjs` local: pass. Online (`LAG_MS=40`): pass twice at load 11 to 14
+  (both winner screens, rematch, no backward step of the drawn ball, no console errors); one
+  earlier try at load 42 timed out waiting for a throw.
+- `tools/playtest/coop-browser.mjs 1,10,22`: all three match the headless bot (same winning
+  tick, at most 0.05 px apart).
+- `tools/playtest/online-browser.mjs`: 24 of 24 at load 18 to 20, 23 of 24 at load 9 (the
+  "Next level" check, with level 1 finished). Its driver plays one tick per frame and paces the
+  queue itself, so it now pins the game's own pacing off on its pages (without that, a frame now
+  and then ran 0 or 2 ticks and the recorded plan slipped: 17 of 24, against 20 of 24 for the
+  unchanged code at the same load). "Next level" is not run, and both go to level 2 through the
+  lobby, when level 1 did not reach the results card, so later checks no longer fail in a chain.
+  The misfire with level 1 finished is still open: it passed in the next run, and the check now
+  logs what is under the button and both clients' state when it fails.
+- `tools/playtest/runner-lag.mjs`: passes at load 12 (55 to 59 fps). Its "never pops" check
+  failed in 3 of 7 Runner 3D runs (0.306 to 0.333 units against 0.25) and 1 of 3 2D runs (6.98
+  px against 6) at load 12 to 57 and 25 to 55 fps. The unchanged code passed 6 of 6 and 2 of 2,
+  at 4 to 41 fps. The Runner client files are the same in both trees, and the Runner branch of
+  the server is the same code; the course is random each run. The fixed-seed harness
+  (`KIND=2d,3d`) gives the same numbers for both servers (2D pop 5.2 and 5.2 px, 3D 0.21 and 0.21
+  units). I could not settle it on this machine. Run it a few times on a quiet machine.
+
 `tools/check-dodge.js` (the sim, unchanged): a player standing still is hit unless they move
 within 5 ticks (at most 6 allowed), moving on the release tick or the next escapes from anywhere
 outside 237 px, and a jump at the release beats an aimed throw.
