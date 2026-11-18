@@ -38,7 +38,8 @@ for (const f of process.argv.slice(2)) {
       released: tot(co, r => r.server.input.released), trimmed: tot(co, r => r.server.input.trimmed), held: tot(co, r => r.server.input.held), late: tot(co, r => r.server.input.late), waits: tot(co, r => r.server.input.waits), waitMax: Math.max(...co.map(r => r.server.input.waitMax)),
       keyChanges: cs.reduce((a, c) => a + c.ticks.changes, 0), offTick: cs.reduce((a, c) => a + c.ticks.moved, 0), dropped: cs.reduce((a, c) => a + c.ticks.dropped, 0),
       ownCorrMax: mx(c => c.corrMax), ownCorrN: cs.reduce((a, c) => a + c.corrN, 0),
-      partnerPop: mx(c => c.maxPop), pops: cs.reduce((a, c) => a + c.pops, 0), frames: cs.reduce((a, c) => a + c.frames, 0),
+      partnerPop: mx(c => c.maxPop), pops: cs.reduce((a, c) => a + c.pops, 0), pops12: cs.reduce((a, c) => a + (c.pops12 || 0), 0),
+      ridePct: cs[0].ride ? +(cs.reduce((a, c) => a + c.ride.pct, 0) / cs.length).toFixed(1) : '-', rideGapP95: cs[0].ride ? mx(c => c.ride.p95) : '-', rideGapMax: cs[0].ride ? mx(c => c.ride.max) : '-', frames: cs.reduce((a, c) => a + c.frames, 0),
       offPct: +(cs.reduce((a, c) => a + c.offPct * c.frames, 0) / Math.max(1, cs.reduce((a, c) => a + c.frames, 0))).toFixed(1), maxOff: mx(c => c.maxOff),
       undone: cs.reduce((a, c) => a + c.undoDead + c.undoWon, 0) });
   }

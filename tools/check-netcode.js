@@ -393,7 +393,8 @@ function coopMeter() {
   M.snap = (m) => {
     const st = m.st;
     M.srv = { phase: st.phase, tries: st.tries, tick: st.tick };
-    M.path.set(st.tick, { tries: st.tries, ok: st.phase === 0, p: st.p.map(p => [p.x, p.y]), alive: st.p.map(p => p.alive) });
+    M.path.set(st.tick, { tries: st.tries, ok: st.phase === 0, p: st.p.map(p => [p.x, p.y]), alive: st.p.map(p => p.alive),
+      gref: st.p.map(p => (p.gr ? p.gref : -1)), push: st.p.map(p => p.push), pl: st.pl.map(q => [q.x, q.y]), b: st.b.map(q => [q.x, q.y]) });
   };
   M.at = (i, T, tries) => {
     const a = Math.floor(T);
@@ -408,7 +409,7 @@ function coopMeter() {
   };
   M.report = (corr) => {
     const o = 1 - M.me;
-    let maxPop = 0, off = 0, n = 0, maxOff = 0, pops = 0;
+    let maxPop = 0, off = 0, n = 0, maxOff = 0, pops = 0, pops12 = 0;
     for (let k = 1; k < M.samples.length; k++) {
       const a = M.samples[k - 1], b = M.samples[k];
       if (!a || !b || a.tries !== b.tries) continue;
@@ -420,11 +421,30 @@ function coopMeter() {
       const pop = Math.max(0, Math.hypot(b.pos[0] - a.pos[0], b.pos[1] - a.pos[1]) - Math.hypot(sb[0] - sa[0], sb[1] - sa[1])) / w;
       maxPop = Math.max(maxPop, pop);
       if (pop > 6) pops++;
+      if (pop > 12) pops12++;
       const e = Math.hypot(b.pos[0] - sb[0], b.pos[1] - sb[1]);
       maxOff = Math.max(maxOff, e);
       if (e > 4) off++;
     }
-    return { frames: n, maxPop: +maxPop.toFixed(2), pops, offPct: n ? +(100 * off / n).toFixed(1) : 0, maxOff: +maxOff.toFixed(1),
+    // what drawing the partner from snapshots about 150 ms in the past would cost: how often the
+    // server has them standing on a lift, a crate or the other player that moves, or pushing a
+    // crate, and how far that thing moves in 9 ticks (the gap between them and it on a screen
+    // that draws the world in the present)
+    const objAt = (E, ref) => (ref < 0 ? null : ref < 100 ? E.pl[ref] : ref < 200 ? E.b[ref - 100] : E.p[ref - 200]);
+    let rideN = 0, ticksN = 0; const gaps = [];
+    for (const [t, E] of M.path) {
+      const F = M.path.get(t - 9) || M.path.get(t - 10) || M.path.get(t - 8);
+      if (!F || !E.ok || !E.alive[o] || F.tries !== E.tries) continue;
+      ticksN++;
+      const ref = E.gref[o];
+      const a = objAt(E, ref), b = objAt(F, ref);
+      let gap = a && b ? Math.hypot(a[0] - b[0], a[1] - b[1]) : 0;
+      if (E.push[o]) gap = Math.max(gap, Math.hypot(E.p[o][0] - F.p[o][0], E.p[o][1] - F.p[o][1]));   // the crate moves with them
+      if (gap > 0.5) { rideN++; gaps.push(gap); }
+    }
+    gaps.sort((x, y) => x - y);
+    const ride = { pct: ticksN ? +(100 * rideN / ticksN).toFixed(1) : 0, p50: +(gaps[gaps.length >> 1] || 0).toFixed(1), p95: +(gaps[Math.floor(gaps.length * 0.95)] || 0).toFixed(1), max: +(gaps[gaps.length - 1] || 0).toFixed(1) };
+    return { frames: n, maxPop: +maxPop.toFixed(2), pops, pops12, ride, offPct: n ? +(100 * off / n).toFixed(1) : 0, maxOff: +maxOff.toFixed(1),
       corrMax: +corr.reduce((m, c) => Math.max(m, c[0]), 0).toFixed(2), corrN: corr.filter(c => c[0] > 0.5).length };
   };
   return M;
