@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, createState, step, PH_WON } from '../shared/sim.js';
-import { COURT, createDodge, stepDodge, windupFor, DP_READY, DP_POINT, DP_OVER, dodgeViewFor } from '../shared/dodge.js';
+import { COURT, DODGE, createDodge, stepDodge, windupFor, DP_READY, DP_POINT, DP_OVER, dodgeViewFor } from '../shared/dodge.js';
 import { buildRunner, createRunnerState, stepRunner, newSeed } from '../shared/runner.js';
 import { buildRunner3d, createRunner3dState, stepRunner3d } from '../shared/runner3d.js';
 
@@ -121,6 +121,7 @@ const RUN_QMAX = 120;    // longest input queue kept
 const RUN_WAIT = 24;     // ticks the room waits for a late player's inputs before it holds their keys (400 ms)
 const BACK_TICKS = 60;   // co-op and dodge: after an absence, ticks during which a long queue is cut to BACK_KEEP
 const BACK_KEEP = 2;
+const DRAIN_STOP = 20;   // dodge: no queue drain in the last 20 ticks (333 ms) of the ready freeze
 
 class Room {
   constructor(code) {
@@ -258,11 +259,13 @@ class Room {
   // inputs are ignored, and in the ready freeze, where an input the same as the keys already
   // held only makes that hold one tick shorter (nobody can throw yet). Only a standing queue is
   // drained: one that never fell below 2 over the last second (qlog). Draining the cushion that
-  // jitter needs would leave that player's inputs late, and the room waiting for them. The depth
-  // that is left is recorded once per advance() for the wind-up.
+  // jitter needs would leave that player's inputs late, and the room waiting for them. Not in the
+  // last DRAIN_STOP ticks of the freeze either: a drain moves every input after it one tick
+  // earlier, and the client, a round trip ahead, has already sent the first inputs of play. The
+  // depth that is left is recorded once per advance() for the wind-up.
   dodgeQueue(ch) {
     const q = this.q[ch], ph = this.S.d.phase, h = this.qlog[ch];
-    if (q.length > 1 && h.length >= 30 && Math.min(...h) >= 2 && (ph === DP_POINT || ph === DP_OVER || (ph === DP_READY && q[0][1] === this.cur[ch]))) { this.ack[ch] = q.shift()[0]; this.nst[ch].drained++; }
+    if (q.length > 1 && h.length >= 30 && Math.min(...h) >= 2 && (ph === DP_POINT || ph === DP_OVER || (ph === DP_READY && this.S.d.t < DODGE.ready - DRAIN_STOP && q[0][1] === this.cur[ch]))) { this.ack[ch] = q.shift()[0]; this.nst[ch].drained++; }
   }
   // n ticks of wall-clock time have passed. Every room waits up to RUN_WAIT ticks for a player
   // whose inputs are late (a Wi-Fi spike, a stalled tab) instead of guessing their keys, then

@@ -105,7 +105,8 @@ export class CoopClient {
       this.prev.p.forEach((v, i) => { v.x += after.p[i].x - before.p[i].x; v.y += after.p[i].y - before.p[i].y; });
       this.prev.b.forEach((v, i) => { v.x += after.b[i].x - before.b[i].x; v.y += after.b[i].y - before.b[i].y; });
       this.prev.pl.forEach((v, i) => { v.x += after.pl[i].x - before.pl[i].x; v.y += after.pl[i].y - before.pl[i].y; });
-      if (this.S.p[me].alive && ns.p[me].alive) this.corr.push([Math.hypot(before.p[me].x - after.p[me].x, before.p[me].y - after.p[me].y), 0]);
+      const jump = Math.hypot(before.p[me].x - after.p[me].x, before.p[me].y - after.p[me].y) > 40;   // a respawn or a new point: not eased, not a correction
+      if (!jump && this.S.p[me].alive && ns.p[me].alive) this.corr.push([Math.hypot(before.p[me].x - after.p[me].x, before.p[me].y - after.p[me].y), 0]);
     } else {
       this.off = zeroOff(ns);
       this.prev = capture(ns);
