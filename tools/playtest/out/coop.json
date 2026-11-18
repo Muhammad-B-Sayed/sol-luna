@@ -1,0 +1,1923 @@
+{
+ "1": {
+  "n": 1,
+  "name": "First Light",
+  "bot": {
+   "wonTick": 2484,
+   "secs": 41.4,
+   "gems": 8,
+   "total": 8
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 2529,
+   "wonTick": 2484,
+   "tries": 0,
+   "gems": 8,
+   "card": {
+    "name": "1. First Light",
+    "time": "0:42.1",
+    "par": "par 0:45.0",
+    "gems": "8 / 8",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 161,
+  "moments": [
+   {
+    "t": 336,
+    "why": "biggest climb: Luna (9.8,28) -> (4.9,25), climb 2.7, cross 4.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-01-1-t336.jpg"
+   },
+   {
+    "t": 745,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-01-2-t745.jpg"
+   },
+   {
+    "t": 1254,
+    "why": "biggest climb: Sol (6.8,25) -> (7.6,21), climb 3.7, cross 0.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-01-3-t1254.jpg"
+   },
+   {
+    "t": 1487,
+    "why": "biggest climb: Sol (33.2,17) -> (32.3,13), climb 3.7, cross 0.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-01-4-t1487.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-select.jpg",
+   "docs/img/playtest/coop/level-01-0-start.jpg",
+   "docs/img/playtest/coop/level-01-1-t336.jpg",
+   "docs/img/playtest/coop/level-01-2-t745.jpg",
+   "docs/img/playtest/coop/level-01-3-t1254.jpg",
+   "docs/img/playtest/coop/level-01-4-t1487.jpg",
+   "docs/img/playtest/coop/level-01-9-results.jpg"
+  ],
+  "wall": "4.1"
+ },
+ "2": {
+  "n": 2,
+  "name": "Parting Ways",
+  "bot": {
+   "wonTick": 1958,
+   "secs": 32.63333333333333,
+   "gems": 8,
+   "total": 8
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 2003,
+   "wonTick": 1958,
+   "tries": 0,
+   "gems": 8,
+   "card": {
+    "name": "2. Parting Ways",
+    "time": "0:33.4",
+    "par": "par 0:45.0",
+    "gems": "8 / 8",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 151,
+  "moments": [
+   {
+    "t": 369,
+    "why": "biggest climb: Sol (4.4,25) -> (5.5,21), climb 3.7, cross 1.1, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-02-1-t369.jpg"
+   },
+   {
+    "t": 587,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-02-2-t587.jpg"
+   },
+   {
+    "t": 801,
+    "why": "longest crossing: Luna (37.6,27) -> (31.1,27), climb -0.3, cross 6.6, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-02-3-t801.jpg"
+   },
+   {
+    "t": 928,
+    "why": "biggest climb: Luna (23.4,24) -> (25.6,20), climb 3.7, cross 2.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-02-4-t928.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-02-0-start.jpg",
+   "docs/img/playtest/coop/level-02-1-t369.jpg",
+   "docs/img/playtest/coop/level-02-2-t587.jpg",
+   "docs/img/playtest/coop/level-02-3-t801.jpg",
+   "docs/img/playtest/coop/level-02-4-t928.jpg",
+   "docs/img/playtest/coop/level-02-9-results.jpg"
+  ],
+  "wall": "3.0"
+ },
+ "3": {
+  "n": 3,
+  "name": "Shade Well",
+  "bot": {
+   "wonTick": 2522,
+   "secs": 42.03333333333333,
+   "gems": 6,
+   "total": 6
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 2567,
+   "wonTick": 2522,
+   "tries": 0,
+   "gems": 6,
+   "card": {
+    "name": "3. Shade Well",
+    "time": "0:42.8",
+    "par": "par 0:45.0",
+    "gems": "6 / 6",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 160,
+  "moments": [
+   {
+    "t": 428,
+    "why": "biggest climb: Luna (22.1,7) -> (28.1,6), climb 0.7, cross 6.0, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-03-1-t428.jpg"
+   },
+   {
+    "t": 681,
+    "why": "biggest climb: Sol (22.0,7) -> (28.0,6), climb 0.7, cross 6.0, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-03-2-t681.jpg"
+   },
+   {
+    "t": 1387,
+    "why": "55% of the route",
+    "file": "docs/img/playtest/coop/level-03-3-t1387.jpg"
+   },
+   {
+    "t": 1920,
+    "why": "biggest climb: Sol (7.3,28) -> (9.6,28), climb -0.3, cross 2.3, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-03-4-t1920.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-03-0-start.jpg",
+   "docs/img/playtest/coop/level-03-1-t428.jpg",
+   "docs/img/playtest/coop/level-03-2-t681.jpg",
+   "docs/img/playtest/coop/level-03-3-t1387.jpg",
+   "docs/img/playtest/coop/level-03-4-t1920.jpg",
+   "docs/img/playtest/coop/level-03-9-results.jpg"
+  ],
+  "wall": "4.1"
+ },
+ "4": {
+  "n": 4,
+  "name": "The Lift",
+  "bot": {
+   "wonTick": 2512,
+   "secs": 41.86666666666667,
+   "gems": 8,
+   "total": 8
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 2557,
+   "wonTick": 2512,
+   "tries": 0,
+   "gems": 8,
+   "card": {
+    "name": "4. The Lift",
+    "time": "0:42.6",
+    "par": "par 0:45.0",
+    "gems": "8 / 8",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 147,
+  "moments": [
+   {
+    "t": 716,
+    "why": "biggest climb: Sol (5.6,28) -> (3.4,25), climb 2.7, cross 2.1, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-04-1-t716.jpg"
+   },
+   {
+    "t": 1356,
+    "why": "biggest climb: Luna (16.7,20) -> (20.2,17), climb 3.1, cross 3.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-04-2-t1356.jpg"
+   },
+   {
+    "t": 2010,
+    "why": "80% of the route",
+    "file": "docs/img/playtest/coop/level-04-3-t2010.jpg"
+   },
+   {
+    "t": 2408,
+    "why": "longest crossing: Luna (25.7,6) -> (18.9,7), climb -1.3, cross 6.8, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-04-4-t2408.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-04-0-start.jpg",
+   "docs/img/playtest/coop/level-04-1-t716.jpg",
+   "docs/img/playtest/coop/level-04-2-t1356.jpg",
+   "docs/img/playtest/coop/level-04-3-t2010.jpg",
+   "docs/img/playtest/coop/level-04-4-t2408.jpg",
+   "docs/img/playtest/coop/level-04-9-results.jpg"
+  ],
+  "wall": "3.0"
+ },
+ "5": {
+  "n": 5,
+  "name": "The Long Way Round",
+  "bot": {
+   "wonTick": 2633,
+   "secs": 43.88333333333333,
+   "gems": 8,
+   "total": 8
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 2678,
+   "wonTick": 2633,
+   "tries": 0,
+   "gems": 8,
+   "card": {
+    "name": "5. The Long Way Round",
+    "time": "0:44.6",
+    "par": "par 0:50.0",
+    "gems": "8 / 8",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 183,
+  "moments": [
+   {
+    "t": 167,
+    "why": "biggest climb: Sol (7.5,21) -> (4.2,17), climb 3.7, cross 3.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-05-1-t167.jpg"
+   },
+   {
+    "t": 827,
+    "why": "biggest climb: Sol (8.1,14) -> (4.4,10), climb 3.7, cross 3.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-05-2-t827.jpg"
+   },
+   {
+    "t": 1465,
+    "why": "longest crossing: Luna (7.3,7) -> (1.4,10), climb -3.3, cross 5.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-05-3-t1465.jpg"
+   },
+   {
+    "t": 2106,
+    "why": "80% of the route",
+    "file": "docs/img/playtest/coop/level-05-4-t2106.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-05-0-start.jpg",
+   "docs/img/playtest/coop/level-05-1-t167.jpg",
+   "docs/img/playtest/coop/level-05-2-t827.jpg",
+   "docs/img/playtest/coop/level-05-3-t1465.jpg",
+   "docs/img/playtest/coop/level-05-4-t2106.jpg",
+   "docs/img/playtest/coop/level-05-9-results.jpg"
+  ],
+  "wall": "3.9"
+ },
+ "6": {
+  "n": 6,
+  "name": "Crate Cellar",
+  "bot": {
+   "wonTick": 3490,
+   "secs": 58.166666666666664,
+   "gems": 6,
+   "total": 6
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 3535,
+   "wonTick": 3490,
+   "tries": 0,
+   "gems": 6,
+   "card": {
+    "name": "6. Crate Cellar",
+    "time": "0:58.9",
+    "par": "par 1:00.0",
+    "gems": "6 / 6",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000001137,
+  "firstDiv": null,
+  "keyEvents": 205,
+  "moments": [
+   {
+    "t": 1047,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-06-1-t1047.jpg"
+   },
+   {
+    "t": 2288,
+    "why": "biggest climb: Luna (32.6,27) -> (34.1,23), climb 3.6, cross 1.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-06-2-t2288.jpg"
+   },
+   {
+    "t": 2980,
+    "why": "biggest climb: Sol (32.6,27) -> (34.1,23), climb 3.6, cross 1.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-06-3-t2980.jpg"
+   },
+   {
+    "t": 3248,
+    "why": "biggest climb: Sol (35.9,9) -> (33.0,6), climb 3.3, cross 2.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-06-4-t3248.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-06-0-start.jpg",
+   "docs/img/playtest/coop/level-06-1-t1047.jpg",
+   "docs/img/playtest/coop/level-06-2-t2288.jpg",
+   "docs/img/playtest/coop/level-06-3-t2980.jpg",
+   "docs/img/playtest/coop/level-06-4-t3248.jpg",
+   "docs/img/playtest/coop/level-06-9-results.jpg"
+  ],
+  "wall": "4.2"
+ },
+ "7": {
+  "n": 7,
+  "name": "Twin Towers",
+  "bot": {
+   "wonTick": 2705,
+   "secs": 45.083333333333336,
+   "gems": 6,
+   "total": 6
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 2750,
+   "wonTick": 2705,
+   "tries": 0,
+   "gems": 6,
+   "card": {
+    "name": "7. Twin Towers",
+    "time": "0:45.8",
+    "par": "par 0:52.0",
+    "gems": "6 / 6",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 231,
+  "moments": [
+   {
+    "t": 263,
+    "why": "biggest climb: Sol (2.7,25) -> (5.5,21), climb 3.7, cross 2.8, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-07-1-t263.jpg"
+   },
+   {
+    "t": 569,
+    "why": "biggest climb: Sol (2.7,11) -> (5.6,7), climb 3.7, cross 2.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-07-2-t569.jpg"
+   },
+   {
+    "t": 812,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-07-3-t812.jpg"
+   },
+   {
+    "t": 1213,
+    "why": "biggest climb: Luna (37.4,24) -> (34.6,20), climb 3.7, cross 2.8, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-07-4-t1213.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-07-0-start.jpg",
+   "docs/img/playtest/coop/level-07-1-t263.jpg",
+   "docs/img/playtest/coop/level-07-2-t569.jpg",
+   "docs/img/playtest/coop/level-07-3-t812.jpg",
+   "docs/img/playtest/coop/level-07-4-t1213.jpg",
+   "docs/img/playtest/coop/level-07-9-results.jpg"
+  ],
+  "wall": "4.1"
+ },
+ "8": {
+  "n": 8,
+  "name": "Dawn Gate",
+  "bot": {
+   "wonTick": 3508,
+   "secs": 58.46666666666667,
+   "gems": 6,
+   "total": 6
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 3553,
+   "wonTick": 3508,
+   "tries": 0,
+   "gems": 6,
+   "card": {
+    "name": "8. Dawn Gate",
+    "time": "0:59.2",
+    "par": "par 1:00.0",
+    "gems": "6 / 6",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 228,
+  "moments": [
+   {
+    "t": 802,
+    "why": "biggest climb: Luna (35.6,25) -> (33.4,21), climb 3.7, cross 2.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-08-1-t802.jpg"
+   },
+   {
+    "t": 1052,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-08-2-t1052.jpg"
+   },
+   {
+    "t": 2660,
+    "why": "biggest climb: Luna (4.7,6) -> (5.5,2), climb 3.7, cross 0.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-08-3-t2660.jpg"
+   },
+   {
+    "t": 3122,
+    "why": "biggest climb: Sol (1.4,6) -> (4.9,2), climb 3.7, cross 3.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-08-4-t3122.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-08-0-start.jpg",
+   "docs/img/playtest/coop/level-08-1-t802.jpg",
+   "docs/img/playtest/coop/level-08-2-t1052.jpg",
+   "docs/img/playtest/coop/level-08-3-t2660.jpg",
+   "docs/img/playtest/coop/level-08-4-t3122.jpg",
+   "docs/img/playtest/coop/level-08-9-results.jpg"
+  ],
+  "wall": "4.8"
+ },
+ "9": {
+  "n": 9,
+  "name": "Counterweights",
+  "bot": {
+   "wonTick": 2935,
+   "secs": 48.916666666666664,
+   "gems": 8,
+   "total": 8
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 2980,
+   "wonTick": 2935,
+   "tries": 0,
+   "gems": 8,
+   "card": {
+    "name": "9. Counterweights",
+    "time": "0:49.7",
+    "par": "par 0:55.0",
+    "gems": "8 / 8",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 137,
+  "moments": [
+   {
+    "t": 292,
+    "why": "biggest climb: Luna (27.9,28) -> (33.9,27), climb 0.7, cross 6.0, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-09-1-t292.jpg"
+   },
+   {
+    "t": 713,
+    "why": "longest crossing: Luna (31.4,27) -> (24.8,28), climb -1.3, cross 6.6, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-09-2-t713.jpg"
+   },
+   {
+    "t": 881,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-09-3-t881.jpg"
+   },
+   {
+    "t": 2767,
+    "why": "biggest climb: Sol (3.6,11) -> (5.5,8), climb 2.7, cross 1.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-09-4-t2767.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-09-0-start.jpg",
+   "docs/img/playtest/coop/level-09-1-t292.jpg",
+   "docs/img/playtest/coop/level-09-2-t713.jpg",
+   "docs/img/playtest/coop/level-09-3-t881.jpg",
+   "docs/img/playtest/coop/level-09-4-t2767.jpg",
+   "docs/img/playtest/coop/level-09-9-results.jpg"
+  ],
+  "wall": "3.8"
+ },
+ "10": {
+  "n": 10,
+  "name": "Stone Raft",
+  "bot": {
+   "wonTick": 2976,
+   "secs": 49.6,
+   "gems": 8,
+   "total": 8
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 3021,
+   "wonTick": 2976,
+   "tries": 0,
+   "gems": 8,
+   "card": {
+    "name": "10. Stone Raft",
+    "time": "0:50.4",
+    "par": "par 0:55.0",
+    "gems": "8 / 8",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 155,
+  "moments": [
+   {
+    "t": 56,
+    "why": "biggest climb: Sol (3.5,13) -> (6.6,10), climb 2.7, cross 3.1, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-10-1-t56.jpg"
+   },
+   {
+    "t": 893,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-10-2-t893.jpg"
+   },
+   {
+    "t": 1051,
+    "why": "biggest climb: Sol (31.3,26) -> (25.7,24), climb 1.7, cross 5.6, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-10-3-t1051.jpg"
+   },
+   {
+    "t": 1478,
+    "why": "biggest climb: Luna (9.6,27) -> (12.6,24), climb 2.7, cross 3.0, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-10-4-t1478.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-10-0-start.jpg",
+   "docs/img/playtest/coop/level-10-1-t56.jpg",
+   "docs/img/playtest/coop/level-10-2-t893.jpg",
+   "docs/img/playtest/coop/level-10-3-t1051.jpg",
+   "docs/img/playtest/coop/level-10-4-t1478.jpg",
+   "docs/img/playtest/coop/level-10-9-results.jpg"
+  ],
+  "wall": "4.2"
+ },
+ "11": {
+  "n": 11,
+  "name": "Helper's Way Out",
+  "bot": {
+   "wonTick": 2814,
+   "secs": 46.9,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 2859,
+   "wonTick": 2814,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "11. Helper's Way Out",
+    "time": "0:47.6",
+    "par": "par 0:50.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 166,
+  "moments": [
+   {
+    "t": 289,
+    "why": "biggest climb: Sol (3.9,25) -> (6.8,21), climb 3.7, cross 2.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-11-1-t289.jpg"
+   },
+   {
+    "t": 466,
+    "why": "biggest climb: Sol (7.9,14) -> (4.2,10), climb 3.7, cross 3.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-11-2-t466.jpg"
+   },
+   {
+    "t": 844,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-11-3-t844.jpg"
+   },
+   {
+    "t": 1921,
+    "why": "longest crossing: Sol (22.6,7) -> (16.5,7), climb -0.3, cross 6.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-11-4-t1921.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-11-0-start.jpg",
+   "docs/img/playtest/coop/level-11-1-t289.jpg",
+   "docs/img/playtest/coop/level-11-2-t466.jpg",
+   "docs/img/playtest/coop/level-11-3-t844.jpg",
+   "docs/img/playtest/coop/level-11-4-t1921.jpg",
+   "docs/img/playtest/coop/level-11-9-results.jpg"
+  ],
+  "wall": "4.1"
+ },
+ "12": {
+  "n": 12,
+  "name": "The Drop",
+  "bot": {
+   "wonTick": 4251,
+   "secs": 70.85,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4296,
+   "wonTick": 4251,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "12. The Drop",
+    "time": "1:11.6",
+    "par": "par 1:30.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000001137,
+  "firstDiv": null,
+  "keyEvents": 227,
+  "moments": [
+   {
+    "t": 916,
+    "why": "longest crossing: Sol (1.4,6) -> (10.3,13), climb -7.3, cross 8.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-12-1-t916.jpg"
+   },
+   {
+    "t": 1275,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-12-2-t1275.jpg"
+   },
+   {
+    "t": 2396,
+    "why": "biggest climb: Luna (34.7,24) -> (31.0,20), climb 3.7, cross 3.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-12-3-t2396.jpg"
+   },
+   {
+    "t": 2707,
+    "why": "biggest climb: Sol (34.8,24) -> (31.3,20), climb 3.7, cross 3.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-12-4-t2707.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-12-0-start.jpg",
+   "docs/img/playtest/coop/level-12-1-t916.jpg",
+   "docs/img/playtest/coop/level-12-2-t1275.jpg",
+   "docs/img/playtest/coop/level-12-3-t2396.jpg",
+   "docs/img/playtest/coop/level-12-4-t2707.jpg",
+   "docs/img/playtest/coop/level-12-9-results.jpg"
+  ],
+  "wall": "4.9"
+ },
+ "13": {
+  "n": 13,
+  "name": "Switchback",
+  "bot": {
+   "wonTick": 4073,
+   "secs": 67.88333333333334,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4118,
+   "wonTick": 4073,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "13. Switchback",
+    "time": "1:08.6",
+    "par": "par 1:25.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 303,
+  "moments": [
+   {
+    "t": 830,
+    "why": "biggest climb: Sol (21.9,27) -> (22.2,23), climb 3.7, cross 0.3, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-13-1-t830.jpg"
+   },
+   {
+    "t": 1222,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-13-2-t1222.jpg"
+   },
+   {
+    "t": 2495,
+    "why": "longest crossing: Sol (12.8,27) -> (19.4,27), climb -0.3, cross 6.6, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-13-3-t2495.jpg"
+   },
+   {
+    "t": 2822,
+    "why": "biggest climb: Luna (21.3,27) -> (22.6,23), climb 3.7, cross 1.3, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-13-4-t2822.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-13-0-start.jpg",
+   "docs/img/playtest/coop/level-13-1-t830.jpg",
+   "docs/img/playtest/coop/level-13-2-t1222.jpg",
+   "docs/img/playtest/coop/level-13-3-t2495.jpg",
+   "docs/img/playtest/coop/level-13-4-t2822.jpg",
+   "docs/img/playtest/coop/level-13-9-results.jpg"
+  ],
+  "wall": "5.3"
+ },
+ "14": {
+  "n": 14,
+  "name": "Carry the Weight",
+  "bot": {
+   "wonTick": 4200,
+   "secs": 70,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4245,
+   "wonTick": 4200,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "14. Carry the Weight",
+    "time": "1:10.8",
+    "par": "par 1:25.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 291,
+  "moments": [
+   {
+    "t": 712,
+    "why": "biggest climb: Luna (31.9,27) -> (28.2,23), climb 3.7, cross 3.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-14-1-t712.jpg"
+   },
+   {
+    "t": 915,
+    "why": "biggest climb: Luna (8.1,27) -> (4.3,23), climb 3.7, cross 3.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-14-2-t915.jpg"
+   },
+   {
+    "t": 1260,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-14-3-t1260.jpg"
+   },
+   {
+    "t": 3744,
+    "why": "biggest climb: Sol (32.6,17) -> (36.0,13), climb 3.8, cross 3.4, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-14-4-t3744.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-14-0-start.jpg",
+   "docs/img/playtest/coop/level-14-1-t712.jpg",
+   "docs/img/playtest/coop/level-14-2-t915.jpg",
+   "docs/img/playtest/coop/level-14-3-t1260.jpg",
+   "docs/img/playtest/coop/level-14-4-t3744.jpg",
+   "docs/img/playtest/coop/level-14-9-results.jpg"
+  ],
+  "wall": "4.7"
+ },
+ "15": {
+  "n": 15,
+  "name": "Clockwork",
+  "bot": {
+   "wonTick": 5222,
+   "secs": 87.03333333333333,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 5267,
+   "wonTick": 5222,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "15. Clockwork",
+    "time": "1:27.8",
+    "par": "par 2:00.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 282,
+  "moments": [
+   {
+    "t": 1135,
+    "why": "biggest climb: Luna (11.6,13) -> (8.3,9), climb 3.7, cross 3.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-15-1-t1135.jpg"
+   },
+   {
+    "t": 1567,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-15-2-t1567.jpg"
+   },
+   {
+    "t": 2659,
+    "why": "biggest climb: Luna (6.5,24) -> (10.2,20), climb 3.7, cross 3.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-15-3-t2659.jpg"
+   },
+   {
+    "t": 5112,
+    "why": "biggest climb: Sol (7.0,24) -> (10.1,20), climb 3.7, cross 3.1, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-15-4-t5112.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-15-0-start.jpg",
+   "docs/img/playtest/coop/level-15-1-t1135.jpg",
+   "docs/img/playtest/coop/level-15-2-t1567.jpg",
+   "docs/img/playtest/coop/level-15-3-t2659.jpg",
+   "docs/img/playtest/coop/level-15-4-t5112.jpg",
+   "docs/img/playtest/coop/level-15-9-results.jpg"
+  ],
+  "wall": "6.7"
+ },
+ "16": {
+  "n": 16,
+  "name": "High Noon",
+  "bot": {
+   "wonTick": 3688,
+   "secs": 61.46666666666667,
+   "gems": 8,
+   "total": 8
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 3733,
+   "wonTick": 3688,
+   "tries": 0,
+   "gems": 8,
+   "card": {
+    "name": "16. High Noon",
+    "time": "1:02.2",
+    "par": "par 1:05.0",
+    "gems": "8 / 8",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000001137,
+  "firstDiv": null,
+  "keyEvents": 204,
+  "moments": [
+   {
+    "t": 1234,
+    "why": "biggest climb: Luna (8.1,26) -> (5.4,23), climb 2.7, cross 2.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-16-1-t1234.jpg"
+   },
+   {
+    "t": 1763,
+    "why": "biggest climb: Sol (31.6,23) -> (35.8,20), climb 3.0, cross 4.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-16-2-t1763.jpg"
+   },
+   {
+    "t": 2028,
+    "why": "55% of the route",
+    "file": "docs/img/playtest/coop/level-16-3-t2028.jpg"
+   },
+   {
+    "t": 2355,
+    "why": "biggest climb: Luna (32.0,23) -> (36.2,20), climb 3.0, cross 4.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-16-4-t2355.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-16-0-start.jpg",
+   "docs/img/playtest/coop/level-16-1-t1234.jpg",
+   "docs/img/playtest/coop/level-16-2-t1763.jpg",
+   "docs/img/playtest/coop/level-16-3-t2028.jpg",
+   "docs/img/playtest/coop/level-16-4-t2355.jpg",
+   "docs/img/playtest/coop/level-16-9-results.jpg"
+  ],
+  "wall": "4.6"
+ },
+ "17": {
+  "n": 17,
+  "name": "Shade Garden",
+  "bot": {
+   "wonTick": 3612,
+   "secs": 60.2,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 3657,
+   "wonTick": 3612,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "17. Shade Garden",
+    "time": "1:01.0",
+    "par": "par 1:12.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 276,
+  "moments": [
+   {
+    "t": 1069,
+    "why": "biggest climb: Sol (17.4,27) -> (22.6,26), climb 0.7, cross 5.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-17-1-t1069.jpg"
+   },
+   {
+    "t": 1440,
+    "why": "biggest climb: Luna (12.7,19) -> (11.1,19), climb 0.4, cross 1.7, rise 1.0 tiles",
+    "file": "docs/img/playtest/coop/level-17-2-t1440.jpg"
+   },
+   {
+    "t": 1987,
+    "why": "55% of the route",
+    "file": "docs/img/playtest/coop/level-17-3-t1987.jpg"
+   },
+   {
+    "t": 3330,
+    "why": "biggest climb: Sol (11.8,6) -> (10.2,5), climb 0.5, cross 1.7, rise 1.1 tiles",
+    "file": "docs/img/playtest/coop/level-17-4-t3330.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-17-0-start.jpg",
+   "docs/img/playtest/coop/level-17-1-t1069.jpg",
+   "docs/img/playtest/coop/level-17-2-t1440.jpg",
+   "docs/img/playtest/coop/level-17-3-t1987.jpg",
+   "docs/img/playtest/coop/level-17-4-t3330.jpg",
+   "docs/img/playtest/coop/level-17-9-results.jpg"
+  ],
+  "wall": "7.5"
+ },
+ "18": {
+  "n": 18,
+  "name": "Closing Time",
+  "bot": {
+   "wonTick": 3600,
+   "secs": 60,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 3645,
+   "wonTick": 3600,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "18. Closing Time",
+    "time": "1:00.8",
+    "par": "par 1:20.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 260,
+  "moments": [
+   {
+    "t": 1188,
+    "why": "biggest climb: Luna (6.8,22) -> (7.6,18), climb 3.7, cross 0.8, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-18-1-t1188.jpg"
+   },
+   {
+    "t": 1980,
+    "why": "55% of the route",
+    "file": "docs/img/playtest/coop/level-18-2-t1980.jpg"
+   },
+   {
+    "t": 2405,
+    "why": "biggest climb: Sol (10.4,15) -> (7.8,11), climb 3.7, cross 2.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-18-3-t2405.jpg"
+   },
+   {
+    "t": 2617,
+    "why": "biggest climb: Luna (35.5,15) -> (34.8,11), climb 3.7, cross 0.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-18-4-t2617.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-18-0-start.jpg",
+   "docs/img/playtest/coop/level-18-1-t1188.jpg",
+   "docs/img/playtest/coop/level-18-2-t1980.jpg",
+   "docs/img/playtest/coop/level-18-3-t2405.jpg",
+   "docs/img/playtest/coop/level-18-4-t2617.jpg",
+   "docs/img/playtest/coop/level-18-9-results.jpg"
+  ],
+  "wall": "4.7"
+ },
+ "19": {
+  "n": 19,
+  "name": "Crate Relay",
+  "bot": {
+   "wonTick": 4241,
+   "secs": 70.68333333333334,
+   "gems": 9,
+   "total": 9
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4286,
+   "wonTick": 4241,
+   "tries": 0,
+   "gems": 9,
+   "card": {
+    "name": "19. Crate Relay",
+    "time": "1:11.4",
+    "par": "par 1:15.0",
+    "gems": "9 / 9",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 204,
+  "moments": [
+   {
+    "t": 32,
+    "why": "longest crossing: Sol (36.4,21) -> (29.1,26), climb -5.3, cross 7.3, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-19-1-t32.jpg"
+   },
+   {
+    "t": 1272,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-19-2-t1272.jpg"
+   },
+   {
+    "t": 2262,
+    "why": "biggest climb: Sol (6.2,26) -> (2.4,22), climb 3.7, cross 3.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-19-3-t2262.jpg"
+   },
+   {
+    "t": 2786,
+    "why": "biggest climb: Luna (29.5,10) -> (31.2,6), climb 3.7, cross 1.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-19-4-t2786.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-19-0-start.jpg",
+   "docs/img/playtest/coop/level-19-1-t32.jpg",
+   "docs/img/playtest/coop/level-19-2-t1272.jpg",
+   "docs/img/playtest/coop/level-19-3-t2262.jpg",
+   "docs/img/playtest/coop/level-19-4-t2786.jpg",
+   "docs/img/playtest/coop/level-19-9-results.jpg"
+  ],
+  "wall": "6.6"
+ },
+ "20": {
+  "n": 20,
+  "name": "Undertow",
+  "bot": {
+   "wonTick": 4257,
+   "secs": 70.95,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4302,
+   "wonTick": 4257,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "20. Undertow",
+    "time": "1:11.7",
+    "par": "par 1:30.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 275,
+  "moments": [
+   {
+    "t": 49,
+    "why": "biggest climb: Sol (2.5,27) -> (6.0,23), climb 3.7, cross 3.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-20-1-t49.jpg"
+   },
+   {
+    "t": 1277,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-20-2-t1277.jpg"
+   },
+   {
+    "t": 1996,
+    "why": "biggest climb: Luna (2.4,27) -> (6.1,23), climb 3.7, cross 3.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-20-3-t1996.jpg"
+   },
+   {
+    "t": 2287,
+    "why": "biggest climb: Luna (18.3,27) -> (17.8,23), climb 3.7, cross 0.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-20-4-t2287.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-20-0-start.jpg",
+   "docs/img/playtest/coop/level-20-1-t49.jpg",
+   "docs/img/playtest/coop/level-20-2-t1277.jpg",
+   "docs/img/playtest/coop/level-20-3-t1996.jpg",
+   "docs/img/playtest/coop/level-20-4-t2287.jpg",
+   "docs/img/playtest/coop/level-20-9-results.jpg"
+  ],
+  "wall": "7.5"
+ },
+ "21": {
+  "n": 21,
+  "name": "Pendulum",
+  "bot": {
+   "wonTick": 4719,
+   "secs": 78.65,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4764,
+   "wonTick": 4719,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "21. Pendulum",
+    "time": "1:19.4",
+    "par": "par 1:35.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 224,
+  "moments": [
+   {
+    "t": 461,
+    "why": "biggest climb: Sol (3.4,24) -> (5.6,20), climb 3.7, cross 2.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-21-1-t461.jpg"
+   },
+   {
+    "t": 639,
+    "why": "biggest climb: Luna (36.6,24) -> (34.4,20), climb 3.7, cross 2.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-21-2-t639.jpg"
+   },
+   {
+    "t": 1416,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-21-3-t1416.jpg"
+   },
+   {
+    "t": 3420,
+    "why": "biggest climb: Sol (3.4,10) -> (5.6,6), climb 3.7, cross 2.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-21-4-t3420.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-21-0-start.jpg",
+   "docs/img/playtest/coop/level-21-1-t461.jpg",
+   "docs/img/playtest/coop/level-21-2-t639.jpg",
+   "docs/img/playtest/coop/level-21-3-t1416.jpg",
+   "docs/img/playtest/coop/level-21-4-t3420.jpg",
+   "docs/img/playtest/coop/level-21-9-results.jpg"
+  ],
+  "wall": "7.2"
+ },
+ "22": {
+  "n": 22,
+  "name": "The Operator",
+  "bot": {
+   "wonTick": 4172,
+   "secs": 69.53333333333333,
+   "gems": 12,
+   "total": 12
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4217,
+   "wonTick": 4172,
+   "tries": 0,
+   "gems": 12,
+   "card": {
+    "name": "22. The Operator",
+    "time": "1:10.3",
+    "par": "par 1:25.0",
+    "gems": "12 / 12",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000001137,
+  "firstDiv": null,
+  "keyEvents": 292,
+  "moments": [
+   {
+    "t": 514,
+    "why": "biggest climb: Luna (11.4,23) -> (13.6,19), climb 3.7, cross 2.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-22-1-t514.jpg"
+   },
+   {
+    "t": 1252,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-22-2-t1252.jpg"
+   },
+   {
+    "t": 1855,
+    "why": "biggest climb: Luna (33.4,27) -> (36.3,23), climb 3.7, cross 2.9, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-22-3-t1855.jpg"
+   },
+   {
+    "t": 2287,
+    "why": "biggest climb: Sol (35.8,27) -> (36.2,23), climb 3.7, cross 0.3, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-22-4-t2287.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-22-0-start.jpg",
+   "docs/img/playtest/coop/level-22-1-t514.jpg",
+   "docs/img/playtest/coop/level-22-2-t1252.jpg",
+   "docs/img/playtest/coop/level-22-3-t1855.jpg",
+   "docs/img/playtest/coop/level-22-4-t2287.jpg",
+   "docs/img/playtest/coop/level-22-9-results.jpg"
+  ],
+  "wall": "6.3"
+ },
+ "23": {
+  "n": 23,
+  "name": "Eclipse",
+  "bot": {
+   "wonTick": 4646,
+   "secs": 77.43333333333334,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4691,
+   "wonTick": 4646,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "23. Eclipse",
+    "time": "1:18.2",
+    "par": "par 1:30.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000001137,
+  "firstDiv": null,
+  "keyEvents": 330,
+  "moments": [
+   {
+    "t": 798,
+    "why": "biggest climb: Luna (27.0,27) -> (24.4,24), climb 2.7, cross 2.6, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-23-1-t798.jpg"
+   },
+   {
+    "t": 1021,
+    "why": "biggest climb: Sol (13.6,27) -> (15.6,24), climb 2.7, cross 2.0, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-23-2-t1021.jpg"
+   },
+   {
+    "t": 1201,
+    "why": "longest crossing: Sol (24.3,21) -> (30.4,20), climb 0.7, cross 6.0, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-23-3-t1201.jpg"
+   },
+   {
+    "t": 1394,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-23-4-t1394.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-23-0-start.jpg",
+   "docs/img/playtest/coop/level-23-1-t798.jpg",
+   "docs/img/playtest/coop/level-23-2-t1021.jpg",
+   "docs/img/playtest/coop/level-23-3-t1201.jpg",
+   "docs/img/playtest/coop/level-23-4-t1394.jpg",
+   "docs/img/playtest/coop/level-23-9-results.jpg"
+  ],
+  "wall": "7.2"
+ },
+ "24": {
+  "n": 24,
+  "name": "Dusk Gate",
+  "bot": {
+   "wonTick": 4712,
+   "secs": 78.53333333333333,
+   "gems": 12,
+   "total": 12
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4757,
+   "wonTick": 4712,
+   "tries": 0,
+   "gems": 12,
+   "card": {
+    "name": "24. Dusk Gate",
+    "time": "1:19.3",
+    "par": "par 1:32.0",
+    "gems": "12 / 12",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 369,
+  "moments": [
+   {
+    "t": 149,
+    "why": "biggest climb: Luna (3.9,13) -> (4.2,9), climb 3.7, cross 0.3, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-24-1-t149.jpg"
+   },
+   {
+    "t": 996,
+    "why": "longest crossing: Luna (6.0,6) -> (12.1,6), climb -0.2, cross 6.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-24-2-t996.jpg"
+   },
+   {
+    "t": 1414,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-24-3-t1414.jpg"
+   },
+   {
+    "t": 4517,
+    "why": "biggest climb: Luna (29.2,20) -> (28.8,16), climb 3.7, cross 0.3, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-24-4-t4517.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-24-0-start.jpg",
+   "docs/img/playtest/coop/level-24-1-t149.jpg",
+   "docs/img/playtest/coop/level-24-2-t996.jpg",
+   "docs/img/playtest/coop/level-24-3-t1414.jpg",
+   "docs/img/playtest/coop/level-24-4-t4517.jpg",
+   "docs/img/playtest/coop/level-24-9-results.jpg"
+  ],
+  "wall": "7.7"
+ },
+ "25": {
+  "n": 25,
+  "name": "Two Keys",
+  "bot": {
+   "wonTick": 5169,
+   "secs": 86.15,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 5214,
+   "wonTick": 5169,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "25. Two Keys",
+    "time": "1:26.9",
+    "par": "par 1:40.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 372,
+  "moments": [
+   {
+    "t": 1551,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-25-1-t1551.jpg"
+   },
+   {
+    "t": 2180,
+    "why": "biggest climb: Sol (29.6,19) -> (30.7,15), climb 3.6, cross 1.1, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-25-2-t2180.jpg"
+   },
+   {
+    "t": 2389,
+    "why": "biggest climb: Luna (29.6,19) -> (30.7,15), climb 3.6, cross 1.1, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-25-3-t2389.jpg"
+   },
+   {
+    "t": 3786,
+    "why": "biggest climb: Sol (18.3,11) -> (21.6,8), climb 2.7, cross 3.3, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-25-4-t3786.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-25-0-start.jpg",
+   "docs/img/playtest/coop/level-25-1-t1551.jpg",
+   "docs/img/playtest/coop/level-25-2-t2180.jpg",
+   "docs/img/playtest/coop/level-25-3-t2389.jpg",
+   "docs/img/playtest/coop/level-25-4-t3786.jpg",
+   "docs/img/playtest/coop/level-25-9-results.jpg"
+  ],
+  "wall": "6.7"
+ },
+ "26": {
+  "n": 26,
+  "name": "Tidelock",
+  "bot": {
+   "wonTick": 5288,
+   "secs": 88.13333333333334,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 5333,
+   "wonTick": 5288,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "26. Tidelock",
+    "time": "1:28.9",
+    "par": "par 1:55.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 332,
+  "moments": [
+   {
+    "t": 767,
+    "why": "biggest climb: Sol (6.1,27) -> (3.4,24), climb 2.7, cross 2.7, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-26-1-t767.jpg"
+   },
+   {
+    "t": 1211,
+    "why": "biggest climb: Sol (3.4,10) -> (1.4,7), climb 2.7, cross 2.0, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-26-2-t1211.jpg"
+   },
+   {
+    "t": 1582,
+    "why": "longest crossing: Sol (24.8,6) -> (31.9,13), climb -7.3, cross 7.1, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-26-3-t1582.jpg"
+   },
+   {
+    "t": 2908,
+    "why": "55% of the route",
+    "file": "docs/img/playtest/coop/level-26-4-t2908.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-26-0-start.jpg",
+   "docs/img/playtest/coop/level-26-1-t767.jpg",
+   "docs/img/playtest/coop/level-26-2-t1211.jpg",
+   "docs/img/playtest/coop/level-26-3-t1582.jpg",
+   "docs/img/playtest/coop/level-26-4-t2908.jpg",
+   "docs/img/playtest/coop/level-26-9-results.jpg"
+  ],
+  "wall": "9.0"
+ },
+ "27": {
+  "n": 27,
+  "name": "Leapfrog Spire",
+  "bot": {
+   "wonTick": 4742,
+   "secs": 79.03333333333333,
+   "gems": 11,
+   "total": 11
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4787,
+   "wonTick": 4742,
+   "tries": 0,
+   "gems": 11,
+   "card": {
+    "name": "27. Leapfrog Spire",
+    "time": "1:19.8",
+    "par": "par 1:30.0",
+    "gems": "11 / 11",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 366,
+  "moments": [
+   {
+    "t": 383,
+    "why": "biggest climb: Luna (37.9,26) -> (38.2,22), climb 3.7, cross 0.3, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-27-1-t383.jpg"
+   },
+   {
+    "t": 1423,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-27-2-t1423.jpg"
+   },
+   {
+    "t": 3808,
+    "why": "biggest climb: Sol (18.6,15) -> (22.0,11), climb 3.7, cross 3.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-27-3-t3808.jpg"
+   },
+   {
+    "t": 4417,
+    "why": "biggest climb: Luna (18.6,15) -> (21.9,11), climb 3.7, cross 3.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-27-4-t4417.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-27-0-start.jpg",
+   "docs/img/playtest/coop/level-27-1-t383.jpg",
+   "docs/img/playtest/coop/level-27-2-t1423.jpg",
+   "docs/img/playtest/coop/level-27-3-t3808.jpg",
+   "docs/img/playtest/coop/level-27-4-t4417.jpg",
+   "docs/img/playtest/coop/level-27-9-results.jpg"
+  ],
+  "wall": "6.9"
+ },
+ "28": {
+  "n": 28,
+  "name": "The Vault",
+  "bot": {
+   "wonTick": 4938,
+   "secs": 82.3,
+   "gems": 11,
+   "total": 11
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 4983,
+   "wonTick": 4938,
+   "tries": 0,
+   "gems": 11,
+   "card": {
+    "name": "28. The Vault",
+    "time": "1:23.0",
+    "par": "par 1:35.0",
+    "gems": "11 / 11",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 279,
+  "moments": [
+   {
+    "t": 1200,
+    "why": "biggest climb: Luna (9.6,7) -> (10.7,3), climb 3.6, cross 1.1, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-28-1-t1200.jpg"
+   },
+   {
+    "t": 1481,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-28-2-t1481.jpg"
+   },
+   {
+    "t": 2662,
+    "why": "biggest climb: Luna (30.6,7) -> (32.1,3), climb 3.6, cross 1.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-28-3-t2662.jpg"
+   },
+   {
+    "t": 4785,
+    "why": "biggest climb: Sol (26.5,26) -> (30.0,23), climb 3.2, cross 3.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-28-4-t4785.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-28-0-start.jpg",
+   "docs/img/playtest/coop/level-28-1-t1200.jpg",
+   "docs/img/playtest/coop/level-28-2-t1481.jpg",
+   "docs/img/playtest/coop/level-28-3-t2662.jpg",
+   "docs/img/playtest/coop/level-28-4-t4785.jpg",
+   "docs/img/playtest/coop/level-28-9-results.jpg"
+  ],
+  "wall": "6.8"
+ },
+ "29": {
+  "n": 29,
+  "name": "Sunken Halls",
+  "bot": {
+   "wonTick": 5469,
+   "secs": 91.15,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 5514,
+   "wonTick": 5469,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "29. Sunken Halls",
+    "time": "1:31.9",
+    "par": "par 1:35.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 314,
+  "moments": [
+   {
+    "t": 1641,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-29-1-t1641.jpg"
+   },
+   {
+    "t": 2431,
+    "why": "biggest climb: Sol (13.3,12) -> (7.5,11), climb 0.8, cross 5.8, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-29-2-t2431.jpg"
+   },
+   {
+    "t": 3761,
+    "why": "biggest climb: Sol (15.4,19) -> (14.3,15), climb 3.6, cross 1.1, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-29-3-t3761.jpg"
+   },
+   {
+    "t": 5224,
+    "why": "longest crossing: Luna (31.0,27) -> (24.4,27), climb -0.3, cross 6.6, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-29-4-t5224.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-29-0-start.jpg",
+   "docs/img/playtest/coop/level-29-1-t1641.jpg",
+   "docs/img/playtest/coop/level-29-2-t2431.jpg",
+   "docs/img/playtest/coop/level-29-3-t3761.jpg",
+   "docs/img/playtest/coop/level-29-4-t5224.jpg",
+   "docs/img/playtest/coop/level-29-9-results.jpg"
+  ],
+  "wall": "10.2"
+ },
+ "30": {
+  "n": 30,
+  "name": "Twilight Spiral",
+  "bot": {
+   "wonTick": 5407,
+   "secs": 90.11666666666666,
+   "gems": 11,
+   "total": 11
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 5452,
+   "wonTick": 5407,
+   "tries": 0,
+   "gems": 11,
+   "card": {
+    "name": "30. Twilight Spiral",
+    "time": "1:30.9",
+    "par": "par 1:35.0",
+    "gems": "11 / 11",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 250,
+  "moments": [
+   {
+    "t": 209,
+    "why": "biggest climb: Sol (5.6,27) -> (1.4,27), climb -0.3, cross 4.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-30-1-t209.jpg"
+   },
+   {
+    "t": 1622,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-30-2-t1622.jpg"
+   },
+   {
+    "t": 3043,
+    "why": "longest crossing: Sol (38.6,13) -> (35.4,20), climb -7.3, cross 3.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-30-3-t3043.jpg"
+   },
+   {
+    "t": 4326,
+    "why": "80% of the route",
+    "file": "docs/img/playtest/coop/level-30-4-t4326.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-30-0-start.jpg",
+   "docs/img/playtest/coop/level-30-1-t209.jpg",
+   "docs/img/playtest/coop/level-30-2-t1622.jpg",
+   "docs/img/playtest/coop/level-30-3-t3043.jpg",
+   "docs/img/playtest/coop/level-30-4-t4326.jpg",
+   "docs/img/playtest/coop/level-30-9-results.jpg"
+  ],
+  "wall": "10.3"
+ },
+ "31": {
+  "n": 31,
+  "name": "Sanctum Approach",
+  "bot": {
+   "wonTick": 5958,
+   "secs": 99.3,
+   "gems": 10,
+   "total": 10
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 6003,
+   "wonTick": 5958,
+   "tries": 0,
+   "gems": 10,
+   "card": {
+    "name": "31. Sanctum Approach",
+    "time": "1:40.0",
+    "par": "par 2:00.0",
+    "gems": "10 / 10",
+    "rank": "A",
+    "focus": "resNext"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 331,
+  "moments": [
+   {
+    "t": 25,
+    "why": "biggest climb: Sol (5.4,27) -> (4.2,24), climb 2.7, cross 1.2, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-31-1-t25.jpg"
+   },
+   {
+    "t": 1680,
+    "why": "biggest climb: Sol (33.1,14) -> (29.6,10), climb 3.7, cross 3.5, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-31-2-t1680.jpg"
+   },
+   {
+    "t": 3277,
+    "why": "55% of the route",
+    "file": "docs/img/playtest/coop/level-31-3-t3277.jpg"
+   },
+   {
+    "t": 3771,
+    "why": "biggest climb: Sol (28.6,6) -> (27.8,2), climb 3.7, cross 0.8, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-31-4-t3771.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-31-0-start.jpg",
+   "docs/img/playtest/coop/level-31-1-t25.jpg",
+   "docs/img/playtest/coop/level-31-2-t1680.jpg",
+   "docs/img/playtest/coop/level-31-3-t3277.jpg",
+   "docs/img/playtest/coop/level-31-4-t3771.jpg",
+   "docs/img/playtest/coop/level-31-9-results.jpg"
+  ],
+  "wall": "9.0"
+ },
+ "32": {
+  "n": 32,
+  "name": "Heart of Twilight",
+  "bot": {
+   "wonTick": 5194,
+   "secs": 86.56666666666666,
+   "gems": 12,
+   "total": 12
+  },
+  "ok": true,
+  "browser": {
+   "resultsTick": 5239,
+   "wonTick": 5194,
+   "tries": 0,
+   "gems": 12,
+   "card": {
+    "name": "32. Heart of Twilight",
+    "time": "1:27.3",
+    "par": "par 1:40.0",
+    "gems": "12 / 12",
+    "rank": "A",
+    "focus": "resRetry"
+   }
+  },
+  "extraFrames": 45,
+  "maxDev": 0.05000000000006821,
+  "firstDiv": null,
+  "keyEvents": 327,
+  "moments": [
+   {
+    "t": 333,
+    "why": "biggest climb: Sol (7.6,27) -> (4.2,23), climb 3.7, cross 3.4, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-32-1-t333.jpg"
+   },
+   {
+    "t": 1558,
+    "why": "30% of the route",
+    "file": "docs/img/playtest/coop/level-32-2-t1558.jpg"
+   },
+   {
+    "t": 2354,
+    "why": "longest crossing: Luna (35.6,13) -> (29.0,14), climb -1.3, cross 6.6, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-32-3-t2354.jpg"
+   },
+   {
+    "t": 4550,
+    "why": "biggest climb: Sol (19.6,13) -> (18.8,9), climb 3.7, cross 0.8, rise 3.8 tiles",
+    "file": "docs/img/playtest/coop/level-32-4-t4550.jpg"
+   }
+  ],
+  "shots": [
+   "docs/img/playtest/coop/level-32-0-start.jpg",
+   "docs/img/playtest/coop/level-32-1-t333.jpg",
+   "docs/img/playtest/coop/level-32-2-t1558.jpg",
+   "docs/img/playtest/coop/level-32-3-t2354.jpg",
+   "docs/img/playtest/coop/level-32-4-t4550.jpg",
+   "docs/img/playtest/coop/level-32-9-results.jpg"
+  ],
+  "wall": "9.2"
+ }
+}
