@@ -79,7 +79,7 @@ export const LEVELS = [
   },
   {
     name: "Shade Well", par: 65,
-    hint: "Black pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.",
+    hint: "Thorny green pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.",
     moves: [[0, -2], [0, -2], [0, -2], [0, -2]],
     map: [
       "########################################",

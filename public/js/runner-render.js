@@ -1,11 +1,11 @@
 // Sol & Luna — Runner renderer: the endless, scrolling version of render.js.
 // Stone is cached in pages of PAGE columns as they scroll in; the back wall scrolls at half
 // speed for depth. Liquids, obstacles, players and particles draw every frame.
-import { TS, ROWS, WORLD_W, WORLD_H, POOL_DEPTH, T_SOLID, T_SUN, tileAt, SOL, LUNA } from '/shared/sim.js';
+import { TS, ROWS, WORLD_W, WORLD_H, POOL_DEPTH, T_SOLID, T_SUN, T_SHADE, tileAt, SOL, LUNA } from '/shared/sim.js';
 import {
   swingPos, RPH_COUNT, RPH_PLAY, RPH_OVER, SLAB_GONE, SLAB_REFORM, SHARD_REGROW,
 } from '/shared/runner.js';
-import { LIQ, hash, rrect, crescent, star, hexA } from './render.js';
+import { LIQ, hash, rrect, crescent, star, hexA, shadeMarks } from './render.js';
 
 const PAGE = 16;
 
@@ -295,6 +295,7 @@ export class RunnerRenderer {
           g.beginPath(); g.arc(bx, by, 1.4, 0, Math.PI * 2); g.fill();
         }
         g.globalAlpha = 1;
+        if (t === T_SHADE) shadeMarks(g, px0, px1, py);
         x = x1 + 1;
       }
     }

@@ -158,7 +158,7 @@ def shade_well():
     4. Sol turns lever L3 (white) at the dead end of the left lower room and drops through its floor to
        his door. L3 opened gate G3 in the right lower room.
     5. Luna drops through her room's floor, goes through G3 and falls to her door."""
-    L = Lv('Shade Well', 65, 'Black pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.')
+    L = Lv('Shade Well', 65, 'Thorny green pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.')
     # ---- the roof: west half and the beam on row 8, east half on row 7; one-tile slots either side
     L.r(1, 8, 21, 8).clear(17, 8, 17, 8).pool(7, 8, 2, 'X')   # Sol's slot at x 17
     L.r(18, 1, 20, 5)                                      # a rock hangs over the beam: walk under it
