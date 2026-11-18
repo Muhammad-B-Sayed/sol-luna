@@ -88,9 +88,21 @@ export class SimBoxes {
         break;
       }
       case 'spikes': this.box(o.x0 + 0.08, o.x1 - 0.08, o.y, o.y + o.th, o.z0 + 0.08, o.z1 - 0.08, C.haz); break;
-      case 'tilt': {
-        const a = st ? st.a : 0, b = st ? st.b : 0;
-        this.surf(o.x0, o.x1, o.z0, o.z1, (x, z) => o.y + a * (x - o.cx) + b * (z - o.cz), C.move, 4);
+      case 'tilt': {   // the top face while it can be stood on (cyan), else its outline turning (grey);
+        // dim ticks across the top mark where the centre band ends (UC) and the full kick starts (UE)
+        const pose = R3.objPose(L, S, i, tick), h = o.T / 2;
+        const rotP = (r) => { const s = Math.sin(r), c = Math.cos(r); return (dx, dy, z) => [o.cx + dx * c + dy * s, pose.y - dx * s + dy * c, z]; };
+        const solid = R3.tiltTop(o, st, o.cx) === R3.tiltTop(o, st, o.cx);
+        if (solid) {   // the face up, at the sim's angle a (what tiltTop stands players on)
+          const P = rotP(pose.a);
+          for (let k = 0; k <= 4; k++) { const dx = -o.hx + k * o.hx / 2; this.seg(P(dx, h, o.z0), P(dx, h, o.z1), C.move); }
+          for (const z of [o.z0, (o.z0 + o.z1) / 2, o.z1]) this.seg(P(-o.hx, h, z), P(o.hx, h, z), C.move);
+          for (const u of [-R3.TILT.UE, -R3.TILT.UC, R3.TILT.UC, R3.TILT.UE]) this.seg(P(u * o.hx, h + 0.03, o.z0), P(u * o.hx, h + 0.03, o.z1), C.off);
+        } else for (const z of [o.z0, o.z1]) {
+          const P = rotP(pose.rot);
+          const q = [P(-o.hx, h, z), P(o.hx, h, z), P(o.hx, -h, z), P(-o.hx, -h, z)];
+          for (let k = 0; k < 4; k++) this.seg(q[k], q[(k + 1) % 4], C.off);
+        }
         break;
       }
       case 'crumble': this.box(o.x0, o.x1, o.y, o.y, o.z0, o.z1, st && st.st > 1 ? C.off : C.ember); break;

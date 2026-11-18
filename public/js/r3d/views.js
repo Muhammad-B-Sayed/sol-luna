@@ -5,8 +5,9 @@
 // Every mesh or geometry a view owns goes in userData.geos / mats / insts so disposeView frees it.
 import * as THREE from './three.js';
 import {
-  PAL, col, hash, materials, patchWorld, slabGeometry, inlayMesh, runeBand, crystalGeometry, liquidMaterial, LIQ3, chainMesh, aimChain,
+  PAL, col, hash, materials, patchWorld, slabGeometry, inlayMesh, runeBand, crystalGeometry, liquidMaterial, LIQ3, chainMesh, aimChain, GeoBuilder,
 } from './kit.js';
+import { TILT } from '/shared/runner3d.js';
 
 export const VIEWS = {};
 
@@ -240,50 +241,144 @@ VIEWS.spikes = {
   },
 };
 
-// A thick slab hung from four chains up to a stone crossbeam held by two columns rising from the abyss.
+// Spinning slab: a two-faced stone slab (sun inlay on face 0, moon on face 1) on an axle along the
+// course. Its pins turn in bronze hubs on a crossbar across a big bronze ring at each end; each ring
+// hangs by two chains from a stone lintel on two columns. Both faces mark the centre band (a pale
+// line, the band's edges) and glow warm toward the outer bands that flip it. Only the slab and its
+// pin bosses turn; the frame is static. At speed: two faint after-images, sparks at the pins, and
+// the ring shudders; the latch catching it throws a spray of sparks.
+function tiltFaceBands(hx, hz, h) {
+  const B = new GeoBuilder();
+  const lineC = col(0xd8ccff).multiplyScalar(0.55), edgeC = col(0xa898ff).multiplyScalar(0.35);
+  const warm0 = col(0xff9a3a).multiplyScalar(0.12), warm1 = col(0xff7a2a).multiplyScalar(0.42), warm2 = col(0xff5a28).multiplyScalar(0.6);
+  const z0 = -hz + 0.18, z1 = hz - 0.18, uc = TILT.UC * hx, ue = TILT.UE * hx, xe = hx - 0.12;
+  for (const fy of [1, -1]) {
+    const y = fy * (h + 0.004), out = [0, fy, 0];
+    const strip = (xa, xb, ca, cb) => B.quad([xa, y, z1], [xb, y, z1], [xb, y, z0], [xa, y, z0], out, [ca, cb, cb, ca], [[0, 0], [1, 0], [1, 1], [0, 1]]);
+    strip(-0.06, 0.06, lineC, lineC);                    // the centre line
+    for (const sx of [-1, 1]) {
+      strip(sx * uc - 0.035, sx * uc + 0.035, edgeC, edgeC);   // where the centre band ends
+      // the outer band: warm from where the kick starts, hottest past where it is full
+      if (sx < 0) { strip(-xe, -ue, warm2, warm1); strip(-ue, -uc - 0.04, warm1, warm0); }
+      else { strip(uc + 0.04, ue, warm0, warm1); strip(ue, xe, warm1, warm2); }
+    }
+  }
+  return B.build();
+}
+// a static InstancedMesh of chain links along several segments [a, b] (three space)
+function chainLinks(segs, s = 0.3) {
+  const per = segs.map(([a, b]) => Math.max(1, Math.round(a.distanceTo(b) / (s * 0.82))));
+  const im = new THREE.InstancedMesh(new THREE.TorusGeometry(s * 0.5, s * 0.14, 4, 6), materials().metal, per.reduce((x, y) => x + y, 0));
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), qa = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), d = new THREE.Vector3();
+  let k = 0;
+  segs.forEach(([a, b], j) => {
+    d.subVectors(b, a).normalize(); qa.setFromUnitVectors(new THREE.Vector3(0, -1, 0), d);
+    for (let n = 0; n < per[j]; n++) {
+      e.set(0, n % 2 ? Math.PI / 2 : 0, Math.PI / 2); q.setFromEuler(e).premultiply(qa);
+      p.copy(a).lerp(b, (n + 0.5) / per[j]); m.compose(p, q, one); im.setMatrixAt(k++, m);
+    }
+  });
+  return im;
+}
 VIEWS.tilt = {
   make(o, L, idx) {
-    const grp = new THREE.Group();
-    const slab = stoneSlab({ ...o, x0: -o.hx, x1: o.hx, z0: -o.hz, z1: o.hz, y: 0 }, idx, { h: 0.6, inlay: false, glow: 0.8 });
-    slab.position.set(0, 0, 0);
-    // a moon-and-sun balance emblem on the top
-    const em = inlayMesh(hash(idx, 2) > 0.5 ? 1 : 0, Math.min(o.hx, o.hz) * 1.3); slab.add(em); slab.userData.geos.push(em.geometry);
-    grp.add(slab);
-    // fixed frame: crossbeam above the slab, columns at its sides
-    const top = o.chain ?? 7, M = materials();
-    const bw = 2 * o.hx + 2.6;
-    const beamG = slabGeometry(bw, 0.7, 0.6, { glow: 0.35, top: col(0x8a7cb6), side: col(0x4a3f6e) });
-    const beam = new THREE.Mesh(beamG, M.stone); beam.position.set(o.cx, o.y + top + 0.6, -o.cz);
-    const colG = new THREE.CylinderGeometry(0.32, 0.38, top + 22, 8).translate(0, -(top + 22) / 2 + 0.6, 0);
-    const pos = colG.attributes.position, cc = new Float32Array(pos.count * 3), a = col(0x6a5d92), b = col(0x120c20);
-    for (let i = 0; i < pos.count; i++) { _c.copy(b).lerp(a, Math.max(0, Math.min(1, (pos.getY(i) + top * 1.6) / (top * 1.6)))); cc.set([_c.r, _c.g, _c.b], i * 3); }
-    colG.setAttribute('color', new THREE.BufferAttribute(cc, 3));
-    const cols = [-1, 1].map((sx) => { const m = new THREE.Mesh(colG, postMatOf()); m.position.set(o.cx + sx * (bw / 2 - 0.3), o.y + top + 0.3, -o.cz); return m; });
-    const frame = new THREE.Group(); frame.add(beam, ...cols);
-    // the beam's lantern glow points
-    const chains = [];
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      const ch = chainMesh(top, 0.2); frame.add(ch); chains.push({ ch, sx, sz });
+    const M = materials(), h = o.T / 2, py = o.y - h, R = Math.sqrt(o.hx * o.hx + h * h);
+    const root = new THREE.Group(), geos = [], mats = [];
+    // the turning part, about the axle (three z = -sim z)
+    const spin = new THREE.Group(); spin.position.set(o.cx, py, -o.cz);
+    const half = slabGeometry(2 * o.hx, 2 * o.hz, h, { glow: 0.8, uvOff: [o.cx * 0.25, o.cz * 0.25] });
+    half.translate(0, h, 0);
+    const under = half.clone().scale(1, -1, 1);
+    { const ix = under.index.array; for (let k = 0; k < ix.length; k += 3) { const t = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = t; } }
+    const slabG = THREE.mergeGeometries([half, under]); half.dispose(); under.dispose();
+    const slab = new THREE.Mesh(slabG, M.stone); spin.add(slab);
+    const size = Math.min(o.hx, o.hz) * 1.25;
+    const sun = inlayMesh(0, size); sun.position.y = h + 0.006;
+    const moon = inlayMesh(1, size); moon.rotation.x = Math.PI; moon.position.y = -h - 0.006;
+    const bandG = tiltFaceBands(o.hx, o.hz, h);
+    const bands = new THREE.Mesh(bandG, glowBandMat());
+    // pin bosses on both end faces, with four bolt studs so the turning shows
+    const boss = [];
+    for (const zs of [-1, 1]) {
+      boss.push(new THREE.CylinderGeometry(0.3, 0.3, 0.14, 12).rotateX(Math.PI / 2).translate(0, 0, zs * (o.hz + 0.07)));
+      for (let b = 0; b < 4; b++) boss.push(new THREE.BoxGeometry(0.08, 0.08, 0.06).translate(Math.cos(b * Math.PI / 2) * 0.2, Math.sin(b * Math.PI / 2) * 0.2, zs * (o.hz + 0.16)));
     }
-    grp.userData = { geos: [...slab.userData.geos, beamG, colG], insts: chains.map(c => c.ch), slab, chains, frame, top };
-    const root = new THREE.Group(); root.add(grp, frame);
-    root.userData = grp.userData;
+    const bossG = THREE.mergeGeometries(boss.map(g => g.toNonIndexed())); boss.forEach(g => g.dispose());
+    spin.add(sun, moon, bands, new THREE.Mesh(bossG, M.gold));
+    // after-images, drawn behind the slab's motion while it spins fast
+    const ghosts = [0, 1].map(() => {
+      const m = patchWorld(new THREE.MeshBasicMaterial({ color: col(0xb9a8ff), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }), { additive: true, key: 'tg' });
+      mats.push(m);
+      const g = new THREE.Mesh(slabG, m); g.visible = false; g.position.copy(spin.position); root.add(g); return g;
+    });
+    // the static frame: a bronze ring at each end with a crossbar and hub at the axle
+    const Rr = Math.max(R + 1.6, 4.2), zr = o.hz + 0.22, top = o.chain ?? 12;   // lintels high above the cameras
+    const bronze = [];
+    for (const zs of [-1, 1]) {
+      bronze.push(new THREE.TorusGeometry(Rr, 0.13, 6, 56).translate(0, 0, zs * zr));
+      bronze.push(new THREE.CylinderGeometry(0.11, 0.11, 2 * Rr, 8).rotateZ(Math.PI / 2).translate(0, 0, zs * zr));
+      bronze.push(new THREE.CylinderGeometry(0.34, 0.34, 0.3, 12).rotateX(Math.PI / 2).translate(0, 0, zs * zr));
+      bronze.push(new THREE.CylinderGeometry(0.09, 0.09, zr - o.hz + 0.1, 8).rotateX(Math.PI / 2).translate(0, 0, zs * (o.hz + zr) / 2));
+    }
+    const frameG = THREE.mergeGeometries(bronze.map(g => g.toNonIndexed())); bronze.forEach(g => g.dispose());
+    const frame = new THREE.Mesh(frameG, M.gold); frame.position.copy(spin.position);
+    // lintels above the rings on four columns rising from the abyss; two chains hang each ring
+    const ly = o.y + top + 0.6, colX = Rr + 0.9, segs = [], beams = [], cols = [];
+    for (const zs of [-1, 1]) {
+      const zw = -o.cz + zs * zr;
+      const bg = slabGeometry(2 * colX + 1.2, 0.8, 0.7, { glow: 0.35, top: col(0x8a7cb6), side: col(0x4a3f6e) }); bg.translate(o.cx, ly, zw); beams.push(bg);
+      for (const sx of [-1, 1]) {
+        const ang = 0.72, ax = o.cx + sx * Rr * Math.sin(ang), ay = py + Rr * Math.cos(ang);
+        segs.push([new THREE.Vector3(o.cx + sx * (Rr * Math.sin(ang) + 0.5), ly - 0.7, zw), new THREE.Vector3(ax, ay + 0.1, zw)]);
+        const cg = new THREE.CylinderGeometry(0.34, 0.4, top + 24, 8).translate(o.cx + sx * colX, ly - (top + 24) / 2, zw);
+        const pos = cg.attributes.position, cc = new Float32Array(pos.count * 3), a = col(0x6a5d92), b = col(0x120c20);
+        for (let i = 0; i < pos.count; i++) { _c.copy(b).lerp(a, Math.max(0, Math.min(1, (pos.getY(i) - ly + top * 1.6) / (top * 1.6)))); cc.set([_c.r, _c.g, _c.b], i * 3); }
+        cg.setAttribute('color', new THREE.BufferAttribute(cc, 3)); cols.push(cg);
+      }
+    }
+    const beamG = THREE.mergeGeometries(beams); beams.forEach(g => g.dispose());
+    const colG = THREE.mergeGeometries(cols); cols.forEach(g => g.dispose());
+    const chains = chainLinks(segs);
+    root.add(spin, frame, new THREE.Mesh(beamG, M.stone), new THREE.Mesh(colG, postMatOf()), chains);
+    geos.push(slabG, bandG, bossG, frameG, beamG, colG, chains.geometry, sun.geometry, moon.geometry);
+    root.userData = { geos, mats, insts: [chains], spin, frame, ghosts, py, Rr, zr, lastS: 0, lastRot: 0, base: frame.position.clone() };
     return root;
   },
   update(v, o, st, pose, ctx) {
     const u = v.userData;
-    const ax = pose ? pose.ax : 0, az = pose ? pose.az : 0;
-    shearTo(u.slab, o.cx, o.y, o.cz, ax, az);
-    const a = _va, b = _vb;
-    for (const c of u.chains) {
-      const X = o.cx + c.sx * (o.hx - 0.25), Z = o.cz + c.sz * (o.hz - 0.25);
-      const Y = o.y + ax * (X - o.cx) + az * (Z - o.cz);
-      a.set(X, o.y + u.top + 0.3, -Z); b.set(X, Y + 0.02, -Z);
-      aimChain(c.ch, a, b);
+    const rot = pose ? pose.rot : 0, w = pose ? pose.w : 0, s = pose ? pose.s : 0;
+    u.spin.rotation.z = -rot;
+    const sp = Math.min(1, Math.abs(w) / TILT.W0);
+    // after-images trail the turn (earlier angles), fading with speed
+    u.ghosts.forEach((g, k) => {
+      g.visible = sp > 0.2;
+      if (!g.visible) return;
+      g.rotation.z = -(rot - w * (0.45 + 0.45 * k));
+      g.material.opacity = (k ? 0.12 : 0.22) * sp;
+    });
+    // the ring shudders while the slab turns hard
+    const sh = 0.012 * sp * Math.sin(ctx.time * 47 + ctx.idx);
+    u.frame.position.set(u.base.x + sh, u.base.y + sh * 0.5, u.base.z);
+    const zf = -o.cz + u.zr, zb = -o.cz - u.zr;
+    if (ctx.fx && ctx.dt > 0) {
+      if (sp > 0.25 && Math.random() < ctx.dt * 40 * sp) {   // sparks off the pins
+        const zz = Math.random() < 0.5 ? zf : zb, a = Math.random() * Math.PI * 2;
+        ctx.fx.add.spawn(o.cx + Math.cos(a) * 0.3, u.py + Math.sin(a) * 0.3, zz, Math.cos(a) * 2 - w * 8 * Math.sin(a), 1 + Math.random() * 1.5, (zz > -o.cz ? 1 : -1) * Math.random(), 0.45, 0.07, 0.01, ctx.fx.cols.sun[Math.random() < 0.5 ? 0 : 1], 1, 6, 1);
+      }
+      if (u.lastS && !s) for (const zz of [zf, zb]) ctx.fx.burst(o.cx, u.py, zz, ctx.fx.cols.sun, 12, 1.8, 0.5, 0.07, 5);   // the latch catches it
+      if (!u.lastS && s) ctx.fx.dust(o.cx + (w > 0 ? 1 : -1) * o.hx * 0.8, o.y, -o.cz, 12, -1, 1.2);   // kicked off its latch
     }
-    ctx.glow.add(o.cx, o.y + u.top + 0.6, -o.cz - 0.4, 1.6, 0xffc070, 0.35);
+    u.lastS = s;
+    ctx.glow.add(o.cx, u.py, zf + 0.25, 1.1 + sp, 0xffc070, 0.25 + 0.5 * sp);
+    ctx.glow.add(o.cx, u.py, zb - 0.25, 1.1 + sp, 0xffc070, 0.25 + 0.5 * sp);
   },
 };
+let _bandMat = null;
+function glowBandMat() {
+  if (!_bandMat) _bandMat = patchWorld(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -3, side: THREE.DoubleSide }), { additive: true, key: 'tb' });
+  return _bandMat;
+}
 function postMatOf() {
   if (!_postMat) _postMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, flatShading: true }), { key: 'post' });
   return _postMat;

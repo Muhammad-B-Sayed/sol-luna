@@ -604,4 +604,13 @@ PORT=3470 node tools/r3d-perf.js                # frame times on this machine's 
   countdown shows each player's keys on their own half. Online Enter is the chat key.
 - The dusk speed table is the owner's call ("seems fine"). Don't speed it up and don't tie it to
   the leader.
+- The chain slab is now a spinning slab (kind `tilt`, Nov 2026, branch `runner3d-slab`), after
+  the owner found the old tip far too slow. It turns on an axle along the course. Its centre band
+  only rocks; a touch on an outer band spins it exactly 3 turns (0.38 s, 0.43 s, 0.63 s) and it
+  is level and still about 1.7 s after the touch, sun or moon face up. Nobody can stand on it while it
+  spins, and it never pushes or hurts anyone. `TILT` in `shared/runner3d.js` holds the constants;
+  `node tools/r3d-slab.js` measures touches, crossings and client prediction. The checker also
+  touches each edge and corner before the other player arrives, checks every edge touch spins
+  2.5 to 3.5 turns and every slab at rest is exactly level. See `docs/runner3d.md` section 3,
+  "The spinning slab". The 2D runner's chain plank is a separate change.
 

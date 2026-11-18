@@ -31,6 +31,8 @@
 //   per kind are listed in KIND_DOC after "pose:". tick may be fractional (smooth drawing of
 //   clocked kinds); stateful kinds read S.o[i] (rest pose when it is not in the window).
 // trig(a) -> [sin a, cos a] with the same polynomial the sim uses (any a in radians).
+// tiltTop(o, st, x) -> height of a spinning slab's top face at x (st = S.o[i], may be missing),
+//   or NaN where nobody can stand on it. TILT holds its constants.
 // firstFrom(L, z) -> the first object index whose footprint may reach z (a binary search on
 //   L.zmx): scan from there while objs[i].z0 is below your far end to visit the objects near z.
 // No lead cap: nothing stops a player holding forward. P3.mantle: a standing player who walks into
@@ -84,7 +86,7 @@ export const KIND_DOC = {
   pool: 'liquid set into the floor. { el: 0 sun | 1 moon | 2 shade }. Liquid surface at y; its stone bottom (solid) is POOL_DEP below. Deadly when your feet sink below y - 0.12 over it: sun kills Luna, moon kills Sol, shade both. pose: static.',
   spikes: 'crystal thorns standing on the floor at y, deadly to both. Thorn tips at y + th. pose: static.',
   ramp: 'sloped slab, walkable. Top rises linearly from y at z0 to y1 at z1. { h } thickness. pose: static.',
-  tilt: 'chain-hung slab over a pit. Centre (cx, cz), half sizes hx, hz (= the footprint), top y at rest, chains rise to y + chain. Tilts on two axes toward the weight on it and springs back level. { amax } max slope. pose: { x: cx, y, z: cz, ax, az } where the top surface is y + ax*(X-cx) + az*(Z-cz) (ax, az = slopes, |ax|,|az| <= amax).',
+  tilt: 'spinning slab over a pit, turning on an axle along z through its centre (cx, cz) at height y - TILT.T/2. Half sizes hx, hz; top y at rest; { T } thickness; the footprint x0..x1 is the circle it sweeps (cx +- sqrt(hx^2 + (T/2)^2)). Rolls only (+x side down for a positive angle). Weight in the centre band (|x-cx| < TILT.UC*hx) rocks it a little against a sprung latch; a player standing past that (the outer band, full from TILT.UE*hx) kicks it into a free spin of about 3 turns, then the latch catches it level on either face. Solid from above only, and only while held by the latch and within TILT.STAND of level. pose: { x: cx, y: axle height, z: cz, rot, w, a, f, s, T } rot = total roll angle in radians (a + f*pi; the top face is face f: 0 sun, 1 moon), w = angular speed (rad/tick, same sign), s = 1 spinning free. The top face is the plane through the axle point raised T/2 along the slab normal (sin a, cos a) in (x, y); tiltTop(o, st, x) gives its height.',
   crumble: 'ember slab over a pit (footprint, top y, 0.5 thick); they come in pairs side by side with a 0.25 seam. Cracks for { crack } ticks once stood on, falls away, re-forms. pose: { x, y, z, st: 0 whole | 1 cracking | 2 fallen | 3 re-forming, t: ticks in that state, solid: bool, dy: drop below y to draw it at (falling), shake: 0..1 }.',
   eclipse: 'eclipse stone over a pit (footprint, top y, 0.5 thick). Solid only for its element { el: 0 sun (Sol stands on it) | 1 moon (Luna) }; the other passes through. pose: static.',
   sweeper: 'thorn arm turning over a floor around a post at (cx, cz). Arm length R from the centre, { arms: 1 one arm | 2 a bar through the centre }, low: deadly from y up to y + bar. One turn every P ticks, { dir: 1 clockwise seen from above (from +z toward +x) | -1 }. pose: { x: cx, y, z: cz, rot } rot = angle in radians of arm 0, measured from +z toward +x (arm points along (sin rot, cos rot) in (x, z)).',
@@ -324,25 +326,27 @@ const FEAT = {
     }
     g.floor(1.5);
   },
-  // Chain-hung slabs over a pit. Each tilts on two axes toward the weight on it and springs
-  // back to level. The jumps on and off are short enough for any tilt.
+  // Spinning slabs over a pit, on an axle along the course. A ledge as wide as the slab leads to
+  // each one, so a straight run lands on its centre band; the outer bands are a choice. The jumps
+  // on and off are short, and the slab tilts only sideways, so its near and far edges stay level.
   tilt(g, d, intro) {
     const count = intro ? 1 : d > 0.5 && g.rand() < 0.45 ? 2 : 1;
     const drop = !intro && d > 0.4 && g.rand() < 0.5 ? -1 : 0;
-    const amax = lerp(0.12, 0.2, intro ? 0 : d);
     let cx = g.cx;
-    const y = g.y + drop;
+    const y = g.y + drop, T = TILT.T, h = T / 2;
     for (let k = 0; k < count; k++) {
-      const hx = intro ? 2.5 : g.rf(1.6, 2.4), hz = intro ? 2.5 : g.rf(1.6, 2.4);
-      const gap = intro ? 1.5 : g.rf(1.5, Math.min(3, maxGap(-0.5, d) - 1));
-      if (k) cx = clamp(cx + g.rf(-1.5, 1.5), -3, 3);
+      const hx = intro ? 2.5 : g.rf(2, 2.5), hz = intro ? 2.5 : g.rf(1.75, 2.5);
+      if (k) cx = clamp(cx + g.rf(-1, 1), -3, 3);
+      // the take-off ledge: as wide as the slab (the first one at the run-up's height)
+      if (!k) { g.cx = cx; g.w = hx; g.floor(intro ? 2 : 1.5, 2); }
+      const gap = intro ? 1.5 : g.rf(1.5, Math.min(2.75, maxGap(drop && !k ? -1 : 0, d) - 1));
       g.z += gap;
-      const cz = g.z + hz;
-      g.obj({ k: 'tilt', x0: cx - hx, x1: cx + hx, z0: g.z, z1: g.z + 2 * hz, y, cx, cz, hx, hz, amax, chain: 7 });
+      const cz = g.z + hz, R = Math.sqrt(hx * hx + h * h);
+      g.obj({ k: 'tilt', x0: cx - R, x1: cx + R, z0: g.z, z1: g.z + 2 * hz, y, cx, cz, hx, hz, T, chain: 12 });
       g.z += 2 * hz;
     }
     const r = intro || d < 0.3 ? 0 : g.rf(-1, 0.5, 0.5);
-    g.z += intro ? 1.5 : g.rf(1.5, Math.min(3, maxGap(r + amax * 2.4, d) - 1));
+    g.z += intro ? 1.5 : g.rf(1.5, Math.min(2.75, maxGap(r + 0.25, d) - 1));
     g.y = clamp(y + r, Y_MIN, Y_MAX);
     g.cx = clamp(cx, -3, 3);
     g.w = g.rf(2.5, 4);
@@ -582,12 +586,27 @@ export function buildRunner3d(seed) {
 // Object state and poses
 
 export const STATEFUL = { tilt: 1, crumble: 1 };
-export const TILT = { load: 0.0035, spring: 0.006, damp: 0.14, slide: 0.05 };
-export const CRUMBLE = { gone: 30, reform: 12 };
+// The spinning slab (all per tick; angles in radians). State { a, w, s, f }: a = roll angle from
+// level on the face up (kept in [-pi/2, pi/2): a half turn flips f, the face up), w = angular
+// speed, s = 1 while spinning free. Held (s = 0): a sprung latch pulls it level (w += load - K*a -
+// C*w), and weight rocks it: load = LOAD * u for each player standing at u = (x - cx) / hx. A player
+// standing at |u| > UC kicks it: w is raised to W0 * ramp(|u| from UC to UE) toward their side. A
+// kick of WF or more frees it (s = 1): it spins against pin friction that takes 2P off w*w each
+// tick (constant power: the first turns are fast, the last slow) until |w| < WF, when the latch
+// catches it again on whichever face is up. Snapped to exact rest (a = w = 0) once slow and level
+// with nobody on it. Standable only while held and within STAND of level; it slides a player
+// downhill by SLIDE * (|a| - SLIP) per tick past SLIP.
+export const TILT = {
+  T: 0.6, LOAD: 0.01, K: 0.045, C: 0.25, P: 4.5e-4, WF: 0.12, W0: 0.3, UC: 0.45, UE: 0.7,
+  STAND: 0.5, SLIP: 0.12, SLIDE: 0.1, EA: 0.02, WA: 0.006,
+};
+export const CRUMBLE = { gone: 30, reform: 12, fall: Math.ceil(Math.sqrt(2 * (0.5 + P3.h) / P3.gravity)) };
 // longest time (ticks) a stateful object may take to come back to rest after its last touch
 export function restBound(o) {
   if (o.k === 'tilt') return 150;
-  if (o.k === 'crumble') return o.crack + CRUMBLE.gone + CRUMBLE.reform + 4;
+  // an ember half re-forms only once nobody is in its space: a player who walks into its hole
+  // takes up to 17 ticks to fall through that space (top - 0.02 down past top - 0.5 - P3.h)
+  if (o.k === 'crumble') return o.crack + CRUMBLE.gone + CRUMBLE.reform + 4 + CRUMBLE.fall;
   return 0;
 }
 export const REST_BOUND = { tilt: 150 };   // kept for older imports; use restBound(o)
@@ -595,16 +614,29 @@ export const REST_BOUND = { tilt: 150 };   // kept for older imports; use restBo
 const MOVING = { carousel: 1 };
 
 function initObj(o) {
-  if (o.k === 'tilt') return { a: 0, b: 0, va: 0, vb: 0 };
+  if (o.k === 'tilt') return { a: 0, w: 0, s: 0, f: 0 };
   if (o.k === 'crumble') return { st: 0, t: 0 };
   return null;
 }
 export function atRest(L, S, i) {
   const o = L.objs[i], st = S.o[i];
   if (!st) return true;
-  if (o.k === 'tilt') return st.a === 0 && st.b === 0 && st.va === 0 && st.vb === 0;
+  if (o.k === 'tilt') return st.a === 0 && st.w === 0 && st.s === 0;
   if (o.k === 'crumble') return st.st === 0;
   return true;
+}
+// Height of a spinning slab's top face at x (clamped to the face), or NaN where nobody can stand
+// on it: spinning, steeper than STAND, or x more than m beyond the face's edges. st may be missing
+// (rest). Used by the sim, the renderer's shadows and the netcode's ride.
+export function tiltTop(o, st, x, m = HW) {
+  const a = st ? st.a : 0;
+  if (st && (st.s || st.a > TILT.STAND || st.a < -TILT.STAND)) return NaN;
+  const h = o.T / 2, py = o.y - h;
+  if (a === 0) return x + m > o.cx - o.hx && x - m < o.cx + o.hx ? o.y : NaN;
+  const [s, c] = trig(a);
+  const lo = o.cx - o.hx * c + h * s, hi = o.cx + o.hx * c + h * s;
+  if (x + m <= lo || x - m >= hi) return NaN;
+  return py + (h - s * (clamp(x, lo, hi) - o.cx)) / c;
 }
 
 // clocked motion: turns of a rotating object, angle of a pendulum, carousel stones, orbs
@@ -629,7 +661,11 @@ function orbZs(o, tick) {
 export function objPose(L, S, i, tick = S.tick) {
   const o = L.objs[i], st = S.o[i];
   switch (o.k) {
-    case 'tilt': return { x: o.cx, y: o.y, z: o.cz, ax: st ? st.a : 0, az: st ? st.b : 0 };
+    case 'tilt': {
+      // stateful: drawn between ticks by running the spin back from S.tick (tick may be fractional)
+      const a = st ? st.a : 0, w = st ? st.w : 0, f = st ? st.f : 0, back = Math.max(0, Math.min(1, S.tick - tick));
+      return { x: o.cx, y: o.y - o.T / 2, z: o.cz, rot: a + f * PI - w * back, w, a, f, s: st ? st.s : 0, T: o.T };
+    }
     case 'crumble': {
       const s = st ? st.st : 0, t = st ? st.t : 0;
       return {
@@ -719,10 +755,7 @@ function topAt(L, S, i, who, x, z) {
     case 'floor': return o.y;
     case 'pool': return o.y - POOL_DEP;
     case 'ramp': return o.y + (o.y1 - o.y) * clamp((z - o.z0) / (o.z1 - o.z0), 0, 1);
-    case 'tilt': {
-      const st = S.o[i];
-      return o.y + st.a * (clamp(x, o.x0, o.x1) - o.cx) + st.b * (clamp(z, o.z0, o.z1) - o.cz);
-    }
+    case 'tilt': return tiltTop(o, S.o[i], x);
     case 'crumble': return S.o[i].st <= 1 ? o.y : NaN;
     case 'eclipse': return o.el === who ? o.y : NaN;
   }
@@ -841,22 +874,34 @@ function updateObjects(L, S) {
   for (const k in S.o) {   // integer keys: ascending order, the same everywhere
     const i = +k, o = L.objs[i];
     if (o.k === 'crumble') { updateCrumble(S, o, i); continue; }
-    if (o.k !== 'tilt') continue;
-    const st = S.o[i];
-    let ta = 0, tb = 0, n = 0;
-    for (const p of S.p) {
-      if (!p.alive || !p.gr || p.gref !== i) continue;
-      ta += clamp((p.x - o.cx) / o.hx, -1, 1); tb += clamp((p.z - o.cz) / o.hz, -1, 1); n++;
-    }
-    // weight on the +x side pushes that side down (negative slope)
-    st.va = st.va * (1 - TILT.damp) - ta * TILT.load - st.a * TILT.spring; st.a += st.va;
-    st.vb = st.vb * (1 - TILT.damp) - tb * TILT.load - st.b * TILT.spring; st.b += st.vb;
-    if (st.a > o.amax) { st.a = o.amax; if (st.va > 0) st.va = 0; } else if (st.a < -o.amax) { st.a = -o.amax; if (st.va < 0) st.va = 0; }
-    if (st.b > o.amax) { st.b = o.amax; if (st.vb > 0) st.vb = 0; } else if (st.b < -o.amax) { st.b = -o.amax; if (st.vb < 0) st.vb = 0; }
-    if (!n && Math.abs(st.a) < 2e-4 && Math.abs(st.va) < 1e-4 && Math.abs(st.b) < 2e-4 && Math.abs(st.vb) < 1e-4) {
-      st.a = 0; st.b = 0; st.va = 0; st.vb = 0;
-    }
+    if (o.k === 'tilt') updateTilt(S, o, i);
   }
+}
+
+function updateTilt(S, o, i) {
+  const st = S.o[i], T = TILT;
+  let load = 0, kick = 0, on = false;
+  for (const p of S.p) {
+    if (!p.alive || !p.gr || p.gref !== i) continue;
+    on = true;
+    const u = clamp((p.x - o.cx) / o.hx, -1, 1), au = u < 0 ? -u : u;
+    load += T.LOAD * u;
+    if (au > T.UC) kick += (u < 0 ? -T.W0 : T.W0) * Math.min(1, (au - T.UC) / (T.UE - T.UC));
+  }
+  if (!st.s) {
+    kick = clamp(kick, -T.W0, T.W0);
+    if (kick > 0 ? st.w < kick : kick < 0 && st.w > kick) st.w = kick;
+    if (kick >= T.WF || kick <= -T.WF) st.s = 1;
+  }
+  if (st.s) {   // free: pin friction at constant power
+    const q = st.w * st.w - 2 * T.P, v = q > 0 ? Math.sqrt(q) : 0;
+    st.w = st.w < 0 ? -v : v;
+    if (v < T.WF) st.s = 0;
+  }
+  if (!st.s) st.w += load - T.K * st.a - T.C * st.w;   // held by the latch
+  st.a += st.w;
+  if (st.a >= HALF_PI) { st.a -= PI; st.f ^= 1; } else if (st.a < -HALF_PI) { st.a += PI; st.f ^= 1; }
+  if (!on && !st.s && st.a < T.EA && st.a > -T.EA && st.w < T.WA && st.w > -T.WA) { st.a = 0; st.w = 0; }
 }
 
 function updateCrumble(S, o, i) {
@@ -946,9 +991,9 @@ export function stepRunner3d(L, S, inputs) {
     if (!p.alive) continue;
     if (p.gr && p.gref >= 0) {
       const o = L.objs[p.gref];
-      if (o.k === 'tilt') {   // a tilted slab slowly slides what stands on it downhill
-        const st = S.o[p.gref];
-        p.x -= st.a * TILT.slide; p.z -= st.b * TILT.slide;
+      if (o.k === 'tilt') {   // a steep slab slides what stands on it downhill (+x is down for a > 0)
+        const a = S.o[p.gref].a;
+        if (a > TILT.SLIP) p.x += TILT.SLIDE * (a - TILT.SLIP); else if (a < -TILT.SLIP) p.x += TILT.SLIDE * (a + TILT.SLIP);
       } else if (MOVING[o.k]) {   // carried by the stone it stands on
         const [ax, az] = carStone(o, p.gs, S.tick - 1), [bx, bz] = carStone(o, p.gs, S.tick);
         p.x += bx - ax; p.z += bz - az;
