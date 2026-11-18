@@ -305,16 +305,16 @@ jump back, a run back, or nothing) 0 to 11 ticks after they first see it.
 
 | Dodgeball, 12 x 90 s | Before | After (2 runs) | Before, 10% CPU | After, 10% CPU |
 | --- | --- | --- | --- | --- |
-| throws (hits) | 389 (117) | 758 (230) | 371 (99) | 379 (109) |
+| throws (hits) | 389 (117) | 758 (230) | 371 (99) | 368 (113) |
 | your own screen showed you hit, the server said dodge | 0 (1 in another run of 380) | 0 | 0 | 0 |
 | your own screen showed you dodge, the server said hit | 0 | 0 | 0 | 0 |
 | your own throw left on another tick or angle than shown | 11 | 0 | 14 | 0 |
 | thrower's screen showed a miss, the server said hit | 1 | 0 | 0 | 0 |
-| key presses off their tick (jumps, throw buttons) / never applied | 225 (38, 66) / 25 of 2,504 | 0 / 0 of 4,817 | 223 (50, 68) / 37 of 2,520 | 0 / 0 of 2,411 |
+| key presses off their tick (jumps, throw buttons) / never applied | 225 (38, 66) / 25 of 2,504 | 0 / 0 of 4,817 | 223 (50, 68) / 37 of 2,520 | 0 / 0 of 2,326 |
 | keys let go / inputs cut | 37 / 2,222 | 0 / 0 | 30 / 2,257 | 0 / 0 |
-| ticks a player's keys were held | 13,237 | 2 | 12,467 | 0 |
-| inputs drained between points | 10,778 | 838 | 9,704 | 415 |
-| your player: largest correction | 39 px | 34 px | 39 px | 22 px |
+| ticks a player's keys were held | 13,237 | 2 | 12,467 | 1 |
+| inputs drained between points | 10,778 | 838 | 9,704 | 433 |
+| your player: largest correction | 39 px | 34 px | 39 px | 29 px |
 
 "Your own throw left otherwise" was 0 in about 1,500 throws over the after-runs with a clean
 harness, and 1 in a run where the harness itself stalled (84 ms). A throw's angle counts from
@@ -339,11 +339,12 @@ spawn / near net / spawn to spawn; local play 267 / 233 / 83 / 200 ms):
 | 40 ms, steady | 6 | 267 / 233 / 83 / 200 ms | 0 of 177 |
 | 75 ms, steady | 11 | 267 / 233 / 83 / 200 ms | 0 of 177 |
 | 40 ms ±15 ms, spikes, before | 7 | 267 / 233 / 67 / 200 ms | 18 of 173 (4 trials timed out) |
-| 40 ms ±15 ms, spikes, after | 7 | 267 / 233 / 83 / 200 ms | 6 of 177 |
+| 40 ms ±15 ms, spikes, after | 6 | 267 / 233 / 83 / 200 ms | 5 of 177 (6 in an earlier run) |
 
-The wind-up is the same as before at the same delay (1, 4, 6 ticks at 0, 20, 40 ms; jitter adds
-one). With jitter and spikes the 6 trials left are ones where a spike held back the snapshots on
-the defender's link, so the ball first showed late in its flight. No input rule can show a ball
+The wind-up is the same as before at the same delay (1, 4, 6 ticks at 0, 20, 40 ms), and with
+jitter and spikes it is 6 or 7 ticks, as before. The trials left that differ from local are
+ones where a spike held back the snapshots on the defender's link, so the ball first showed late
+in its flight. No input rule can show a ball
 the screen hasn't heard of.
 
 Real browsers on `coop-dodge-inputs`. The machine was shared with other heavy jobs the whole
