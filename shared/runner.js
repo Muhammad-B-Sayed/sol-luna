@@ -586,7 +586,8 @@ export function stepRunner(L, S, inputs) {
   for (let i = 0; i < 2; i++) {
     if (!S.p[i].alive) continue;
     const why = hazards(L, S, W[i], i);
-    if (why) { kill(S, i, why); died = true; }
+    if (why && S.pred) predictedDeath(S, i, why);   // client prediction: see predictedDeath below
+    else if (why) { kill(S, i, why); died = true; }
   }
   if (died && !S.sb) {
     const a = S.p[0].alive, b = S.p[1].alive;
@@ -609,3 +610,15 @@ export const chunkAt = (L, px) => {
   return L.chunks[lo];
 };
 export { SEG, oid, oidObj, OID0, solidsFor };
+
+// ---------------------------------------------------------------------------
+// Client prediction (public/js/runner-sync.js, docs/netcode.md). A state with S.pred set never
+// kills anyone and never ends the match: deaths and the end of the match are the server's alone.
+// A death the prediction runs into is only noted, the first one per player, in
+// S.pk[i] = { tick, why, x, y }. The array is copied on write, so cloned states never share it.
+export function predictedDeath(S, i, why) {
+  if (S.pk && S.pk[i]) return;
+  const p = S.p[i];
+  S.pk = S.pk ? S.pk.slice() : [null, null];
+  S.pk[i] = { tick: S.tick, why, x: p.x, y: p.y };
+}

@@ -124,18 +124,18 @@ class Room {
     this.broadcast(this.startMsg());
   }
   // versus Runner: a fresh seeded course every time (rematches included)
-  startRunner() {
+  startRunner(seed) {
     this.mode = 'runner'; this.level = -1;
-    this.seed = newSeed();
+    this.seed = seed || newSeed();
     this.L = buildRunner(this.seed);
     this.S = createRunnerState(this.L);
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
     this.broadcast(this.startMsg());
   }
   // versus Runner 3D: same scheme, its own sim
-  startRunner3d() {
+  startRunner3d(seed) {
     this.mode = 'runner3d'; this.level = -1;
-    this.seed = newSeed();
+    this.seed = seed || newSeed();
     this.L = buildRunner3d(this.seed);
     this.S = createRunner3dState(this.L);
     this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
@@ -202,6 +202,9 @@ wss.on('connection', (ws) => {
   ws.on('close', () => { clearInterval(ws.rttT); leave(ws); });
 });
 
+// TEST_SEED=1 lets a client pick the Runner course seed (tools/check-netcode.js plays planned bot routes)
+const testSeed = (m) => (process.env.TEST_SEED && m.seed > 0 ? m.seed >>> 0 : 0);
+
 function onMessage(ws, data) {
   {
     let m;
@@ -260,12 +263,12 @@ function onMessage(ws, data) {
         }
         if (m.mode === 'runner') {
           if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
-          room.startRunner();
+          room.startRunner(testSeed(m));
           return;
         }
         if (m.mode === 'runner3d') {
           if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
-          room.startRunner3d();
+          room.startRunner3d(testSeed(m));
           return;
         }
         const lv = m.level | 0;
