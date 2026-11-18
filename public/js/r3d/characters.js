@@ -217,11 +217,14 @@ export class Character {
     this.air += ((air ? 1 : 0) - this.air) * Math.min(1, dt * 14);
 
     // run cycle advances with distance covered
-    if (pose.gr && pose.alive) this.runPh += sp * 60 * dt * 2.6;
+    // personality: Sol runs with quick bouncy steps and pumping arms, Luna with longer, floatier strides
+    const sol = this.who === SOL;
+    if (pose.gr && pose.alive) this.runPh += sp * 60 * dt * (sol ? 2.9 : 2.35);
     const runK = pose.gr ? sp01 : 0;
     const ph = this.runPh;
-    const swing = Math.sin(ph) * 0.95 * runK;
-    const bob = Math.abs(Math.cos(ph)) * 0.06 * runK;
+    const swing = Math.sin(ph) * (sol ? 1.0 : 0.8) * runK;
+    const bob = (sol ? Math.abs(Math.cos(ph)) * 0.08 : (0.5 + 0.5 * Math.cos(ph * 2)) * 0.04) * runK
+      + (1 - runK) * (sol ? Math.max(0, Math.sin(time * 4.2)) * 0.025 : 0.02 + Math.sin(time * 1.6) * 0.02) * (pose.gr ? 1 : 0);
     const breathe = Math.sin(time * 2.4 + this.who) * 0.015 * (1 - runK);
 
     // lean forward with speed, roll into strafes (in local space: lateral speed relative to facing)
@@ -248,13 +251,13 @@ export class Character {
       const legAir = up ? (s ? 0.9 : -0.3) : (s ? 0.35 : -0.25) + Math.sin(time * 18 + s * 3) * 0.12;
       leg.rotation.x = legRun * (1 - this.air) + legAir * this.air;
       leg.position.y = 0.31 + bob * 0.6;
-      const armRun = -swing * sg * 0.85;
+      const armRun = -swing * sg * (sol ? 1.15 : 0.6);
       const armAir = up ? -2.4 : -1.7 + Math.sin(time * 16 + s * 2) * 0.35;   // arms up when jumping, flail falling
       arm.rotation.x = armRun * (1 - this.air) + armAir * this.air * 0.8;
       arm.rotation.z = sg * (0.15 + this.air * 0.55 + (1 - runK) * 0.05 * Math.sin(time * 2 + s));
     }
     this.head.rotation.x = this.lean * 0.4 - (air && !up ? 0.12 : 0);
-    this.head.rotation.z = -this.roll * 0.5 + Math.sin(time * 1.7 + this.who) * 0.03 * (1 - runK);
+    this.head.rotation.z = -this.roll * 0.5 + Math.sin(time * 1.7 + this.who) * (sol ? 0.03 : 0.07) * (1 - runK);
 
     // motif animation
     if (this.rays) {

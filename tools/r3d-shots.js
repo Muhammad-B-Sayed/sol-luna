@@ -26,7 +26,7 @@ const log = (...a) => console.error(`[${((Date.now() - T0) / 1000).toFixed(0)}s]
 const SHOTS = [
   ['start', 'seed=7', 75],
   ['run', 'seed=7&z=140', 150],
-  ['jump', 'seed=7&z=60', 0, `__r3d.step(200); for (let k = 0; k < 400; k++) { const p = __r3d.S.p[0]; if (!p.gr && p.vy > 0 && p.vy < 0.1) break; __r3d.step(1); }`],
+  ['jump', 'seed=7&z=60', 14, `for (let k = 0; k < 60; k++) { __r3d.step(1); if (k % 3 === 0) __r3d.render(); } const p = __r3d.S.p[0]; p.vy = __r3d.R3.P3.jumpVel; p.gr = false; p.jumpN++;`],
   ['split', 'seed=11&split=1&z=90', 140],
   ['zone-close', 'seed=7&z=40', 12, `__r3d.step(80); for (let k = 0; k < 40; k++) { __r3d.step(1); if (k % 3 === 0) __r3d.render(); } __r3d.S.zone = Math.min(__r3d.S.p[0].z, __r3d.S.p[1].z) - 2.4;`],
   ['far', 'seed=3&z=900', 140],
