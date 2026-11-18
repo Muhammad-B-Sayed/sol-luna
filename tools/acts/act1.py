@@ -464,7 +464,7 @@ def counterweights():
     green the top pair (W1 from F2 to F3, E1 from F3 to the top gallery) and the bridge over the shade at
     the top. The floor and the top gallery have full headroom; the three landings are low decks you walk
     on and off the lifts from.
-    1. Luna starts up in the pocket off E0's lower stop and drops down the east shaft. She holds P0a
+    1. Luna starts at the east end of the floor, under the pocket off E0's lower stop. She holds P0a
        (purple): W0 lifts Sol to F1 and E0 sinks to meet him.
     2. Sol walks east over F1 through lever L2 (orange: gate G2 on the floor opens) onto E0. Luna steps
        off: E0 carries him to F2.
@@ -503,15 +503,15 @@ def counterweights():
     L.pool(31, 17, 3, 'S')
     L.plate(35, 16, 0).plate(38, 16, 1)                    # P0b, P1a: both past the channel
     L.plat(26, 22, 3, 1, 0, -5, 0, inv=True)               # E0: rests at F2, sinks to F1
-    # ---- F1 (floor row 22) and Luna's pocket off E0's lower stop
+    # ---- F1 (floor row 22) and the pocket off E0's lower stop
     L.clear(13, 18, 25, 21).clear(10, 18, 12, 27).clear(29, 18, 36, 20)
     L.lever(23, 21, 2)                                     # L2 opens G2
-    L.p(35, 20, 'b')
     # ---- the floor: west part (row 28), middle on the bottom wall, east part (row 28)
     L.clear(1, 22, 9, 27).clear(13, 23, 28, 28).clear(29, 22, 38, 27)
     L.cells(10, 28, 12, 28, 0).mv(0, 0, -6)                # W0: floor -> F1
     L.gate(20, 27, 28, '_', 2, 25).r(19, 23, 21, 23)       # G2
     L.plate(33, 27, 0)                                     # P0a
+    L.p(35, 27, 'b')                                       # Luna: 6 free rows over her spawn (the pocket above has 3)
     L.p(2, 27, 'a')
     L.mv(2, 0, -2).mv(3, 0, -2).mv(4, 0, -2)
     L.p(6, 25, 's').p(24, 10, 's').p(30, 16, 's').p(1, 9, 's')
