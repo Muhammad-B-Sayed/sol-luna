@@ -100,7 +100,7 @@ def eclipse():
         once, which is why the crate holds white) and climbs to the roofs.
     12. Luna holds the purple plate on the roof: Sol's door lock opens and he walks to his door.
         She walks to hers."""
-    L = Lv('Eclipse', 90, 'Each wing mirrors the other, even the levers. What you do on your side changes theirs. The two yellow lifts balance each other.')
+    L = Lv('Eclipse', 120, 'Each wing mirrors the other, even the levers. What you do on your side changes theirs. The two yellow lifts balance each other.')
     R = [['#'] * 19 for _ in range(28)]          # R[y-1][x-20], the right half (x 20..38)
 
     def cut(x0, y0, x1, y1, ch='.'):
@@ -240,7 +240,7 @@ def dusk_gate():
     Re-spaced Nov 2026 for the higher jump: the deck is 6 rows high, the corridors where nobody
     needs to jump have ramps for their steps, the booth is 6 rows high, and the climb into the
     door chamber is two steps of 2 with full headroom."""
-    L = Lv('Dusk Gate', 92, 'The spiral winds in to the doors. One of you works the levers while the other runs; then swap.')
+    L = Lv('Dusk Gate', 120, 'The spiral winds in to the doors. One of you works the levers while the other runs; then swap.')
     rock(L)
     # deck (top left): x 1-5 on floor 6 with the shaft hole, x 6-11 on floor 5
     L.clear(1, 1, 11, 6).clear(1, 7, 3, 7)                 # the deck: 6 rows high, the shaft's mouth at its west end
@@ -344,7 +344,7 @@ def two_keys():
        walks to its west dead end and back through the purple lever, which keeps B up. Luna
        climbs after him.
     8. Each walks out to their door."""
-    L = Lv('Two Keys', 100, 'The crates are your keys, and a crate never climbs. One of them has to be a step before it is a key.')
+    L = Lv('Two Keys', 130, 'The crates are your keys, and a crate never climbs. One of them has to be a step before it is a key.')
     rock(L)
     # Re-spaced Nov 2026 for the higher jump: crown floor 7, upper hall 14, ground hall 21, basement
     # 28, each with 6 free rows. The high ledge is 5 above the hall floor (only a crate is a step up)
@@ -492,7 +492,7 @@ def tidelock():
     8. In the latch hall Luna drops to her moon lane and the pink latch (Sol's door gate opens) and
        takes the chute. Sol lifts her up with the orange plate; he jumps the lift hole into the
        west arm, and both walk to their doors at the ends of the two arms."""
-    L = Lv('Tidelock', 115, 'Purple and green make four codes; each code opens one crossing. '
+    L = Lv('Tidelock', 140, 'Purple and green make four codes; each code opens one crossing. '
            'Walk right through a lever to turn it on, left to turn it off, and jump over it to leave it.')
     C = canvas()
     # top band (rows 1-6, floor 7): NW top, the stepping-stone pit, NE top
@@ -596,7 +596,7 @@ def leapfrog_spire():
     # - Done. Thin margins: bot time 78 s against 76 s; Sol visits 16 sectors (needs 16); stone 26%.
     # - Spawn headroom (Nov 17 playtest): each start pen's roof cell over the spawn is open, with a
     #   one-high bump in the floor above instead (1,21 and 25,20), so both first jumps rise the full 4.1 tiles.
-    L = Lv('Leapfrog Spire', 90, 'Each lift is worked from the other side. Same colour, same moment: '
+    L = Lv('Leapfrog Spire', 120, 'Each lift is worked from the other side. Same colour, same moment: '
            'when your partner presses, everything of that colour moves. The crate must reach the chute.')
     art(L, [
         '######################################',   # 1

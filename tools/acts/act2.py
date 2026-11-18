@@ -49,7 +49,7 @@ def the_drop():
        steps back on and it brings him up.
     6. The crate bridges carry both along the low corridor to the doors.
     """
-    L = Lv('The Drop', 90, 'A crate down a chute stays on its plate for good. Read the colours before you push.')
+    L = Lv('The Drop', 110, 'A crate down a chute stays on its plate for good. Read the colours before you push.')
     solid(L)
     # Four bands, seven rows apart (floors 7, 14, 21, 28) so every jump gets its full arc.
     # ---- top shelf (rows 1-6, floor 7) with three chute mouths; crates between them
@@ -140,7 +140,7 @@ def switchback():
        Luna drops into her pit. Then Sol goes round the left loop a last time (her hatch shuts
        over her) and down to his door through GD.
     """
-    L = Lv('Switchback', 85, 'Walk right through a lever to switch it on, left to switch it off. Which way you go round decides how it ends.')
+    L = Lv('Switchback', 105, 'Walk right through a lever to switch it on, left to switch it off. Which way you go round decides how it ends.')
     solid(L)
     # ---- top band. The left arc and the tower top share floor 7; the right arc is one higher
     # (floor 6), so the yellow hatch's slot runs under it.
@@ -231,7 +231,7 @@ def carry_the_weight():
     8. Pink gate G6 bars the corridor. Sol climbs to the shelf and holds pink plate P6a; Luna
        passes G6 and holds P6b; Sol passes. Both cross B5 to the doors.
     """
-    L = Lv('Carry the Weight', 85, 'A crate cannot climb, and a lift needs someone on its plate. Take the crate all the way up.')
+    L = Lv('Carry the Weight', 105, 'A crate cannot climb, and a lift needs someone on its plate. Take the crate all the way up.')
     solid(L)
     # Four bands seven rows apart: stage A and the gallery foot on floor 28, the middle floor on
     # 21, the shelf on 14, the corridor and the tower top on 7. Each lift climbs one band.
@@ -318,7 +318,7 @@ def clockwork():
        him east through GY.
     5. Both to the doors on the landing.
     """
-    L = Lv('Clockwork', 120, 'One of you works the levers, the other runs. Walk through a lever to flip it, jump over it to leave it alone.')
+    L = Lv('Clockwork', 135, 'One of you works the levers, the other runs. Walk through a lever to flip it, jump over it to leave it alone.')
     solid(L)
     # Four bands, seven rows apart: the top of the ring (floor 7), three galleries (14), the
     # control room and landing (21), the bottom of the ring (28). The lifts run the full height.
@@ -432,7 +432,7 @@ def closing_time():
     15. His door is in a chamber behind white gate GW. Luna steps across to PW2: GW opens and
         Sol goes in. She steps off to her door beside it on the block in the top left.
     """
-    L = Lv('Closing Time', 80, 'Several controls open one door and shut another. Where two gates stand together, run the moment your partner moves.')
+    L = Lv('Closing Time', 90, 'Several controls open one door and shut another. Where two gates stand together, run the moment your partner moves.')
     solid(L)
     # cells: columns x 1-11, 14-24, 27-38; rows 1-8, 10-18, 20-27; walls 2 thick, slabs 1 thick.
     # Every climb to a hatch is a low step (with the cell's full headroom over it) and then a
@@ -547,7 +547,7 @@ def crate_relay():
     10. Sol pushes K2 into socket S2 (pink): the west half of the bridge comes down.
     11. They cross the bridge to their doors, Sol east, Luna west.
     """
-    L = Lv('Crate Relay', 75, 'A crate cannot cross on its own legs. Send it over, then go round to meet it.')
+    L = Lv('Crate Relay', 110, 'A crate cannot cross on its own legs. Send it over, then go round to meet it.')
     solid(L)
     # Every room has six rows of air: bottom rooms on floor 27, the west middle room on 20, the
     # east middle room on 14, the top rooms on 7. The bridge runs in a 2-high tunnel, so nobody
@@ -641,7 +641,7 @@ def undertow():
         is on the west ledge. Luna crosses the room to hold it while Sol goes in, then crosses
         back to her own door on the east ledge.
     """
-    L = Lv('Undertow', 90, 'Sun water is safe for Sol and moon water for Luna. Every gate you meet is opened by your partner, far away.')
+    L = Lv('Undertow', 110, 'Sun water is safe for Sol and moon water for Luna. Every gate you meet is opened by your partner, far away.')
     solid(L)
     # ---- top band: NW chamber, M1W/S2W tunnels, top crossing JT, M1E/S2E tunnels, NE alcove and chamber
     L.clear(1, 1, 7, 9)                                   # NW (seven rows: full headroom off the tunnel ledge)
@@ -758,7 +758,7 @@ def pendulum():
     9. White and pink a last time, up into the door lofts: Luna holds white for Sol's loft, and
        Sol holds pink inside his loft for hers.
     """
-    L = Lv('Pendulum', 95, "Hold a ferry's plate and it swings across; let go and it swings back. You cannot ride the ferry you are holding.")
+    L = Lv('Pendulum', 120, "Hold a ferry's plate and it swings across; let go and it swings back. You cannot ride the ferry you are holding.")
     solid(L)
     # wall rooms (x3-7 and x32-36): floors at rows 28, 21, 14, 7, each room six rows high
     for x0, x1 in ((3, 7), (32, 36)):
@@ -852,7 +852,7 @@ def the_operator():
     8. Sol stands on the lift and Luna raises it. He falls onto his shelf in E while she leaps the
        six-wide well mouth (the signature jump, with a gem over its middle) into her alcove.
     """
-    L = Lv('The Operator', 85, 'One of you works the deck, the other runs the course. Then swap: it will not go the same way twice.')
+    L = Lv('The Operator', 105, 'One of you works the deck, the other runs the course. Then swap: it will not go the same way twice.')
     solid(L)
     # ---- the deck (rows 1-6 over floor row 7): the alcove, the well mouth, a trough, the booth
     L.clear(1, 1, 31, 6)

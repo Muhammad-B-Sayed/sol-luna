@@ -98,7 +98,7 @@ def sunken_halls():
         He holds orange P6b on the shelf: G6 opens again and Luna walks back west to her door,
         in the corner Sol dropped into.
     """
-    L = Lv('Sunken Halls', 95, 'Every drop is one way. Whoever goes down first needs a white plate held to come back up.')
+    L = Lv('Sunken Halls', 140, 'Every drop is one way. Whoever goes down first needs a white plate held to come back up.')
     rock(L)
     # ---- hall 1 (rows 1-5): the west room, G0, the moon tunnel, the start, the east rooms
     L.clear(1, 1, 11, 4).clear(12, 3, 12, 4)              # the west room (floor rows 5-6, over the lake)
@@ -231,7 +231,7 @@ def twilight_spiral():
     9. Crossing four, the sanctum: another airlock (pink). Sol holds P4 and Luna runs east; she
        takes the plate and Sol runs west. Each walks to their door.
     """
-    L = Lv('Twilight Spiral', 95, 'Your paths cross four times. At each crossing one of you holds the way for the other. In an airlock, run the moment your partner steps on.')
+    L = Lv('Twilight Spiral', 140, 'Your paths cross four times. At each crossing one of you holds the way for the other. In an airlock, run the moment your partner steps on.')
     rock(L)
     # ---- the outer top corridor T (rows 1-6, floor 7)
     L.clear(1, 1, 38, 6)
@@ -357,7 +357,7 @@ def sanctum_approach():
     8. Luna runs back east to white PS1c and then green PS2b by the shaft: S1 and S2 bring Sol
        up. Both walk in to the doors.
     """
-    L = Lv('Sanctum Approach', 120, 'One lever below changes the room above. You may have to go back down and set it right.')
+    L = Lv('Sanctum Approach', 150, 'One lever below changes the room above. You may have to go back down and set it right.')
     rock(L)
     # ---- the double shaft: S2 (x 33-35) middle to top, S1 (x 36-38) foot to middle
     lift(L, 33, 15, 3, 8, 1)                              # S2 (green): row 15 up to row 7

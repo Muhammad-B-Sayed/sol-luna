@@ -114,7 +114,7 @@ export function gate(n, SCRIPTS, { fast = false } = {}) {
       line(st.coverSol >= need(n, 'minCoverEach') && st.coverLuna >= need(n, 'minCoverEach'), 'ROUTE', `Sol visits ${st.coverSol}, Luna ${st.coverLuna} (need ${need(n, 'minCoverEach')}+ each)`);
       line(st.secs >= need(n, 'minSecs'), 'DEPTH', `bot needs ${st.secs.toFixed(0)}s (need ${need(n, 'minSecs')}s+)`);
       line(st.edges >= need(n, 'minEdges'), 'DEPTH', `plates and levers are used ${st.edges} times (need ${need(n, 'minEdges')}+)`);
-      const lo = Math.round(st.secs * 0.9), hi = Math.round(st.secs * 1.4);
+      const lo = Math.round(st.secs * 1.3), hi = Math.round(st.secs * 1.8);   // rank A must be within a human pair's reach: about 1.5 times the bot
       line(raw.par >= lo && raw.par <= hi, 'DEPTH', `par ${raw.par}s against bot ${st.secs.toFixed(0)}s (set par between ${lo} and ${hi})`);
     }
   }

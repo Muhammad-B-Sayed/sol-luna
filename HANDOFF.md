@@ -245,7 +245,7 @@ A level is done when `node tools/gate.js <n>` passes in full. It checks:
 - LAYOUT: stone fills 25-65%, no empty block over 120 cells, enough distinct floor heights over
   20+ rows, no flat stone floor over 18, at most one near-full-width floor, 21+ of 24 sectors with floor.
 - DEPTH: plates and levers, gem counts by tier, bot time and control uses above the tier floor,
-  par within 0.9-1.4 times the bot time.
+  par within 1.3-1.8 times the bot time (each level is set to about 1.5 times, so rank A is within reach of a human pair).
 - CO-OP: the bot wins and collects every gem.
 - ROUTE: sectors visited by both players and by each one.
 - ROOF: 0 climbs or crossings on the bot route hit a roof. `node tools/check-headroom.js <n>` lists them.

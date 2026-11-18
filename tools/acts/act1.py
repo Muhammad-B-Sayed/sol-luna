@@ -22,7 +22,7 @@ def first_light():
     lower block, at alternate ends. Doors top right.
     Sol wades his channel to plate P1 so Luna can pass gate G1 and set lever L1, which keeps it open.
     One floor up the roles swap: Luna wades her channel to P2, Sol passes G2 and sets L2."""
-    L = Lv('First Light', 45, 'Arrows move Sol, WASD moves Luna. Your own pool is safe. A plate works while you stand on it. A lever stays put.')
+    L = Lv('First Light', 65, 'Arrows move Sol, WASD moves Luna. Your own pool is safe. A plate works while you stand on it. A lever stays put.')
     L.r(1, 1, 15, 1).r(1, 2, 6, 2)         # hanging stone in the top-left corner
     # floor 0 (the bottom wall in the west, row 28 in the east): west stair, start, Sol's channel, P1
     L.r(4, 26, 6, 28).r(1, 23, 3, 28)      # the west stair: two 3-tile steps
@@ -99,7 +99,7 @@ def parting_ways():
     5. Luna climbs through G3 to the far east end of her top floor and stands on P4 (pink): G4 rises
        and Sol steps out onto the roof to his door.
     6. Luna walks all the way back and over her stair's top onto the roof beside him."""
-    L = Lv('Parting Ways', 45, 'Your plates and levers open the other tower. A lever turns on when you walk right through it, off when you walk left.')
+    L = Lv('Parting Ways', 50, 'Your plates and levers open the other tower. A lever turns on when you walk right through it, off when you walk left.')
     L.r(19, 8, 20, 28)                                     # the central wall, its top is the roof
     # ---- Sol's tower (x 1-18): ground on the bottom wall, floors at rows 22, 15, 8
     L.r(1, 23, 2, 28).r(3, 26, 4, 28)                      # west stair up to floor 1
@@ -158,7 +158,7 @@ def shade_well():
     4. Sol turns lever L3 (white) at the dead end of the left lower room and drops through its floor to
        his door. L3 opened gate G3 in the right lower room.
     5. Luna drops through her room's floor, goes through G3 and falls to her door."""
-    L = Lv('Shade Well', 45, 'Black pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.')
+    L = Lv('Shade Well', 65, 'Black pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.')
     # ---- the roof: west half and the beam on row 8, east half on row 7; one-tile slots either side
     L.r(1, 8, 21, 8).clear(17, 8, 17, 8).pool(7, 8, 2, 'X')   # Sol's slot at x 17
     L.r(18, 1, 20, 5)                                      # a rock hangs over the beam: walk under it
@@ -210,7 +210,7 @@ def the_lift():
     6. At rib 3's dead end Luna turns lever L2 (orange): lift 3 stays up, so Sol can let go, and from its
        top she can leap to the gallery across the shaft for its gem. She walks back to her door; Sol walks
        to his on rib 2."""
-    L = Lv('The Lift', 45, "You cannot drive the lift you stand on. Your partner's plate moves it.")
+    L = Lv('The Lift', 65, "You cannot drive the lift you stand on. Your partner's plate moves it.")
     # ---- west: ground (bottom wall, then row 28 by the shaft), rib 1 (rows 22/21), a solid mass, rib 3 (row 8)
     L.r(1, 23, 2, 28).r(3, 26, 4, 28)                      # the west stair
     L.gate(7, 27, 28, '+', 3, 25).r(6, 23, 8, 23)          # G0b (white) at its foot
@@ -263,7 +263,7 @@ def the_long_way_round():
        the east half of the chamber, where his door is.
     6. Sol stands on P6 (white) there: a bridge rises over the sun channel and Luna walks into the west half
        to her door."""
-    L = Lv('The Long Way Round', 50, 'Raised bridges cover a pool while their plate is held. Your pools mark your way round.')
+    L = Lv('The Long Way Round', 70, 'Raised bridges cover a pool while their plate is held. Your pools mark your way round.')
     # ---- the core (x 10-29). The east half sits one row higher than the west.
     L.r(10, 8, 29, 26).r(13, 28, 31, 28).r(19, 27, 26, 27)
     L.clear(10, 9, 18, 14)                                 # west corridor (x 10-11) and Sol's vault (x 13-18)
@@ -313,7 +313,7 @@ def crate_cellar():
        P3 opens the gate in front of the doors for good, and the crate is the step up onto the lift.
     5. Luna steps onto the chimney lift (white) and Sol stands on P4 beside it: she rides to the top.
     6. Luna stands on the second white plate at the top: the empty lift comes down for Sol and brings him up."""
-    L = Lv('Crate Cellar', 60, 'Push the crate off ledges to bring it down. Stuck against a wall? Lean on it, then jump into its corner.')
+    L = Lv('Crate Cellar', 90, 'Push the crate off ledges to bring it down. Stuck against a wall? Lean on it, then jump into its corner.')
     L.r(1, 7, 12, 7)                                       # the starting ledge
     L.p(3, 6, 'a').p(4, 6, 'b').p(8, 6, 'k')
     L.r(1, 14, 22, 14).clear(5, 14, 5, 14)                 # the second ledge, a one-tile hole into the pocket
@@ -362,7 +362,7 @@ def twin_towers():
     6. The gate in front of Sol's door is held by P_D (yellow) at the foot of the left tower. Luna climbs
        all the way down her new tower and stands on it; Sol walks to his door.
     7. Luna climbs the left tower again, through her open gate, to her door."""
-    L = Lv('Twin Towers', 52, "Ferries cross the chasm. You can't drive the one you stand on. Don't fall: the chasm is full of shade.")
+    L = Lv('Twin Towers', 70, "Ferries cross the chasm. You can't drive the one you stand on. Don't fall: the chasm is full of shade.")
     # ---- left tower (x 1-16): floors on the bottom wall and rows 22, 15, 8; the shaft at x 1-4
     L.r(5, 22, 16, 22).r(5, 15, 16, 15).r(5, 8, 16, 8).clear(11, 8, 12, 8)
     L.r(1, 26, 2, 26).r(1, 19, 2, 19).r(1, 12, 2, 12)      # shaft ledges
@@ -419,7 +419,7 @@ def dawn_gate():
        climbs to the top floor.
     8. Luna stands on the other pink plate on the top floor: G3 opens again and Sol follows. They walk to the
        doors together."""
-    L = Lv('Dawn Gate', 60, 'Everything you learned this chapter, once each.')
+    L = Lv('Dawn Gate', 90, 'Everything you learned this chapter, once each.')
     # ---- ground (west row 28, east on the bottom wall): the sun tunnel under a low ledge
     L.r(1, 28, 19, 28).pool(10, 28, 7, 'S')
     L.r(9, 25, 19, 25)                                     # the ledge over the tunnel
@@ -480,7 +480,7 @@ def counterweights():
        through lever L4 (pink) at its dead end, which raises gate G4 before Luna's door, and climbs out
        onto the top gallery and through G4 to his door.
     7. Luna steps off P3 and walks through G4 to her door."""
-    L = Lv('Counterweights', 55, 'One colour moves two lifts: one goes up as the other comes down. A weight left on the far end of a sunk lift keeps it down.')
+    L = Lv('Counterweights', 75, 'One colour moves two lifts: one goes up as the other comes down. A weight left on the far end of a sunk lift keeps it down.')
     L.r(1, 1, 38, 28)
     # ---- the top gallery (floor row 7) and the east gallery beyond E1's far wall (row 6)
     L.clear(1, 1, 28, 6).clear(1, 7, 6, 11).clear(26, 7, 28, 11).clear(29, 1, 38, 5)
@@ -541,7 +541,7 @@ def stone_raft():
     6. Luna goes on down the east ramp onto the lift, and Sol holds P4b (white) at the top to bring her up.
     7. Sol walks through G3, past his door, and holds P6 (orange): gate G6 before Luna's door opens.
        She walks in, and he steps back to his door."""
-    L = Lv('Stone Raft', 55, 'A crate dropped in a pool is a stepping stone, but it lands right where it falls. Ferries carry crates too.')
+    L = Lv('Stone Raft', 75, 'A crate dropped in a pool is a stepping stone, but it lands right where it falls. Ferries carry crates too.')
     L.r(1, 1, 38, 28)
     # ---- the west room (floor row 7): Luna, the ferry plate, gate G5 over the west shaft
     L.clear(1, 1, 15, 6)
@@ -605,7 +605,7 @@ def helpers_way_out():
        the wing's top exit G8 opens, and she comes out.
     7. Luna holds P8 in turn: gates G10 and G9 open, and Sol walks home along the west wing's top storey to
        his door. Luna goes to hers."""
-    L = Lv("Helper's Way Out", 50, 'Stand in a pit to hold a plate. Your partner has the lever that lifts its floor, and you with it.')
+    L = Lv("Helper's Way Out", 75, 'Stand in a pit to hold a plate. Your partner has the lever that lifts its floor, and you with it.')
     L.r(1, 1, 38, 28)
     # ---- west wing (x 1-13): the shaft (x 1-6) and storeys at rows 28, 22, 15, 8
     L.clear(1, 1, 13, 7).clear(1, 8, 3, 8).clear(1, 9, 6, 28)
