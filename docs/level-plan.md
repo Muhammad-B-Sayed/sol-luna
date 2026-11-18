@@ -449,6 +449,10 @@ Known follow-ups:
   can be kicked free.) Crate B into 28's empty east shaft; falling down a crate chute in 32;
   dropping out of 26's control room while the runner is shut in a basin; dropping in 29 before
   the hall above is done. These were listed before the re-spacing and have not been re-checked.
+- **29's first jump still bonks at 86 px.** The top hall stands on row 6 under the outer wall,
+  so a full jump needs the start floor one row lower, in row 7. Every row-7 cell under the start
+  (x 18-21) is in the arc of the jumps over R2's shaft in hall 2: filling x 19-20 gave 5 roof hits.
+  Fixing it needs a rework of the top hall's start or of hall 2's crossing.
 
 ## What to hand back
 
