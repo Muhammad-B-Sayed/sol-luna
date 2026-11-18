@@ -170,7 +170,7 @@ export class RunnerSync {
   // stand still)
   ease(dt) {
     const w = Math.min(2, dt / DT), f = this.sim.fwd;
-    const r = this.roff, q = this.snaps[this.snaps.length - 1].st.p[1 - this.me], vq = Math.max(0, q['v' + f] || 0);
+    const r = this.roff, q = this.snapAt(this.pb ?? this.auth.tick).st.p[1 - this.me], vq = Math.max(0, q['v' + f] || 0);
     const k = 1 - Math.pow(0.8, w);
     for (const d0 of this.sim.dims) {
       let d = clamp(r[d0] * k, -this.sim.ease * w, this.sim.ease * w);
@@ -352,12 +352,14 @@ export class RunnerSync {
     S.why = [shownDead[0] ? A.why[0] : '', shownDead[1] ? A.why[1] : ''];
     S.best = [Math.max(P.best[0], A.best[0]), Math.max(P.best[1], A.best[1])];
     S.best[o] = Math.min(S.best[o], Math.max(A.best[o], theirs[sim.fwd]));
-    if (over) { S.phase = sim.OVER; S.win = A.win; S.phaseT = P.tick - this.overAt; }
+    if (over) { S.phase = sim.OVER; S.win = A.win; S.phaseT = P.tick - this.overAt; S.best = A.best.slice(); }
     else { S.win = -1; if (S.phase === sim.OVER) S.phase = sim.PLAY; }
     delete S.pk; delete S.pred;
     const v = { p: me === 0 ? [mine, theirs] : [theirs, mine] };
     v[sim === SIM2D ? 'cam' : 'zone'] = scroll;
-    const dbg = { ex: +(T - A.tick).toFixed(1), roff: +Math.hypot(...sim.dims.map(k => this.roff[k])).toFixed(2), ride: this.lastRide?.key ?? -1 };
+    const r2 = (o) => sim.dims.map(k => +o[k].toFixed(2));
+    const dbg = { ex: +(T - A.tick).toFixed(1), roff: +Math.hypot(...sim.dims.map(k => this.roff[k])).toFixed(2), ride: this.lastRide?.key ?? -1,
+      T: +T.toFixed(2), newest: A.tick, theirs: r2(theirs), ro: r2(this.roff), sa: sa.tick };
     return { S, v, T, alpha, results: false, me: raw, dbg };
   }
 }

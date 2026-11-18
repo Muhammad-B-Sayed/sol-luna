@@ -350,10 +350,11 @@ let last = performance.now(), acc = 0, fpsT = 0, frames = 0, fps = 60;
 function frame(now) {
   requestAnimationFrame(frame);
   let dt = now - last; last = now;
+  const raw = dt;   // online runners catch up after a stall (runner-sync.js) instead of dropping ticks
   if (dt > 250) dt = DT;
   frames++; fpsT += dt; if (fpsT > 1000) { fps = Math.round(frames * 1000 / fpsT); frames = 0; fpsT = 0; }
-  if (runner.active) { runner.frame(dt, now); return; }
-  if (runner3d.active) { runner3d.frame(dt, now); return; }
+  if (runner.active) { runner.frame(runner.online ? raw : dt, now); return; }
+  if (runner3d.active) { runner3d.frame(runner3d.online ? raw : dt, now); return; }
   const playing = app.L && (app.mode === 'local' || (app.mode === 'online' && app.inGame));
   if (playing) {
     acc += dt;

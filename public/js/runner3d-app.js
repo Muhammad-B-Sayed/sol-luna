@@ -1,6 +1,7 @@
 // Sol & Luna — Runner 3D mode in the browser: local split screen on one keyboard, and online
-// rooms with client prediction against the authoritative server. It mirrors runner-app.js
-// (the 2D runner): same lifecycle, fixed 60 Hz ticks, pending inputs, decaying visual offsets.
+// rooms against the authoritative server. It mirrors runner-app.js (the 2D runner): same
+// lifecycle, fixed 60 Hz ticks. Online sync (your prediction, the other player drawn from
+// snapshots, deaths only from the server) is runner-sync.js; see docs/netcode.md.
 // main.js creates one Runner3DMode and hands it the frame loop while it is active.
 //
 // Drawing goes to its own canvas (#game3d). The WebGL renderer (public/js/r3d/renderer.js) is
@@ -11,18 +12,14 @@ import {
   WHY3, R3_COUNT, R3_PLAY, R3_OVER, COUNT_TICKS, DRAW, LEAD_MAX,
 } from '/shared/runner3d.js';
 import { Runner3DDebugRenderer } from './runner3d-debug.js';
+import { createSync, SIM3D } from './runner-sync.js';
 
 const SOL = 0, LUNA = 1;
 const DT = 1000 / 60;
 const $ = (s) => document.querySelector(s);
 const NAME = ['Sol', 'Luna'];
 const RESULT_DELAY = 70;   // ticks of the final moment before the results card
-const TELEPORT = 2;        // units: don't interpolate across a jump this big
-const OFF_MAX = 3;         // units: drop a visual correction of your own player bigger than this
-// The other player's input reaches you a round trip late, so a jump or a stop of theirs can be
-// mispredicted by 3 to 4 units at 80 ms of lag. Their correction eases out at most this fast
-// (units per tick) instead of snapping, and is only dropped beyond OFF_MAX_REMOTE.
-const REMOTE_EASE = 0.3, OFF_MAX_REMOTE = 8;
+const TELEPORT = 2;        // units: don't interpolate across a jump this big (local play)
 const URGENT = 8, CRITICAL = 4;   // units between a player and the dusk
 // read once at load: joining a room rewrites the URL to /CODE and drops the query
 const DEBUG_VIEW = new URLSearchParams(location.search).has('r3ddebug');
@@ -80,10 +77,11 @@ export class Runner3DMode {
     this.S = st ? cloneRunner3d(st) : createRunner3dState(this.L);
     this.cover(this.S);
     this.prev = this.capture(this.S);
-    this.off = [{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }];
     this.results = false; this.paused = false; this.acc = 0;
-    this.pending = []; this.seq = 0; this.remoteBits = 0;
     this.heard = null; this.lastDrawn = null;
+    // online: the sync owns the prediction; this.S becomes the state it shows, each frame
+    this.sync = this.online ? createSync(SIM3D, { L: this.L, st: this.S, me: this.app.me, send: (m) => this.net.send(m), now: performance.now() }) : null;
+    this.corrSeen = 0;
     this.tipSeen = [{}, {}]; this.tipShown = [null, null];
     this.corr = { max: 0, back: 0, viewBack: 0, n: 0, remoteStep: 0, remoteBack: 0 };
     this.lastRemote = null;
@@ -188,70 +186,27 @@ export class Runner3DMode {
     if (this.S.phase === R3_OVER && this.S.phaseT >= RESULT_DELAY) this.showResults();
   }
 
-  tickOnline() {
-    if (this.results) return;
-    const bits = this.paused ? 0 : this.input.any3d();
-    this.seq++;
-    this.net.send({ t: 'i', s: this.seq, b: bits });
-    this.pending.push([this.seq, bits]);
-    if (this.pending.length > 240) this.pending.shift();
-    const inp = [0, 0];
-    inp[this.app.me] = bits; inp[1 - this.app.me] = this.remoteBits;
-    this.prev = this.capture(this.S);
-    stepRunner3d(this.L, this.S, inp);
-    this.listen();
-    this.off.forEach((v, i) => {
-      const d = { x: v.x * 0.2, y: v.y * 0.2, z: v.z * 0.2 };
-      if (i === this.app.me) {
-        // drawn ahead of the corrected state while running forward: pay the difference off
-        // slower than the run itself, so a late correction slows you instead of pulling you back
-        const vz = this.S.p[i].vz;
-        if (d.z > 0 && vz > 0.02) d.z = Math.min(d.z, 0.6 * vz);
-      } else {
-        const m = Math.hypot(d.x, d.y, d.z);
-        if (m > REMOTE_EASE) { d.x *= REMOTE_EASE / m; d.y *= REMOTE_EASE / m; d.z *= REMOTE_EASE / m; }
-      }
-      for (const k of ['x', 'y', 'z']) { v[k] -= d[k]; if (Math.abs(v[k]) < 0.002) v[k] = 0; }
-    });
-  }
-
   onSnapshot(m) {
-    if (!this.active || !this.online || !m.st || m.st.mode !== 'runner3d' || m.st.seed !== this.S.seed) return;
-    const before = this.capture(this.S);
-    const ns = m.st, me = this.app.me;
-    this.cover(ns);
-    this.remoteBits = m.inp[1 - me] | 0;
-    this.pending = this.pending.filter(([s]) => s > (m.ack[me] | 0));
-    const inp = [0, 0];
-    for (const [, b] of this.pending) { inp[me] = b; inp[1 - me] = this.remoteBits; stepRunner3d(this.L, ns, inp); }
-    const after = this.capture(ns);
-    before.p.forEach((v, i) => {
-      const o = this.off[i], a = after.p[i];
-      o.x += v.x - a.x; o.y += v.y - a.y; o.z += v.z - a.z;
-      if (Math.hypot(o.x, o.y, o.z) > (i === me ? OFF_MAX : OFF_MAX_REMOTE)) { o.x = 0; o.y = 0; o.z = 0; }
-      this.prev.p[i].x += a.x - v.x; this.prev.p[i].y += a.y - v.y; this.prev.p[i].z += a.z - v.z;
-    });
-    const mb = before.p[me], ma = after.p[me], err = Math.hypot(mb.x - ma.x, mb.y - ma.y, mb.z - ma.z);
-    this.corr.n++;
-    if (err > this.corr.max) this.corr.max = err;
-    if (mb.z - ma.z > this.corr.back) this.corr.back = mb.z - ma.z;
-    this.prev.zone += after.zone - before.zone;
-    this.S = ns;
-    if (ns.phase === R3_OVER && ns.phaseT >= RESULT_DELAY && !this.results) this.showResults();
+    if (!this.active || !this.online || !this.sync || this.results) return;
+    this.sync.onSnapshot(m, performance.now());
+    // corrections of your own player at each snapshot (units), for tools/runner3d-browser.js
+    const c = this.sync.stats.corr;
+    for (; this.corrSeen < c.length; this.corrSeen++) {
+      const [err, back] = c[this.corrSeen];
+      this.corr.n++;
+      if (err > this.corr.max) this.corr.max = err;
+      if (back > this.corr.back) this.corr.back = back;
+    }
   }
 
   view(alpha) {
-    const S = this.S, P = this.prev, O = this.off, on = this.online;
+    const S = this.S, P = this.prev;
     return {
       zone: P.zone + (S.zone - P.zone) * alpha,
       p: S.p.map((p, i) => {
         const a = P.p[i];
         if (Math.abs(a.x - p.x) + Math.abs(a.y - p.y) + Math.abs(a.z - p.z) > TELEPORT) return { x: p.x, y: p.y, z: p.z };
-        return {
-          x: a.x + (p.x - a.x) * alpha + (on ? O[i].x : 0),
-          y: a.y + (p.y - a.y) * alpha + (on ? O[i].y : 0),
-          z: a.z + (p.z - a.z) * alpha + (on ? O[i].z : 0),
-        };
+        return { x: a.x + (p.x - a.x) * alpha, y: a.y + (p.y - a.y) * alpha, z: a.z + (p.z - a.z) * alpha };
       }),
     };
   }
@@ -259,16 +214,23 @@ export class Runner3DMode {
   // fixed 60 Hz ticks and a frame; called by main.js instead of its own loop
   frame(dt, now) {
     if (!this.S) return;
-    this.acc += dt;
-    let n = 0;
-    while (this.acc >= DT && n < 8) {
-      this.acc -= DT; n++;
-      if (this.online) this.tickOnline(); else this.tickLocal();
+    let n = 0, v;
+    if (this.online) {
+      // ticks, the other player's clock and what to draw all come from the sync
+      if (!this.results) n = this.sync.frame(dt, () => (this.paused ? 0 : this.input.any3d()), now);
+      const d = this.sync.draw();
+      this.S = d.S;
+      v = d.v;
+      this.listen();
+      if (this.S.phase === R3_OVER && this.S.phaseT >= RESULT_DELAY && !this.results) this.showResults();
+      if (!this.S) return;
+    } else {
+      this.acc += dt;
+      while (this.acc >= DT && n < 8) { this.acc -= DT; n++; this.tickLocal(); }
+      if (n === 8) this.acc = 0;
+      if (!this.S) return;   // a tick can end the match (results → menu)
+      v = this.view(this.paused ? 1 : Math.min(1, this.acc / DT));
     }
-    if (n === 8) this.acc = 0;
-    if (!this.S) return;   // a tick can end the match (results → menu)
-    const alpha = this.paused && !this.online ? 1 : Math.min(1, this.acc / DT);
-    const v = this.view(alpha);
     if (this.online && this.S.phase === R3_PLAY && this.lastDrawn !== null && this.S.p[this.app.me].alive) {
       const back = this.lastDrawn - v.p[this.app.me].z;
       if (back > this.corr.viewBack && (this.input.any3d() & 8)) this.corr.viewBack = back;   // drawn backwards while holding forward
@@ -282,7 +244,7 @@ export class Runner3DMode {
         const d = Math.hypot(q.x - this.lastRemote.x, q.y - this.lastRemote.y, q.z - this.lastRemote.z) / Math.max(1, n);   // per tick
         if (d > this.corr.remoteStep) this.corr.remoteStep = d;
         const back = this.lastRemote.z - q.z;
-        if ((this.remoteBits & 8) && rp.vz > 0.05 && back > this.corr.remoteBack) this.corr.remoteBack = back;
+        if ((this.sync.remoteBits & 8) && rp.vz > 0.05 && back > this.corr.remoteBack) this.corr.remoteBack = back;
       }
       this.lastRemote = rp.alive ? { x: q.x, y: q.y, z: q.z } : null;
     }
