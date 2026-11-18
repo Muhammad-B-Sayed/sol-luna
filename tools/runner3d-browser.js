@@ -43,7 +43,7 @@ const chrome = spawn(CHROME, [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
   '--no-default-browser-check', '--mute-audio', '--disable-background-timer-throttling',
   '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--window-size=1280,720',
-  ...(process.env.GL_FLAGS || '').split(' ').filter(Boolean), 'about:blank',
+  ...(process.env.GL_FLAGS ?? '--enable-gpu').split(' ').filter(Boolean), 'about:blank',
 ], { stdio: ['ignore', 'ignore', 'pipe'] });
 const cleanup = () => { try { chrome.kill('SIGKILL'); } catch {} try { rmSync(profile, { recursive: true, force: true }); } catch {} };
 process.on('exit', cleanup);

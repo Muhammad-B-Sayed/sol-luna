@@ -15,8 +15,9 @@ const PORT = process.env.PORT || 3410;
 const BASE = `http://localhost:${PORT}`;
 const OUT = process.env.OUT || 'docs/img/runner3d';
 const W = +(process.env.W || 960), H = +(process.env.H || 540);
-// Extra Chromium flags. Default headless Chromium here already has WebGL2; swiftshader flags make it slower.
-const GL_FLAGS = (process.env.GL_FLAGS || '').split(' ').filter(Boolean);
+// Chromium GL flags. --enable-gpu gives headless Chromium the real GPU here (tools/r3d-glprobe.js shows
+// which renderer a set of flags gets); without a GPU it falls back to SwiftShader by itself.
+const GL_FLAGS = (process.env.GL_FLAGS ?? '--enable-gpu').split(' ').filter(Boolean);
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const T0 = Date.now();
