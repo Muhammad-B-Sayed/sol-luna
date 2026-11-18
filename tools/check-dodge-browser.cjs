@@ -2,13 +2,15 @@
 // Start a server first (LAG_MS adds latency for the online run), then:
 //   node tools/check-dodge-browser.cjs <port> <outDir> local|online
 // PLAYWRIGHT=/path/to/node_modules/playwright if it isn't installed here; CHROME_CHANNEL=chrome
-// (default) drives the installed Google Chrome. It saves screenshots of both balls mid-flight.
+// (default) drives the installed Google Chrome; CHROME=/usr/bin/chromium uses that binary instead.
+// It saves screenshots of both balls mid-flight.
 const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
 const fs = require('fs');
 const [port, out, which] = process.argv.slice(2);
 const URL = `http://localhost:${port}`;
 fs.mkdirSync(out, { recursive: true });
 const log = (...a) => console.log(...a);
+const LAUNCH = { headless: true, ...(process.env.CHROME ? { executablePath: process.env.CHROME } : { channel: process.env.CHROME_CHANNEL || 'chrome' }) };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const KEY = [{ act: 'ArrowDown', jump: 'ArrowUp' }, { act: 'KeyS', jump: 'KeyW' }];
 
@@ -45,7 +47,7 @@ async function tapAct(page, who, ms = 40) {
 }
 
 async function local() {
-  const browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL || 'chrome', headless: true });
+  const browser = await chromium.launch(LAUNCH);
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 825 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   const errs = []; await errorsOf(page, errs);
@@ -134,7 +136,7 @@ async function local() {
 }
 
 async function online() {
-  const browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL || 'chrome', headless: true });
+  const browser = await chromium.launch(LAUNCH);
   const mk = async () => { const c = await browser.newContext({ viewport: { width: 1100, height: 825 }, deviceScaleFactor: 2 }); const p = await c.newPage(); p.errs = []; await errorsOf(p, p.errs); return p; };
   const A = await mk(), B = await mk();
   await A.goto(URL + '/');
