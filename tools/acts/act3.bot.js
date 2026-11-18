@@ -168,7 +168,7 @@ SCRIPTS[27] = () => [
   goto(SOL, 12, 21), waitPlat(33, 27, false),        // Sol lets go: E1 sinks
   // 3. green twice: Sol's gate, then W2
   press(LUNA, 32, 20), goto(SOL, 6, 21), goto(LUNA, 30, 20),
-  grab(SOL, 1, 21), board(SOL, 3, 22), press(LUNA, 32, 20), waitPlat(3, 22), grab(SOL, 1, 15), goto(SOL, 6, 15), board(LUNA, 27, 21, 4),
+  grab(SOL, 1, 21), board(SOL, 3, 22), press(LUNA, 32, 20), waitPlat(3, 22), grab(SOL, 1, 15), goto(SOL, 6, 15), rideWithCrate(27, 21, 28.0, 1),
   // 4. Sol holds white: E2 takes Luna and the crate to floor 15; she hops west over it and pushes it to E3
   press(SOL, 7, 15), waitPlat(27, 21),
   grab(LUNA, 25, 14), pushTo(LUNA, 0, 36, { y: 14, tol: 0.5 }), goto(LUNA, 34, 14),
@@ -184,7 +184,7 @@ SCRIPTS[27] = () => [
   waitPlat(3, 10),
   // 8. Sol holds white at the top: E4 brings Luna up
   grab(SOL, 1, 3, K), board(LUNA, 27, 9, 4), press(SOL, 25, 3, K), waitPlat(27, 9),
-  grab(LUNA, 38, 3, K),
+  grab(LUNA, 38, 3, K), goto(LUNA, 23, 3, K),            // back west over E4 while Sol still holds it up
   // 9. the core: Luna holds pink, Sol rides D1 down, gem, onto the counterweight D2
   board(SOL, 17, 4, 3), press(LUNA, 8, 3, K), waitPlat(17, 4),
   grab(SOL, 23, 11, K), board(SOL, 21, 16), goto(LUNA, 10, 3, K), waitPlat(21, 28, false),
