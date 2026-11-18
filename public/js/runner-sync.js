@@ -72,8 +72,8 @@ export const SIM3D = {
     if (o.k === 'tilt') {
       const n = Sn.o[p.gref], q = Sp.o[p.gref];
       if (!n || !q) return null;
-      const dx = clamp(p.x, o.x0, o.x1) - o.cx, dz = clamp(p.z, o.z0, o.z1) - o.cz;
-      return { x: 0, y: (n.a - q.a) * dx + (n.b - q.b) * dz, z: 0 };
+      const yn = R3.tiltTop(o, n, p.x), yq = R3.tiltTop(o, q, p.x);
+      return yn === yn && yq === yq ? { x: 0, y: yn - yq, z: 0 } : null;
     }
     return null;
   },

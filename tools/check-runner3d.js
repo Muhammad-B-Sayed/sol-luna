@@ -38,7 +38,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import { fileURLToPath } from 'node:url';
 import {
   buildRunner3d, createRunner3dState, stepRunner3d, cloneRunner3d, ensureGenerated, STATEFUL, atRest, restBound,
-  COUNT_TICKS, speedAt, ZONE_START, objPose, IN_F, IN_B, IN_L, IN_R, IN_J,
+  COUNT_TICKS, speedAt, ZONE_START, objPose, IN_F, IN_B, IN_L, IN_R, IN_J, TILT, tiltTop,
 } from '../shared/runner3d.js';
 import { solve as solve0, tick, sectionGoal, onRunup, FLOW } from './runner3d-bot.js';
 import { P3 } from '../shared/runner3d.js';
@@ -71,6 +71,16 @@ function place(S, who, c) {
   Object.assign(S.p[who], { x: c.sx, y: c.y, z: c.sz, vx: 0, vy: 0, vz: 0, gr: true, gref: c.o0, gs: 0, coy: 0, jh: 0, jb: 0, alive: true, fy: c.y });
   S.best[who] = c.sz; S.dead[who] = -1; S.why[who] = '';
 }
+// a spinning slab at rest must be exactly level: angle and speed exactly 0, drawn at 0 or pi
+function exactRest(L, S, out) {
+  for (const k in S.o) {
+    const o = L.objs[k];
+    if (o.k !== 'tilt' || !atRest(L, S, k)) continue;
+    const st = S.o[k], pose = objPose(L, S, +k);
+    out.n++;
+    if (st.a !== 0 || st.w !== 0 || st.s !== 0 || (pose.rot !== 0 && pose.rot !== Math.PI)) out.fail.push({ test: 'level', obj: +k, st: { ...st } });
+  }
+}
 const statefulIn = (L, c) => { const a = []; for (let i = c.o0; i < c.o1; i++) if (STATEFUL[L.objs[i].k]) a.push(i); return a; };
 const loaded = (S, i) => S.p.some(p => p.alive && p.gr && p.gref === i);
 
@@ -90,6 +100,7 @@ function restCheck(L, S, objs, removeAt, inputs, out) {
     }
     if (t > removeAt && objs.every(i => restAt.has(i) || i < S.lo || i >= S.hi)) break;
   }
+  exactRest(L, S, out.level ||= { n: 0, fail: [] });
   for (const i of objs) {
     const o = L.objs[i];
     if (!last.has(i)) continue;
@@ -206,7 +217,7 @@ function checkSeed(seed) {
       if (!(p.alive && p.z >= end)) { flow.reactive.fail++; flow.fails.push({ test: 'curtain', seed, k, z: +c.z0.toFixed(1), who, arrive: T[k] - t0, why: S.why[who] || 'slow' }); }
     }
   }
-  if (FLOW_ONLY) return { seed, secs: K, flowOnly: true, flow, course: [], courseFail: [], first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, restFail: [], speed: 0, zEnd: 0, tMax: T[K], det: null };
+  if (FLOW_ONLY) return { seed, secs: K, flowOnly: true, flow, course: [], courseFail: [], first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, restFail: [], speed: 0, zEnd: 0, tMax: T[K], det: null, lostTilt: {}, spins: [], spinFail: [], edgeMiss: [], level: { n: 0, fail: [] } };
 
   // 1. the whole course, per character
   tag = 'course';
@@ -238,6 +249,7 @@ function checkSeed(seed) {
 
   const res = {
     seed, secs: K, flow, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {},
+    lostTilt: {}, spins: [], spinFail: [], edgeMiss: [], level: { n: 0, fail: [] },
     course: course.map(r => ({ who: r.who, minLead: r.minLead })), courseFail: course.flatMap(r => r.fails), rest: {}, abuse: {},
     speed: speedAt(secs[K - 1].z0 - ZONE_START), zEnd: secs[K - 1].z1, tMax: T[K], det: null,
   };
@@ -272,18 +284,21 @@ function checkSeed(seed) {
     if (!objs.length) continue;
 
     // 3. second arrival: `a` ran (or abused) the section earlier, `b` arrives at T_k
-    const second = (a, t0, otherTrack, label, pin) => {
+    // setup(S, a), if given, puts the partner somewhere else than the section's start at t0
+    const second = (a, t0, otherTrack, label, setup) => {
       const b = 1 - a;
       if (!snap.has(t0)) return;
       const S = snapAt(t0); place(S, a, c); park(S, b);
+      if (setup) setup(S, a);
       const other = (t) => otherTrack[t - t0] ?? 0;
-      while (S.tick < Tk) { tick(L, S, b, 0, other, pin); }
+      while (S.tick < Tk) { tick(L, S, b, 0, other); }
       place(S, b, c);
-      const r = solve(L, S, b, { until: goal, other, hook: pin, budget: BUDGET, o0: c.o0, o1: c.o1 });
-      if (label === 'parked') res.parked++; else res.second++;
+      const r = solve(L, S, b, { until: goal, other, budget: BUDGET, o0: c.o0, o1: c.o1 });
+      const parked = label.startsWith('parked');
+      if (parked) res.parked++; else res.second++;
       const f = { seed, k, kind: c.kind, z: +c.z0.toFixed(1), who: b, by: label };
-      if (!r.ok) (label === 'parked' ? res.parkedFail : res.secondFail).push(f);
-      else res.lost.push(r.tick - Tn);
+      if (!r.ok) (parked ? res.parkedFail : res.secondFail).push(f);
+      else { res.lost.push(r.tick - Tn); if (c.kind === 'tilt') (res.lostTilt[label.split(' ')[0]] ||= []).push(r.tick - Tn); }
     };
     // an abuse track: follow a's own route until it first stands on a stateful part, then
     // random hopping, strafing, backing up and standing about from there
@@ -303,24 +318,61 @@ function checkSeed(seed) {
       if (firstPlans[a]) for (const d of DELTAS) second(a, Tk - d, firstPlans[a], 'delta ' + d);
       tag = 'abuse2';
       second(a, Tk - 130, abusePlan(a, 1, 600), 'abuse');
-      // 4. parked partner on each tilting slab: edges, middle and corners
+      // 4. parked partner on each spinning slab. A partner on an outer band flips it and falls
+      // (that is the edge abuse below), so "parked" means standing still where the slab holds
+      // them: on the centre line and at the side limits of the centre band (u = +-0.4), at its
+      // near end, middle and far end. The partner is set there at Tk - 150 and then lets go of
+      // the keys: the sim decides where they go (a second load on the same side can tip it).
       tag = 'parked';
       for (const i of objs) {
         const o = L.objs[i];
         if (o.k !== 'tilt') continue;
-        const e = 0.5;
-        const spots = [[o.cx, o.z0 + e], [o.cx, o.cz], [o.cx, o.z1 - e], [o.x0 + e, o.z0 + e], [o.x1 - e, o.z1 - e], [o.x0 + e, o.z1 - e], [o.x1 - e, o.cz]];
-        for (const [tx, tz] of QUICK ? spots.slice(0, 3) : spots) {
-          const t0 = Tk - 150;
-          if (!snap.has(t0)) continue;
-          // the partner stands on that spot from t0 on and is held there (against the slide)
-          const pin = (S2) => {
-            const q = S2.p[a];
-            if (!q.alive) return;
-            const ps = objPose(L, S2, i), y = ps.y + ps.ax * (tx - ps.x) + ps.az * (tz - ps.z);
-            Object.assign(q, { x: tx, z: tz, y, vx: 0, vz: 0, vy: 0, gr: true, gref: i, fy: y });
+        const spots = [];
+        for (const u of [0, -0.4, 0.4]) for (const tz of [o.z0 + 0.5, o.cz, o.z1 - 0.5]) spots.push([o.cx + u * o.hx, tz, u]);
+        for (const [tx, tz, u] of QUICK ? spots.slice(0, 3) : spots) {
+          second(a, Tk - 150, [], `parked u${u} z${(tz - o.z0).toFixed(1)}`, (S2, w) => {
+            const y = tiltTop(o, S2.o[i], tx);
+            Object.assign(S2.p[w], { x: tx, z: tz, y, vx: 0, vz: 0, vy: 0, gr: true, gref: i, fy: y });
+          });
+        }
+        // edge and corner abuse: the partner jumps or steps onto the outer band of this slab
+        // (left or right, near end, middle or far end) or lands on its centre line, then hops
+        // about; the tested one arrives 40, 80 or 130 ticks after the partner set off. The spin
+        // an edge touch starts is measured on its own: turns, turn times, ticks to rest.
+        tag = 'edge';
+        const third = (o.z1 - o.z0) / 3;
+        const targets = [[0, 0], [0, 1], [0, 2], [-1, 0], [-1, 1], [-1, 2], [1, 0], [1, 1], [1, 2]].filter(([sd, zt]) => !QUICK || zt === 0);
+        for (const [sd, zt] of targets) {
+          const want = (S2, p) => {
+            if (!(p.gr && p.gref === i)) return false;
+            const u = (p.x - o.cx) / o.hx;
+            const inZ = p.z >= o.z0 + zt * third - 0.4 && p.z <= o.z0 + (zt + 1) * third + 0.4;
+            return inZ && (sd === 0 ? Math.abs(u) < 0.2 : sd * u >= TILT.UE);
           };
-          second(a, t0, [], 'parked', pin);
+          const S0 = snapAt(Tk - 150); place(S0, a, c); park(S0, 1 - a);
+          const r = solve(L, S0, a, { until: want, budget: BUDGET, o0: c.o0, o1: c.o1, rungs: 5 });
+          const name = `edge ${sd ? (sd < 0 ? 'left' : 'right') : 'centre'} ${['near', 'mid', 'far'][zt]}`;
+          if (!r.ok) { res.edgeMiss.push({ seed, k, obj: i, by: name, who: a }); continue; }
+          const hops = []; for (let t = 0; t < 400; t++) hops.push(t % 40 < 2 ? IN_J : t % 80 < 40 ? IN_L : IN_R);
+          const track = r.plan.concat(hops);
+          for (const D of [40, 80, 130]) second(a, Tk - D, track, name + ' ' + D);
+          if (sd) {   // the spin itself, with nobody else about
+            const S1 = snapAt(Tk - 150); place(S1, a, c); park(S1, 1 - a);
+            for (const bits of r.plan) tick(L, S1, a, bits, null);
+            park(S1, a);
+            const st = S1.o[i];
+            let turn = 0, last = 0, t = 0;
+            const times = [];
+            for (; t < 600 && !(st.s === 0 && st.a === 0 && st.w === 0 && t > 0); t++) {
+              stepRunner3d(L, S1, [0, 0]); turn += st.w;
+              if (Math.abs(turn) >= 2 * Math.PI * (times.length + 1)) { times.push(t + 1 - last); last = t + 1; }
+            }
+            const n = Math.abs(turn) / (2 * Math.PI);
+            res.spins.push({ n, times, rest: t });
+            if (n < 2.5 || n > 3.5) res.spinFail.push({ test: 'spin', seed, k, obj: i, by: name, turns: +n.toFixed(2) });
+          }
+          restCheck(L, (() => { const S2 = snapAt(Tk - 150); place(S2, a, c); park(S2, 1 - a); return S2; })(), objs, track.length,
+            (t) => { const x = [0, 0]; x[a] = track[t - (Tk - 150)] ?? 0; return x; }, res.abuse);
         }
       }
       // 5. back to rest after random abuse
@@ -331,7 +383,11 @@ function checkSeed(seed) {
   }
 
   res.restFail = [...(res.rest.fails || []), ...(res.abuse.fails || [])].map(f => ({ test: 'rest', seed, ...f }));
-  delete res.rest.fails; delete res.abuse.fails;
+  for (const key of ['rest', 'abuse']) {
+    const lv = res[key].level;
+    if (lv) { res.level.n += lv.n; res.level.fail.push(...lv.fail.map(f => ({ seed, ...f }))); }
+    delete res[key].fails; delete res[key].level;
+  }
 
   // 7. determinism: both course routes at once, plain, again, and through JSON every 250 ticks
   if (plans[0] && plans[1]) {
@@ -353,13 +409,16 @@ function checkSeed(seed) {
 }
 
 function merge(all) {
-  const tot = { flow: { kinds: {}, fails: [], reactive: { n: 0, fail: 0 } }, flowOnly: all.some(r => r.flowOnly), restFail: [], course: [], courseFail: [], seeds: all.length, secs: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, zEnd: 0, tMax: 0, det: [] };
+  const tot = { lostTilt: {}, spins: [], spinFail: [], edgeMiss: [], level: { n: 0, fail: [] }, flow: { kinds: {}, fails: [], reactive: { n: 0, fail: 0 } }, flowOnly: all.some(r => r.flowOnly), restFail: [], course: [], courseFail: [], seeds: all.length, secs: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, zEnd: 0, tMax: 0, det: [] };
   for (const r of all) {
     for (const [k, v] of Object.entries(r.flow.kinds)) {
       const t = tot.flow.kinds[k] ||= { n: 0, fail: 0, waits: [], slow: 0 };
       t.n += v.n; t.fail += v.fail; t.waits.push(...v.waits); t.slow = Math.max(t.slow, v.slow);
     }
     tot.flow.fails.push(...r.flow.fails);
+    for (const [k, v] of Object.entries(r.lostTilt)) (tot.lostTilt[k] ||= []).push(...v);
+    tot.spins.push(...r.spins); tot.spinFail.push(...r.spinFail); tot.edgeMiss.push(...r.edgeMiss);
+    tot.level.n += r.level.n; tot.level.fail.push(...r.level.fail);
     tot.flow.reactive.n += r.flow.reactive.n; tot.flow.reactive.fail += r.flow.reactive.fail;
     tot.secs += r.secs; tot.first += r.first; tot.second += r.second; tot.parked += r.parked;
     tot.firstFail.push(...r.firstFail); tot.secondFail.push(...r.secondFail); tot.parkedFail.push(...r.parkedFail);
@@ -403,7 +462,7 @@ function report(t, secs) {
     return ok;
   }
   const detBad = t.det.filter(d => d.ok === false), detSkip = t.det.filter(d => d.ok === null);
-  const ok = !t.flow.fails.length && !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length && !detBad.length && !detSkip.length &&
+  const ok = !t.spinFail.length && !t.level.fail.length && !t.flow.fails.length && !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length && !detBad.length && !detSkip.length &&
     Object.values(t.rest).every(v => !v.fail) && Object.values(t.abuse).every(v => !v.fail);
   console.log(`\nRunner 3D check: ${t.seeds} seeds, ${t.secs} sections to z ${ZMAX} (full difficulty at 1100, top zone speed from 1600), top zone speed ${t.speed.toFixed(4)} u/tick, ${(t.tMax / 60).toFixed(0)} s in. ${secs.toFixed(0)} s.`);
   const leads = t.course.map(r => r.minLead);
@@ -411,6 +470,16 @@ function report(t, secs) {
   console.log(`  single section  ${t.first - t.firstFail.length}/${t.first} cleared alive from a ${BUF}-unit lead; ${t.slack.filter(x => x < 0).length} of them slower than the zone (repaid by later sections)`);
   console.log(`  second arrival  ${t.second - t.secondFail.length}/${t.second} cleared (after the other's route ${DELTAS.join('/')} ticks earlier, or after its abuse)`);
   console.log(`  parked partner  ${t.parked - t.parkedFail.length}/${t.parked} cleared`);
+  {
+    const L_ = t.lostTilt, all = Object.values(L_).flat();
+    const line = (a) => `median ${pct(a, 0.5)}, 95% ${pct(a, 0.95)}, max ${a.length ? Math.max(...a) : 0}`;
+    console.log(`  spinning slabs, time lost by the second arrival (ticks, + = later than the deadline): all ${all.length}: ${line(all)}`);
+    for (const [k, v] of Object.entries(L_)) console.log(`    after the partner's ${k.padEnd(7)} ${String(v.length).padStart(5)}: ${line(v)}`);
+    const sp = t.spins, tt = (j) => sp.map(s => s.times[j]).filter(x => x != null);
+    const rng = (a) => a.length ? `${Math.min(...a)}-${Math.max(...a)}` : '-';
+    console.log(`  edge touches    ${sp.length - t.spinFail.length}/${sp.length} spun 2.5 to 3.5 turns (turns ${rng(sp.map(s => +s.n.toFixed(2)))}); turn 1 ${rng(tt(0))} ticks, turn 2 ${rng(tt(1))}, turn 3 ${rng(tt(2))}; level and still ${rng(sp.map(s => s.rest))} ticks after the touch`);
+    console.log(`  exact rest      ${t.level.n - t.level.fail.length}/${t.level.n} slabs at rest had angle and speed exactly 0; ${t.edgeMiss.length} edge targets the bot could not reach (skipped)`);
+  }
   console.log(`  determinism     ${t.det.filter(d => d.ok).length}/${t.det.length} seeds identical on replay, from a fresh course and through JSON (${detSkip.length} skipped: course run failed)`);
   console.log(`  spare time at a section's exit vs the zone (ticks): min ${Math.min(...t.slack)}, median ${pct(t.slack, 0.5)}`);
   console.log(`  time lost by second arrivals vs the deadline (ticks, + = later): median ${pct(t.lost, 0.5)}, 95% ${pct(t.lost, 0.95)}, max ${t.lost.length ? Math.max(...t.lost) : 0}`);
@@ -423,7 +492,7 @@ function report(t, secs) {
   for (const key of ['rest', 'abuse']) for (const [k, v] of Object.entries(t[key])) {
     console.log(`  ${key === 'rest' ? 'rest after a run ' : 'rest after abuse '} ${k.padEnd(8)} ${v.n} objects, slowest ${v.max} ticks after the last touch, over bound: ${v.fail}${v.off ? `, ${v.off} left the window first` : ''}`);
   }
-  for (const f of [...t.courseFail, ...t.firstFail, ...t.secondFail, ...t.parkedFail, ...t.restFail, ...detBad].slice(0, 40)) console.log('  FAIL', JSON.stringify(f));
+  for (const f of [...t.spinFail, ...t.level.fail, ...t.courseFail, ...t.firstFail, ...t.secondFail, ...t.parkedFail, ...t.restFail, ...detBad].slice(0, 40)) console.log('  FAIL', JSON.stringify(f));
   console.log(ok ? '\nPASS' : '\nFAIL');
   return ok;
 }
@@ -447,9 +516,9 @@ if (isMainThread && JOBS === 1 && process.env.SEED && !process.env.SEED.includes
         const ts = Date.now();
         w.on('message', (r) => {
           results.push(r);
-          const bad = r.flow.fails.length + r.courseFail.length + r.firstFail.length + r.secondFail.length + r.parkedFail.length + (r.det && !r.det.ok ? 1 : 0);
+          const bad = r.spinFail.length + r.level.fail.length + r.flow.fails.length + r.courseFail.length + r.firstFail.length + r.secondFail.length + r.parkedFail.length + (r.det && !r.det.ok ? 1 : 0);
           console.log(`seed ${String(r.seed).padStart(3)}: ${r.secs} sections, ${r.first + r.second + r.parked} runs, ${bad ? bad + ' FAILED' : 'ok'} (${((Date.now() - ts) / 1000).toFixed(0)} s)`);
-          for (const f of [...r.flow.fails, ...r.courseFail, ...r.firstFail, ...r.secondFail, ...r.parkedFail]) console.log('    fail', JSON.stringify(f));
+          for (const f of [...r.spinFail, ...r.level.fail, ...r.flow.fails, ...r.courseFail, ...r.firstFail, ...r.secondFail, ...r.parkedFail]) console.log('    fail', JSON.stringify(f));
         });
         w.on('error', (e) => { crashed++; console.error('seed', seed, e); });
         w.on('exit', () => { running--; if (next >= seeds.length && !running) resolve(); else spawn(); });

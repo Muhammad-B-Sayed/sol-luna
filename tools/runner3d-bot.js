@@ -68,7 +68,7 @@ function objKey(L, S, o0, o1) {
     const st = S.o[i];
     if (!st) continue;
     const kind = L.objs[i].k;
-    if (kind === 'tilt') k += '|' + Math.round(st.a * 30) + ',' + Math.round(st.b * 30);
+    if (kind === 'tilt') k += '|' + Math.round(st.a * 20) + ',' + Math.round(st.w * 40) + ',' + st.s;
     else k += '|' + st.st;
   }
   return k;
