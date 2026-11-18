@@ -38,9 +38,10 @@ export const TICK_RATE = 60;
 export const HALF_W = 5;          // nominal half width of the course (units)
 export const FALL_Y = -14;        // below this a player is lost ('fall')
 export const FALL_DEPTH = 9;      // ... and also this far below the last ground they stood on
-// Lead cap. A standing player more than LEAD_MAX ahead of the zone can only walk forward at
-// half the zone's speed, so the lead shrinks again. In the air nothing is taken away (a jump
-// over a pit is never cut short); you just can't speed up. LEAD_HARD is a hard stop well out
+// Lead cap. A standing player more than LEAD_MAX ahead of the zone can't walk forward (they
+// stop until the zone closes in; sideways and back still work). In the air nothing is taken
+// away (a jump over a pit is never cut short); you just can't speed up. A standing jump still
+// clears every gap (air control), so being held at the cap at a pit edge costs only time. LEAD_HARD is a hard stop well out
 // of normal reach (a full jump from LEAD_MAX lands well short of it).
 export const LEAD_MAX = 32;
 export const LEAD_HARD = LEAD_MAX + 14;
@@ -73,6 +74,13 @@ export const KIND_DOC = {
   spikes: 'crystal thorns standing on the floor at y, deadly to both. Thorn tips at y + th. pose: static.',
   ramp: 'sloped slab, walkable. Top rises linearly from y at z0 to y1 at z1. { h } thickness. pose: static.',
   tilt: 'chain-hung slab over a pit. Centre (cx, cz), half sizes hx, hz (= the footprint), top y at rest, chains rise to y + chain. Tilts on two axes toward the weight on it and springs back level. { amax } max slope. pose: { x: cx, y, z: cz, ax, az } where the top surface is y + ax*(X-cx) + az*(Z-cz) (ax, az = slopes, |ax|,|az| <= amax).',
+  crumble: 'ember slab over a pit (footprint, top y, 0.5 thick). Cracks for { crack } ticks once stood on, falls away, re-forms. pose: { x, y, z, st: 0 whole | 1 cracking | 2 fallen | 3 re-forming, t: ticks in that state, solid: bool, dy: drop below y to draw it at (falling), shake: 0..1 }.',
+  eclipse: 'eclipse stone over a pit (footprint, top y, 0.5 thick). Solid only for its element { el: 0 sun (Sol stands on it) | 1 moon (Luna) }; the other passes through. pose: static.',
+  sweeper: 'thorn arm turning over a floor around a post at (cx, cz). Arm length R from the centre, { arms: 1 one arm | 2 a bar through the centre }, low: deadly from y up to y + bar. One turn every P ticks, { dir: 1 clockwise seen from above (from +z toward +x) | -1 }. pose: { x: cx, y, z: cz, rot } rot = angle in radians of arm 0, measured from +z toward +x (arm points along (sin rot, cos rot) in (x, z)).',
+  pendulum: 'blade on a rod swinging sideways across the path. Pivot (px, py, pz), rod length R, blade radius rb, swing in the x-y plane with amplitude A radians, period P. pose: { x, y, z, th } blade centre and rod angle th (0 = hanging straight down, + swings toward +x).',
+  carousel: 'stones orbiting a central pillar on a fixed clock (the stones keep their orientation). Centre (cx, cz), orbit radius R, n square stones of half size s, top y. One turn every P ticks, { dir } as sweeper. The pillar is a separate floor. pose: { x: cx, y, z: cz, rot, stones: [{ x, z }] } (stone j at angle rot + j*2pi/n from +z toward +x).',
+  gate: 'thorn curtain across the course (footprint = the curtain, thin in z) from y up to y + th, with an opening of half width gw that slides back and forth: opening centre cx + A*wave((tick + ph) / P). pose: { x: opening centre, y, z: curtain middle, gw }.',
+  orb: 'stone orb of radius r rolling toward -z along a lane at x = lx, from zs down to ze, speed vo per tick; a new orb every P ticks (phase ph). pose: { balls: [{ x, y, z, roll }] } (y = centre, roll = angle rolled in radians, about the x axis).',
 };
 
 // Zone speed (units/tick) by distance travelled (units). Players run P3.maxSpeed = 0.135.
@@ -150,7 +158,9 @@ const Y_MIN = -2, Y_MAX = 8;      // the course height stays in this band
 
 // Kinds, the distance where each first appears (as an easy intro), and its weight after.
 export const KINDS = [
-  ['gaps', 0, 2.2], ['steps', 0, 1.1], ['thorns', 30, 1.4], ['pools', 70, 1.4], ['tilt', 110, 1.8],
+  ['gaps', 0, 2.0], ['steps', 0, 1.0], ['thorns', 30, 1.3], ['pools', 70, 1.3], ['tilt', 110, 1.6],
+  ['stones', 150, 1.2], ['crumble', 190, 1.4], ['sweeper', 240, 1.3], ['eclipse', 290, 1.3], ['beams', 340, 1.0],
+  ['pendulum', 390, 1.3], ['carousel', 440, 1.3], ['gate', 500, 1.3], ['orbs', 560, 1.3],
 ];
 
 class Gen {
@@ -326,6 +336,169 @@ const FEAT = {
     g.cx = clamp(cx, -3, 3);
     g.w = g.rf(2.5, 4);
   },
+  // Stepping stones in three lanes over a pit, some missing, so there are several routes.
+  stones(g, d, intro) {
+    const s = intro ? 1.2 : g.rf(lerp(1.15, 0.85, d), 1.2), sp = 2 * s + g.rf(lerp(0.6, 1.0, d), lerp(1.0, 1.6, d));
+    const cx = clamp(g.cx, -2, 2), rows = intro ? 3 : g.ri(3, 4 + Math.round(3 * d));
+    let prev = [1, 1, 1];
+    for (let r = 0; r < rows; r++) {
+      let cur;
+      if (intro || r === 0) cur = [1, 1, 1];
+      else {
+        do { cur = [0, 1, 2].map(() => (g.rand() < 0.6 ? 1 : 0)); }
+        while (!cur.some((v, l) => v && [l - 1, l, l + 1].some(m => prev[m])));
+      }
+      const dh = d > 0.4 ? 0.5 : 0;
+      const gz = g.rf(lerp(1, 1.5, d), Math.min(lerp(1.75, 3.5, d), maxGap(dh, d) - 1));
+      g.z += gz;
+      for (let l = 0; l < 3; l++) {
+        if (!cur[l]) continue;
+        const x = cx + (l - 1) * sp;
+        g.box(x - s, x + s, g.z, g.z + 2 * s, g.y + (dh ? g.rf(-dh, dh, 0.5) : 0), 0.6, 3);
+      }
+      g.z += 2 * s;
+      prev = cur;
+    }
+    g.z += g.rf(lerp(1, 1.5, d), Math.min(lerp(1.75, 3, d), maxGap(0.5, d) - 1));
+    g.cx = cx; g.w = sp + s;
+  },
+  // Two narrow beams side by side over a pit; at higher difficulty they break into pieces
+  // with short gaps and sideways jogs. Either beam is a way through.
+  beams(g, d, intro) {
+    const cx = g.cx, len = g.rf(8, 12 + 4 * d), off = Math.min(g.rf(1.4, 2.2), g.w - 0.3);
+    const z0 = g.z;
+    for (const side of [-1, 1]) {
+      let z = z0, x = cx + side * off;
+      while (z < z0 + len - 0.01) {
+        const bw = intro ? 0.65 : g.rf(lerp(0.6, 0.4, d), lerp(0.75, 0.55, d));
+        let pl = intro ? len : g.rf(2.5, 5);
+        if (z + pl > z0 + len - 2) pl = z0 + len - z;
+        g.box(x - bw, x + bw, z, z + pl, g.y, 0.6, 4);
+        z += pl;
+        if (z >= z0 + len - 0.01) break;
+        if (d > 0.3) {
+          const gap = g.rf(1, Math.min(2.5, maxGap(0, d) - 2));
+          if (z + gap + 2 > z0 + len) { g.box(x - bw, x + bw, z, z0 + len, g.y, 0.6, 4); break; }
+          z += gap;
+          x = side < 0 ? clamp(x + g.rf(-0.75, 0.75), cx - 3, cx - 0.9) : clamp(x + g.rf(-0.75, 0.75), cx + 0.9, cx + 3);
+        }
+      }
+    }
+    g.z = z0 + len;
+    g.cx = cx; g.w = Math.max(g.w, off + 1);
+  },
+  // Ember slabs: they crack once stood on, fall away and re-form a moment later.
+  crumble(g, d, intro) {
+    const n = intro ? 2 : 2 + (d > 0.4 ? 1 : 0) + (d > 0.75 && g.rand() < 0.5 ? 1 : 0);
+    const crack = Math.round(lerp(40, 26, intro ? 0 : d));
+    let cx = g.cx, y = g.y;
+    for (let k = 0; k < n; k++) {
+      const r = intro || d < 0.3 ? 0 : g.rf(-0.5, 0.5, 0.5);
+      if (y + r > Y_MAX || y + r < Y_MIN) continue;
+      g.z += intro ? 1.5 : g.rf(1.5, Math.min(3.5, maxGap(r, d) - 0.5));
+      y += r;
+      if (k && d > 0.3) cx = clamp(cx + g.rf(-1, 1), -3, 3);
+      const hx = intro ? 1.5 : g.rf(1, 1.5), hz = intro ? 1.5 : g.rf(1, 1.5);
+      g.obj({ k: 'crumble', x0: cx - hx, x1: cx + hx, z0: g.z, z1: g.z + 2 * hz, y, crack });
+      g.z += 2 * hz;
+    }
+    g.z += intro ? 1.5 : g.rf(1.5, Math.min(3.5, maxGap(0, d) - 0.5));
+    g.y = y; g.cx = cx; g.w = g.rf(2.5, 4);
+  },
+  // Eclipse stones: two lanes of stones over a pit; in every row one is sun (only Sol stands
+  // on it) and one is moon (only Luna). Sol's route is the mirror image of Luna's.
+  eclipse(g, d, intro) {
+    const s = intro ? 1.1 : g.rf(0.8, 1.1), lg = g.rf(lerp(0.6, 1.0, d), lerp(1.0, 1.8, d));
+    const cx = clamp(g.cx, -2.5, 2.5), rows = intro ? 3 : g.ri(3, 4 + Math.round(2 * d));
+    let a = g.rand() < 0.5 ? 0 : 1;
+    const lim = maxGap(0, d) - 1;
+    for (let r = 0; r < rows; r++) {
+      let gz = r === 0 ? g.rf(1, 2) : g.rf(lerp(1, 1.5, d), lerp(1.75, 3.25, d));
+      while (gz > 1 && Math.sqrt(gz * gz + lg * lg) > lim) gz -= 0.25;
+      g.z += gz;
+      for (const side of [0, 1]) {
+        const x = cx + (side ? 1 : -1) * (s + lg / 2);
+        g.obj({ k: 'eclipse', x0: x - s, x1: x + s, z0: g.z, z1: g.z + 2 * s, y: g.y, el: side ? 1 - a : a });
+      }
+      g.z += 2 * s;
+      if (intro ? r === 1 : g.rand() < 0.5) a = 1 - a;
+    }
+    g.z += g.rf(1, Math.min(2, lim));
+    g.cx = cx; g.w = Math.max(2.5, 2 * s + lg / 2);
+  },
+  // Thorn sweepers: a low thorn arm turns over a round floor on a fixed clock. Jump it or time it.
+  sweeper(g, d, intro) {
+    const count = intro ? 1 : d > 0.55 && g.rand() < 0.5 ? 2 : 1;
+    let dir = g.rand() < 0.5 ? 1 : -1;
+    for (let k = 0; k < count; k++) {
+      const R = intro ? 3 : g.rf(3, 3.75), cx = clamp(g.cx, -2, 2);
+      g.cx = cx; g.w = R + 0.5;
+      g.floor(0.5);
+      const cz = g.z + R;
+      g.floor(2 * R);
+      const P = Math.round(lerp(300, 180, intro ? 0 : d));
+      g.box(cx - 0.45, cx + 0.45, cz - 0.45, cz + 0.45, g.y + 1.2, 1.2, 5);
+      g.obj({
+        k: 'sweeper', x0: cx - R, x1: cx + R, z0: cz - R, z1: cz + R, y: g.y, cx, cz, R,
+        arms: intro ? 1 : g.rand() < 0.3 + 0.4 * d ? 2 : 1, bar: 0.55, P, dir, ph: g.ri(0, P - 1),
+      });
+      dir = -dir;
+    }
+    g.floor(0.5);
+  },
+  // Pendulum blades swinging sideways across a narrow bridge, each on its own fixed clock.
+  pendulum(g, d, intro) {
+    const w = intro ? 1.5 : g.rf(1, 1.5), cx = clamp(g.cx, -2.5, 2.5);
+    const count = intro ? 1 : 1 + g.ri(0, 1 + Math.round(d));
+    g.cx = cx; g.w = w;
+    const rb = 0.55;
+    g.floor(2);
+    for (let k = 0; k < count; k++) {
+      const R = g.rf(4, 5), pz = g.z + 0.5;
+      const A = Math.min(1.1, (w + rb + HW + 0.5) / R * 1.15);
+      const P = g.ri(130, 170) - Math.round(30 * (intro ? 0 : d));
+      const reach = R * A + rb;
+      g.obj({ k: 'pendulum', x0: cx - reach, x1: cx + reach, z0: pz - 0.3, z1: pz + 0.3, y: g.y, px: cx, py: g.y + 0.75 + R, pz, R, rb, A, P, ph: g.ri(0, P - 1) });
+      g.floor(g.rf(3, 5));
+    }
+    g.floor(0.5);
+  },
+  // Orbiting stones: square stones circle a pillar over a pit on a fixed clock. Step on as one
+  // sweeps past the ledge, ride or hop to the next, step off on the far side.
+  carousel(g, d, intro) {
+    const R = intro ? 3 : g.rf(3, 3.5), s = 1, n = 4, cx = clamp(g.cx, -1.5, 1.5);
+    const P = Math.round(lerp(320, 230, intro ? 0 : d));
+    const g0 = intro ? 0.4 : g.rf(0.4, lerp(0.8, 1.5, d));
+    g.z += g0;
+    const cz = g.z + R + s;
+    g.box(cx - 0.7, cx + 0.7, cz - 0.7, cz + 0.7, g.y + 2.5, 12, 5);
+    g.obj({ k: 'carousel', x0: cx - R - s, x1: cx + R + s, z0: cz - R - s, z1: cz + R + s, y: g.y, cx, cz, R, n, s, P, dir: g.rand() < 0.5 ? 1 : -1, ph: g.ri(0, P - 1) });
+    g.z = cz + R + s + (intro ? 0.4 : g.rf(0.4, lerp(0.8, 1.5, d)));
+    g.cx = cx; g.w = g.rf(2.5, 4);
+  },
+  // Thorn curtains across the course with an opening that slides from side to side.
+  gate(g, d, intro) {
+    if (g.w < 3) g.w = 3;
+    const w = g.w, cx = g.cx, count = intro ? 1 : 1 + g.ri(0, 1 + Math.round(d));
+    g.floor(1.5);
+    for (let k = 0; k < count; k++) {
+      const gw = lerp(1.3, 0.9, intro ? 0 : d), P = g.ri(170, 220) - Math.round(50 * (intro ? 0 : d));
+      g.obj({ k: 'gate', x0: cx - w, x1: cx + w, z0: g.z, z1: g.z + 0.5, y: g.y, cx, A: w - gw - 0.3, gw, th: 4.6, P, ph: g.ri(0, P - 1) });
+      g.floor(k < count - 1 ? g.rf(4, 6.5) : 2);
+    }
+  },
+  // Orbs rolling down lanes toward the players on fixed clocks: dodge sideways or jump them.
+  orbs(g, d, intro) {
+    if (g.w < 3) g.w = 3;
+    const w = g.w, cx = g.cx, len = intro ? 14 : g.rf(14, 18 + 6 * d);
+    const lanes = intro ? [cx] : d > 0.5 ? [cx - 2 * w / 3, cx, cx + 2 * w / 3] : [cx - w / 2, cx + w / 2];
+    const z0 = g.z, r = 0.7, vo = lerp(0.05, 0.085, intro ? 0 : d);
+    for (const lx of lanes) {
+      const P = Math.round(lerp(170, 110, intro ? 0 : d)) + g.ri(-15, 15);
+      g.obj({ k: 'orb', x0: lx - r, x1: lx + r, z0: z0 + 0.5, z1: z0 + len - 0.5, y: g.y, lx, r, vo, P, ph: g.ri(0, P - 1), zs: z0 + len - 0.5 - r, ze: z0 + 0.5 + r });
+    }
+    g.floor(len);
+  },
 };
 
 function pickKind(L, z) {
@@ -386,26 +559,71 @@ export function buildRunner3d(seed) {
 // ---------------------------------------------------------------------------
 // Object state and poses
 
-export const STATEFUL = { tilt: 1 };
+export const STATEFUL = { tilt: 1, crumble: 1 };
 export const TILT = { load: 0.0035, spring: 0.006, damp: 0.14, slide: 0.05 };
+export const CRUMBLE = { gone: 40, reform: 20 };
 // longest time (ticks) a stateful object may take to come back to rest after its last touch
-export const REST_BOUND = { tilt: 150 };
+export function restBound(o) {
+  if (o.k === 'tilt') return 150;
+  if (o.k === 'crumble') return o.crack + CRUMBLE.gone + CRUMBLE.reform + 4;
+  return 0;
+}
+export const REST_BOUND = { tilt: 150 };   // kept for older imports; use restBound(o)
+// kinds whose stones move, carrying whoever stands on them
+const MOVING = { carousel: 1 };
 
 function initObj(o) {
   if (o.k === 'tilt') return { a: 0, b: 0, va: 0, vb: 0 };
+  if (o.k === 'crumble') return { st: 0, t: 0 };
   return null;
 }
 export function atRest(L, S, i) {
   const o = L.objs[i], st = S.o[i];
   if (!st) return true;
   if (o.k === 'tilt') return st.a === 0 && st.b === 0 && st.va === 0 && st.vb === 0;
+  if (o.k === 'crumble') return st.st === 0;
   return true;
+}
+
+// clocked motion: turns of a rotating object, angle of a pendulum, carousel stones, orbs
+const turns = (o, tick) => o.dir * ((tick + o.ph) % o.P) / o.P;
+function carStone(o, j, tick) {
+  const [s, c] = trig(TAU * (turns(o, tick) + j / o.n));
+  return [o.cx + o.R * s, o.cz + o.R * -c];   // stone 0 starts nearest the players (-z side)
+}
+function pendBob(o, tick) {
+  const th = o.A * wave(((tick + o.ph) % o.P) / o.P);
+  const [s, c] = trig(th);
+  return [o.px + o.R * s, o.py - o.R * c, th];
+}
+const gateX = (o, tick) => o.cx + o.A * wave(((tick + o.ph) % o.P) / o.P);
+// orb centres along a lane at a tick: [z, ...] from the newest (far) one to the oldest
+function orbZs(o, tick) {
+  const out = [], u = ((tick + o.ph) % o.P) * o.vo, step = o.vo * o.P;
+  for (let z = o.zs - u; z >= o.ze; z -= step) out.push(z);
+  return out;
 }
 
 export function objPose(L, S, i, tick = S.tick) {
   const o = L.objs[i], st = S.o[i];
   switch (o.k) {
     case 'tilt': return { x: o.cx, y: o.y, z: o.cz, ax: st ? st.a : 0, az: st ? st.b : 0 };
+    case 'crumble': {
+      const s = st ? st.st : 0, t = st ? st.t : 0;
+      return {
+        x: (o.x0 + o.x1) / 2, y: o.y, z: (o.z0 + o.z1) / 2, st: s, t, solid: s <= 1,
+        dy: s === 2 ? Math.min(6, 0.006 * t * t) : 0, shake: s === 1 ? t / o.crack : 0,
+      };
+    }
+    case 'sweeper': return { x: o.cx, y: o.y, z: o.cz, rot: TAU * turns(o, tick) };
+    case 'pendulum': { const [x, y, th] = pendBob(o, tick); return { x, y, z: o.pz, th }; }
+    case 'carousel': {
+      const stones = [];
+      for (let j = 0; j < o.n; j++) { const [x, z] = carStone(o, j, tick); stones.push({ x, z }); }
+      return { x: o.cx, y: o.y, z: o.cz, rot: TAU * turns(o, tick), stones };
+    }
+    case 'gate': return { x: gateX(o, tick), y: o.y, z: (o.z0 + o.z1) / 2, gw: o.gw };
+    case 'orb': return { balls: orbZs(o, tick).map(z => ({ x: o.lx, y: o.y + o.r, z, roll: (o.zs - z) / o.r })) };
     default: return { x: (o.x0 + o.x1) / 2, y: o.y, z: (o.z0 + o.z1) / 2 };
   }
 }
@@ -462,6 +680,8 @@ function topAt(L, S, i, who, x, z) {
       const st = S.o[i];
       return o.y + st.a * (clamp(x, o.x0, o.x1) - o.cx) + st.b * (clamp(z, o.z0, o.z1) - o.cz);
     }
+    case 'crumble': return S.o[i].st <= 1 ? o.y : NaN;
+    case 'eclipse': return o.el === who ? o.y : NaN;
   }
   return NaN;
 }
@@ -471,7 +691,16 @@ function support(L, S, who, x, z, lo, hi) {
   let best = -Infinity, bi = -1, bs = 0;
   for (let i = S.lo; i < S.hi; i++) {
     const o = L.objs[i];
-    if (o.z0 >= z + HW || o.z1 <= z - HW || o.x0 >= x + HW || o.x1 <= x - HW) continue;
+    if (o.z0 >= z + HW) break;   // objects are sorted by z0
+    if (o.z1 <= z - HW || o.x0 >= x + HW || o.x1 <= x - HW) continue;
+    if (o.k === 'carousel') {
+      if (o.y < lo || o.y > hi || o.y <= best) continue;
+      for (let j = 0; j < o.n; j++) {
+        const [sx, sz] = carStone(o, j, S.tick);
+        if (Math.abs(x - sx) < o.s + HW && Math.abs(z - sz) < o.s + HW) { best = o.y; bi = i; bs = j; break; }
+      }
+      continue;
+    }
     const t = topAt(L, S, i, who, x, z);
     if (t !== t || t < lo || t > hi || t <= best) continue;
     best = t; bi = i; bs = 0;
@@ -485,6 +714,7 @@ function moveAxis(L, S, p, ax, dv) {
   const tol = p.y + (p.gr ? P3.stepUp : AIR_TOL);
   for (let i = S.lo; i < S.hi; i++) {
     const o = L.objs[i];
+    if (o.z0 >= p.z + HW) break;
     if (!WALL[o.k]) continue;
     const top = o.k === 'pool' ? o.y - POOL_DEP : o.y;
     if (top <= tol || top - o.h >= p.y + P3.h) continue;
@@ -508,7 +738,7 @@ function stepPlayer(L, S, who, bits) {
   let tz = dz * n * P3.maxSpeed;
   p.vx = approach(p.vx, tx, dx ? (p.vx * tx < 0 ? acc * P3.turnBoost : acc) : dec);
   const lead = p.z - S.zone, vz0 = p.vz;
-  if (lead > LEAD_MAX && p.gr && tz > S.v * 0.5) tz = S.v * 0.5;
+  if (lead > LEAD_MAX && p.gr && tz > 0) tz = 0;
   p.vz = approach(p.vz, tz, dz ? (p.vz * tz < 0 ? acc * P3.turnBoost : acc) : dec);
   if (lead > LEAD_MAX && !p.gr && p.vz > vz0 && p.vz > 0) p.vz = Math.max(vz0, 0);
 
@@ -531,6 +761,7 @@ function stepPlayer(L, S, who, bits) {
   if (p.vy > 0) {   // head against the underside of a static slab
     for (let i = S.lo; i < S.hi; i++) {
       const o = L.objs[i];
+      if (o.z0 >= p.z + HW) break;
       if (o.k !== 'floor') continue;
       const b = o.y - o.h;
       if (b < p.y + P3.h - EPS || b >= ny + P3.h) continue;
@@ -554,6 +785,7 @@ function stepPlayer(L, S, who, bits) {
 function updateObjects(L, S) {
   for (let i = S.lo; i < S.hi; i++) {
     const o = L.objs[i];
+    if (o.k === 'crumble') { updateCrumble(S, o, i); continue; }
     if (o.k !== 'tilt') continue;
     const st = S.o[i];
     let ta = 0, tb = 0, n = 0;
@@ -572,12 +804,28 @@ function updateObjects(L, S) {
   }
 }
 
+function updateCrumble(S, o, i) {
+  const st = S.o[i];
+  if (st.st === 0) {
+    if (S.p.some(p => p.alive && p.gr && p.gref === i)) { st.st = 1; st.t = 0; }
+    return;
+  }
+  st.t++;
+  if (st.st === 1 && st.t >= o.crack) { st.st = 2; st.t = 0; }
+  else if (st.st === 2 && st.t >= CRUMBLE.gone) { st.st = 3; st.t = 0; }
+  else if (st.st === 3 && st.t >= CRUMBLE.reform &&
+    !S.p.some(p => p.alive && p.x + HW > o.x0 && p.x - HW < o.x1 && p.z + HW > o.z0 && p.z - HW < o.z1 && p.y < o.y + 0.05 && p.y + P3.h > o.y - 0.5)) {
+    st.st = 0; st.t = 0;
+  }
+}
+
 const boxHit = (p, ins, x0, x1, y0, y1, z0, z1) =>
   p.x + HW - ins > x0 && p.x - HW + ins < x1 && p.z + HW - ins > z0 && p.z - HW + ins < z1 && p.y < y1 && p.y + P3.h > y0;
 
 function hazard(L, S, who, p) {
   for (let i = S.lo; i < S.hi; i++) {
     const o = L.objs[i];
+    if (o.z0 > p.z + 1.5) break;
     if (!near(o, p.x, p.z, 1.5)) continue;
     switch (o.k) {
       case 'spikes':
@@ -587,6 +835,39 @@ function hazard(L, S, who, p) {
         if ((o.el === 2 || o.el !== who) && p.y < o.y - 0.12 &&
           p.x + HW - 0.18 > o.x0 && p.x - HW + 0.18 < o.x1 && p.z + HW - 0.18 > o.z0 && p.z - HW + 0.18 < o.z1) return 'pool';
         break;
+      case 'sweeper': {
+        if (p.y >= o.y + o.bar) break;
+        const [s, c] = trig(TAU * turns(o, S.tick));
+        const rx = p.x - o.cx, rz = p.z - o.cz;
+        const t = clamp(rx * s + rz * c, o.arms === 2 ? -o.R : 0, o.R);
+        const qx = rx - t * s, qz = rz - t * c, rr = 0.15 + HW * 0.8;
+        if (qx * qx + qz * qz < rr * rr) return 'sweep';
+        break;
+      }
+      case 'pendulum': {
+        if (Math.abs(p.z - o.pz) >= 0.2 + HW - 0.06) break;
+        const [bx, by] = pendBob(o, S.tick);
+        const ex = Math.max(0, Math.abs(bx - p.x) - (HW - 0.06));
+        const ey = Math.max(0, by - (p.y + P3.h - 0.05), p.y + 0.05 - by);
+        if (ex * ex + ey * ey < o.rb * o.rb) return 'blade';
+        break;
+      }
+      case 'gate': {
+        if (p.z + HW - 0.05 <= o.z0 || p.z - HW + 0.05 >= o.z1 || p.y >= o.y + o.th) break;
+        const gx = gateX(o, S.tick);
+        if (p.x - HW + 0.06 < gx - o.gw || p.x + HW - 0.06 > gx + o.gw) return 'gate';
+        break;
+      }
+      case 'orb': {
+        const ex = Math.max(0, Math.abs(p.x - o.lx) - (HW - 0.05));
+        const cy = o.y + o.r, ey = Math.max(0, cy - (p.y + P3.h), p.y - cy);
+        if (ex * ex + ey * ey >= o.r * o.r) break;
+        for (const z of orbZs(o, S.tick)) {
+          const ez = Math.max(0, Math.abs(p.z - z) - (HW - 0.05));
+          if (ex * ex + ey * ey + ez * ez < (o.r - 0.05) * (o.r - 0.05)) return 'orb';
+        }
+        break;
+      }
     }
   }
   return '';
@@ -607,10 +888,15 @@ export function stepRunner3d(L, S, inputs) {
   for (let i = 0; i < 2; i++) {
     const p = S.p[i];
     if (!p.alive) continue;
-    // a tilted slab slowly slides what stands on it downhill
-    if (p.gr && p.gref >= 0 && L.objs[p.gref].k === 'tilt') {
-      const st = S.o[p.gref];
-      p.x -= st.a * TILT.slide; p.z -= st.b * TILT.slide;
+    if (p.gr && p.gref >= 0) {
+      const o = L.objs[p.gref];
+      if (o.k === 'tilt') {   // a tilted slab slowly slides what stands on it downhill
+        const st = S.o[p.gref];
+        p.x -= st.a * TILT.slide; p.z -= st.b * TILT.slide;
+      } else if (MOVING[o.k]) {   // carried by the stone it stands on
+        const [ax, az] = carStone(o, p.gs, S.tick - 1), [bx, bz] = carStone(o, p.gs, S.tick);
+        p.x += bx - ax; p.z += bz - az;
+      }
     }
     stepPlayer(L, S, i, counting ? 0 : inputs[i] | 0);
     if (p.z > S.best[i]) S.best[i] = p.z;
