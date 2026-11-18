@@ -563,10 +563,11 @@ def leapfrog_spire():
     Unrecoverable on purpose: a crate pushed past E1 or E2 into a hole, or anyone who falls down
     the chute after the crate."""
     # PLAN AND PROGRESS (successor: read this first)
-    # - v2 map (Nov 17 2026). FAST gate passes: bot 79 s (floor 76), 22 uses, 11/11 gems, ROOF 0.
+    # - v2 map (Nov 17 2026). FULL gate passes: bot 79 s (floor 76), 22 uses, 11/11 gems, ROOF 0,
+    #   neither player can finish alone.
     # - The map strings below were painted by a scratch script; edit them directly now.
     # - Bot script: SCRIPTS[27] in act3.bot.js. Low rooms (5 free rows) are walked, never hopped.
-    # - Left to do: full gate (solo check), then report.
+    # - Done. Thin margins: bot time 79 s against 76 s; Sol visits 16 sectors (needs 16); stone 26%.
     L = Lv('Leapfrog Spire', 90, 'Each lift is worked from the other side. Same colour, same moment: '
            'when your partner presses, everything of that colour moves. The crate must reach the chute.')
     art(L, [
