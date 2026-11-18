@@ -192,45 +192,48 @@ export const SCRIPTS = {
 
   // Sanctum Approach
   31: () => [
-    // bottom stage
-    grab(SOL, 1, 20),
-    press(LUNA, 3, 21),                              // P1: G1 opens
-    flip(SOL, 17, 23),                               // Sol through, right through the yellow lever: the bridge rises
-    grab(SOL, 24, 20), goto(SOL, 30, 22),
-    press(SOL, 31, 22),                              // P1b: Luna follows
-    grab(LUNA, 18, 20), goto(LUNA, 27, 22, { keep: true }),
-    goto(SOL, 37, 27, { keep: true }),               // Sol down onto S1
-    press(LUNA, 28, 22), waitPlat(37, 28),           // PS1: up to the middle
-    goto(SOL, 31, 17),
-    grab(LUNA, 31, 20), goto(LUNA, 37, 27, { keep: true }), waitPlat(37, 28, false),
-    press(SOL, 26, 17), waitPlat(37, 28),            // PS1b: Luna up
-    // middle stage
-    goto(LUNA, 32, 17),
-    press(SOL, 28, 17),                              // P2: G2 opens
-    grab(LUNA, 19, 13), grab(LUNA, 5, 12), grab(LUNA, 1, 13),
-    pushTo(LUNA, 0, 34, { tol: 0.4 }),               // the crate east through G2 onto S2
-    within(goto(LUNA, 33, 17, { tol: 0.5 }), 33, 17, 35, 17),
-    press(SOL, 30, 14), waitPlat(34, 18),   // PS2: S2 to the top
-    goto(LUNA, 37, 8),
-    pushTo(LUNA, 0, 31, { tol: 0.6 }),               // she pushes the crate off the lift while he still holds it
-    within(grab(SOL, 31, 11), 24, 11, 32, 17), goto(SOL, 31, 17), waitPlat(34, 18, false), goto(SOL, 34, 17),
-    press(LUNA, 38, 8), waitPlat(34, 18),            // PS2b: Sol up
+    // bottom stage: the start room, then the corridor
+    grab(SOL, 1, 16), goto(SOL, 8, 21),              // Sol up the start room, to G1
+    mv(LUNA, 4.5), press(LUNA, 1, 18),   // P1 on the high shelf: G1 opens
+    flip(SOL, 18, 21),                               // Sol through, right through the yellow lever: the bridge rises
+    mv(SOL, 26.5, 0.1), press(SOL, 26, 21),               // under the low roof over the pit; P1b: G1 opens for Luna
+    goto(LUNA, 8, 21), mv(LUNA, 12.0), mv(LUNA, 27.5, 0.2),
+    goto(SOL, 37, 27),                               // Sol down to S1 at the shaft's foot
+    mv(LUNA, 32.5, 0.1), press(LUNA, 32, 21), waitPlat(36, 28),   // PS1: up to the middle
+    mv(SOL, 34.0, 0.1),                              // he steps onto S2's berth
+    mv(LUNA, 27.5), waitPlat(36, 28, false),         // she lets go: S1 goes back down
+    mv(LUNA, 34.0), grab(LUNA, 32, 26), goto(LUNA, 37, 27),
+    goto(SOL, 28, 10), mv(SOL, 25.5, 0.1), press(SOL, 25, 10), waitPlat(36, 28),            // up onto the operator's ledge, PS1b: Luna up
+    mv(LUNA, 31.5),
+    // middle stage: Sol operates, Luna fetches the crate
+    mv(SOL, 27.5, 0.1), press(SOL, 27, 10),         // P2: G2 opens, the bridge rises
+    grab(LUNA, 13, 10), goto(LUNA, 8, 13), leap(LUNA, 8.0, 7.9, 4.5), grab(LUNA, 1, 10), goto(LUNA, 4, 13),
+    seek(LUNA, 'Luna pushes the crate onto S2', (S) => S.b[0].gr && cx(S.b[0]) > 34.8 && cx(S.b[0]) < 35.3 && bot(S.b[0]) < 15.2,
+      { key: 'k-s2', h: (S, p) => Math.abs(cx(S.b[0]) - 35) * 13 + Math.abs(cx(p) - cx(S.b[0])) * 4 }),
+    mv(LUNA, 33.75, 0.08),
+    mv(SOL, 29.5, 0.1), press(SOL, 29, 10), waitPlat(33, 15),            // PS2: S2 carries Luna and the crate to the top
     // top stage
-    goto(SOL, 31, 8),
-    goto(LUNA, 37, 8), waitPlat(34, 18, false),
-    dropped(LUNA, 0, 9.6, 16, 'Luna pushes K off the step into the socket'),
-    within(grab(LUNA, 28, 4), 1, 2, 32, 8),
-    // back down
-    goto(SOL, 34, 17), goto(SOL, 37, 27),            // down S2's shaft, across, down S1's
-    flip(SOL, 17, 23, false),                        // west over the bridge and back through the lever
-    goto(SOL, 13, 24, { tol: 0.5 }),
-    press(LUNA, 12, 9),                              // PR: the hatch opens
-    goto(SOL, 20, 27), grab(SOL, 30, 26),
-    goto(SOL, 37, 27),
-    press(LUNA, 36, 8), waitPlat(37, 28),            // PS1c: S1 up
-    goto(SOL, 34, 17),
-    press(LUNA, 38, 8), waitPlat(34, 18),            // PS2b: S2 up
-    grab(SOL, 21, 5),
-    door(SOL), door(LUNA), win(),
+    leap(LUNA, 33.75, 33.7, 37.0), grab(LUNA, 36, 3),   // over the crate, the perch gem
+    pushTo(LUNA, 0, 31, { tol: 0.4 }),               // the crate off the lift while he still holds it
+    press(LUNA, 38, 6),                              // PS2b
+    mv(SOL, 28.5, 0.1),                              // he lets go; she holds S2 up
+    mv(SOL, 24.3), grab(SOL, 20, 9), goto(SOL, 25, 14),             // over the shade gap and back for the gem
+    mv(LUNA, 37.5, 0.1), waitPlat(33, 15, false),    // she lets go: S2 comes down for him
+    goto(SOL, 34, 14),
+    press(LUNA, 38, 6), waitPlat(33, 15),            // and takes him up
+    mv(SOL, 28.5), grab(SOL, 26, 1),
+    dropped(LUNA, 0, 8.2, 16, 'Luna pushes K into the socket'),   // GD2 opens
+    // back down to reset the lever
+    mv(SOL, 34.0), goto(SOL, 37, 27),               // down S2's shaft, across, down S1's
+    goto(SOL, 32, 21),                               // up the ledge to the corridor
+    mv(SOL, 20.0), flip(SOL, 18, 21, false),         // west over the bridge and back through the lever: GD opens
+    mv(SOL, 15.6, 0.1),                              // he waits beside the hatch
+    press(LUNA, 14, 6), waitPlat(13, 22),            // PR: the hatch slides open
+    ['Sol drops into the tunnel', (S) => [L_, 0], (S) => bot(S.p[0]) > 27.5 && S.p[0].gr, 200],
+    grab(SOL, 12, 26), mv(SOL, 22.0), mv(SOL, 33.0), mv(SOL, 37.0, 0.1),   // the tunnel, wading the sun water
+    press(LUNA, 36, 6), waitPlat(36, 28),            // PS1c: S1 up
+    mv(SOL, 34.0, 0.1),
+    press(LUNA, 38, 6), waitPlat(33, 15),            // PS2b: S2 up
+    door(SOL), grab(LUNA, 7, 2), door(LUNA), win(),
   ],
 };

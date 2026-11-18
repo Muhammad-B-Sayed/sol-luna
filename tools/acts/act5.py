@@ -311,83 +311,100 @@ def twilight_spiral():
 @level(31)
 def sanctum_approach():
     """Sanctum Approach. Three stages stacked bottom, middle and top, each its own small puzzle,
-    joined by one double shaft on the east side: lift S1 runs from the bottom stage to the middle,
-    lift S2 from the middle to the top, side by side. The bottom stage is a corridor over a
-    tunnel, the middle a crate hall, the top the sanctum with both doors behind two gates.
+    joined by one double shaft on the east side: lift S1 runs from the shaft's foot at the bottom
+    of the screen to the middle, lift S2 from the middle to the top, side by side. The bottom
+    stage is a tall start room, a corridor and, under it, a tunnel of sun water; the middle is a
+    crate hall with an operator's ledge of three plates; the top is the sanctum, with both doors
+    behind two gates in its west end.
 
-    The catch: the yellow lever in the bottom corridor raises the bridge over its shade pit, and
-    the same colour holds the sanctum's inner door gate shut. Crossing the pit needs it on;
+    The floors are seven or eight rows apart (top 7 and 8, middle 15, corridor 22, tunnel 28), so every climb
+    and crossing has the full jump. Two climbs use all of it: the operator's ledge in the middle
+    and the high perch in the sanctum are four rows up.
+
+    The catch: the yellow lever in the corridor raises the bridge over its shade pit, and the
+    same colour holds the sanctum's inner door gate shut. Crossing the pit needs it on;
     finishing needs it off.
 
-    1. Bottom. Luna holds purple plate P1: gate G1 opens and Sol walks east, right through the
-       yellow lever (the bridge rises) and over the pit to the shaft. He holds purple P1b there
-       and Luna follows.
-    2. Luna holds white plate PS1: S1 lifts Sol to the middle. He holds white PS1b there and she
-       rides up after him.
-    3. Middle (roles swap). Sol holds orange plate P2: gate G2 opens and the bridge over the
-       shade gap beyond it rises. Luna goes into the crate hall, jumps the crate K, pushes it east
-       through G2 and over the bridge onto S2, and climbs on behind it.
-    4. Sol jumps up to green plate PS2 on its ledge: S2 carries Luna and the crate to the top.
+    1. Bottom. Luna climbs to purple plate P1 on the start room's high shelf: gate G1 opens and
+       Sol walks east, right through the yellow lever (the bridge rises) and over the pit, which
+       sits under a roof too low to jump. He holds purple P1b at the corridor's east end and Luna
+       follows.
+    2. Luna holds white plate PS1: S1 lifts Sol from the shaft's foot to the middle. He climbs
+       four rows onto the operator's ledge and holds white PS1b there; she rides up after him.
+    3. Middle (roles swap). Sol holds orange P2 on the ledge: gate G2 opens and the bridge over
+       the shade gap beyond it rises. Luna goes west into the crate hall, hops the crate K
+       and pushes it east through G2, over the bridge, under the
+       ledge and onto S2.
+    4. Sol steps along the ledge to green plate PS2: S2 carries Luna and the crate to the top.
        She pushes the crate off the lift before he lets go (or it rides back down), then holds
        green PS2b up there and Sol rides up.
-    5. Top. Luna pushes K west until it drops off the sanctum's step straight into the pink
-       socket: the outer door gate opens. The inner one is yellow, shut while the lever far
+    5. Top. Luna pushes K west along the sanctum until it drops into the pink socket, a dip in
+       the floor: the outer door gate opens. The inner one is yellow, shut while the lever far
        below is on.
-    6. Sol goes back down: into S2's empty shaft, across to S1's, all the way to the bottom. He
-       walks west over the bridge and left through the yellow lever. The bridge drops behind
-       him, so he is stuck between the pit and G1, but the sanctum's inner gate opens.
-    7. Roles swap again: Luna is the operator. She crosses to orange plate PR by the door gates:
-       the hatch at Sol's feet slides open and he drops into the tunnel under the corridor. Its
-       sun water is his to wade, and it leads him back to the shaft.
-    8. Luna runs back to white PS1c and then green PS2b by the shaft: S1 and S2 bring Sol up.
-       Both walk in to the doors.
+    6. Sol goes back down: into S2's empty shaft, across to S1's, all the way to the foot. He
+       climbs to the corridor, walks west over the bridge and left through the yellow lever. The
+       bridge drops behind him, so he is stuck between the pit and G1, but the sanctum's inner
+       gate opens.
+    7. Roles swap again: Luna is the operator. She runs west to orange plate PR by the door
+       gates: the hatch at Sol's feet slides open and he drops into the tunnel under the
+       corridor. Its sun water is his to wade, under a roof too low for Luna to jump it, and it
+       leads him back to the shaft's foot.
+    8. Luna runs back east to white PS1c and then green PS2b by the shaft: S1 and S2 bring Sol
+       up. Both walk in to the doors.
     """
-    L = Lv('Sanctum Approach', 95, 'One lever below changes the room above. You may have to go back down and set it right.')
+    L = Lv('Sanctum Approach', 120, 'One lever below changes the room above. You may have to go back down and set it right.')
     rock(L)
-    # ---- the double shaft: S2 (x 33-35) middle to top, S1 (x 36-38) bottom to middle
-    lift(L, 33, 18, 3, 9, 1)                              # S2 (green)
-    lift(L, 36, 28, 3, 10, 3)                             # S1 (white)
-    L.clear(33, 19, 35, 27)                               # the shaft's foot under S2
-    L.r(35, 26, 35, 27)                                   # a step up from the foot towards the corridor
-    # ---- bottom stage: start room, corridor (rows 20-23, floor 24-25), tunnel (rows 26-27)
-    L.clear(1, 20, 9, 23).r(1, 22, 4, 23)                 # the start room, with a shelf
-    L.plate(3, 21, 0)                                     # P1 (purple)
-    L.p(6, 23, 'a').p(8, 23, 'b')
-    L.r(9, 20, 11, 21)
-    vdoor(L, 10, 22, 0)                                   # G1 (purple)
-    L.clear(11, 22, 32, 23).clear(12, 20, 18, 21).clear(24, 20, 32, 21)
-    L.clear(13, 24, 14, 24)
-    hatch(L, 13, 25, 2, 2, 2)                             # GR (orange): the hatch into the tunnel
-    L.lever(17, 23, 5)                                    # L* (yellow)
-    L.pool(20, 24, 3, 'X').clear(20, 25, 22, 25).plat(20, 25, 3, 1, 0, -1, 5)   # the pit and its bridge (yellow)
-    L.p(26, 23, '/').r(27, 23, 32, 23)                    # the corridor's east end, a step up
-    L.plate(28, 22, 3)                                    # PS1 (white)
-    L.plate(31, 22, 0)                                    # P1b (purple)
-    L.clear(13, 26, 32, 27).pool(22, 28, 3, 'S')          # the tunnel, with sun water Luna cannot cross
-    L.r(35, 21, 35, 21)                                   # a ledge in the shaft's foot
-    # ---- middle stage: the crate hall (rows 11-17, floor 18)
-    L.clear(1, 11, 38, 17)
-    L.r(1, 16, 11, 17).p(13, 17, 'k')                     # the hall's raised west end, the crate
-    L.r(12, 11, 13, 12).r(25, 11, 27, 13).r(36, 11, 38, 12).r(14, 11, 17, 11)   # hanging blocks
-    L.pool(24, 18, 2, 'X').clear(24, 19, 25, 19).plat(24, 19, 2, 1, 0, -1, 2)   # a shade gap, bridged while orange is held
-    L.r(21, 11, 23, 15)
-    vdoor(L, 22, 16, 2)                                   # G2 (orange)
-    L.plate(26, 17, 3)                                    # PS1b (white)
-    L.plate(28, 17, 2)                                    # P2 (orange)
-    L.r(29, 15, 30, 15).plate(30, 14, 1)                  # PS2 (green) on a ledge over the crate's way
-    # ---- top stage: the sanctum (rows 2-8, floor 9)
-    L.clear(1, 2, 38, 8)
-    L.clear(1, 9, 16, 9)                                  # the west half one row lower
-    L.r(1, 2, 11, 4).r(1, 7, 1, 7)                        # the door room's low roof, a perch inside
-    L.r(6, 6, 10, 7)
-    vdoor(L, 7, 8, 5, inv=True)                           # GD (yellow, inverted): shut while L* is on
-    vdoor(L, 9, 8, 4)                                     # GD2 (pink)
-    L.p(2, 9, 'A').p(4, 9, 'B')
-    L.clear(15, 10, 16, 10).plate(15, 10, 4).plate(16, 10, 4)   # the socket (pink), at the foot of the step
-    L.plate(12, 9, 2)                                     # PR (orange), by the door gates
-    L.plate(36, 8, 3).plate(38, 8, 1)                     # PS1c (white), PS2b (green)
-    L.r(20, 2, 22, 4).r(29, 2, 30, 3).r(25, 2, 26, 6)     # hanging blocks
-    L.r(12, 7, 13, 7).r(18, 6, 19, 6).r(23, 6, 23, 6).r(27, 6, 28, 6).r(34, 5, 35, 5)   # perches up in the sanctum
-    gems(L, sun=((1, 20), (24, 20), (30, 26), (31, 11), (21, 5)),
-         moon=((18, 20), (31, 20), (5, 12), (19, 13), (28, 4), (1, 13)))
+    # ---- the double shaft: S2 (x 33-35) middle to top, S1 (x 36-38) foot to middle
+    lift(L, 33, 15, 3, 8, 1)                              # S2 (green): row 15 up to row 7
+    lift(L, 36, 28, 3, 13, 3)                             # S1 (white): row 28 up to row 15
+    # ---- top stage: the sanctum (rows 1-6, floor 7)
+    L.clear(1, 1, 38, 6)
+    L.r(6, 6, 7, 6)                                       # a bench in the door room
+    L.r(9, 1, 13, 4)                                      # the wall with the two door gates
+    vdoor(L, 10, 5, 5, inv=True)                          # GD (yellow, inverted): shut while the lever is on
+    vdoor(L, 12, 5, 4)                                    # GD2 (pink): open while the crate is in its socket
+    L.p(2, 6, 'A').p(4, 6, 'B')
+    L.plate(14, 6, 2)                                     # PR (orange): opens Sol's hatch, far below
+    L.clear(17, 7, 24, 7)                                 # the sanctum's middle, one row lower
+    L.clear(15, 7, 16, 8).plate(15, 8, 4).plate(16, 8, 4)  # the socket (pink), a dip the crate drops into
+    L.r(29, 1, 31, 1)                                     # a block hanging from the roof
+    L.r(26, 3, 27, 3)                                     # the high perch: a four-row climb
+    L.r(36, 4, 37, 4)                                     # a perch over the shaft plates
+    L.plate(36, 6, 3).plate(38, 6, 1)                     # PS1c (white), PS2b (green)
+    # ---- middle stage: the crate hall (floor 15, roof 7)
+    L.clear(1, 8, 14, 14).clear(15, 10, 16, 14).clear(17, 9, 24, 14).clear(25, 8, 38, 14)
+    L.r(1, 14, 9, 14).p(6, 13, 'k')                       # the hall's raised west end, the crate on it
+    L.r(10, 8, 14, 8)                                     # a lintel over the hall's west end
+    L.r(17, 8, 19, 12)
+    vdoor(L, 18, 13, 2)                                   # G2 (orange)
+    L.pool(21, 15, 3, 'X').clear(21, 16, 23, 16).plat(21, 16, 3, 1, 0, -1, 2)   # the shade gap, bridged while orange is held
+    L.r(25, 11, 29, 11)                                   # the operator's ledge, four rows up, the crate's way under it
+    L.plate(25, 10, 3).plate(27, 10, 2).plate(29, 10, 1)  # PS1b (white), P2 (orange), PS2 (green)
+    # ---- bottom stage: the start room (x 1-9, rows 16-27)
+    L.clear(1, 16, 9, 27)
+    L.r(1, 25, 3, 27)                                     # a step
+    L.r(6, 22, 9, 22)                                     # the landing in front of G1
+    L.r(1, 19, 2, 21).plate(1, 18, 0)                     # P1 (purple) on the high shelf, nine tiles from G1
+    L.p(5, 27, 'a').p(7, 27, 'b')
+    # ---- the corridor (rows 16-21, floor 22) from G1 to the shaft
+    L.clear(10, 16, 32, 21).clear(33, 16, 35, 24)
+    L.r(9, 16, 11, 19)
+    vdoor(L, 10, 20, 0)                                   # G1 (purple)
+    L.clear(13, 22, 14, 22).plat(13, 22, 2, 1, -2, 0, 2)  # GR (orange): the hatch into the tunnel, slides into the floor under G1
+    L.lever(18, 21, 5)                                    # L* (yellow)
+    L.r(20, 16, 24, 19)                                   # a roof two rows over the pit: nobody jumps it
+    L.pool(21, 22, 3, 'X').clear(21, 23, 23, 23).plat(21, 23, 3, 1, 0, -1, 5)   # the pit and its bridge (yellow)
+    L.clear(21, 16, 23, 16)                               # (the middle bridge's berth)
+    L.plate(26, 21, 0)                                    # P1b (purple)
+    L.p(28, 21, '/').r(29, 21, 30, 21).p(31, 21, '\\')   # a hump
+    L.plate(32, 21, 3)                                    # PS1 (white)
+    # ---- the tunnel (rows 23-27, floor 28) from the hatch to the shaft's foot
+    L.clear(12, 23, 35, 27)
+    L.r(15, 23, 20, 23).r(32, 23, 32, 24)                 # the tunnel's roof steps down
+    L.p(16, 27, '/').r(17, 27, 18, 27).p(19, 27, '\\')   # a hump
+    L.r(21, 23, 24, 23).clear(21, 23, 23, 23)
+    L.r(25, 23, 31, 25).pool(26, 28, 5, 'S')              # sun water under a low roof: Sol wades it, Luna cannot jump it
+    L.r(33, 25, 35, 25)                                   # a ledge between the corridor and the shaft's foot, the tunnel under it
+    gems(L, sun=((1, 16), (20, 9), (26, 1), (12, 26), (28, 27)),
+         moon=((1, 10), (13, 10), (7, 2), (36, 3), (32, 26)))
     return L
