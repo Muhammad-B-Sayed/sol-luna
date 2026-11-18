@@ -304,8 +304,9 @@ node tools/check-dodge.js                # Dodgeball rules, ~5 s
 node tools/check-runner.js               # Runner fairness proof, 50 seeds to 1700 tiles, ~5 min on 6 jobs
 ```
 
-- **Levels.** All levels except 27 pass the full gate (Nov 17, 2026), with 0 roof hits on every
-  bot route. 27 Leapfrog Spire is being rebuilt on another branch; its last WIP fails the time
+- **Levels.** All levels except 27 pass the full gate (Nov 17, 2026, as reported by the commits
+  that re-spaced them). A `FAST=1` gate over all 32 on the merged branch passed every level
+  except 27, with 0 roof hits on every passing bot route. 27 Leapfrog Spire is being rebuilt on another branch; its last WIP fails the time
   floor. Margins that sit at or near a limit are in `docs/level-plan.md` under "Status and thin margins".
 - **The bot.** `coop-bot.js` plays every level with two scripted players. The search phases
   (`goto`, `grab`, `press`, `flip`, `pushTo`, `seek`, `walk`) find inputs with the real physics;
