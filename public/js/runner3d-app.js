@@ -29,7 +29,7 @@ const TIPS = {
   steps: 'Stairs. Keep running and you climb a low ledge. Jump the tall ones.',
   thorns: 'Thorns! Slip through the opening, or jump the low ones.',
   pools: ['Sun pools are safe for you. Moon and shade pools are not.', 'Moon pools are safe for you. Sun and shade pools are not.'],
-  tilt: 'Chained slabs tip toward your weight. Keep to the middle.',
+  tilt: 'Spinning slabs: run the bright centre line. Touch a glowing edge and it flips.',
   stones: 'Stepping stones. Pick a lane and keep hopping.',
   crumble: 'Ember slabs crack under your feet. Keep moving!',
   sweeper: 'A thorn arm sweeps the floor. Jump it, or slip in behind it.',

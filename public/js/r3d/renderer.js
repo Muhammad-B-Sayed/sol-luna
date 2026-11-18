@@ -242,7 +242,7 @@ export class Runner3DRenderer {
         case 'floor': case 'pool': y = o.y; break;
         case 'ramp': y = o.y + (o.y1 - o.y) * Math.max(0, Math.min(1, (z - o.z0) / (o.z1 - o.z0))); break;
         case 'eclipse': if (who < 0 || (o.el ? 1 : 0) === who) y = o.y; break;
-        case 'tilt': { const st = S && S.o[i]; y = o.y + (st ? st.a * (x - o.cx) + st.b * (z - o.cz) : 0); break; }
+        case 'tilt': { const t = R3.tiltTop(o, S && S.o[i], x, 0); if (t === t) y = t; break; }
         case 'crumble': { const st = S && S.o[i]; if (!st || st.st <= 1) y = o.y; break; }
         case 'carousel': {
           let pose = null; try { pose = R3.objPose(L, S, i, tick); } catch {}

@@ -35,6 +35,8 @@ export const MACROS = [
   // turn on the spot, for a stone too short to turn while running
   [[FL, 3]], [[FR, 3]],
 ];
+// about 3/4 speed for n ticks (n a multiple of 4): forward 2 ticks, coast 2 ticks
+const easy = (n) => Array.from({ length: n }, (_, t) => (t % 4 < 2 ? F_ : 0));
 
 class Heap {
   constructor() { this.a = []; }
@@ -68,7 +70,7 @@ function objKey(L, S, o0, o1) {
     const st = S.o[i];
     if (!st) continue;
     const kind = L.objs[i].k;
-    if (kind === 'tilt') k += '|' + Math.round(st.a * 30) + ',' + Math.round(st.b * 30);
+    if (kind === 'tilt') k += '|' + Math.round(st.a * 20) + ',' + Math.round(st.w * 40) + ',' + st.s;
     else k += '|' + st.st;
   }
   return k;
@@ -146,6 +148,9 @@ export function solve(L, S, who, opts) {
     // sideways first: lining up with a narrow bridge or beam the greedy search may not try
     { tw: 0.01, budget: B, pre: Array(8).fill(R_) }, { tw: 0.01, budget: B, pre: Array(8).fill(L_) },
     { tw: 0.01, budget: 2 * B },
+    // easing off first, for a clock met at full speed on a short run-up (pendulum rows): the
+    // best-first search always prefers the faster branches and never gets back to the slow one
+    { tw: 0.0013, budget: B, pre: easy(24), keep: true }, { tw: 0.0013, budget: B, pre: easy(48), keep: true },
     { tw: 0.0013, budget: B, pre: [0, 0, 0, 0, 0, 0] }, { tw: 0.03, budget: B, pre: [B_, B_, B_, B_, B_, B_, B_, B_] },
     { tw: 0.004, budget: 4 * B },
   ];
@@ -153,11 +158,18 @@ export function solve(L, S, who, opts) {
   for (const t of tries.slice(0, opts.rungs || tries.length)) {
     if (opts.rungBudget) t.budget = opts.rungBudget;
     let S0 = cloneRunner3d(S);
-    const pre = (t.pre || []).map(b => (opts.flow ? b | F_ : b));   // a never-stop bot nudges while running
+    const pre = (t.pre || []).map(b => (opts.flow && !t.keep ? b | F_ : b));   // a never-stop bot nudges while running
     if (opts.flow && t.pre && t.pre[0] === B_) continue;
-    for (const b of pre) tick(L, S0, who, b, opts.other || null, opts.hook || null);
-    if (!S0.p[who].alive || (opts.deadline !== undefined && S0.tick > opts.deadline)) continue;
-    const r = search(L, S0, who, { ...opts, tw: t.tw, budget: t.budget });
+    // the start counts toward the never-stop bot's debt like any other tick
+    let slow = opts.slow0 || 0, maxSlow = 0;
+    for (const b of pre) {
+      const z = S0.p[who].z;
+      tick(L, S0, who, b, opts.other || null, opts.hook || null);
+      if (opts.flow) { slow = Math.max(0, slow + 1 - (S0.p[who].z - z) / opts.flow.min); maxSlow = Math.max(maxSlow, slow); }
+    }
+    if (!S0.p[who].alive || (opts.deadline !== undefined && S0.tick > opts.deadline) || (opts.flow && slow > opts.flow.stop)) continue;
+    const r = search(L, S0, who, { ...opts, tw: t.tw, budget: t.budget, slow0: slow });
+    if (r.ok) r.maxSlow = Math.max(r.maxSlow || 0, maxSlow);
     exp += r.exp;
     if (r.ok) return { ...r, plan: pre.concat(r.plan), exp };
   }
