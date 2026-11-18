@@ -342,7 +342,7 @@ export class RunnerSync {
       // than the server's path did (plus the slow pay-back, sim.creep). What is held back stays
       // in the offset and eases out, so no source of error can make a pop.
       if (this.lastTheirs && this.lastT !== undefined) {
-        const w = Math.min(2, Math.max(1, (this.frameDt || DT) / DT)), f = sim.fwd;
+        const w = Math.min(2, Math.max(0.25, (this.frameDt || DT) / DT)), f = sim.fwd;   // per real time
         const rPrev = this.remoteRaw(this.lastT);
         for (const k of sim.dims) rPrev[k] += rv[k];
         if (alive) sim.front(sa.st.p[o], rPrev, this.lastScroll);
