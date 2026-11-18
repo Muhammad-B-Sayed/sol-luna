@@ -238,6 +238,7 @@ export class Runner3DRenderer {
     const L = this.L, objs = L.objs;
     while (this.lo < objs.length && objs[this.lo].z1 < zMin && objs[this.lo].z0 < zMin - 80) this.lo++;
     const seen = new Set();
+    this.occ = [];
     const poseFn = R3.objPose || R3.poseOf || R3.pose3 || null;
     for (let i = this.lo; i < objs.length; i++) {
       const o = objs[i];
@@ -256,6 +257,7 @@ export class Runner3DRenderer {
       let pose = null;
       if (poseFn) { try { pose = poseFn(L, S, i, ctx.tick); } catch { pose = null; } }
       v.def.update(v.obj, o, S.o ? S.o[i] : undefined, pose, ctx, v);
+      if (v.obj.userData.occ) this.occ.push(v.obj.userData.occ);
     }
     for (const [i, v] of this.views) if (!seen.has(i)) { this.objRoot.remove(v.obj); disposeView(v.obj); this.views.delete(i); }
   }
@@ -328,7 +330,7 @@ export class Runner3DRenderer {
     // fractional tick of this frame: the view's zone lags S.zone by (1 - alpha) ticks of zone travel
     const alpha = S.v > 1e-6 ? Math.max(0, Math.min(1, 1 - (S.zone - view.zone) / S.v)) : 1;
     const ctx = { time, dt, S, L, fx: this.fx, glow: this.glow, idx: 0, alpha, tick: S.tick - 1 + alpha };
-    this.S = S; this.tick = ctx.tick;
+    this.S = S; this.tick = ctx.tick; this.viewP = view.p;
     this.streamViews(S, zMin, zMax, ctx);
     if (this.boxes) this.boxes.update(L, S, ctx.tick);
 
@@ -420,6 +422,9 @@ export class Runner3DRenderer {
   // called per viewport (by the pass, or directly without bloom)
   renderView(vp, pxH) {
     const rg = this.rigs[vp.i], cam = rg.cam;
+    // tall walls (thorn curtains) that this camera's player has passed would block the view: hide them
+    const pz = this.viewP ? this.viewP[vp.i].z : 0;
+    for (const oc of this.occ || []) oc.wall.visible = !(oc.z < pz - 0.1 && oc.z > pz - 12);
     this.sky.position.copy(cam.position);
     this.abyss.position.set(cam.position.x, this.lastCourseY - 34, cam.position.z - 150);
     this.mist.forEach((m, k) => { m.position.set(cam.position.x, this.lastCourseY - 5 - k * 7, cam.position.z - 120); m.material.uniforms.uCam.value.copy(cam.position); });

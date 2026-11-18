@@ -558,19 +558,22 @@ VIEWS.gate = {
     const root = new THREE.Group();
     const [, cz, w] = mid(o), zc = -cz, th = o.th ?? 4.6;
     const maxTiles = Math.ceil((o.x1 - o.x0) / GATE_TILE) + 4;
-    const tiles = new THREE.InstancedMesh(_brambleGeo, _brambleMat, maxTiles); tiles.frustumCulled = false; root.add(tiles);
+    // the wall itself sits in its own group: the renderer hides it for a camera whose player has
+    // passed it, so it never stands between that camera and its player
+    const wall = new THREE.Group(); root.add(wall);
+    const tiles = new THREE.InstancedMesh(_brambleGeo, _brambleMat, maxTiles); tiles.frustumCulled = false; wall.add(tiles);
     const rows = Math.round(th / 0.42);
-    const im = new THREE.InstancedMesh(_thornGeo, _thornMat, maxTiles * rows * 2 * 2); im.frustumCulled = false; root.add(im);
+    const im = new THREE.InstancedMesh(_thornGeo, _thornMat, maxTiles * rows * 2 * 2); im.frustumCulled = false; wall.add(im);
     const postG = new THREE.BoxGeometry(0.7, th + 0.8, 0.9).translate(0, (th + 0.8) / 2 - 0.4, 0);
     for (const x of [o.x0 - 0.35, o.x1 + 0.35]) { const p = new THREE.Mesh(postG, materials().stonePlain); p.position.set(x, o.y, zc); root.add(p); }
     const lintG = slabGeometry(w + 1.6, 0.9, 0.6, { glow: 0.5 });
     const lint = new THREE.Mesh(lintG, materials().stone); lint.position.set((o.x0 + o.x1) / 2, o.y + th + 0.6, zc); root.add(lint);
     // glowing edges of the opening, and a pale strip on the floor through it (the safe way)
     const edgeG = new THREE.BoxGeometry(0.07, th, 0.42).translate(0, th / 2, 0);
-    const edges = [0, 1].map(() => { const m = new THREE.Mesh(edgeG, glowMat(0x9dffb9, 1.5)); m.position.set(0, o.y, zc); root.add(m); return m; });
+    const edges = [0, 1].map(() => { const m = new THREE.Mesh(edgeG, glowMat(0x9dffb9, 1.5)); m.position.set(0, o.y, zc); wall.add(m); return m; });
     const laneG = new THREE.PlaneGeometry(1, 2.4).rotateX(-Math.PI / 2);
-    const lane = new THREE.Mesh(laneG, glowMat(0x60ff9a, 0.16, { additive: true })); lane.position.set(0, o.y + 0.02, zc); root.add(lane);
-    root.userData = { geos: [postG, lintG, edgeG, laneG], insts: [tiles, im], tiles, im, edges, lane, zc, th, rows, seed: idx };
+    const lane = new THREE.Mesh(laneG, glowMat(0x60ff9a, 0.16, { additive: true })); lane.position.set(0, o.y + 0.02, zc); wall.add(lane);
+    root.userData = { geos: [postG, lintG, edgeG, laneG], insts: [tiles, im], tiles, im, edges, lane, zc, th, rows, seed: idx, occ: { z: cz, wall } };
     return root;
   },
   update(v, o, st, pose, ctx) {
@@ -620,8 +623,8 @@ VIEWS.orb = {
   make(o, L, idx) {
     if (!_orbGeo) {
       _orbGeo = new THREE.IcosahedronGeometry(1, 2);
-      _orbMat = patchWorld(new THREE.MeshStandardMaterial({ color: 0x6e5f96, roughness: 0.75, flatShading: true, emissive: 0x1a0c2a }), { rim: col(0xb89cff).multiplyScalar(0.6), key: 'orb' });
-      _sockMat = patchWorld(new THREE.MeshBasicMaterial({ color: 0x05020a }), { key: 'sock' });
+      _orbMat = patchWorld(new THREE.MeshStandardMaterial({ color: 0x8a78c0, roughness: 0.7, flatShading: true, emissive: 0x2c1446 }), { rim: col(0xc8acff).multiplyScalar(0.7), key: 'orb' });
+      _sockMat = patchWorld(new THREE.MeshBasicMaterial({ color: 0x1e0e30 }), { key: 'sock' });
     }
     const root = new THREE.Group();
     const R = o.r - 0.08;
@@ -641,9 +644,9 @@ VIEWS.orb = {
     const lineG = new THREE.PlaneGeometry(0.05, o.zs - o.ze).rotateX(-Math.PI / 2);
     for (const sx of [-1, 1]) { const l = new THREE.Mesh(lineG, glowMat(0xc070ff, 1.2, { additive: true })); l.position.set(o.lx + sx * o.r * 0.65, o.y + 0.016, -(o.zs + o.ze) / 2); root.add(l); }
     // socket where they drop away (near end) and an archway where they come from (far end)
-    const sockG = new THREE.CircleGeometry(o.r * 0.95, 20).rotateX(-Math.PI / 2);
+    const sockG = new THREE.CircleGeometry(o.r * 0.75, 20).rotateX(-Math.PI / 2);
     const sock = new THREE.Mesh(sockG, _sockMat); sock.position.set(o.lx, o.y + 0.018, -(o.ze - o.r * 0.4)); root.add(sock);
-    const rimG = new THREE.RingGeometry(o.r * 0.95, o.r * 1.08, 20).rotateX(-Math.PI / 2);
+    const rimG = new THREE.RingGeometry(o.r * 0.75, o.r * 0.85, 20).rotateX(-Math.PI / 2);
     const rim = new THREE.Mesh(rimG, glowMat(0xc070ff, 1.2, { additive: true })); rim.position.copy(sock.position); rim.position.y += 0.002; root.add(rim);
     const archG = new THREE.TorusGeometry(o.r + 0.25, 0.22, 6, 16, Math.PI);
     const arch = new THREE.Mesh(archG, materials().stonePlain); arch.position.set(o.lx, o.y, -(o.zs + o.r * 0.6)); root.add(arch);

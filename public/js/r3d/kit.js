@@ -79,7 +79,7 @@ export function patchWorld(mat, { glow = false, rim = null, additive = false, di
       float frontE = exp(-abs(dzw - front) * 3.0) * step(dzw, 0.0);
       ${additive
         ? 'gl_FragColor.rgb *= (1.0 - behind) * (1.0 - creep * 0.5);'
-        : 'gl_FragColor.rgb = mix(gl_FragColor.rgb, uDuskCol, max(behind * 0.92, creep * 0.62)) + uEmberCol * (edgeE * 0.35 + frontE * 0.22);'}
+        : 'gl_FragColor.rgb = mix(gl_FragColor.rgb, uDuskCol, max(behind * 0.92, creep * 0.62)) + uEmberCol * (edgeE * 0.35 + frontE * 0.07);'}
       #include <tonemapping_fragment>`);
     sh.fragmentShader = fs;
   };
