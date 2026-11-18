@@ -11,7 +11,7 @@
 //              room needs the partner: a co-op room should report "door n".
 //   HELP=0,2   the partner may flip only groups 0 and 2; the rest are real.
 // WHO=sol or WHO=luna checks one character only.
-// tools/check-deps.js imports explore() to assert each co-op room's dependencies.
+// explore() is exported for other checks (the deleted check-deps.js used it on the first-pass rooms).
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { LEVELS } from '../shared/levels.js';
