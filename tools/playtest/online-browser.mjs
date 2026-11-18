@@ -1,5 +1,5 @@
 // Online co-op with two browser pages against a local server, real key and mouse events.
-//   node tools/playtest/online-browser.mjs            (starts its own servers on 3456 and, LAG_MS=80, 3457; PORT0=n uses n and n+1)
+//   node tools/playtest/online-browser.mjs            (starts its own servers on 3456 and, LAG_MS=80, 3457)
 //   -> docs/img/playtest/online/, tools/playtest/out/online.json
 //
 // Lobby: host, join by typed code, join by /<CODE> link, a third client is turned away, swap by
@@ -15,7 +15,6 @@
 // corrections and snaps.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { launch, startServer, setBits, sleep } from './cdp.mjs';
-const P0 = +(process.env.PORT0 || 3456);
 
 const IMG = 'docs/img/playtest/online';
 mkdirSync(IMG, { recursive: true }); mkdirSync('tools/playtest/out', { recursive: true });
@@ -128,8 +127,8 @@ async function play(H, G, level, tag, { lag = false } = {}) {
 }
 
 if (process.env.QUICK) {
-  const srv = await startServer(P0);
-  const { H, G } = await room(P0, 'quick');
+  const srv = await startServer(3456);
+  const { H, G } = await room(3456, 'quick');
   for (let i = 0; i < +(process.env.QUICK); i++) {
     out.pend = [];
     const r = await play(H, G, 1, 'quick-l1-' + i);
@@ -144,13 +143,13 @@ if (process.env.QUICK) {
 }
 // ------------------------------------------------------------------ no added latency
 {
-  const srv = await startServer(P0);
-  const { H, G, code } = await room(P0, 'lobby');
+  const srv = await startServer(3456);
+  const { H, G, code } = await room(3456, 'lobby');
   await H.shot(`${IMG}/lobby-host.jpg`); await G.shot(`${IMG}/lobby-guest.jpg`);
   let r = await Promise.all([H, G].map(P => P.eval('[window.__app.me, window.__app.host]')));
   check('lobby: host is Sol, guest is Luna', r[0][0] === 0 && r[1][0] === 1 && r[0][1] && !r[1][1], JSON.stringify(r));
   // join by link, a third client in a full room
-  const T = await B.page(`http://localhost:${P0}/${code}`);
+  const T = await B.page(`http://localhost:3456/${code}`);
   await sleep(800);
   const third = await T.eval(`[document.body.dataset.screen, document.querySelector('#toast').textContent]`);
   check('a third client opening the /<CODE> link of a full room is turned away with a message', third[0] === 'menu', JSON.stringify(third));
@@ -220,7 +219,7 @@ if (process.env.QUICK) {
   check('guest leaves the lobby: host sees the empty slot', left.slots.includes('Waiting…'), JSON.stringify(left));
   await H.shot(`${IMG}/host-after-guest-left-lobby.jpg`);
   // rejoin by link, start a level, guest quits mid-level -> host gets peer-left
-  await G.send('Page.navigate', { url: `http://localhost:${P0}/${code}` });
+  await G.send('Page.navigate', { url: `http://localhost:3456/${code}` });
   await waitFor(G, `window.__app.room?.players.length === 2`, 5000);
   check('guest rejoins by /<CODE> link', (await G.eval('window.__app.room?.players.length')) === 2, await G.eval('location.pathname'));
   await H.click('#lobbyPick'); await sleep(200);
@@ -240,8 +239,8 @@ if (process.env.QUICK) {
 
 // ------------------------------------------------------------------ LAG_MS=80 (160 ms round trip)
 {
-  const srv = await startServer(P0 + 1, { LAG_MS: '80' });
-  const { H, G } = await room(P0 + 1, 'lag80');
+  const srv = await startServer(3457, { LAG_MS: '80' });
+  const { H, G } = await room(3457, 'lag80');
   await play(H, G, 1, 'lag80-l1', { lag: true });
   await H.close(); await G.close();
   srv.stop();
