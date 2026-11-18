@@ -26,7 +26,7 @@
 //      thrower stands, with the aim it was released with, and then flies exactly like the local
 //      throw; the shot clock can't run out mid wind-up; the dodge window from the launch equals local; a hit on the
 //      player the screen waits for stops the ball without scoring; determinism mid wind-up.
-import { COURT, DODGE, NET, createDodge, stepDodge, aimSlope, sideOf, ownerOf, windupFor, handPos, buildCourt, OLD_COURT_SPEC,
+import { COURT, DODGE, NET, createDodge, stepDodge, aimSlope, sideOf, ownerOf, windupFor, handPos, buildCourt, OLD_COURT_SPEC, dodgeViewFor,
   CLOCK_PICK, CLOCK_SHOT, DP_READY, DP_PLAY, DP_POINT, DP_OVER, B_HELD, B_LIVE, B_DEAD, B_REST } from '../shared/dodge.js';
 import { cloneState, SOL, LUNA, TS, PHYS, TICK_RATE, IN_ACT, T_SOLID, COLS } from '../shared/sim.js';
 import { explore } from './check-levels.js';
@@ -539,6 +539,29 @@ console.log('\n7. Online wind-up (fix C)');
     for (let i = 0; i < 60; i++) { stepDodge(COURT, a, [RIGHT, i === 20 ? JUMP : 0]); stepDodge(COURT, mid, [RIGHT, i === 20 ? JUMP : 0]); }
     ok(JSON.stringify(a) === JSON.stringify(mid) && a.d.throwN === 1, 'a state saved mid wind-up and resumed gives the same result');
   }
+}
+
+// 8. the other player's aim, withheld from a snapshot (dodgeViewFor)
+console.log('\n8. Online: the other player\'s aim is withheld (dodgeViewFor)');
+{
+  const tp = { x: FLOOR[SOL].lo + 60, y: FLOOR[SOL].y }, vp = { x: FLOOR[LUNA].hi, y: FLOOR[LUNA].y };
+  // server: Sol aims for 40 ticks and releases with a 5-tick wind-up at Luna. Luna's client
+  // predicts from what she is sent, with Sol's last sent input repeated, as main.js does.
+  const S = setup(SOL, tp, vp); S.d.lag = [0, 5];
+  let leaked = 0, cl = null, launchServer = -1, launchClient = -1;
+  for (let t = 0; t < 80; t++) {
+    const inp = [t < 40 ? ACT : 0, 0];
+    stepDodge(COURT, S, inp);
+    const v = dodgeViewFor(S, inp, LUNA);
+    if (S.d.aim[SOL] >= 0 && (v.st.d.aim[SOL] >= 0 || v.inp[SOL] & ACT)) leaked++;
+    if (t % 2 === 0) cl = JSON.parse(JSON.stringify(v.st));          // a snapshot every 2 ticks
+    else stepDodge(COURT, cl, [v.inp[SOL], 0]);
+    if (launchServer < 0 && S.d.ball.st === B_LIVE) launchServer = t;
+    if (launchClient < 0 && cl.d.ball.st === B_LIVE) launchClient = t;
+  }
+  ok(leaked === 0, 'while Sol aims, Luna\'s snapshot has no aim counter and no held action bit for him');
+  ok(dodgeViewFor(S, [ACT, 0], SOL).st === S, 'the holder\'s own snapshot is unchanged');
+  ok(launchServer >= 0 && launchClient === launchServer, `the throw still launches on Luna's screen on the same tick as on the server (tick ${launchClient} / ${launchServer}): the release is not withheld`);
 }
 
 console.log(failed ? `\n${failed} check(s) FAILED` : '\nAll dodgeball checks passed.');

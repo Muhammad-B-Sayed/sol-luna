@@ -158,6 +158,20 @@ function rand(D) {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
+// What a server snapshot should show `viewer` online: the other player's aim is withheld
+// while they hold the button (their aim counter, and the action bit of their input, from which
+// the counter could be rebuilt), so a client can't draw or read the angle before the release.
+// The release itself (D.wind, D.windSlope, or a live ball) is not withheld, so the flight is
+// drawn on time. Returns { st, inp }; the inputs are left as they are for the viewer's own side.
+// Not wired into server/index.js yet (see HANDOFF.md, Dodgeball).
+export function dodgeViewFor(S, inp, viewer) {
+  const other = 1 - viewer, D = S.d;
+  if (!D || (D.aim[other] < 0 && !(inp[other] & IN_ACT))) return { st: S, inp };
+  const aim = D.aim.slice(); aim[other] = -1;
+  const inp2 = inp.slice(); inp2[other] &= ~IN_ACT;
+  return { st: { ...S, d: { ...D, aim } }, inp: inp2 };
+}
+
 export const sideOf = (x) => (x < NET ? SOL : LUNA);
 export const towardNet = (who) => (who === SOL ? 1 : -1);
 

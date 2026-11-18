@@ -500,7 +500,17 @@ A competitive mode on one single-screen court, Sol on the left and Luna on the r
     `charge`). HUD: "your throws wind up N ms". A ball reaching the other player waits for the
     server's word (`D.wait`, set in `main.js` `onSnapshot`, prediction only) under an impact
     flare, so a late dodge never shows as a hit that is taken back.
-  - Target's screen: the wind-up isn't drawn; they see the plain aim until the launch.
+  - Target's screen: neither the wind-up nor the aim is drawn; they see the ball when it leaves
+    the hand (`seesAim` in `dodge-draw.js`: online only the holder's own screen draws the
+    arrow; on a shared screen both show). The snapshot still carries the other player's aim
+    counter and their held action bit (the server broadcasts one state to both clients), so a
+    modified client could read the angle. `dodgeViewFor(S, inp, viewer)` in `shared/dodge.js`
+    builds the per-viewer copy with both withheld (checked: nothing leaks while aiming, and the
+    throw launches on the defender's screen on the same tick as on the server). To use it,
+    `Room.tick` in `server/index.js` sends dodge snapshots per client instead of broadcasting:
+    `this.clients.forEach(c => send(c.ws, { t: 's', ack: this.ack, ...dodgeViewFor(this.S, this.cur, c.char) }))`.
+    Not wired in here because `server/index.js` was being rewritten for the runner sync at the
+    time. Cost: two serializations per snapshot instead of one in dodge rooms.
   - Server: protocol pings every 500 ms per socket (median of 8); in dodge rooms it drains a
     standing input queue after a hit and in the ready freeze (`Room.dodgeQueue`).
     `DODGE_WINDUP=off` turns the wind-up off; `DODGE_LOG=1` logs round trips, queue and wind-up.

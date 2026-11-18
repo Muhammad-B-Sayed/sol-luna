@@ -129,7 +129,7 @@ function drawMirror(g, d, time) {
 
 // Online wind-up (fix C): how far the throw has wound up on this screen, 0..1, or -1 when no
 // throw is winding up or this screen should not show it. Only the thrower's own screen shows the
-// wind-up; the other player sees the plain aim until the launch, as in local play, so it gives
+// wind-up; the other player sees nothing until the launch, as in local play, so it gives
 // them no extra warning. R.dodgeMe is the viewer online, -1 in local play (no wind-up there).
 function windOf(R, D) {
   if (!(D.wind > 0) || D.holder < 0 || !D.windN) return -1;
@@ -138,6 +138,8 @@ function windOf(R, D) {
   return 1 - (D.wind - 1) / D.windN;
 }
 const ease = (f) => 1 - (1 - f) * (1 - f);
+// Whose aim arrow this screen draws: local play (R.dodgeMe -1) both, online only your own.
+export const seesAim = (R, holder) => (R.dodgeMe ?? -1) < 0 || R.dodgeMe === holder;
 
 // The thrower leans back while the throw winds up (radians, applied at the feet by drawPlayer).
 export function dodgePose(R, S, i) {
@@ -175,10 +177,16 @@ export function drawDodge(R, g, S, view, time) {
   if (F.look < 0.999) drawTrail(g, T, bx, by, r, maxLen, FIRE_TRAIL, (1 - F.look) * k);
   if (F.look > 0.001) drawTrail(g, T, bx, by, r, maxLen, MOON_TRAIL, F.look * k);
 
-  // aim arrow while the holder charges (both players see it); a winding-up throw keeps its
-  // aim, and on the thrower's screen the arrow fills from the hand out until the ball goes
-  if (D.holder >= 0 && D.aim[D.holder] >= 0) drawAim(g, D, bx, by, time, aimSlope(D.aim[D.holder]), -1);
-  else if (D.holder >= 0 && D.wind > 0) drawAim(g, D, bx, by, time, D.windSlope, wf);
+  // aim arrow while the holder charges; a winding-up throw keeps its aim, and on the thrower's
+  // screen the arrow fills from the hand out until the ball goes. Online only the holder sees
+  // it: the other player gets no hint of the angle until the ball leaves the hand (local play
+  // shares one screen, so both arrows show there).
+  let aimDrawn = -1;
+  if (D.holder >= 0 && seesAim(R, D.holder)) {
+    if (D.aim[D.holder] >= 0) { drawAim(g, D, bx, by, time, aimSlope(D.aim[D.holder]), -1); aimDrawn = D.holder; }
+    else if (D.wind > 0) { drawAim(g, D, bx, by, time, D.windSlope, wf); aimDrawn = D.holder; }
+  }
+  if (typeof window !== 'undefined') window.__dodgeAim = aimDrawn;   // for tools/check-dodge-browser.cjs
   if (wf >= 0) drawCharge(g, D, bx, by, r, wf, time);
 
   // the ball itself (cross-fades between the two elements)
