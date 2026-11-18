@@ -54,7 +54,7 @@ for (const n of which) {
     let st = await P.eval(STATE);
     if (st.tick !== 0 || st.screen !== 'game') throw new Error('level did not start at tick 0: ' + JSON.stringify(st));
     const want = moments(rec);
-    const stops = new Set([...want.map(m => m.t), 1]);
+    const stops = new Set([...want.map(m => m.t), 1, 360]);
     for (const tr of rec.trace) stops.add(tr[0]);
     const traceAt = new Map(rec.trace.map(tr => [tr[0], tr]));
     let tick = 0, held = [0, 0], maxDev = 0, firstDiv = null, keyEvents = 0;
@@ -86,7 +86,15 @@ for (const n of which) {
           if (dev > 0.051 || st.gm !== tr[5]) { if (!firstDiv) firstDiv = { tick, browser: st, bot: tr }; }
           maxDev = Math.max(maxDev, dev);
         }
-        if (tick === 1) shots.push(await P.shot(`${IMG}/level-${pad(n)}-0-start.jpg`));
+        if (tick === 1) {
+          // the hint is up for its full fade-in at the start of real play
+          await P.eval(`document.querySelector('#hint').style.transition = 'none'`);
+          shots.push(await P.shot(`${IMG}/level-${pad(n)}-0-start.jpg`));
+          await P.eval(`document.querySelector('#hint').style.transition = ''`);
+        }
+        // the game hides the hint after 6 s of wall-clock time; replays run faster than real time,
+        // so stop the stops-list at tick 360 too and hide it then, as a real 6 s would have
+        if (tick === 360) await P.eval(`document.querySelector('#hint').classList.remove('on')`);
         const m = want.find(m => m.t === tick);
         if (m) { m.file = await P.shot(`${IMG}/level-${pad(n)}-${want.indexOf(m) + 1}-t${tick}.jpg`); shots.push(m.file); }
       }

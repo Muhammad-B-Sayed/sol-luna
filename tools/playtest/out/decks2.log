@@ -1,0 +1,149 @@
+121 runs to walk
+ 8 deck (21-38, row 4, 3 free) Sol: bonks 11, max rise 38px, right 128f / walk 133f, left 129f
+ 8 deck (21-38, row 4, 3 free) Luna: bonks 11, max rise 38px, right 128f / walk 133f, left 129f
+ 8 deck (10-19, row 7, 3 free) Sol: bonks 7, max rise 38px, right 69f / walk 74f, left 70f
+ 8 deck (10-19, row 7, 3 free) Luna: bonks 7, max rise 38px, right 69f / walk 74f, left 70f
+ 8 deck (26-32, row 8, 3 free) Sol: bonks 5, max rise 38px, right 47f / walk 52f, left 51f
+ 8 deck (26-32, row 8, 3 free) Luna: bonks 5, max rise 38px, right 47f / walk 52f, left 51f
+ 8 deck (26-32, row 29, 3 free) Sol: bonks 5, max rise 38px, right 47f / walk 52f, left 51f
+ 8 deck (26-32, row 29, 3 free) Luna: bonks 5, max rise 38px, right 47f / walk 52f, left 51f
+ 9 deck (13-25, row 12, 4 free) Sol: bonks 8, max rise 62px, right 105f / walk 96f, left 99f
+ 9 deck (13-25, row 12, 4 free) Luna: bonks 8, max rise 62px, right 105f / walk 96f, left 99f
+ 9 deck (13-25, row 17, 4 free) Sol: bonks 7, max rise 62px, right 91f / walk 96f, left 99f
+ 9 deck (13-25, row 17, 4 free) Luna: bonks 7, max rise 62px, right 91f / walk 96f, left 99f
+ 9 deck (34-38, row 17, 4 free) Sol: bonks 2, max rise 62px, right 32f / walk 37f, left 33f
+ 9 deck (34-38, row 17, 4 free) Luna: bonks 2, max rise 62px, right 32f / walk 37f, left 33f
+ 9 deck (29-36, row 21, 3 free) Sol: bonks 5, max rise 38px, right 54f / walk 59f, left 55f
+ 9 deck (29-36, row 21, 3 free) Luna: bonks 5, max rise 38px, right 54f / walk 59f, left 55f
+ 9 deck (13-25, row 22, 4 free) Sol: bonks 3, max rise 62px, right 91f / walk 96f, left 0f
+ 9 deck (13-25, row 22, 4 free) Luna: bonks 3, max rise 62px, right 91f / walk 96f, left 0f
+10 deck (4-11, row 11, 3 free) Sol: bonks 2, max rise 38px, right 43f / walk 59f, left 0f, EXIT [{"dir":1,"at":[9.2,9]}]
+10 deck (4-11, row 11, 3 free) Luna: bonks 2, max rise 38px, right 43f / walk 59f, left 0f, EXIT [{"dir":1,"at":[9.2,9]}]
+10 deck (21-23, row 11, 3 free) Sol: bonks 2, max rise 38px, right 17f / walk 22f, left 22f
+10 deck (21-23, row 11, 3 free) Luna: bonks 2, max rise 38px, right 17f / walk 22f, left 22f
+10 deck (2-4, row 23, 4 free) Sol: bonks 2, max rise 62px, right 17f / walk 22f, left 26f
+10 deck (2-4, row 23, 4 free) Luna: bonks 2, max rise 62px, right 17f / walk 22f, left 26f
+10 deck (2-4, row 28, 4 free) Sol: bonks 3, max rise 62px, right 17f / walk 22f, left 27f
+10 deck (2-4, row 28, 4 free) Luna: bonks 3, max rise 62px, right 17f / walk 22f, left 27f
+ 1 tunnel (1-10, row 15, 2 free) Luna: bonks 10, max rise 14px, right 69f / walk 74f, left 71f
+ 1 tunnel (24-33, row 28, 2 free) Sol: bonks 8, max rise 14px, right 69f / walk 74f, left 71f
+ 3 tunnel (18-20, row 8, 2 free) Sol: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+ 3 tunnel (18-20, row 8, 2 free) Luna: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+ 5 tunnel (22-25, row 7, 2 free) Sol: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+ 5 tunnel (14-17, row 8, 2 free) Luna: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+ 5 tunnel (27-29, row 26, 2 free) Luna: bonks 3, max rise 24px, right 17f / walk 22f, left 19f
+ 5 tunnel (10-12, row 27, 2 free) Sol: bonks 3, max rise 24px, right 17f / walk 22f, left 19f
+ 6 tunnel (6-10, row 18, 2 free) Sol: bonks 6, max rise 14px, right 32f / walk 37f, left 39f
+ 7 tunnel (31-33, row 7, 2 free) Sol: bonks 3, max rise 24px, right 17f / walk 22f, left 19f
+ 8 tunnel (5-19, row 3, 2 free) Sol: bonks 18, max rise 14px, right 106f / walk 111f, left 110f
+ 8 tunnel (5-19, row 3, 2 free) Luna: bonks 18, max rise 14px, right 106f / walk 111f, left 110f
+ 8 tunnel (20-24, row 7, 2 free) Sol: bonks 7, max rise 14px, right 32f / walk 37f, left 39f
+ 8 tunnel (20-24, row 7, 2 free) Luna: bonks 7, max rise 14px, right 32f / walk 37f, left 39f
+ 8 tunnel (26-29, row 22, 2 free) Luna: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+ 8 tunnel (10-16, row 25, 2 free) Sol: bonks 9, max rise 14px, right 47f / walk 52f, left 48f
+ 8 tunnel (10-16, row 25, 2 free) Luna: bonks 9, max rise 14px, right 47f / walk 52f, left 48f
+ 8 tunnel (9-19, row 28, 2 free) Sol: bonks 10, max rise 14px, right 81f / walk 81f, left 78f
+ 9 tunnel (31-33, row 17, 2 free) Sol: bonks 3, max rise 24px, right 17f / walk 22f, left 19f
+10 tunnel (26-28, row 11, 2 free) Sol: bonks 2, max rise 14px, right 17f / walk 22f, left 0f
+10 tunnel (26-28, row 11, 2 free) Luna: bonks 2, max rise 14px, right 17f / walk 22f, left 0f
+10 tunnel (18-23, row 25, 2 free) Sol: bonks 7, max rise 14px, right 39f / walk 44f, left 41f
+10 tunnel (18-23, row 25, 2 free) Luna: bonks 7, max rise 14px, right 39f / walk 44f, left 41f
+11 tunnel (28-30, row 25, 2 free) Sol: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+11 tunnel (28-30, row 25, 2 free) Luna: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+11 tunnel (9-12, row 28, 2 free) Sol: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+11 tunnel (28-34, row 28, 2 free) Luna: bonks 7, max rise 24px, right 47f / walk 52f, left 54f
+11 tunnel (1-3, row 29, 2 free) Sol: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+11 tunnel (1-3, row 29, 2 free) Luna: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+12 tunnel (1-4, row 14, 2 free) Sol: bonks 5, max rise 14px, right 25f / walk 30f, left 26f
+12 tunnel (1-4, row 14, 2 free) Luna: bonks 5, max rise 14px, right 25f / walk 30f, left 26f
+12 tunnel (18-21, row 28, 2 free) Sol: bonks 5, max rise 14px, right 25f / walk 30f, left 26f
+12 tunnel (18-21, row 28, 2 free) Luna: bonks 5, max rise 14px, right 25f / walk 30f, left 26f
+13 tunnel (32-35, row 6, 2 free) Luna: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+13 tunnel (3-6, row 7, 2 free) Sol: bonks 5, max rise 14px, right 25f / walk 30f, left 29f
+13 tunnel (1-5, row 28, 2 free) Sol: bonks 6, max rise 14px, right 32f / walk 37f, left 33f
+16 tunnel (2-10, row 4, 2 free) Sol: bonks 12, max rise 14px, right 62f / walk 66f, left 68f
+16 tunnel (2-10, row 4, 2 free) Luna: bonks 12, max rise 14px, right 62f / walk 66f, left 68f
+16 tunnel (12-18, row 4, 2 free) Sol: bonks 9, max rise 14px, right 47f / walk 52f, left 54f
+16 tunnel (12-18, row 4, 2 free) Luna: bonks 9, max rise 14px, right 47f / walk 52f, left 54f
+16 tunnel (22-32, row 4, 2 free) Sol: bonks 14, max rise 14px, right 76f / walk 81f, left 82f
+16 tunnel (22-32, row 4, 2 free) Luna: bonks 14, max rise 14px, right 76f / walk 81f, left 82f
+16 tunnel (34-37, row 4, 2 free) Sol: bonks 5, max rise 14px, right 25f / walk 30f, left 26f
+16 tunnel (34-37, row 4, 2 free) Luna: bonks 5, max rise 14px, right 25f / walk 30f, left 26f
+16 tunnel (5-15, row 8, 2 free) Sol: bonks 14, max rise 14px, right 76f / walk 81f, left 82f
+16 tunnel (5-15, row 8, 2 free) Luna: bonks 14, max rise 14px, right 76f / walk 81f, left 82f
+16 tunnel (25-33, row 15, 2 free) Sol: bonks 12, max rise 14px, right 62f / walk 66f, left 68f
+16 tunnel (25-33, row 15, 2 free) Luna: bonks 12, max rise 14px, right 62f / walk 66f, left 68f
+16 tunnel (27-30, row 20, 2 free) Sol: bonks 6, max rise 14px, right 31f / walk 30f, left 28f
+16 tunnel (27-30, row 20, 2 free) Luna: bonks 6, max rise 14px, right 31f / walk 30f, left 28f
+17 tunnel (13-16, row 7, 2 free) Sol: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+17 tunnel (23-26, row 7, 2 free) Luna: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+17 tunnel (14-17, row 21, 2 free) Luna: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+17 tunnel (22-25, row 21, 2 free) Sol: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+18 tunnel (18-20, row 19, 2 free) Sol: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+18 tunnel (18-20, row 19, 2 free) Luna: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+19 tunnel (13-20, row 20, 2 free) Sol: bonks 9, max rise 14px, right 54f / walk 59f, left 55f
+19 tunnel (13-20, row 20, 2 free) Luna: bonks 9, max rise 14px, right 54f / walk 59f, left 55f
+20 tunnel (24-30, row 4, 2 free) Luna: bonks 8, max rise 14px, right 47f / walk 52f, left 48f
+20 tunnel (32-38, row 4, 2 free) Sol: bonks 9, max rise 14px, right 47f / walk 52f, left 48f
+20 tunnel (32-38, row 4, 2 free) Luna: bonks 9, max rise 14px, right 47f / walk 52f, left 48f
+20 tunnel (12-14, row 6, 2 free) Luna: bonks 2, max rise 24px, right 17f / walk 22f, left 18f
+20 tunnel (8-10, row 7, 2 free) Sol: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+20 tunnel (8-10, row 7, 2 free) Luna: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+20 tunnel (22-25, row 7, 2 free) Sol: bonks 5, max rise 14px, right 25f / walk 30f, left 27f
+20 tunnel (22-25, row 7, 2 free) Luna: bonks 5, max rise 14px, right 25f / walk 30f, left 27f
+20 tunnel (7-13, row 10, 2 free) Sol: bonks 8, max rise 14px, right 47f / walk 52f, left 48f
+20 tunnel (29-31, row 10, 2 free) Sol: bonks 2, max rise 24px, right 17f / walk 22f, left 18f
+20 tunnel (27-32, row 15, 2 free) Luna: bonks 7, max rise 14px, right 39f / walk 44f, left 41f
+20 tunnel (8-12, row 18, 2 free) Sol: bonks 6, max rise 14px, right 32f / walk 37f, left 33f
+20 tunnel (25-28, row 23, 2 free) Luna: bonks 5, max rise 24px, right 25f / walk 30f, left 31f
+20 tunnel (9-15, row 24, 2 free) Luna: bonks 9, max rise 14px, right 47f / walk 52f, left 54f
+20 tunnel (30-32, row 25, 2 free) Sol: bonks 4, max rise 86px, right 17f / walk 22f, left 37f
+20 tunnel (30-32, row 25, 2 free) Luna: bonks 4, max rise 86px, right 17f / walk 22f, left 37f
+20 tunnel (9-15, row 28, 2 free) Sol: bonks 9, max rise 14px, right 47f / walk 52f, left 54f
+20 tunnel (21-23, row 28, 2 free) Sol: bonks 4, max rise 14px, right 17f / walk 22f, left 18f
+20 tunnel (21-23, row 28, 2 free) Luna: bonks 4, max rise 14px, right 17f / walk 22f, left 18f
+20 tunnel (25-32, row 28, 2 free) Sol: bonks 9, max rise 14px, right 54f / walk 59f, left 56f
+21 tunnel (5-9, row 7, 2 free) Sol: bonks 7, max rise 14px, right 32f / walk 37f, left 39f
+21 tunnel (5-9, row 7, 2 free) Luna: bonks 7, max rise 14px, right 32f / walk 37f, left 39f
+21 tunnel (30-34, row 7, 2 free) Sol: bonks 7, max rise 14px, right 32f / walk 37f, left 39f
+21 tunnel (30-34, row 7, 2 free) Luna: bonks 7, max rise 14px, right 32f / walk 37f, left 39f
+22 tunnel (21-31, row 7, 2 free) Sol: bonks 13, max rise 14px, right 76f / walk 81f, left 78f
+22 tunnel (21-31, row 7, 2 free) Luna: bonks 13, max rise 14px, right 76f / walk 81f, left 78f
+22 tunnel (15-17, row 13, 2 free) Luna: bonks 4, max rise 110px, right 17f / walk 22f, left 46f
+23 tunnel (5-7, row 14, 2 free) Sol: bonks 2, max rise 14px, right 17f / walk 22f, left 0f
+23 tunnel (5-7, row 14, 2 free) Luna: bonks 2, max rise 14px, right 17f / walk 22f, left 0f
+23 tunnel (24-26, row 14, 2 free) Sol: bonks 2, max rise 14px, right 17f / walk 22f, left 0f
+23 tunnel (24-26, row 14, 2 free) Luna: bonks 2, max rise 14px, right 17f / walk 22f, left 0f
+23 tunnel (32-34, row 14, 2 free) Sol: bonks 4, max rise 14px, right 26f / walk 22f, left 18f
+23 tunnel (32-34, row 14, 2 free) Luna: bonks 4, max rise 14px, right 26f / walk 22f, left 18f
+26 tunnel (21-26, row 20, 2 free) Sol: bonks 7, max rise 24px, right 39f / walk 44f, left 45f
+26 tunnel (21-26, row 23, 2 free) Luna: bonks 7, max rise 14px, right 39f / walk 44f, left 43f
+27 tunnel (6-9, row 4, 2 free) Sol: bonks 5, max rise 14px, right 25f / walk 30f, left 26f
+27 tunnel (6-9, row 4, 2 free) Luna: bonks 5, max rise 14px, right 25f / walk 30f, left 26f
+27 tunnel (11-16, row 4, 2 free) Sol: bonks 7, max rise 14px, right 39f / walk 44f, left 41f
+27 tunnel (11-16, row 4, 2 free) Luna: bonks 7, max rise 14px, right 39f / walk 44f, left 41f
+27 tunnel (20-26, row 4, 2 free) Sol: bonks 9, max rise 14px, right 47f / walk 52f, left 54f
+27 tunnel (20-26, row 4, 2 free) Luna: bonks 9, max rise 14px, right 47f / walk 52f, left 54f
+27 tunnel (31-38, row 4, 2 free) Sol: bonks 9, max rise 14px, right 54f / walk 59f, left 55f
+27 tunnel (31-38, row 4, 2 free) Luna: bonks 9, max rise 14px, right 54f / walk 59f, left 55f
+28 tunnel (31-34, row 4, 2 free) Sol: bonks 5, max rise 14px, right 25f / walk 30f, left 27f
+28 tunnel (31-34, row 4, 2 free) Luna: bonks 5, max rise 14px, right 25f / walk 30f, left 27f
+28 tunnel (4-6, row 9, 2 free) Sol: bonks 12, max rise 14px, right 149f / walk 22f, left 10f
+28 tunnel (4-6, row 9, 2 free) Luna: bonks 12, max rise 14px, right 149f / walk 22f, left 10f
+28 tunnel (10-12, row 9, 2 free) Sol: bonks 4, max rise 14px, right 17f / walk 22f, left 18f
+28 tunnel (10-12, row 9, 2 free) Luna: bonks 4, max rise 14px, right 17f / walk 22f, left 18f
+29 tunnel (14-16, row 5, 2 free) Luna: bonks 2, max rise 24px, right 17f / walk 22f, left 19f
+29 tunnel (22-28, row 21, 2 free) Luna: bonks 7, max rise 24px, right 47f / walk 52f, left 48f
+30 tunnel (30-33, row 6, 2 free) Luna: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+30 tunnel (7-11, row 7, 2 free) Sol: bonks 6, max rise 14px, right 32f / walk 37f, left 39f
+30 tunnel (18-20, row 10, 2 free) Sol: bonks 5, max rise 28px, right 17f / walk 22f, left 26f
+30 tunnel (18-20, row 10, 2 free) Luna: bonks 5, max rise 28px, right 17f / walk 22f, left 26f
+30 tunnel (14-16, row 21, 2 free) Sol: bonks 3, max rise 24px, right 17f / walk 22f, left 19f
+30 tunnel (25-27, row 21, 2 free) Luna: bonks 3, max rise 24px, right 17f / walk 22f, left 19f
+30 tunnel (7-10, row 27, 2 free) Luna: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+30 tunnel (29-32, row 27, 2 free) Sol: bonks 3, max rise 24px, right 25f / walk 30f, left 27f
+31 tunnel (25-31, row 28, 2 free) Sol: bonks 7, max rise 14px, right 47f / walk 52f, left 54f
+31 tunnel (33-35, row 28, 2 free) Sol: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+31 tunnel (33-35, row 28, 2 free) Luna: bonks 5, max rise 14px, right 17f / walk 22f, left 25f
+32 tunnel (13-15, row 28, 2 free) Sol: bonks 2, max rise 24px, right 17f / walk 22f, left 18f
+32 tunnel (24-26, row 28, 2 free) Luna: bonks 3, max rise 24px, right 17f / walk 22f, left 19f

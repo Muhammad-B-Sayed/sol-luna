@@ -89,11 +89,13 @@ export async function launch({ name = 'main', width = 1280, height = 800 } = {})
       },
       async key(code, type) {
         const key = KEYNAME[code] || code;
-        await cmd('Input.dispatchKeyEvent', { type, code, key, windowsVirtualKeyCode: VK[code] || 0, nativeVirtualKeyCode: VK[code] || 0 }, sessionId);
+        // a real Enter or Space key-down carries text; without it Chromium never activates a focused button
+        const text = type === 'keyDown' ? ({ Enter: '\r', Space: ' ' })[code] : undefined;
+        await cmd('Input.dispatchKeyEvent', { type, code, key, windowsVirtualKeyCode: VK[code] || 0, nativeVirtualKeyCode: VK[code] || 0, ...(text ? { text, unmodifiedText: text } : {}) }, sessionId);
       },
       async tap(code, ms = 60) { await P.key(code, 'keyDown'); await sleep(ms); await P.key(code, 'keyUp'); },
       async click(sel) {
-        const r = await P.eval(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; })()`);
+        const r = await P.eval(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return null; const v = e.getBoundingClientRect(); if (v.bottom > innerHeight || v.top < 0) e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; })()`);
         if (!r) throw new Error('no element ' + sel);
         for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', { type, x: r.x, y: r.y, button: 'left', clickCount: 1 });
       },

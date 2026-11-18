@@ -58,7 +58,7 @@
    "docs/img/playtest/coop/level-01-4-t1487.jpg",
    "docs/img/playtest/coop/level-01-9-results.jpg"
   ],
-  "wall": "4.1"
+  "wall": "5.6"
  },
  "2": {
   "n": 2,
@@ -118,7 +118,7 @@
    "docs/img/playtest/coop/level-02-4-t928.jpg",
    "docs/img/playtest/coop/level-02-9-results.jpg"
   ],
-  "wall": "3.0"
+  "wall": "3.4"
  },
  "3": {
   "n": 3,
@@ -178,7 +178,7 @@
    "docs/img/playtest/coop/level-03-4-t1920.jpg",
    "docs/img/playtest/coop/level-03-9-results.jpg"
   ],
-  "wall": "4.1"
+  "wall": "4.2"
  },
  "4": {
   "n": 4,
@@ -238,7 +238,7 @@
    "docs/img/playtest/coop/level-04-4-t2408.jpg",
    "docs/img/playtest/coop/level-04-9-results.jpg"
   ],
-  "wall": "3.0"
+  "wall": "4.2"
  },
  "5": {
   "n": 5,
@@ -298,7 +298,7 @@
    "docs/img/playtest/coop/level-05-4-t2106.jpg",
    "docs/img/playtest/coop/level-05-9-results.jpg"
   ],
-  "wall": "3.9"
+  "wall": "6.2"
  },
  "6": {
   "n": 6,
@@ -358,7 +358,7 @@
    "docs/img/playtest/coop/level-06-4-t3248.jpg",
    "docs/img/playtest/coop/level-06-9-results.jpg"
   ],
-  "wall": "4.2"
+  "wall": "7.7"
  },
  "7": {
   "n": 7,
@@ -418,7 +418,7 @@
    "docs/img/playtest/coop/level-07-4-t1213.jpg",
    "docs/img/playtest/coop/level-07-9-results.jpg"
   ],
-  "wall": "4.1"
+  "wall": "6.1"
  },
  "8": {
   "n": 8,
@@ -478,7 +478,7 @@
    "docs/img/playtest/coop/level-08-4-t3122.jpg",
    "docs/img/playtest/coop/level-08-9-results.jpg"
   ],
-  "wall": "4.8"
+  "wall": "7.4"
  },
  "9": {
   "n": 9,
@@ -538,7 +538,7 @@
    "docs/img/playtest/coop/level-09-4-t2767.jpg",
    "docs/img/playtest/coop/level-09-9-results.jpg"
   ],
-  "wall": "3.8"
+  "wall": "5.8"
  },
  "10": {
   "n": 10,
@@ -598,7 +598,7 @@
    "docs/img/playtest/coop/level-10-4-t1478.jpg",
    "docs/img/playtest/coop/level-10-9-results.jpg"
   ],
-  "wall": "4.2"
+  "wall": "6.5"
  },
  "11": {
   "n": 11,
@@ -658,7 +658,7 @@
    "docs/img/playtest/coop/level-11-4-t1921.jpg",
    "docs/img/playtest/coop/level-11-9-results.jpg"
   ],
-  "wall": "4.1"
+  "wall": "5.9"
  },
  "12": {
   "n": 12,
@@ -718,7 +718,7 @@
    "docs/img/playtest/coop/level-12-4-t2707.jpg",
    "docs/img/playtest/coop/level-12-9-results.jpg"
   ],
-  "wall": "4.9"
+  "wall": "8.7"
  },
  "13": {
   "n": 13,
@@ -778,7 +778,7 @@
    "docs/img/playtest/coop/level-13-4-t2822.jpg",
    "docs/img/playtest/coop/level-13-9-results.jpg"
   ],
-  "wall": "5.3"
+  "wall": "11.5"
  },
  "14": {
   "n": 14,
@@ -838,7 +838,7 @@
    "docs/img/playtest/coop/level-14-4-t3744.jpg",
    "docs/img/playtest/coop/level-14-9-results.jpg"
   ],
-  "wall": "4.7"
+  "wall": "9.8"
  },
  "15": {
   "n": 15,
@@ -898,7 +898,7 @@
    "docs/img/playtest/coop/level-15-4-t5112.jpg",
    "docs/img/playtest/coop/level-15-9-results.jpg"
   ],
-  "wall": "6.7"
+  "wall": "16.3"
  },
  "16": {
   "n": 16,
@@ -958,7 +958,7 @@
    "docs/img/playtest/coop/level-16-4-t2355.jpg",
    "docs/img/playtest/coop/level-16-9-results.jpg"
   ],
-  "wall": "4.6"
+  "wall": "15.6"
  },
  "17": {
   "n": 17,
@@ -1018,7 +1018,7 @@
    "docs/img/playtest/coop/level-17-4-t3330.jpg",
    "docs/img/playtest/coop/level-17-9-results.jpg"
   ],
-  "wall": "7.5"
+  "wall": "19.9"
  },
  "18": {
   "n": 18,
@@ -1078,7 +1078,7 @@
    "docs/img/playtest/coop/level-18-4-t2617.jpg",
    "docs/img/playtest/coop/level-18-9-results.jpg"
   ],
-  "wall": "4.7"
+  "wall": "14.1"
  },
  "19": {
   "n": 19,
@@ -1138,7 +1138,7 @@
    "docs/img/playtest/coop/level-19-4-t2786.jpg",
    "docs/img/playtest/coop/level-19-9-results.jpg"
   ],
-  "wall": "6.6"
+  "wall": "20.7"
  },
  "20": {
   "n": 20,
@@ -1198,7 +1198,7 @@
    "docs/img/playtest/coop/level-20-4-t2287.jpg",
    "docs/img/playtest/coop/level-20-9-results.jpg"
   ],
-  "wall": "7.5"
+  "wall": "21.2"
  },
  "21": {
   "n": 21,
@@ -1258,7 +1258,7 @@
    "docs/img/playtest/coop/level-21-4-t3420.jpg",
    "docs/img/playtest/coop/level-21-9-results.jpg"
   ],
-  "wall": "7.2"
+  "wall": "18.9"
  },
  "22": {
   "n": 22,
@@ -1318,7 +1318,7 @@
    "docs/img/playtest/coop/level-22-4-t2287.jpg",
    "docs/img/playtest/coop/level-22-9-results.jpg"
   ],
-  "wall": "6.3"
+  "wall": "16.5"
  },
  "23": {
   "n": 23,
@@ -1378,7 +1378,7 @@
    "docs/img/playtest/coop/level-23-4-t1394.jpg",
    "docs/img/playtest/coop/level-23-9-results.jpg"
   ],
-  "wall": "7.2"
+  "wall": "22.0"
  },
  "24": {
   "n": 24,
@@ -1438,7 +1438,7 @@
    "docs/img/playtest/coop/level-24-4-t4517.jpg",
    "docs/img/playtest/coop/level-24-9-results.jpg"
   ],
-  "wall": "7.7"
+  "wall": "19.9"
  },
  "25": {
   "n": 25,
@@ -1498,7 +1498,7 @@
    "docs/img/playtest/coop/level-25-4-t3786.jpg",
    "docs/img/playtest/coop/level-25-9-results.jpg"
   ],
-  "wall": "6.7"
+  "wall": "16.9"
  },
  "26": {
   "n": 26,
@@ -1558,7 +1558,7 @@
    "docs/img/playtest/coop/level-26-4-t2908.jpg",
    "docs/img/playtest/coop/level-26-9-results.jpg"
   ],
-  "wall": "9.0"
+  "wall": "18.6"
  },
  "27": {
   "n": 27,
@@ -1618,7 +1618,7 @@
    "docs/img/playtest/coop/level-27-4-t4417.jpg",
    "docs/img/playtest/coop/level-27-9-results.jpg"
   ],
-  "wall": "6.9"
+  "wall": "13.2"
  },
  "28": {
   "n": 28,
@@ -1678,7 +1678,7 @@
    "docs/img/playtest/coop/level-28-4-t4785.jpg",
    "docs/img/playtest/coop/level-28-9-results.jpg"
   ],
-  "wall": "6.8"
+  "wall": "12.4"
  },
  "29": {
   "n": 29,
@@ -1738,7 +1738,7 @@
    "docs/img/playtest/coop/level-29-4-t5224.jpg",
    "docs/img/playtest/coop/level-29-9-results.jpg"
   ],
-  "wall": "10.2"
+  "wall": "23.5"
  },
  "30": {
   "n": 30,
@@ -1798,7 +1798,7 @@
    "docs/img/playtest/coop/level-30-4-t4326.jpg",
    "docs/img/playtest/coop/level-30-9-results.jpg"
   ],
-  "wall": "10.3"
+  "wall": "30.3"
  },
  "31": {
   "n": 31,
@@ -1858,7 +1858,7 @@
    "docs/img/playtest/coop/level-31-4-t3771.jpg",
    "docs/img/playtest/coop/level-31-9-results.jpg"
   ],
-  "wall": "9.0"
+  "wall": "20.2"
  },
  "32": {
   "n": 32,
@@ -1918,6 +1918,6 @@
    "docs/img/playtest/coop/level-32-4-t4550.jpg",
    "docs/img/playtest/coop/level-32-9-results.jpg"
   ],
-  "wall": "9.2"
+  "wall": "19.8"
  }
 }

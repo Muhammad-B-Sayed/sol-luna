@@ -1,0 +1,785 @@
+{
+ "spawn": {
+  "1": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "2": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "3": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "4": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "5": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "6": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "7": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "8": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "9": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 38,
+    "apexT": 6,
+    "airT": 21,
+    "bonk": {
+     "frame": 6,
+     "rise": 38
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "10": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "11": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "12": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "13": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "14": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "15": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "16": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "17": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "18": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "19": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "20": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 14,
+    "apexT": 2,
+    "airT": 11,
+    "bonk": {
+     "frame": 2,
+     "rise": 14
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "21": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "22": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 14,
+    "apexT": 2,
+    "airT": 11,
+    "bonk": {
+     "frame": 2,
+     "rise": 14
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "23": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "24": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 49,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "25": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "26": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 62,
+    "apexT": 10,
+    "airT": 29,
+    "bonk": {
+     "frame": 10,
+     "rise": 62
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 62,
+    "apexT": 10,
+    "airT": 29,
+    "bonk": {
+     "frame": 10,
+     "rise": 62
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "27": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 86,
+    "apexT": 16,
+    "airT": 39,
+    "bonk": {
+     "frame": 16,
+     "rise": 86
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 86,
+    "apexT": 16,
+    "airT": 39,
+    "bonk": {
+     "frame": 16,
+     "rise": 86
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "28": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "29": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 86,
+    "apexT": 16,
+    "airT": 39,
+    "bonk": {
+     "frame": 16,
+     "rise": 86
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 86,
+    "apexT": 16,
+    "airT": 39,
+    "bonk": {
+     "frame": 16,
+     "rise": 86
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "30": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 86,
+    "apexT": 16,
+    "airT": 39,
+    "bonk": {
+     "frame": 16,
+     "rise": 86
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 86,
+    "apexT": 16,
+    "airT": 39,
+    "bonk": {
+     "frame": 16,
+     "rise": 86
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "31": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 86,
+    "apexT": 16,
+    "airT": 39,
+    "bonk": {
+     "frame": 16,
+     "rise": 86
+    },
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  },
+  "32": {
+   "grounded": [
+    true,
+    true
+   ],
+   "sol": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   },
+   "luna": {
+    "rise": 99,
+    "apexT": 24,
+    "airT": 50,
+    "bonk": null,
+    "moveFrames": 1,
+    "landedDelta": 0
+   }
+  }
+ },
+ "envelope": {
+  "standingJump": {
+   "rise": 99,
+   "apexT": 24,
+   "airT": 50,
+   "bonk": null,
+   "moveFrames": 1,
+   "landedDelta": 0
+  },
+  "runFirstMoveFrame": 1,
+  "runningJump": {
+   "airFrames": 45,
+   "dx": 6.23,
+   "rise": 99,
+   "note": "may be cut short by terrain on level 1"
+  },
+  "holdJump": {
+   "jumpsIn3s": 5,
+   "landings": [
+    39,
+    78,
+    117,
+    156
+   ]
+  }
+ },
+ "latency": {
+  "fps": 59.3,
+  "run": {
+   "n": 8,
+   "min": 1.8,
+   "median": 6.8,
+   "max": 14.2
+  },
+  "jump": {
+   "n": 8,
+   "min": 1.1,
+   "median": 10.6,
+   "max": 15.8
+  }
+ }
+}
