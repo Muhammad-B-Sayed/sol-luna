@@ -1,5 +1,12 @@
 # Level design: audit and co-op rooms
 
+> **Historical report.** This covers the first level pass (early Nov 2026). Every room in it has
+> since been replaced: all 32 levels were rebuilt on Nov 14, 2026, and re-spaced on Nov 17 for a
+> lower gravity. The level numbers, maps, bot times and movement limits below no longer match the
+> game. The current brief, rules and status are in `docs/level-plan.md`, and the current movement
+> table comes from `node tools/calibrate.js`. `tools/check-deps.js` still tests the rooms
+> described here, so its results say nothing about the current levels.
+
 This report covers the level-design brief ("the current levels are much too simple"). The first pass audited the 32 levels, measured the movement limits and replaced levels 14, 19 and 26. The second pass (section 4) rebuilt the other 16 levels that one player could finish alone, because the game is co-op only: no level, tutorials included, may be finishable by one player.
 
 The brief's core rule is that each character should change what the other can do next. Every new room is built and tested against that rule.
@@ -31,7 +38,7 @@ The other 13 levels need the partner at least once. I didn't analyse them furthe
 
 ## 2. Movement limits
 
-`node tools/calibrate.js` measures these numbers with the real simulation in small test rooms. H is the player's height (34 px), and a tile is 24 px.
+`node tools/calibrate.js` measures these numbers with the real simulation in small test rooms. They were measured at gravity 0.42. At today's 0.33 a jump rises 4.1 tiles, a running jump lasts 0.82 s, the tallest climb is 4 tiles and the widest same-height gap is 7. H is the player's height (34 px), and a tile is 24 px.
 
 | Measure | Value |
 | --- | --- |

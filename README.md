@@ -16,10 +16,12 @@ Plates, levers, lifts, ferries, drawbridges and crates join the mix as you go.
 | --- | --- |
 | `shared/sim.js` | Deterministic 60 Hz simulation (physics, collisions, mechanisms). Runs on both server and client. |
 | `shared/levels.js` | The 32 levels as ASCII maps (generated). |
-| `tools/levelgen.py` | Level authoring DSL. Edit levels here, then run `python3 tools/levelgen.py`. |
+| `shared/dodge.js`, `shared/runner.js` | The two versus modes, Dodgeball and Runner. |
+| `tools/acts/act*.py` | The levels, one Python function each, written with the DSL in `tools/lvdsl.py`. |
+| `tools/levelgen.py` | Builds `shared/levels.js` from the act files: `python3 tools/levelgen.py`. |
+| `tools/gate.js` | The level gate: layout, route, depth, bot win, headroom and the solo check. |
+| `tools/coop-bot.js` | Scripted two-player playthroughs, one per level (`tools/acts/act*.bot.js`). |
 | `tools/check-levels.js` | Brute-force reachability checker that uses the real physics. |
-| `tools/coop-bot.js` | Scripted two-player playthroughs for levels that need real cooperation. |
-| `tools/check-deps.js` | Proves each co-op room needs exactly the help its solution describes. |
 | `tools/calibrate.js` | Measures jump height, gap and climb limits with the real physics. |
 | `server/index.js` | Static file server plus WebSocket rooms with an authoritative simulation. |
 | `public/` | Client: renderer, input, audio, menus. |
@@ -58,10 +60,12 @@ takes up to a minute while the instance wakes up.
 ## Level tools
 
 ```bash
-python3 tools/levelgen.py        # regenerate shared/levels.js
-node tools/check-levels.js 5,6   # check specific levels
-./tools/check-all.sh             # check all levels (parallel)
-node tools/coop-bot.js           # run scripted co-op playthroughs
-node tools/check-deps.js         # prove the co-op rooms need both players
+python3 tools/levelgen.py        # regenerate shared/levels.js from tools/acts/
+node tools/gate.js 5             # the full level gate (FAST=1 skips the slow solo check)
+node tools/coop-bot.js 5,6       # run scripted co-op playthroughs
 node tools/check-solo.js         # fail if any level can be finished by one player alone
+node tools/check-dodge.js        # Dodgeball rules
+node tools/check-runner.js       # Runner fairness proof (about 5 minutes)
 ```
+
+`docs/level-plan.md` is the level brief and design rules; `HANDOFF.md` covers everything else.
