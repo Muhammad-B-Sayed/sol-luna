@@ -96,7 +96,7 @@ return to rest and can't be wedged, (4) both characters face equal difficulty.
 | Thorns | Crystal spikes on the floor, deadly to both | ≤ 4 wide, landing islands 5-7 tiles so a running player can land and jump again | Stateless | Stateless | Same for both |
 | Shade pool | Deadly to both | Width ≤ gap limit | Stateless | Stateless | Same for both |
 | Twin pools | A sun pool and a moon pool of the same width | Width ≤ gap limit | Stateless | Stateless | Each wades one and jumps the other |
-| Chain plank | Beam on an axle at its middle, hung from a chain. The middle rocks; past it the beam tips you off; a touch on a tip spins it three times (below) | Gaps of 1 or 2 tiles; the jumps on and off are sized from the edge of the safe middle zone, never from the tip | Checked with the other player parked in the safe zone and abusing it (landing on each tip, hopping in the middle) at 7 delays. The run-up is 2 tiles longer (4 with two planks), so a second arrival can wait for it to settle | Always ends exactly level, within 106 ticks of a tip touch. Only its top face is solid, and only near level, so it is never a wall and can't hold anyone | Same for both |
+| Chain plank | Beam on an axle at its middle, hung from a chain. The middle rocks; past it the beam tips you off; a touch on a tip spins it three times (below) | The gap before it (2 to 4 tiles) puts its middle where a full-speed jump from the ledge's edge comes down; between two planks 1 tile, off 1 or 2. Jumps are sized from the safe zone, never from the tip | Checked with the other player parked in the safe zone and abusing it (landing on each tip, hopping in the middle) at 7 delays. The run-up is 2 tiles longer (4 with two planks), so a second arrival can wait for it to settle | Always ends exactly level, within 106 ticks of a tip touch. Only its top face is solid, and only near level, so it is never a wall and can't hold anyone | Same for both |
 | Ember slabs (new) | Floating stones that crack under a standing player, fall, and re-form | Gaps sized by the margin | The slab is back within about 1.4 s; checked for second arrivals | Fixed timers; re-forms as soon as no one is inside its space | Same for both |
 | Eclipse stones (new) | Alternating sun and moon stones over a pit; you stand only on your colour | Every jump ≤ gap limit | Stateless | Stateless | Mirrored layout: both get the same set of jumps, in reverse order |
 | Star well (new) | Updraft up the face of a cliff too tall to climb | The lift always carries you over the top | Stateless | Stateless | Same for both |
@@ -116,7 +116,8 @@ The rule, in plain words:
   their distance from the middle: gently inside the safe zone (about 30 px each side, 36 on the
   intro plank, marked by the glowing runes and the bronze bands), 12.5 times as hard beyond it. A
   stiff, well damped spring holds it toward level, so in the safe zone it leans at most about
-  5 degrees and holds you.
+  5 degrees and holds you. Up to about 7 px past the marked zone it still holds you, leaning up
+  to 17 degrees.
 - **Past the safe zone it tips you off.** It leans past the stand limit within a few ticks and
   drops you, then swings back and settles (about 0.4 s). It does not catch you again on the way
   back: once it is "loose" it carries no one until it is nearly level and slow.
@@ -133,7 +134,7 @@ Measured in the real sim (`tools/check-runner.js` and a drop test, every plank l
 | Touch | What happens | Turns | Times |
 | --- | --- | --- | --- |
 | Landing on a tip | Spins, slowing, and stops level | 3.0 (2.98 to 3.00 in the checker) | turns of 21, 27 to 28 and 43 ticks (0.35 s, 0.46 s, 0.72 s); at rest 105 to 106 ticks (1.75 s) after the touch |
-| Landing past the safe zone, short of the tip | Tips the player off, swings back, settles | 0.01 | at rest 23 to 34 ticks after the landing |
+| Landing past the safe zone, short of the tip | Tips the player off, swings back, settles | 0.00 to 0.01 | at rest 22 to 29 ticks after the landing |
 | Landing in the middle | Rocks a little and holds the player | 0 | leans 0 to 5 degrees with the player standing |
 
 State per plank (sent 60 times a second): `s`, the sine of its angle with the cosine kept
@@ -157,10 +158,18 @@ The constants are `PLANK` in `shared/runner.js`:
 The time to rest was tuned for the worst case: a touch while the beam is still rocking gives
 2.98 to 3.02 turns and rest within 110 ticks.
 
-The generator: one plank of 6 to 8 tiles (two of 6 tiles at difficulty over 0.55), gaps of 1 or
-2 tiles, sometimes a tile below the ledge. The run-up before it is 2 tiles longer (4 with two
-planks): someone may have just set it spinning, and a second arrival needs room to wait about
-1.7 s. The intro plank (at 120 tiles) is 6 tiles with 1-tile gaps and a wider safe zone.
+The generator: one plank of 6 to 8 tiles (two of 6 tiles, 1 tile apart, at difficulty over
+0.55), sometimes a tile below the ledge. A full-speed jump taken at the ledge's edge comes down
+about 134 to 157 px out (144 to 166 px onto a plank a tile lower), so the gap before the first
+plank is round((150 + 10 * drop - 12 * len) / 24) tiles, which puts its middle there: 2 to 4
+tiles. The natural jump lands in the safe zone; only a jump taken well before the edge reaches
+the near tip, and the whole crossing (10 tiles or more) can't be jumped without the plank. Tried
+on every plank of seeds 1-30 (365 planks): a full-speed jump taken 0 to 36 px before the edge,
+holding right until it lands, lands 38 px left to 15 px right of the middle and stays on, every
+time. The gap off is 1 or 2 tiles. The run-up before it is 2 tiles longer (4 with two planks):
+someone may have just set it spinning, and a second arrival needs room to wait about 1.75 s.
+The intro plank (at 120 tiles) is 6 tiles with a 3-tile gap on, a 1-tile gap off, and a wider
+safe zone (36 px).
 
 The art (`drawPlank` in `public/js/runner-render.js`): the chain ends in a hanger that holds the
 axle; the hub glows with the speed of the turn; after-images and a faint arc trail the tips
