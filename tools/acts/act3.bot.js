@@ -157,7 +157,8 @@ const rideWithCrate = (x0, f, cc, side) => seek(LUNA, `luna and crate on lift ${
   { key: `lfc${x0},${f},${cc},${side}`, h: (S, p) => Math.abs(cx(S.b[0]) - cc) * 13 + Math.abs(cx(p) - (cc + side * 1.2)) * 5 });
 SCRIPTS[27] = () => [
   // 0. split start: yellow gates, each opened from the other side
-  press(SOL, 4, 27), pushTo(LUNA, 0, 32, { y: 26, tol: 0.25 }), press(LUNA, 30, 26),   // she shoves the crate through her gate goto(SOL, 12, 27), board(SOL, 13, 28),
+  press(SOL, 4, 27), pushTo(LUNA, 0, 32, { y: 26, tol: 0.25 }), press(LUNA, 30, 26),   // she shoves the crate through her gate
+  goto(SOL, 12, 27), board(SOL, 13, 28),
   // 1. Luna: crate onto E1, hop over it in the open shaft, purple for Sol's W1
   rideWithCrate(33, 27, 35.5, -1), grab(LUNA, 37, 26), press(LUNA, 38, 26), waitPlat(13, 28),
   goto(SOL, 12, 21),
