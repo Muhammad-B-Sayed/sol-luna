@@ -539,28 +539,34 @@ def leapfrog_spire():
     and carry the crate. Because E1 and E3 share a colour (and E2 and E4), the shaft over the lift
     she rides is open while it is up: that is where she hops over the crate to turn it round.
 
-    0. Split start: Sol stands on the yellow plate, Luna's yellow gate opens; Luna stands on hers
-       (beyond the gate), Sol's opens.
-    1. Luna holds purple: Sol rides W1 to floor 22.
-    2. Luna pushes the crate onto E1, hops over it in the open shaft and pushes it back west.
-       Sol holds orange: E1 carries Luna and the crate to floor 21.
-    3. Luna pushes the crate west onto E2 and holds green: Sol's green gate opens, but W2 rises
-       empty. She lets go, Sol steps on, she holds it again: Sol rides W2 to floor 16.
+    0. Split start: Sol stands on his yellow plate, Luna shoves the crate through her yellow gate
+       and stands on her own plate beyond it, so Sol's gate opens. He steps onto W1.
+    1. Luna pushes the crate onto E1, hops over it (the shaft above is open), climbs 4 up the shaft
+       to a moon gem and holds purple: Sol rides W1 to floor 22. She pushes the crate back west.
+    2. Sol holds orange: E1 carries Luna and the crate to floor 21. She pushes it west onto E2.
+    3. Luna holds green: Sol's green gate opens, but W2 rises empty. She lets go, Sol steps on,
+       she holds it again: Sol rides W2 to floor 16.
     4. Sol holds white: E2 carries Luna and the crate to floor 15. She hops west over the crate
-       (E4 is up, so the shaft above is open) and pushes it east onto E3.
+       (E4 is up too, so that shaft is open) and pushes it east onto E3 against the socket block.
     5. Luna holds purple twice the same way (gate, then W3): Sol rides to floor 10.
     6. Sol walks west through the orange lever and back onto W4: E3 locks up with Luna and the crate.
     7. Luna pushes the crate off E3 down the chute: it lands on the green socket and holds W4 up,
-       so Sol rides to the top. (Without the crate: whoever holds W4's plate is stranded below.)
-    8. Sol holds white at the east end of the top: E4 brings Luna up.
-    9. Luna holds pink at the west end: Sol rides the core lift D1 down; the counterweight D2 rises
-       to meet it. Gems on two ledges in the core (a climb of 4, then 3). Luna lets go: D2 takes
-       him to the foot. He holds pink there: she drops down the core, D2 is up again for her.
-       Both walk to the doors at the foot of the column."""
+       so Sol rides to the top. (Without the crate whoever holds W4's plate is stranded below.)
+    8. Luna holds yellow on floor 9: Sol's floor gate on the top sinks. Sol holds white at the
+       middle of the top: E4 brings Luna up; she fetches the gem at the east end.
+    9. Luna holds pink: Sol rides the core lift D1 down while the counterweight D2 rises to meet
+       it. Core gems: a climb of 4 to a ledge, then 3 (moon). Luna lets go: D2 sinks with Sol, and
+       he steps off into a niche for a gem on the way. He holds pink at the foot: Luna walks off
+       the top into the core, D2 comes up for her, and she steps off into the lower niche.
+       Both walk to the doors at the foot of the column.
+
+    Unrecoverable on purpose: a crate pushed past E1 or E2 into a hole, or anyone who falls down
+    the chute after the crate."""
     # PLAN AND PROGRESS (successor: read this first)
-    # - Map below is v2 (Nov 17): two lift stairs, core descent with counterweight, split start.
-    # - Bot script: SCRIPTS[27] in act3.bot.js. Gate: FAST=1 node tools/gate.js 27.
-    # - Progress notes: see the last WIP commit message on branch respace-27.
+    # - v2 map (Nov 17 2026). FAST gate passes: bot 79 s (floor 76), 22 uses, 11/11 gems, ROOF 0.
+    # - The map strings below were painted by a scratch script; edit them directly now.
+    # - Bot script: SCRIPTS[27] in act3.bot.js. Low rooms (5 free rows) are walked, never hopped.
+    # - Left to do: full gate (solo check), then report.
     L = Lv('Leapfrog Spire', 90, 'Each lift is worked from the other side. Same colour, same moment: '
            'when your partner presses, everything of that colour moves. The crate must reach the chute.')
     art(L, [
