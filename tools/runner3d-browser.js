@@ -13,7 +13,8 @@
 // local sim inside the page and takes the online shots during the countdown.
 // Env: OUT (screenshots, default docs/img/runner3d), ONLY=local|online|webgl, RENDER=debug|webgl|both
 // (default both), GL_FLAGS (Chromium GL flags, default --enable-gpu), MAX_VIEW_BACK (units the drawn
-// local player may move backwards, default 0.05), MAX_REMOTE_STEP (units the drawn remote player may move in one frame, default 0.5).
+// local player may move backwards, default 0.05), MAX_REMOTE_STEP (units the drawn remote player may move in one frame, default 1: running and
+// jumping move it up to about 0.4 a tick, and a correction eases out at 0.3 more).
 import { spawn, execSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -30,7 +31,7 @@ const RENDER = process.env.RENDER || 'both';
 const QS = RENDER === 'webgl' ? '' : '?r3ddebug=1';
 const FP = RENDER === 'both' ? 'debug-' : '';   // screenshot prefix of the play checks when the WebGL pass also runs
 const MAX_VIEW_BACK = +(process.env.MAX_VIEW_BACK || 0.05);
-const MAX_REMOTE_STEP = +(process.env.MAX_REMOTE_STEP || 0.5);
+const MAX_REMOTE_STEP = +(process.env.MAX_REMOTE_STEP || 1);
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -211,8 +212,6 @@ try {
     await A.shot(FP + 'local-over');
     await A.waitFor(`document.body.dataset.screen === 'r3Results'`, 5000);
     const res = await A.eval(`[...document.querySelectorAll('#r3Title, #r3Sol, #r3Luna')].map(e => e.textContent.trim()).join(' | ')`);
-    const tips = await A.eval('Object.keys(window.__runner3d.tipSeen[0])');
-    check('local: a first-time tip came up for the first obstacle kind', tips.length > 0, tips.join(', '));
     check('local: results card shows the winner, times and distances', /Sol wins/.test(res) && /\d+ m/.test(res) && /dusk/.test(res), res);
     await A.shot(FP + 'results');
     const seedBefore = s5.seed;
@@ -362,6 +361,8 @@ try {
       await A.shot('local-split');
       const sp = await A.eval(ST);
       check('webgl: local split screen plays in real time', sp.p.every(p => p.z > 10), JSON.stringify(sp.p.map(p => p.z)));
+      const tips = await A.eval(`[...document.querySelectorAll('.r3-tip')].map(e => getComputedStyle(e).opacity > 0.5 ? e.textContent : '')`);
+      check('webgl: each player sees a tip as the first obstacle comes up', tips.every(Boolean), JSON.stringify(tips));
       await A.eval(`(() => { window.__runner3d.prev = window.__runner3d.capture(window.__runner3d.S); })()`);
     } else {
       // Sol runs and hops, Luna runs a little slower

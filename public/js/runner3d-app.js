@@ -18,7 +18,11 @@ const $ = (s) => document.querySelector(s);
 const NAME = ['Sol', 'Luna'];
 const RESULT_DELAY = 70;   // ticks of the final moment before the results card
 const TELEPORT = 2;        // units: don't interpolate across a jump this big
-const OFF_MAX = 3;         // units: drop a visual correction bigger than this
+const OFF_MAX = 3;         // units: drop a visual correction of your own player bigger than this
+// The other player's input reaches you a round trip late, so a jump or a stop of theirs can be
+// mispredicted by 3 to 4 units at 80 ms of lag. Their correction eases out at most this fast
+// (units per tick) instead of snapping, and is only dropped beyond OFF_MAX_REMOTE.
+const REMOTE_EASE = 0.3, OFF_MAX_REMOTE = 8;
 const URGENT = 8, CRITICAL = 4;   // units between a player and the dusk
 // read once at load: joining a room rewrites the URL to /CODE and drops the query
 const DEBUG_VIEW = new URLSearchParams(location.search).has('r3ddebug');
@@ -197,15 +201,17 @@ export class Runner3DMode {
     stepRunner3d(this.L, this.S, inp);
     this.listen();
     this.off.forEach((v, i) => {
-      for (const k of ['x', 'y', 'z']) {
-        let d = v[k] * 0.2;
+      const d = { x: v.x * 0.2, y: v.y * 0.2, z: v.z * 0.2 };
+      if (i === this.app.me) {
         // drawn ahead of the corrected state while running forward: pay the difference off
         // slower than the run itself, so a late correction slows you instead of pulling you back
         const vz = this.S.p[i].vz;
-        if (k === 'z' && d > 0 && vz > 0.02) d = Math.min(d, 0.6 * vz);
-        v[k] -= d;
-        if (Math.abs(v[k]) < 0.002) v[k] = 0;
+        if (d.z > 0 && vz > 0.02) d.z = Math.min(d.z, 0.6 * vz);
+      } else {
+        const m = Math.hypot(d.x, d.y, d.z);
+        if (m > REMOTE_EASE) { d.x *= REMOTE_EASE / m; d.y *= REMOTE_EASE / m; d.z *= REMOTE_EASE / m; }
       }
+      for (const k of ['x', 'y', 'z']) { v[k] -= d[k]; if (Math.abs(v[k]) < 0.002) v[k] = 0; }
     });
   }
 
@@ -222,7 +228,7 @@ export class Runner3DMode {
     before.p.forEach((v, i) => {
       const o = this.off[i], a = after.p[i];
       o.x += v.x - a.x; o.y += v.y - a.y; o.z += v.z - a.z;
-      if (Math.hypot(o.x, o.y, o.z) > OFF_MAX) { o.x = 0; o.y = 0; o.z = 0; }
+      if (Math.hypot(o.x, o.y, o.z) > (i === me ? OFF_MAX : OFF_MAX_REMOTE)) { o.x = 0; o.y = 0; o.z = 0; }
       this.prev.p[i].x += a.x - v.x; this.prev.p[i].y += a.y - v.y; this.prev.p[i].z += a.z - v.z;
     });
     const mb = before.p[me], ma = after.p[me], err = Math.hypot(mb.x - ma.x, mb.y - ma.y, mb.z - ma.z);
@@ -268,12 +274,12 @@ export class Runner3DMode {
       if (back > this.corr.viewBack && (this.input.any3d() & 8)) this.corr.viewBack = back;   // drawn backwards while holding forward
     }
     this.lastDrawn = v.p[this.app.me]?.z ?? null;
-    // the other player's drawn motion: the largest step between two frames, and the most it moved
+    // the other player's drawn motion: the largest step between two frames (per tick), and the most it moved
     // backwards in one frame while running forward (a pop or a pull-back would show up here)
     if (this.online && this.S.phase === R3_PLAY) {
       const o = 1 - this.app.me, q = v.p[o], rp = this.S.p[o];
       if (this.lastRemote && rp.alive) {
-        const d = Math.hypot(q.x - this.lastRemote.x, q.y - this.lastRemote.y, q.z - this.lastRemote.z);
+        const d = Math.hypot(q.x - this.lastRemote.x, q.y - this.lastRemote.y, q.z - this.lastRemote.z) / Math.max(1, n);   // per tick
         if (d > this.corr.remoteStep) this.corr.remoteStep = d;
         const back = this.lastRemote.z - q.z;
         if ((this.remoteBits & 8) && rp.vz > 0.05 && back > this.corr.remoteBack) this.corr.remoteBack = back;
