@@ -126,8 +126,9 @@ export class Runner3DRenderer {
     // characters, their lights and blob shadows
     this.chars = [0, 1].map((i) => { const c = new Character(i); scene.add(c.root); return c; });
     this.plights = [0xffa850, 0x80c8ff].map((c) => { const l = new THREE.PointLight(c, 6, 7, 1.6); scene.add(l); return l; });
-    const shMat = new THREE.MeshBasicMaterial({ map: textures().shadow, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
-    this.shadows = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), shMat); m.renderOrder = 2; scene.add(m); return m; });
+    // one material per shadow: each has its own opacity
+    const shMat = () => new THREE.MeshBasicMaterial({ map: textures().shadow, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
+    this.shadows = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), shMat()); m.renderOrder = 2; scene.add(m); return m; });
 
     this.rigs = [new CamRig(0), new CamRig(1)];
     this.vign = this.rigs.map((rg, i) => { const v = makeVignette(1 + i); scene.add(v); return v; });
@@ -341,11 +342,11 @@ export class Runner3DRenderer {
       const g = p.alive || deadT < 0.4 ? this.groundAt(q.x, q.z, q.y + 0.3, i, S, this.tick) : null;
       const sh = this.shadows[i];
       if (g && vis) {
-        const hgt = Math.max(0, q.y - g.y), k = Math.max(0, 1 - hgt / 7);
+        const hgt = Math.max(0, q.y - g.y), k = Math.max(0, 1 - hgt / 9);
         sh.visible = k > 0.02;
         sh.position.set(q.x, g.y + 0.02, -q.z);
-        const s = 0.95 * (0.55 + 0.45 * k); sh.scale.set(s, 1, s);
-        sh.material.opacity = 0.75 * k;
+        const s = 1.0 * (0.6 + 0.4 * k); sh.scale.set(s, 1, s);
+        sh.material.opacity = Math.min(1, 0.95 * Math.sqrt(k));
       } else sh.visible = false;
       // trail motes
       const sp = Math.hypot(p.vx, p.vz);
