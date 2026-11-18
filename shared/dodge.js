@@ -15,9 +15,23 @@
 //     still counts. A live ball that touches the other player scores a point for the thrower.
 //   - A dead ball bounces, rolls and stops. Whoever's side it is on may pick it up by touching
 //     it (even mid-bounce). It always settles within REST_MAX ticks.
-//   - Shot clock: whoever owns the ball (holding it, or it's loose on their side) has
-//     SHOT_CLOCK ticks to throw it. If time runs out the ball goes to the other player.
-//     A throw that stays on your own side does not reset your clock.
+//   - Two clocks stop a player hogging the ball. Each possession (the ball is yours from the
+//     moment it is served to you, handed to you, or comes down on your side, until it is the
+//     other player's) starts with one of them:
+//       * Pickup clock (pickClock, 10 s): the ball is loose on your side and you have not
+//         held it yet this possession. Pick it up in time.
+//       * Shot clock (shotClock, 20 s): starts the moment you hold the ball (a serve and a
+//         handover put it in your hand, so it starts there). From then on it runs until the
+//         ball is the other player's: while you hold it, while it is loose on your side after
+//         your own throw, and while that throw is in the air. A throw that stays on your own
+//         side does not reset it and does not bring back the pickup clock. It only starts
+//         again in full after the other player has held the ball. If the ball rolls or
+//         bounces to their side, they get their pickup clock, and yours keeps running in the
+//         background until they hold it; if it comes back untouched, yours goes on.
+//     If the running clock reaches 0 the ball jumps the veil into the other player's hand. It
+//     cannot run out while a throw is winding up or in the air; it hands over as soon as the
+//     ball is down on your side. So one possession lasts at most pickClock + shotClock plus
+//     one throw's flight.
 //   - After a hit, everyone resets to their spawns and the player who was hit serves.
 //   - First to TO_WIN hits wins the match.
 
@@ -26,17 +40,20 @@ import { buildLevel, createState, stepPlayersOnly, tileAt, IN_ACT, SOL, LUNA, TS
 export const DODGE = {
   toWin: 5,
   r: 10,              // ball radius (px); also its hit radius
-  speed: 24,          // throw speed (px/tick). See tools/check-dodge.js for why.
+  speed: 36,          // throw speed (px/tick), as COURT_SPEC.speed. See tools/check-dodge.js for why.
   liveGrav: 0.015,    // a live ball flies almost straight (drops 10 px over the whole court)
   deadGrav: 0.35,     // a dead ball drops like a ball
   floorBounce: 0.45,  // vertical speed kept on a floor bounce
-  wallBounce: 0.6,
+  wallBounce: 0.3,    // horizontal speed kept off a side wall (low, so a miss stays on the far side)
+  ceilBounce: 0.6,    // vertical speed kept off the ceiling or a platform's underside
   bounceFric: 0.8,    // horizontal speed kept on each floor bounce
   roll: 0.9,          // horizontal speed kept per tick while rolling
   aimDwell: 10,       // ticks the aim stays flat before it starts swinging (so a tap is flat)
   aimPeriod: 90,      // one full swing up, down and back (ticks)
   aimMax: 0.75,       // steepest aim, as a slope (about 37 degrees)
-  shotClock: 360,     // 6 s
+  pickClock: 600,     // 10 s to reach a loose ball on your side (before you first hold it)
+  shotClock: 1200,    // 20 s from the moment you hold it until it is over the veil
+  clockWarn: 300,     // the clocks show (and tick) only in their last 5 s
   ready: 50,          // freeze on throwing at the start of a point
   pointTicks: 100,    // pause after a hit
   liveMax: 75,        // a live ball that somehow never bounces dies after this
@@ -61,35 +78,68 @@ export function windupFor(rttMs, queue = 0) {
 export const NET = WORLD_W / 2;
 export const DP_READY = 0, DP_PLAY = 1, DP_POINT = 2, DP_OVER = 3;
 export const B_HELD = 0, B_LIVE = 1, B_DEAD = 2, B_REST = 3;
+export const CLOCK_PICK = 0, CLOCK_SHOT = 1;   // which clock D.clock is (D.clockKind)
 
 // ---------------------------------------------------------------------------
-// Court: one screen, mirrored halves. Thin platforms 3 tiles apart (the jump is 4.1 tiles),
-// so height matters without boxing anyone in. Five tiers climb to a perch at mid-height; the
-// top of the court is open air for lobs and ceiling banks.
+// Court: one screen, mirrored halves. Built from a spec so tools can rebuild the old court
+// (tools/check-dodge.js compares them):
+//   inset  extra wall columns on each side (0: walls at columns 0 and 39 only)
+//   plats  [row, firstCol, lastCol] on Sol's half; Luna's are mirrored
+//   spawn  Sol's spawn column (Luna's is mirrored)
+//   defl   deflectors, or none: {k, yB, steep} puts a bronze mirror bracket on each back wall.
+//          It is a triangle with its upright side on the wall, ending at y = yB. Its lower face
+//          is the mirror, with a 3-4-5 normal: steep, (0.8, 0.6) toward the court, the point 3k
+//          out at y = yB - 4k and the wall side 8k tall; otherwise (0.6, 0.8), 4k out, 6k tall.
+//          A ball thrown up at it from the other side comes back down onto the platform. Its
+//          upper face slants the other way so nothing can rest on it.
+//   speed  throw speed (px/tick)
 
-const HALF = [ // [row, firstCol, lastCol] on Sol's half (cols 1..19); Luna's is mirrored
-  [25, 7, 10],
-  [22, 2, 5], [22, 13, 16],
-  [19, 8, 11],
-  [16, 2, 4], [16, 15, 17],
-  [13, 8, 11],     // the high perch: throw down from the top of the court
-];
+export const OLD_COURT_SPEC = {
+  inset: 0, spawn: 12, defl: null, speed: 24,
+  plats: [[25, 7, 10], [22, 2, 5], [22, 13, 16], [19, 8, 11], [16, 2, 4], [16, 15, 17], [13, 8, 11]],
+};
+export const COURT_SPEC = {
+  inset: 3, spawn: 7, speed: 36,  // court 32 tiles wide (was 38); spawns behind the platforms
+  plats: [[24, 10, 13]],          // one platform per side, centred on the half (cols 4..19), 4 tiles up
+  defl: { k: 20, yB: 408, steep: true },
+};
 
-function courtMap() {
-  const g = [];
+function courtMap(spec) {
+  const g = [], k = spec.inset;
   for (let y = 0; y < 30; y++) g.push(new Array(40).fill(y === 0 || y >= 28 ? '#' : '.'));
-  for (let y = 0; y < 30; y++) { g[y][0] = '#'; g[y][39] = '#'; }
-  for (const [row, a, b] of HALF) for (let x = a; x <= b; x++) { g[row][x] = '#'; g[row][39 - x] = '#'; }
-  g[27][12] = 'a'; g[27][27] = 'b';
-  g[27][1] = 'A'; g[27][38] = 'B';   // the level format needs doors; the court hides them
+  for (let y = 0; y < 30; y++) for (let x = 0; x <= k; x++) { g[y][x] = '#'; g[y][39 - x] = '#'; }
+  for (const [row, a, b] of spec.plats) for (let x = a; x <= b; x++) { g[row][x] = '#'; g[row][39 - x] = '#'; }
+  g[27][spec.spawn] = 'a'; g[27][39 - spec.spawn] = 'b';
+  g[27][k + 1] = 'A'; g[27][38 - k] = 'B';   // the level format needs doors; the court hides them
   return g.map(r => r.join(''));
 }
 
-function buildCourt() {
-  const L = buildLevel({ name: 'Dodgeball', par: 0, map: courtMap(),
+// A deflector as two faces, each {x, y, nx, ny}: a point on the face and its outward normal
+// (3-4-5, so every number is plain arithmetic). `side` is the half it hangs in.
+function deflectors(spec) {
+  if (!spec.defl) return [];
+  const { k, yB } = spec.defl, out = [];
+  for (const side of [SOL, LUNA]) {
+    const xw = side === LUNA ? (39 - spec.inset) * TS : (spec.inset + 1) * TS;   // the back wall's face
+    const s = side === LUNA ? -1 : 1;                                               // toward the net
+    // shallow: mirror normal (0.6, 0.8), the point 4k out and the wall side 6k tall;
+    // steep: normal (0.8, 0.6), the point 3k out and the wall side 8k tall
+    const [px, py] = spec.defl.steep ? [3, 4] : [4, 3], [nx, ny] = spec.defl.steep ? [0.8, 0.6] : [0.6, 0.8];
+    out.push({ side, xw, s, k, yB, yC: yB - 2 * py * k, ax: xw + s * px * k, ay: yB - py * k,
+      faces: [{ x: xw, y: yB, nx: s * nx, ny, mirror: true }, { x: xw, y: yB - 2 * py * k, nx: s * nx, ny: -ny }] });
+  }
+  return out;
+}
+
+export function buildCourt(spec = COURT_SPEC) {
+  const L = buildLevel({ name: 'Dodgeball', par: 0, map: courtMap(spec),
     hint: 'Sol: hold ↓ to aim, release to throw · Luna: hold S · Don\'t get hit!' }, -1);
   L.dodge = true;
   L.doors = [];       // nothing to exit through
+  L.spec = spec;
+  L.speed = spec.speed;
+  L.defl = deflectors(spec);
+  L.wallL = (spec.inset + 1) * TS; L.wallR = (39 - spec.inset) * TS;   // inner faces of the side walls
   return L;
 }
 
@@ -106,6 +156,20 @@ function rand(D) {
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+// What a server snapshot should show `viewer` online: the other player's aim is withheld
+// while they hold the button (their aim counter, and the action bit of their input, from which
+// the counter could be rebuilt), so a client can't draw or read the angle before the release.
+// The release itself (D.wind, D.windSlope, or a live ball) is not withheld, so the flight is
+// drawn on time. Returns { st, inp }; the inputs are left as they are for the viewer's own side.
+// Not wired into server/index.js yet (see HANDOFF.md, Dodgeball).
+export function dodgeViewFor(S, inp, viewer) {
+  const other = 1 - viewer, D = S.d;
+  if (!D || (D.aim[other] < 0 && !(inp[other] & IN_ACT))) return { st: S, inp };
+  const aim = D.aim.slice(); aim[other] = -1;
+  const inp2 = inp.slice(); inp2[other] &= ~IN_ACT;
+  return { st: { ...S, d: { ...D, aim } }, inp: inp2 };
 }
 
 export const sideOf = (x) => (x < NET ? SOL : LUNA);
@@ -126,14 +190,14 @@ export function handPos(p, who) {
   return { x: p.x + p.w / 2 + towardNet(who) * 13, y: p.y + 12 };
 }
 
-function solidTile(tx, ty) {
-  const t = tileAt(COURT, tx, ty);
+function solidTile(L, tx, ty) {
+  const t = tileAt(L, tx, ty);
   return t === T_SOLID || t >= 4;
 }
-function boxHits(x, y, r) {
+function boxHits(L, x, y, r) {
   const x0 = Math.floor((x - r) / TS), x1 = Math.floor((x + r - 0.001) / TS);
   const y0 = Math.floor((y - r) / TS), y1 = Math.floor((y + r - 0.001) / TS);
-  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (solidTile(tx, ty)) return true;
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (solidTile(L, tx, ty)) return true;
   return false;
 }
 function circleHitsBox(cx, cy, r, x, y, w, h) {
@@ -147,14 +211,16 @@ function circleHitsBox(cx, cy, r, x, y, w, h) {
 // state
 
 // pv: prediction only, the player this ball touched while the screen waits for the server's word
-function freshBall() { return { x: 0, y: 0, vx: 0, vy: 0, st: B_HELD, by: -1, t: 0, bank: 0, pv: -1 }; }
+// lb: the tick (b.t) of the last bank, so a corner (two surfaces in one tick) counts once
+function freshBall() { return { x: 0, y: 0, vx: 0, vy: 0, st: B_HELD, by: -1, t: 0, bank: 0, lb: -1, pv: -1 }; }
 
-export function createDodge(seed = 1) {
-  const S = createState(COURT);
+export function createDodge(seed = 1, L = COURT) {
+  const S = createState(L);
   const D = {
     phase: DP_READY, t: 0, score: [0, 0], rng: seed | 0, winner: -1,
     holder: -1, ball: freshBall(), aim: [-1, -1],
-    clockOwner: -1, clock: DODGE.shotClock,
+    clockOwner: -1, clockKind: CLOCK_SHOT, clock: DODGE.shotClock,
+    lastHolder: -1, saved: 0,   // who held the ball last, and their shot clock when it left their side
     serve: -1, lastHit: null,
     throwN: 0, hitN: 0, pickN: 0, turnN: 0, point: 0,
     lag: [0, 0],     // wind-up (ticks) for throws at each player; online the server sets it between points
@@ -163,14 +229,14 @@ export function createDodge(seed = 1) {
   };
   S.d = D;
   D.serve = rand(D) < 0.5 ? SOL : LUNA;
-  givePoint(S, D.serve);
+  givePoint(L, S, D.serve);
   return S;
 }
 
 // Start a point: players at their spawns, `who` holding the ball, a short freeze on throws.
-function givePoint(S, who) {
+function givePoint(L, S, who) {
   const D = S.d;
-  const fresh = createState(COURT);
+  const fresh = createState(L);
   fresh.p.forEach((p, i) => { p.jumpN = S.p[i].jumpN; });   // keeps jump sounds counting forward
   S.p = fresh.p;
   D.phase = DP_READY; D.t = 0;
@@ -178,12 +244,12 @@ function givePoint(S, who) {
   D.wind = 0;
   D.serve = who;
   hold(S, who);
-  D.clockOwner = who; D.clock = DODGE.shotClock;
+  D.clockOwner = who; D.clockKind = CLOCK_SHOT; D.clock = DODGE.shotClock;   // served in hand
 }
 
 function hold(S, who) {
   const D = S.d, b = D.ball;
-  D.holder = who;
+  D.holder = who; D.lastHolder = who;
   b.st = B_HELD; b.by = who; b.vx = 0; b.vy = 0; b.t = 0; b.pv = -1;
   const h = handPos(S.p[who], who);
   b.x = h.x; b.y = h.y;
@@ -213,7 +279,7 @@ export function stepDodge(L, S, inputs) {
   if (D.phase === DP_READY && D.t >= DODGE.ready) { D.phase = DP_PLAY; D.t = 0; }
 
   // the wind-up ends: the ball leaves the hand with the aim it was released with
-  if (D.wind > 0 && --D.wind === 0) throwBall(S, D.holder, D.windSlope);
+  if (D.wind > 0 && --D.wind === 0) throwBall(L, S, D.holder, D.windSlope);
 
   // aiming and throwing
   for (const who of [SOL, LUNA]) {
@@ -224,16 +290,16 @@ export function stepDodge(L, S, inputs) {
     else if (D.aim[who] >= 0) {
       const slope = aimSlope(D.aim[who]), w = D.lag ? D.lag[1 - who] | 0 : 0;
       D.aim[who] = -1;
-      if (w > 0) { D.wind = w; D.windN = w; D.windSlope = slope; } else throwBall(S, who, slope);
+      if (w > 0) { D.wind = w; D.windN = w; D.windSlope = slope; } else throwBall(L, S, who, slope);
     }
   }
 
-  stepBall(S);
+  stepBall(L, S);
   if (D.phase === DP_PLAY) { pickUp(S); shotClock(S); }
 
   if (D.phase === DP_POINT && D.t >= DODGE.pointTicks) {
     if (D.winner >= 0) { D.phase = DP_OVER; D.t = 0; }
-    else givePoint(S, 1 - D.lastHit.by);
+    else givePoint(L, S, 1 - D.lastHit.by);
   }
   return S;
 }
@@ -244,18 +310,18 @@ function keepToHalves(S) {
   if (b.x < NET + 1) { b.x = NET + 1; if (b.vx < 0) b.vx = 0; }
 }
 
-function throwBall(S, who, slope) {
+function throwBall(L, S, who, slope) {
   const D = S.d, b = D.ball, p = S.p[who];
-  const k = DODGE.speed / Math.sqrt(1 + slope * slope);
+  const k = L.speed / Math.sqrt(1 + slope * slope);
   const h = handPos(p, who);
   b.x = h.x; b.y = h.y;
   b.vx = towardNet(who) * k; b.vy = -slope * k;
-  b.st = B_LIVE; b.by = who; b.t = 0; b.bank = 0; b.pv = -1;
+  b.st = B_LIVE; b.by = who; b.t = 0; b.bank = 0; b.lb = -1; b.pv = -1;
   D.holder = -1;
   D.throwN++;
 }
 
-function stepBall(S) {
+function stepBall(L, S) {
   const D = S.d, b = D.ball, r = DODGE.r;
   if (b.st === B_HELD) {
     const h = handPos(S.p[D.holder], D.holder);
@@ -275,7 +341,7 @@ function stepBall(S) {
     const dx = b.vx / n;
     if (dx) {
       b.x += dx;
-      if (boxHits(b.x, b.y, r)) {
+      if (boxHits(L, b.x, b.y, r)) {
         b.x = dx > 0 ? Math.floor((b.x + r) / TS) * TS - r - 0.01 : (Math.floor((b.x - r) / TS) + 1) * TS + r + 0.01;
         b.vx = -b.vx * DODGE.wallBounce;
         bank(b);
@@ -285,7 +351,7 @@ function stepBall(S) {
     const dy = b.vy / n;
     if (dy) {
       b.y += dy;
-      if (boxHits(b.x, b.y, r)) {
+      if (boxHits(L, b.x, b.y, r)) {
         if (dy > 0) {
           b.y = Math.floor((b.y + r) / TS) * TS - r - 0.01;
           if (b.st === B_LIVE) die(b);
@@ -293,12 +359,13 @@ function stepBall(S) {
           b.vx *= DODGE.bounceFric;
         } else {
           b.y = (Math.floor((b.y - r) / TS) + 1) * TS + r + 0.01;
-          b.vy = -b.vy * DODGE.wallBounce;
+          b.vy = -b.vy * DODGE.ceilBounce;
           bank(b);
         }
         break;   // the rest of this tick's motion was spent in the bounce
       }
     }
+    if (L.defl.length) deflect(L, b);
     if (b.st === B_LIVE && D.phase === DP_PLAY) {
       const vi = 1 - b.by, v = S.p[vi];
       if (circleHitsBox(b.x, b.y, r - 1, v.x, v.y, v.w, v.h)) {
@@ -311,7 +378,7 @@ function stepBall(S) {
     }
   }
   if (b.st === B_DEAD) {
-    const grounded = b.vy === 0 && boxHits(b.x, b.y + 1, r);
+    const grounded = b.vy === 0 && boxHits(L, b.x, b.y + 1, r);
     if (grounded) {
       b.vx *= DODGE.roll;
       if (Math.abs(b.vx) < 0.25 || forced) { b.vx = 0; b.st = B_REST; }
@@ -319,8 +386,35 @@ function stepBall(S) {
   }
 }
 
+// The mirror brackets on the back walls. Inside the bracket (grown by the ball's radius) the
+// ball is pushed out through the nearer face and its velocity reflected off that face's fixed
+// normal: v' = v - e (v.n) n, with e = 2 for a live ball (a mirror) and 1 + wallBounce for a dead
+// one (like a wall). Plain arithmetic, so every engine agrees. A bounce counts as a bank.
+function deflect(L, b) {
+  const r = DODGE.r;
+  for (const q of L.defl) {
+    if (q.s > 0 ? b.x - r > q.ax : b.x + r < q.ax) continue;
+    if (b.y + r < q.yC || b.y - r > q.yB) continue;
+    const [f1, f2] = q.faces;
+    const d1 = (b.x - f1.x) * f1.nx + (b.y - f1.y) * f1.ny, d2 = (b.x - f2.x) * f2.nx + (b.y - f2.y) * f2.ny;
+    if (d1 >= r || d2 >= r) continue;
+    const f = d1 >= d2 ? f1 : f2, d = d1 >= d2 ? d1 : d2;
+    b.x += (r + 0.01 - d) * f.nx; b.y += (r + 0.01 - d) * f.ny;
+    const vn = b.vx * f.nx + b.vy * f.ny;
+    if (vn < 0) {
+      const e = b.st === B_LIVE ? 2 : 1 + DODGE.wallBounce;
+      b.vx -= e * vn * f.nx; b.vy -= e * vn * f.ny;
+      bank(b);
+    }
+  }
+}
+
 function die(b) { b.st = B_DEAD; b.t = 0; b.pv = -1; }
-function bank(b) { if (b.st === B_LIVE && ++b.bank > 1) die(b); }
+function bank(b) {
+  if (b.st !== B_LIVE || b.lb === b.t) return;
+  b.lb = b.t;
+  if (++b.bank > 1) die(b);
+}
 
 function scoreHit(S, victim) {
   const D = S.d, b = D.ball, by = b.by, v = S.p[victim];
@@ -343,17 +437,33 @@ function pickUp(S) {
   if (circleHitsBox(b.x, b.y, DODGE.r + 3, p.x, p.y, p.w, p.h)) { hold(S, who); D.pickN++; }
 }
 
+// The pickup and shot clocks (rules at the top of this file).
 function shotClock(S) {
   const D = S.d;
-  if (D.wind > 0) return;   // a released throw is committed: the clock waits for it
   const own = ownerOf(D);
-  if (own < 0) return;
-  if (own !== D.clockOwner) { D.clockOwner = own; D.clock = DODGE.shotClock; return; }
-  if (--D.clock > 0) return;
+  // the last holder's shot clock keeps running while the ball is on the other side untouched
+  if (own >= 0 && own !== D.lastHolder && D.lastHolder === 1 - own && D.saved > 0) D.saved--;
+  // a throw winding up or in the air: the thrower's shot clock keeps running (a throw to your
+  // own side buys no time) but can't run out until the ball is down
+  if (D.wind > 0 || own < 0) {
+    if (D.clockKind === CLOCK_SHOT && D.ball.by === D.clockOwner && D.clock > 0) D.clock--;
+    return;
+  }
+  if (own !== D.clockOwner) {   // the ball changed sides
+    if (D.clockOwner === D.lastHolder && D.clockKind === CLOCK_SHOT) D.saved = D.clock;
+    D.clockOwner = own;
+    if (D.lastHolder === own) { D.clockKind = CLOCK_SHOT; D.clock = D.saved; return; }   // back untouched: your clock goes on
+    // a new possession: in hand, the shot clock; loose, the pickup clock
+    D.clockKind = D.holder === own ? CLOCK_SHOT : CLOCK_PICK;
+    D.clock = D.clockKind === CLOCK_SHOT ? DODGE.shotClock : DODGE.pickClock;
+    return;
+  }
+  if (D.clockKind === CLOCK_PICK && D.holder === own) { D.clockKind = CLOCK_SHOT; D.clock = DODGE.shotClock; return; }
+  if (D.clock > 0 && --D.clock > 0) return;
   // too slow: the ball jumps the veil to the other player
   const other = 1 - own;
   hold(S, other);
   D.aim[own] = -1;
   D.turnN++;
-  D.clockOwner = other; D.clock = DODGE.shotClock;
+  D.clockOwner = other; D.clockKind = CLOCK_SHOT; D.clock = DODGE.shotClock;
 }

@@ -428,35 +428,93 @@ A competitive mode on one single-screen court, Sol on the left and Luna on the r
   `render.js`) and `public/js/dodge-ui.js` (HUD, sounds). `main.js` treats the level `'dodge'`
   like a level index (`levelOf`, `newState`, `stepAny`). The server's `Room` has a `mode`;
   clients send `{t:'start', mode:'dodge'}`.
+- **Court (Nov 2026 redesign, after play: "too easy to hide on the back platforms").**
+  `COURT_SPEC` in `shared/dodge.js` builds it (`buildCourt(spec)`; `OLD_COURT_SPEC` rebuilds the
+  old one for comparisons). The side walls are 4 tiles thick (inset 3), so the court is 768 px
+  wide instead of 912; the freed wall shows a pillar in an alcove (`dodge-draw.js`
+  `drawPillars`). One platform per side, centred on the half, 4 tiles wide, 4 tiles up (row 24:
+  reachable with a running jump over a 23-tick take-off window, and 72 px of headroom under it).
+  Spawns are behind the platforms (col 7 / 32). A bronze mirror bracket hangs on each back wall
+  (`defl: {k: 20, yB: 408, steep: true}`): a triangle with its upright side on the wall from
+  y 248 to 408 and its point 60 px out at y 328. Its lower face is the mirror, normal
+  (0.8, 0.6) toward the court (4-3-5); a live ball reflects exactly, `v' = v - 2 (v.n) n`, a dead
+  one like a wall. The upper face slants the other way so nothing rests on it. A mirror bounce
+  is the one bank shot; a corner (two surfaces in one tick) counts as one bank. Nobody can
+  touch it (highest head 443 px, the bracket ends at 408). Thrown up at it from the other side,
+  the ball comes down on the platform (`drawMirror`: sun inlay on Sol's wall, moon on Luna's).
 - **Controls.** Hold the action key (Sol `↓`, Luna `S`, pad X/B/RT, touch `●`) to aim, release to
   throw toward the other side. A tap is flat; holding swings the aim arrow up and down.
 - **Rules.** A thrown ball is live until it touches a floor or platform top, or a wall or ceiling
   for the second time (one bank shot counts). A live ball touching the other player scores. A dead
-  ball belongs to whoever's side it is on; touching it picks it up. 6 s shot clock per possession,
-  then the ball goes over; a throw that stays on your side doesn't reset it. The player who was
+  ball belongs to whoever's side it is on; touching it picks it up. Two clocks per
+  possession, shown only in their last 5 s (`DODGE.clockWarn`): a loose ball on your side gives
+  you 10 s to pick it up (`pickClock`, HUD "pick it up!", dashed pale ring), and holding it
+  starts a 20 s shot clock (`shotClock`, HUD "throw!", red ring). A serve or a handover puts the
+  ball in your hand, so the shot clock starts there (after the ready freeze). Once you have held
+  it, the shot clock runs until the ball is the other player's, including while your own throw
+  is in the air or lying on your side; a throw that stays on your side resets nothing and does
+  not bring back the pickup clock. The shot clock only starts again in full once the other
+  player has held the ball: if it rolls to their side, they get their pickup clock and yours
+  keeps running in the background, so rolling it over the veil and back buys nothing (the
+  checker's stall bot found exactly that loop before this rule). Neither clock can run out mid wind-up or mid flight; it hands
+  over as soon as the ball is down. So a possession is at most 10 s + 20 s + one flight, and
+  throwing to yourself can't stall (checked in `check-dodge.js`). Either clock running out puts
+  the ball in the other player's hand. The player who was
   hit serves next. First to 5. The first serve comes from a seeded RNG kept in the state.
-- **Tuning** (`DODGE` in `shared/dodge.js`): ball 24 px/tick. Net to far back wall (457 px) takes
-  0.30 s; half-centre to half-centre 0.32 s. A flat throw needs only 3 ticks of jump to clear,
-  so a jump at 0.2 s reaction dodges only from the back third of the court and a 0.25 s jump only
-  from the back wall. Closer than about 340 px you have to read the throw.
-- **Checks.** `node tools/check-dodge.js` (~5 s): speed, dodge window table, settling bound and
-  reachability, possession, scoring, determinism, the online wind-up. `tools/check-dodge-browser.cjs` drives local
-  and online play in Chrome and writes screenshots (see `docs/img/dodgeball/`).
+- **Tuning** (`DODGE` in `shared/dodge.js`): ball 36 px/tick (was 24). The intent (owner,
+  Nov 2026): dodging is reading the other player, not reacting. A player standing still is hit
+  unless they move within a few ticks of the release; moving on the release tick escapes from
+  anywhere but close range. Escaping means getting your feet above the ball, which takes 4 to 6
+  ticks of jump, so the reaction window is the flight time minus that. Against the hardest throw
+  (Sol anywhere he can stand) the latest escape is 2-5 ticks on the floor behind the platform
+  (was 10-14 at the old back wall) and 1-5 on the platform. Moving on the release tick fails
+  only when the thrower is within 237 px (in practice: Luna within about 100 px of the veil, or
+  on the platform's net end with Sol at the veil), and anywhere under the platform against a
+  throw from the other platform: 72 px of headroom is not enough to jump over a head-high ball,
+  so that is the worst place to stand, not cover. Faster ball means a smaller window at the back
+  but a bigger close-range zone; 36 is where the back corner stays at 5 ticks and long rising
+  shots at the platform stay escapable (above 40 they are not). A jump that is already rising
+  beats more than half of the throws aimed at where the player was; dropping off or jumping
+  onto the platform also beats aim; a throw that leads the player hits in every case. Running
+  along the floor does not beat aim: a flat throw covers the whole floor line and the ball is
+  11 times faster than a runner. Side walls keep 0.3 of the ball's speed (`wallBounce`, was
+  0.6) and the ceiling 0.6 (`ceilBounce`): at 36 px/tick a 0.6 wall sent 95% of missed flat
+  throws back over the veil to the thrower; now 5%.
+- **Checks.** `node tools/check-dodge.js` (~35 s): speed; no safe spot (a table of every spot Luna
+  can stand on and the direct, wall, ceiling and mirror throws that hit it; the mirror reaches
+  the platform, counts as the bank, can't be touched); dodging (the table above for the old and
+  the new court, from `tools/dodge-measure.js`); settling bound and reachability; possession,
+  both clocks and stalling loops; scoring; determinism; the online wind-up; aim withholding. `tools/check-dodge-browser.cjs` drives local
+  and online play in Chrome and writes screenshots (see `docs/img/dodgeball/`); it also checks
+  that the aim arrow shows on a shared screen and is hidden from the other player online
+  (`online-aiming-thrower.jpg` / `online-aiming-watcher.jpg`).
 - **Online: the wind-up (Nov 2026).** Online, a player sees the other's throw about one round
   trip late, so dodging used to be much harder than local (at 100 ms one-way a spawn-to-spawn
   throw was never on screen before it hit). Now a throw waits in the thrower's hand for the
   target's lag before it flies (`windupFor` in `shared/dodge.js`: 1.1 x the server-measured round
   trip plus the target's queued inputs, at most 9 ticks = 150 ms; `D.lag` per target, set by the
   server in the ready freeze). The release reaches the target's screen during the wind-up, so
-  they see the launch on time and the whole 24 px/tick flight: the dodge window equals local up
-  to about 68 ms one-way. During the wind-up the thrower is planted (keys ignored) and the aim is
+  they see the launch on time and the whole flight: the dodge window equals local up to about
+  68 ms one-way (re-measured at 36 px/tick on the new court: identical at 0, 20 and 40 ms; at
+  75 ms the near-net window drops from 5 ticks to 2, and raising `windMax` to 12 would cover it;
+  `docs/dodge-latency.md`). During the wind-up the thrower is planted (keys ignored) and the aim is
   locked, so the launch follows from the state at the release; the shot clock waits.
   - Thrower's screen: the wind-up shows on the release frame (lean back, ball drawn back over the
     shoulder, aim arrow fills, rising hum; `dodge-draw.js` `dodgePose`/`drawCharge`, `audio.js`
     `charge`). HUD: "your throws wind up N ms". A ball reaching the other player waits for the
     server's word (`D.wait`, set in `main.js` `onSnapshot`, prediction only) under an impact
     flare, so a late dodge never shows as a hit that is taken back.
-  - Target's screen: the wind-up isn't drawn; they see the plain aim until the launch.
+  - Target's screen: neither the wind-up nor the aim is drawn; they see the ball when it leaves
+    the hand (`seesAim` in `dodge-draw.js`: online only the holder's own screen draws the
+    arrow; on a shared screen both show). The snapshot still carries the other player's aim
+    counter and their held action bit (the server broadcasts one state to both clients), so a
+    modified client could read the angle. `dodgeViewFor(S, inp, viewer)` in `shared/dodge.js`
+    builds the per-viewer copy with both withheld (checked: nothing leaks while aiming, and the
+    throw launches on the defender's screen on the same tick as on the server). To use it,
+    `Room.tick` in `server/index.js` sends dodge snapshots per client instead of broadcasting:
+    `this.clients.forEach(c => send(c.ws, { t: 's', ack: this.ack, ...dodgeViewFor(this.S, this.cur, c.char) }))`.
+    Not wired in here because `server/index.js` was being rewritten for the runner sync at the
+    time. Cost: two serializations per snapshot instead of one in dodge rooms.
   - Server: protocol pings every 500 ms per socket (median of 8); in dodge rooms it drains a
     standing input queue after a hit and in the ready freeze (`Room.dodgeQueue`).
     `DODGE_WINDUP=off` turns the wind-up off; `DODGE_LOG=1` logs round trips, queue and wind-up.
@@ -485,7 +543,11 @@ PORT=3217 node server/index.js & PORT=3217 OUT=docs/img/runner node tools/runner
 - `sim.js` changes for it are additive: `tileAt` checks `L.tileFn`, and five internals are exported.
 - The checker runs seeds in parallel worker threads (`JOBS`, default CPU count minus one, at most 8)
   and splits each seed's chunk tests into `PARTS` units (default 3). The 50-seed, 1700-tile proof
-  is clean and took 308 s on 6 jobs on a busy machine.
+  is clean (586 s on 6 jobs on a heavily loaded machine, Nov 2026).
+- Scroll speed (Nov 2026): `SPEED` in `shared/runner.js` starts at 1.35 px/tick and reaches 1.67
+  at 100 tiles (about 30 s), then climbs slowly to meet the old curve at 350 tiles (1.95); the
+  rest is unchanged. The old opening (1.0 rising to 1.45 at 120 tiles) felt like waiting. The
+  time table is in `docs/runner.md`.
 
 The 3D runner is section 11.
 

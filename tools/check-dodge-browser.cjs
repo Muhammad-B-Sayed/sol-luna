@@ -21,7 +21,7 @@ async function errorsOf(page, bag) {
 const D = (page) => page.evaluate(() => { const d = window.__app.S && window.__app.S.d; return d && JSON.parse(JSON.stringify({ phase: d.phase, t: d.t, holder: d.holder, score: d.score, ball: d.ball, throwN: d.throwN, hitN: d.hitN, turnN: d.turnN, pickN: d.pickN, winner: d.winner, serve: d.serve, aim: d.aim })); });
 // Play-out budget. It used to be a fixed count of loop passes (600 local, 800 online), about 31 s
 // of play at ~52 ms a pass. A 9-point match takes about 28 s, and each missed ball that stops
-// where the bots can't reach costs a 6 s shot clock, so the local run often stopped at 4-3 and
+// where the bots can't reach cost a 6 s shot clock (now the 10 s pickup clock), so the local run often stopped at 4-3 and
 // then timed out waiting for the winner card. Now the budget is game progress: keep going while
 // something happened (a throw, pickup, turnover or point) in the last 30 s, 4 minutes in all.
 async function playOut(dPage, pass) {
@@ -115,6 +115,9 @@ async function local() {
     await page.evaluate(() => { window.__app.paused = true; });
     await sleep(100);
     await page.screenshot({ path: `${out}/local-${name}-aiming.png` });
+    const drawn = await page.evaluate(() => window.__dodgeAim);
+    log(`local: ${name} aim arrow drawn on the shared screen: ${drawn === who ? 'yes' : 'NO'}`);
+    if (drawn !== who) throw new Error('local: the aiming player\'s arrow is not drawn');
     await page.evaluate(() => { window.__app.paused = false; });
     // release when the swing is back near flat: a full swing is 90 ticks after a 10-tick dwell
     await page.waitForFunction((who) => { const a = window.__app.S.d.aim[who]; return a < 0 || (a > 20 && (a - 10) % 90 >= 1 && (a - 10) % 90 <= 4); }, who, { polling: 'raf', timeout: 4000 });
@@ -208,7 +211,26 @@ async function online() {
       worstBack = Math.max(worstBack, -dx * dir);
       worstJump = Math.max(worstJump, Math.abs(dx));
     }
-    log(`online: client ${nm} drew ${n} in-flight frames; biggest backward step ${worstBack.toFixed(1)} px, biggest forward step ${worstJump.toFixed(1)} px (state moves 24 px/tick)`);
+    log(`online: client ${nm} drew ${n} in-flight frames; biggest backward step ${worstBack.toFixed(1)} px, biggest forward step ${worstJump.toFixed(1)} px (state moves ${await p.evaluate(() => window.__app.L.speed)} px/tick)`);
+  }
+  // the other player's aim is not drawn online: the holder aims for 0.7 s; sample what each
+  // screen draws every frame, and screenshot both screens mid-aim
+  {
+    await waitPlay(A); await waitPlay(B);
+    const who = (await D(A)).holder, thrower = pageOf(who), watcher = pageOf(1 - who);
+    const watch = (p) => p.evaluate(() => { window.__aimLog = []; const f = () => { if (window.__aimLog) { window.__aimLog.push(window.__dodgeAim); requestAnimationFrame(f); } }; requestAnimationFrame(f); });
+    await watch(thrower); await watch(watcher);
+    await thrower.keyboard.down('ArrowDown');
+    await sleep(700);
+    await watcher.screenshot({ path: `${out}/online-aiming-watcher.png` });
+    await thrower.screenshot({ path: `${out}/online-aiming-thrower.png` });
+    const logOf = (p) => p.evaluate(() => { const l = window.__aimLog; window.__aimLog = null; return l; });
+    const tl = await logOf(thrower), wl = await logOf(watcher);
+    await thrower.keyboard.up('ArrowDown');
+    const ownFrames = tl.filter(x => x === who).length, leak = wl.filter(x => x === who).length;
+    log(`online: while ${who ? 'Luna' : 'Sol'} aimed, their own screen drew the arrow in ${ownFrames}/${tl.length} frames, the other screen in ${leak}/${wl.length}`);
+    if (!ownFrames || leak) throw new Error('online: the aim arrow is not hidden from the other player (or not shown to its owner)');
+    await sleep(2500);
   }
   // play out the match: the holder taps
   await playOut(() => D(A), async (d) => {
