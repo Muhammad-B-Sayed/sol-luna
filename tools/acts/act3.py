@@ -439,7 +439,8 @@ def lock_bridge(L, x, y, code):
 def lock_stones(L, x, y, code):
     """A lock over a sixteen-wide shade pit drawn in row y at cols x..x+15: a purple stepping stone
     (x+4..x+5) and a green one (x+10..x+11), each rising out of the row below, with four-wide gaps
-    between them. Both up: three long jumps of 4. One down: a gap of 10, which nobody can jump."""
+    between them. Both up: long jumps of 4 from stone to stone. One down: a gap of 10, which nobody
+    can jump."""
     L.plat(x + 4, y + 1, 2, 1, 0, -1, 0, not code[0])
     L.plat(x + 10, y + 1, 2, 1, 0, -1, 1, not code[1])
 
@@ -466,9 +467,13 @@ def tidelock():
     the latch hall opens.
     Re-spaced Nov 2026 for the higher jump: the west basins are four bands with floors 7 rows apart
     (28, 21, 14, 7), each band climbed on two 3-row steps under a hole in the floor above; the
-    control room stands 6 rows tall on floor 17 between them; the bridge over the top is a 16-wide
-    shade pit crossed by three long jumps of 4 on two stepping stones. The latch hall's lanes, the
-    start hall and the south bridge are low corridors that are only walked.
+    control room stands 6 rows tall on floor 17 between them, so the operator can jump the levers;
+    the bridge over the top is a 16-wide shade pit crossed by two long jumps of 4 on two stepping
+    stones, and a third jump off the green stone drops into the hole down to the NE basin. Luna's
+    gem in the NE corner needs the longest jump in the room: 6 tiles from the green stone, over the
+    pit's last gap and the hole. The latch hall's lanes, the start hall and the south bridge are low
+    corridors that are only walked. The start plate is on the hall's raised east end, off the path
+    from the chute to the lift.
 
     1. Sol stands on the orange plate in the start hall; Luna rides the lift up into the control
        room. She is the operator.
@@ -476,8 +481,8 @@ def tidelock():
        through both levers (W): the S lock behind him shuts, the W lock opens.
     3. Luna holds the yellow tide plate: the tide lift raises Sol into the NW basin. He climbs its
        steps to the top band.
-    4. Luna walks west through purple and jumps back over it (N): the stepping stones rise; Sol
-       jumps the pit stone to stone into the NE basin.
+    4. Luna walks west through purple (N): the stepping stones rise; Sol jumps the pit stone to
+       stone and off the green stone down the hole into the NE basin.
     5. Luna turns purple on and green off (E): Sol passes the east lock and drops to the SE.
     6. Luna turns purple off (S): Sol crosses the south bridge into the latch hall, wades his sun
        lane to the white latch (Luna's door gate opens for good) and drops down the chute into the
@@ -487,15 +492,6 @@ def tidelock():
     8. In the latch hall Luna drops to her moon lane and the pink latch (Sol's door gate opens) and
        takes the chute. Sol lifts her up with the orange plate; he jumps the lift hole into the
        west arm, and both walk to their doors at the ends of the two arms."""
-    # PLAN AND PROGRESS (rebuild for the lower gravity; delete this block when the full gate passes)
-    # - [x] 7-row band layout (previous agent, c160047); gated layout numbers OK (34% stone, 9 floor rows)
-    # - [x] merged low-gravity into respace-26
-    # - [ ] stalactite over the purple stone (x17-18 rows 1-2) bonks the jump: replace it with a
-    #       one-row roof rock at x31-33 row 1 so the top band's empty block stays <= 120
-    # - [ ] rewrite ring() / SCRIPTS[26] in act3.bot.js for the new coordinates: levers purple x21,
-    #       green x24, tide plates x15/x23, orange plates (19,17) and (23,27), latches (22,19) white
-    #       and (22,22) pink, chute x28, tide lift x10-11 rows 21->14, start lift x16-18 rows 28->17
-    # - [ ] FAST gate, ROOF 0, then full gate; then FAST 23,24,25; delete tools/.lay26.mjs
     L = Lv('Tidelock', 115, 'Purple and green make four codes; each code opens one crossing. '
            'Walk right through a lever to turn it on, left to turn it off, and jump over it to leave it.')
     C = canvas()
