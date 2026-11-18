@@ -38,7 +38,7 @@ Three more faults made it worse, all found with the harness in section 5:
 What was not the cause: the server's CPU. A 2D runner tick costs about 0.04 ms and a 3D tick
 about 0.007 ms. Under a 10% CPU quota (`systemd-run --user --scope -p CPUQuota=10%`, like the
 free instance) with 3 to 6 rooms at once, the server kept 60.0 ticks per second, before and
-after, and used 6% of one core for one room. The 250 ms backlog clamp in its loop never fired.
+after. Ten runner rooms at once used 5.9% of one core. The 250 ms backlog clamp in its loop never fired.
 
 Why the old checks missed it: they compared the two clients' final states, and `LAG_MS` was a
 fixed delay with no jitter and no spikes, so the server's queue never ran dry.
@@ -149,17 +149,24 @@ together for about 90 s (`tools/net-bots.js`). "Before" is the commit d52cb57 se
 | 2D | matches (seconds played) | 5 (110 s) | 5 (479 s) | 3 (93 s) | 3 (287 s) |
 | 2D | matches ended by the network | 5 | 0 | 3 | 0 |
 | 2D | false deaths / false "X wins" | 8 / 6 | 0 / 0 | 7 / 7 | 0 / 0 |
-| 2D | other player: largest pop (px per 1/60 s) | 11.7 | 5.5 | 11.7 | 5.0 |
+| 2D | other player: largest pop (px per 1/60 s) | 11.7 | 5.0 | 11.7 | 5.3 |
 | 2D | other player: backward steps | 456 | 0 | 392 | 0 |
-| 2D | other player: frames over 4 px off the server's path | 22% | 4.8% | 21% | 4.4% |
-| 2D | your player: largest correction (backward) | 90 px (42 px) | 2.6 px (0) | 64 px (36 px) | 3.3 px (0) |
+| 2D | other player: frames over 4 px off the server's path | 22% | 5.3% | 21% | 4.3% |
+| 2D | your player: largest correction (backward) | 90 px (42 px) | 3.4 px (0) | 64 px (36 px) | 3.4 px (0) |
+| 2D | your player drawn moving backward | 18 times | 0 | 21 times | 0 |
 | 3D | matches (seconds played) | 5 (194 s) | 5 (475 s) | 3 (147 s) | 3 (285 s) |
 | 3D | matches ended by the network | 5 | 0 | 2 | 0 |
 | 3D | false deaths / false "X wins" | 3 / 3 | 0 / 0 | 8 / 8 | 0 / 0 |
 | 3D | other player: largest pop (units per 1/60 s) | 0.58 | 0.21 | 0.58 | 0.20 |
 | 3D | other player: backward steps | 696 | 0 | 568 | 0 |
-| 3D | other player: frames over 0.15 units off the path | 26% | 5.2% | 28% | 4.3% |
-| 3D | your player: largest correction (backward) | 4.3 u (2.0 u) | 0.07 u (0) | 4.8 u (1.8 u) | 0.07 u (0) |
+| 3D | other player: frames over 0.15 units off the path | 26% | 5.0% | 28% | 6.6% |
+| 3D | your player: largest correction (backward) | 4.3 u (2.0 u) | 0.07 u (0) | 4.8 u (1.8 u) | 0.28 u (0.14 u) |
+| 3D | your player drawn moving backward | 10 times | 0 | 0 | 0 |
+
+The one backward correction after the fix (0.14 units, one tick of running, under the CPU
+limit) was eased as a slow-down; the player was never drawn moving backward. The other player
+is drawn 150 to 155 ms (mean) behind your own present. The server used 5.9% of one core for 10
+runner rooms at once (snapshots at 60 Hz), and 4.5% for 6 rooms under the 10% quota.
 
 Both clients showed the server's winner at the end in every match. "Off the path" after the fix
 is the extension during spikes (the server waited for the other player), eased back without a
@@ -169,12 +176,21 @@ backward step over 0.5 px (0.02 units) per 1/60 s, your own player never drawn b
 what the prediction itself did, nobody killed before the plan's end, and both clients agree
 with the server at the end.
 
-Co-op (`KIND=coop`, levels 1 and 2, recorded bot inputs): see section 6 for how to run it.
+Co-op (`KIND=coop`, levels 1 and 2 with the recorded bot inputs, same network model): before,
+Luna's client showed a death and took it back once in level 2; after, nothing was taken back.
+The bots still die for real in co-op under spikes, because co-op rooms keep the old input queue
+(see section 4: the runner rules would fix it there too).
 
-Real browsers (`tools/playtest/runner-lag.mjs`, two headless Chromium pages, server lag 60 ms
-±20 ms with a spike about every 6 s): nothing shown and taken back, matching results cards, the
-other player's largest pop 0.06 to 4.7 px (2D) and 0.14 to 0.20 units (3D), no backward steps,
-your own player never drawn backward.
+`tools/playtest/online-browser.mjs` (co-op, lockstep clock) fails its level-1 and level-10
+results checks on this machine with the old code too (17 checks pass on this branch, 15 on
+d52cb57): its driver runs well under 60 frames per real second here, so the bot routes fall
+apart against the real-time server.
+
+Real browsers (`tools/playtest/runner-lag.mjs`, two headless Chromium pages at 59 fps, server
+lag 60 ms ±20 ms with a spike about every 6 s, final run): nothing shown and taken back,
+matching results cards, the other player's largest pop 4.3 px (2D) and 0.21 units (3D), no
+backward steps, your own player never drawn backward, no own correction at all. An earlier run
+with the pages at only 11 to 13 fps (a loaded machine) passed too.
 
 ## 6. Running the checks
 
