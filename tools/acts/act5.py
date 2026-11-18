@@ -218,11 +218,15 @@ def twilight_spiral():
        Sol steps on, and she lets go to send him up. He does the same for her with white PIR
        up there and the right lift. (A plug in the floor under each inner lift sinks while the
        lift is down, so the inner bottom corridor has no pit when the lifts are up.)
-    7. Crossing three, inner top: an airlock (pink). Luna holds P3 and Sol runs through east the
-       moment she steps on. She steps off, he takes the plate, and she runs through west.
+    7. Crossing three, inner top: an airlock (pink), three gates in a row. The outer two open
+       while the plate is held; the middle one is open at rest and shuts slowly once it is held.
+       Luna holds P3 and Sol runs through east the moment she steps on: a runner who waits more
+       than a few tenths of a second is shut out, and from either side the first gate is a shut
+       one, so nobody can wait under the slow gate. She steps off, he takes the plate, and she
+       runs through west.
     8. Luna wades into the moon bay at the far west of the inner top and walks back out through
        the yellow lever: Sol's hatch into the east of the sanctum opens and he drops in. He holds
-       green plate PGc inside, and Luna's hatch into the west opens for her. Each is now on the
+       green plate PGc inside, and Luna's hatch into the west lowers her, flush with the floor. Each is now on the
        far side from their own door.
     9. Crossing four, the sanctum: another airlock (pink). Sol holds P4 and Luna runs east; she
        takes the plate and Sol runs west. Each walks to their door.
