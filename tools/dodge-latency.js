@@ -7,6 +7,9 @@
 //   --out f.json  also write every trial as JSON
 //   --maxr 30     sweep reactions up to 30 ticks online (default: local latest + 2)
 //   --reps 3      repeat every trial (network timing jitters)
+//   --jit 15      the server adds up to +-15 ms of jitter per message (LAG_JITTER), in order
+//   --spike 8     and a 150-300 ms stall about every 8 s per socket (LAG_SPIKE)
+//   --base        model the 4be5032 client (no pacing, no replay skip), for the baseline
 //   --asym 10,100 fairness run: no server lag; one client has 10 ms one-way, the other 100 ms
 //                 (the clients delay their own traffic and protocol pongs). Rows for the
 //                 low-ping player defending (T100/D10) and the high-ping one (T10/D100).
@@ -46,6 +49,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
 import * as DG from '../shared/dodge.js';
+import { paceRate, unapplied } from '../public/js/net-pace.js';
 import { SOL, LUNA, IN_ACT, cloneState } from '../shared/sim.js';
 const { COURT, createDodge, stepDodge, DP_PLAY, B_LIVE } = DG;
 // Fix B (dodge-fix-b-rewind) adds lag compensation helpers; with them the modelled clients do
@@ -66,6 +70,8 @@ const PORT0 = +arg('port', 3441);
 const OUT = arg('out', null);
 const ONLY_LOCAL = process.argv.includes('--local');
 const REPS = +arg('reps', 1);
+const JIT = +arg('jit', 0), SPIKE = +arg('spike', 0);
+const BASE = process.argv.includes('--base');
 const TRACE = arg('trace', null);   // 'spot index,r': one online trial with a defender timeline
 const LEFT = 1, RIGHT = 2, JUMP = 4, DT = 1000 / 60;
 const MS = (t) => Math.round(t * DT);
@@ -152,14 +158,14 @@ function summarize(T, Dd, hit) {
 
 function client(port, lag = 0) {
   const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { autoPong: !lag });
-  const c = { ws, lag, me: -1, S: null, seq: 0, pending: [], remoteBits: 0, snap: null, lastSnap: 0, handlers: {} };
+  const c = { ws, lag, me: -1, S: null, seq: 0, pending: [], remoteBits: 0, snap: null, lastSnap: 0, handlers: {}, acc: 0, qm: null };
   const later = (f) => (lag ? setTimeout(f, lag) : f());
   c.send = (m) => { const s = JSON.stringify(m); later(() => { if (ws.readyState === 1) ws.send(s); }); };
   if (lag) ws.on('ping', (d) => setTimeout(() => { if (ws.readyState === 1) ws.pong(d); }, 2 * lag));
   ws.on('message', (data) => later(() => {
     const m = JSON.parse(data);
     if (m.t === 'room') c.me = m.you;
-    if (m.t === 'start') { c.S = m.st; c.seq = 0; c.pending = []; c.remoteBits = 0; }
+    if (m.t === 'start') { c.S = m.st; c.seq = 0; c.pending = []; c.remoteBits = 0; c.acc = 0; c.qm = null; }
     if (m.t === 's' && c.S) onSnapshot(c, m);
     (c.handlers[m.t] || []).forEach(f => f(m));
   }));
@@ -176,8 +182,9 @@ function onSnapshot(c, m) {   // public/js/main.js onSnapshot, state part only
   c.remoteBits = m.inp[1 - c.me] | 0;
   const myAck = m.ack[c.me] | 0;
   c.pending = c.pending.filter(([s]) => s > myAck);
+  if (!BASE && m.qm) c.qm = m.qm[c.me];   // main.js: pacing (net-pace.js)
   const inp = [0, 0];
-  for (const [, b] of c.pending) { inp[c.me] = b; inp[1 - c.me] = c.remoteBits; stepDodge(COURT, ns, inp); }
+  for (const [, b] of (BASE ? c.pending : unapplied(c.pending, m, c.me))) { inp[c.me] = b; inp[1 - c.me] = c.remoteBits; stepDodge(COURT, ns, inp); }
   c.S = ns;
   c.lastSnap = m.st.tick;
   if (TRACE && c.bot && c.bot.role === 'D' && m.st.d.throwN > 0 && (c.tr = (c.tr || 0) + 1) < 40)
@@ -206,14 +213,22 @@ function tickClient(c) {      // public/js/main.js tickOnline
   stepDodge(COURT, c.S, inp);
 }
 
-// one global 60 Hz clock for every client (like requestAnimationFrame on a 60 Hz screen)
+// one global 60 Hz clock (like requestAnimationFrame on a 60 Hz screen); each client runs its
+// own ticks from it at the pace main.js sets from the server's queue report
 const live = new Set();
 let last = performance.now(), acc = 0;
 const clock = setInterval(() => {
   const now = performance.now();
   acc += now - last; last = now;
   if (acc > 250) acc = DT;
-  while (acc >= DT) { acc -= DT; for (const c of live) if (c.S && c.bot) tickClient(c); }
+  while (acc >= DT) {
+    acc -= DT;
+    for (const c of live) {
+      if (!c.S || !c.bot) continue;
+      c.acc += DT * paceRate(c.qm);
+      while (c.acc >= DT) { c.acc -= DT; tickClient(c); }
+    }
+  }
 }, 1);
 clock.unref();
 
@@ -255,7 +270,7 @@ async function onlineTrial(port, spot, react, lags = [0, 0], want = -1) {
 // ---------------------------------------------------------------------------
 
 async function runServer(port, lag) {
-  const p = spawn(process.execPath, [path.join(ROOT, 'server/index.js')], { env: { ...process.env, PORT: String(port), LAG_MS: String(lag) }, stdio: ['ignore', 'pipe', 'inherit'] });
+  const p = spawn(process.execPath, [path.join(process.env.SERVER_ROOT || ROOT, 'server/index.js')], { cwd: process.env.SERVER_ROOT || ROOT, env: { ...process.env, PORT: String(port), LAG_MS: String(lag), LAG_JITTER: String(JIT), LAG_SPIKE: String(SPIKE) }, stdio: ['ignore', 'pipe', 'inherit'] });
   await new Promise((res, rej) => {
     p.stdout.on('data', (b) => { if (String(b).includes('listening')) res(); });
     p.on('exit', (code) => rej(new Error('server exited ' + code)));
@@ -297,22 +312,25 @@ function report({ label, rows }) {
     const wind = med(ok.map(t => t.wind)), thrDelay = med(ok.map(t => t.thrDelay));
     const wus = ok.map(t => t.defWu).filter(x => x != null).sort((a, b) => a - b);
     const defWu = wus.length ? `${wus[wus.length >> 1]}/${wus[wus.length - 1]}` : null;   // median / max
+    // trials whose outcome (hit or dodge) differs from local play with the same reaction
+    const vs = LOCAL_HIT ? ok.filter(t => LOCAL_HIT[spot] && LOCAL_HIT[spot][t.r] !== undefined && LOCAL_HIT[spot][t.r] !== t.hit).length : 0;
     const holes = rs.length ? Array.from({ length: maxR - rs[0] + 1 }, (_, i) => rs[0] + i).filter(r => !rs.includes(r)) : [];
     lines.push({ label, spot, seen, late, dodge: rs.length ? `r ${rs[0]}-${maxR}${holes.length ? ` (not ${holes.join(',')})` : ''}` : 'none', latestMs: rs.length ? MS(maxR) : 0,
-      thrSeen, thrGap: gap, phantom: `${phantom}/${dodges.length}`, thrStop, speed, wind, thrDelay, defWu, failed: trials.length - ok.length });
+      thrSeen, thrGap: gap, phantom: `${phantom}/${dodges.length}`, thrStop, speed, wind, thrDelay, defWu, vsLocal: LOCAL_HIT ? `${vs}/${ok.length}` : '-', failed: trials.length - ok.length });
   }
   return lines;
 }
 
 function printTable(lines) {
-  const cols = [['label', 8], ['spot', 15], ['speed', 6], ['seen', 5], ['late', 5], ['dodge', 16], ['latestMs', 9], ['thrSeen', 8], ['thrGap', 7], ['phantom', 8], ['thrStop', 8], ['wind', 4], ['thrDelay', 7], ['defWu', 6]];
-  const head = { label: 'latency', spot: 'spot', speed: 'speed', seen: 'seen', late: 'late', dodge: 'dodge r', latestMs: 'latest', thrSeen: 'thr seen', thrGap: 'thr gap', phantom: 'phantom', thrStop: 'thr stop', wind: 'wind', thrDelay: 'thr dly', defWu: 'def wu' };
+  const cols = [['label', 8], ['spot', 15], ['speed', 6], ['seen', 5], ['late', 5], ['dodge', 16], ['latestMs', 9], ['thrSeen', 8], ['thrGap', 7], ['phantom', 8], ['thrStop', 8], ['wind', 4], ['thrDelay', 7], ['defWu', 6], ['vsLocal', 8]];
+  const head = { label: 'latency', spot: 'spot', speed: 'speed', seen: 'seen', late: 'late', dodge: 'dodge r', latestMs: 'latest', thrSeen: 'thr seen', thrGap: 'thr gap', phantom: 'phantom', thrStop: 'thr stop', wind: 'wind', thrDelay: 'thr dly', defWu: 'def wu', vsLocal: 'vs local' };
   const fmt = (o) => cols.map(([k, w]) => String(o[k] ?? '-').padEnd(w)).join(' ');
   console.log(fmt(head));
   for (const l of lines) console.log(fmt({ ...l, latestMs: l.latestMs + ' ms' }) + (l.failed ? `  (${l.failed} trials failed)` : ''));
 }
 
 const all = [], raws = [];
+let LOCAL_HIT = null;   // spot -> reaction -> hit, from local play
 if (TRACE) {
   const [si, r] = TRACE.split(',').map(Number);
   const srv = await runServer(PORT0, LATS[0]);
@@ -322,6 +340,7 @@ if (TRACE) {
 // local first: it also sets how far each spot's online sweep needs to go
 const local = await measure('local', async (spot, r) => localTrial(spot, r, SOL), Object.fromEntries(SPOTS.map(s => [s[0], 45])));
 const localLines = report(local);
+LOCAL_HIT = Object.fromEntries(local.rows.map(({ spot, trials }) => [spot, Object.fromEntries(trials.filter(Boolean).map(t => [t.r, t.hit]))]));
 all.push(...localLines);
 const MAXR = arg('maxr', null);   // default: the local latest dodge + 2 (online never beats local)
 const maxR = Object.fromEntries(localLines.map(l => [l.spot, MAXR ? +MAXR : Math.min(45, Math.round(l.latestMs / DT) + 2)]));

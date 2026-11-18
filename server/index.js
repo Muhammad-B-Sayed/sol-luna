@@ -252,11 +252,13 @@ class Room {
   // burst of inputs) keeps that many inputs waiting here for the rest of the match, and the other
   // player sees it that much later. Drain the queue while it costs nothing: after a hit, when
   // inputs are ignored, and in the ready freeze, where an input the same as the keys already
-  // held only makes that hold one tick shorter (nobody can throw yet). The depth that is left
-  // is recorded once per advance() for the wind-up.
+  // held only makes that hold one tick shorter (nobody can throw yet). Only a standing queue is
+  // drained: one that never fell below 2 over the last second (qlog). Draining the cushion that
+  // jitter needs would leave that player's inputs late, and the room waiting for them. The depth
+  // that is left is recorded once per advance() for the wind-up.
   dodgeQueue(ch) {
-    const q = this.q[ch], ph = this.S.d.phase;
-    if (q.length > 1 && (ph === DP_POINT || ph === DP_OVER || (ph === DP_READY && q[0][1] === this.cur[ch]))) { this.ack[ch] = q.shift()[0]; this.nst[ch].drained++; }
+    const q = this.q[ch], ph = this.S.d.phase, h = this.qlog[ch];
+    if (q.length > 1 && h.length >= 30 && Math.min(...h) >= 2 && (ph === DP_POINT || ph === DP_OVER || (ph === DP_READY && q[0][1] === this.cur[ch]))) { this.ack[ch] = q.shift()[0]; this.nst[ch].drained++; }
   }
   // n ticks of wall-clock time have passed. Every room waits up to RUN_WAIT ticks for a player
   // whose inputs are late (a Wi-Fi spike, a stalled tab) instead of guessing their keys, then
