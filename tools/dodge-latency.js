@@ -53,6 +53,10 @@ const { COURT, createDodge, stepDodge, DP_PLAY, B_LIVE } = DG;
 // (ballView), move their own jump back in time (backdateTicks) and leave hits on the other
 // player to the server (d.wait). On other branches these are absent and nothing changes.
 const LAGCOMP = typeof DG.backdateTicks === 'function';
+// Fix C (dodge-fix-c-windup) has windupFor; its clients also leave hits on the other player to
+// the server (d.wait). --nowait models a client without that.
+const WINDUP = typeof DG.windupFor === 'function';
+const NOWAIT = process.argv.includes('--nowait');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i < 0 ? d : process.argv[i + 1]; };
@@ -168,6 +172,7 @@ function onSnapshot(c, m) {   // public/js/main.js onSnapshot, state part only
   c.snap = JSON.parse(JSON.stringify(m.st.d));   // the server's word, before our own replay
   const ns = m.st;
   if (LAGCOMP) { ns.d.wait = 1 - c.me; c.base = cloneState(ns); }
+  else if (WINDUP && !NOWAIT) ns.d.wait = 1 - c.me;   // fix C: main.js onSnapshot, hits on the other player wait for the server
   c.remoteBits = m.inp[1 - c.me] | 0;
   const myAck = m.ack[c.me] | 0;
   c.pending = c.pending.filter(([s]) => s > myAck);

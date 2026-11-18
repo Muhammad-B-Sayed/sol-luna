@@ -144,7 +144,8 @@ function circleHitsBox(cx, cy, r, x, y, w, h) {
 // ---------------------------------------------------------------------------
 // state
 
-function freshBall() { return { x: 0, y: 0, vx: 0, vy: 0, st: B_HELD, by: -1, t: 0, bank: 0 }; }
+// pv: prediction only, the player this ball touched while the screen waits for the server's word
+function freshBall() { return { x: 0, y: 0, vx: 0, vy: 0, st: B_HELD, by: -1, t: 0, bank: 0, pv: -1 }; }
 
 export function createDodge(seed = 1) {
   const S = createState(COURT);
@@ -156,6 +157,7 @@ export function createDodge(seed = 1) {
     throwN: 0, hitN: 0, pickN: 0, turnN: 0, point: 0,
     lag: [0, 0],     // wind-up (ticks) for throws at each player; online the server sets it between points
     wind: 0, windN: 0, windSlope: 0,   // a throw winding up: ticks left, its full length, its aim
+    wait: -1,        // prediction only: a hit on this player waits for the server (online, the other player)
   };
   S.d = D;
   D.serve = rand(D) < 0.5 ? SOL : LUNA;
@@ -180,7 +182,7 @@ function givePoint(S, who) {
 function hold(S, who) {
   const D = S.d, b = D.ball;
   D.holder = who;
-  b.st = B_HELD; b.by = who; b.vx = 0; b.vy = 0; b.t = 0;
+  b.st = B_HELD; b.by = who; b.vx = 0; b.vy = 0; b.t = 0; b.pv = -1;
   const h = handPos(S.p[who], who);
   b.x = h.x; b.y = h.y;
 }
@@ -246,7 +248,7 @@ function throwBall(S, who, slope) {
   const h = handPos(p, who);
   b.x = h.x; b.y = h.y;
   b.vx = towardNet(who) * k; b.vy = -slope * k;
-  b.st = B_LIVE; b.by = who; b.t = 0; b.bank = 0;
+  b.st = B_LIVE; b.by = who; b.t = 0; b.bank = 0; b.pv = -1;
   D.holder = -1;
   D.throwN++;
 }
@@ -259,6 +261,7 @@ function stepBall(S) {
     return;
   }
   if (b.st === B_REST) return;
+  if (b.pv >= 0) return;   // stopped in the other player until the server says hit or dodge
   b.t++;
   if (b.st === B_LIVE && b.t > DODGE.liveMax) die(b);
   const forced = b.st === B_DEAD && b.t > DODGE.restMax;
@@ -296,7 +299,13 @@ function stepBall(S) {
     }
     if (b.st === B_LIVE && D.phase === DP_PLAY) {
       const vi = 1 - b.by, v = S.p[vi];
-      if (circleHitsBox(b.x, b.y, r - 1, v.x, v.y, v.w, v.h)) { scoreHit(S, vi); return; }
+      if (circleHitsBox(b.x, b.y, r - 1, v.x, v.y, v.w, v.h)) {
+        // Online, the thrower sees the other player about a round trip late, so a jump may
+        // already have saved them. The thrower's screen waits for the server instead of
+        // showing a hit it might take back.
+        if (D.wait === vi) { b.pv = vi; return; }
+        scoreHit(S, vi); return;
+      }
     }
   }
   if (b.st === B_DEAD) {
@@ -308,7 +317,7 @@ function stepBall(S) {
   }
 }
 
-function die(b) { b.st = B_DEAD; b.t = 0; }
+function die(b) { b.st = B_DEAD; b.t = 0; b.pv = -1; }
 function bank(b) { if (b.st === B_LIVE && ++b.bank > 1) die(b); }
 
 function scoreHit(S, victim) {
