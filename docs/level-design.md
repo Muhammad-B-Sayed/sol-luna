@@ -4,8 +4,8 @@
 > since been replaced: all 32 levels were rebuilt on Nov 14, 2026, and re-spaced on Nov 17 for a
 > lower gravity. The level numbers, maps, bot times and movement limits below no longer match the
 > game. The current brief, rules and status are in `docs/level-plan.md`, and the current movement
-> table comes from `node tools/calibrate.js`. `tools/check-deps.js` still tests the rooms
-> described here, so its results say nothing about the current levels.
+> table comes from `node tools/calibrate.js`. `tools/check-deps.js`, which tested the rooms
+> described here, was deleted on Nov 17, 2026; it is still in git history.
 
 This report covers the level-design brief ("the current levels are much too simple"). The first pass audited the 32 levels, measured the movement limits and replaced levels 14, 19 and 26. The second pass (section 4) rebuilt the other 16 levels that one player could finish alone, because the game is co-op only: no level, tutorials included, may be finishable by one player.
 
@@ -191,11 +191,8 @@ Luna starts between B and A, and the levers are placed so that any accidental fl
 
 The solo checker confirms every gem in all three rooms can be reached.
 
-Four moments from each bot run:
-
-![Helper's Way Out, solution steps](img/level-14-steps.jpg)
-![Carry the Weight, solution steps](img/level-19-steps.jpg)
-![Operator, solution steps](img/level-26-steps.jpg)
+The pictures of four moments from each bot run were deleted on Nov 17, 2026, because they showed
+rooms that no longer exist.
 
 ## 4. Second pass: no level can be finished alone
 
@@ -265,8 +262,8 @@ Each room's start, rendered by `./tools/capture.sh`:
 | --- | --- |
 | `HELP=none node tools/check-levels.js N` | Can one character finish level N with no help at all? |
 | `HELP=0,2 WHO=sol node tools/check-levels.js N` | The same, with the partner allowed to flip only groups 0 and 2 |
-| `node tools/check-deps.js` | The dependency table above, as a regression test |
+| `node tools/check-deps.js` | The dependency table above, as a regression test (deleted Nov 17, 2026) |
 | `node tools/calibrate.js` | The movement-limits table |
 | `./tools/capture.sh` | Re-renders the images in `docs/img` with headless Chrome |
 | `node tools/check-solo.js [N,...]` | Fails if either character can finish any level alone |
-| `./tools/check-all.sh` | Reachability checker, co-op bot, dependency checks and solo check together |
+| `./tools/check-all.sh` | Then: reachability checker, co-op bot, dependency checks and solo check together. Now: the gate, `check-dodge.js` and `check-runner.js` |

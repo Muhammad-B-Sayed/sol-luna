@@ -1,0 +1,92 @@
+[
+ {
+  "lag": 80,
+  "frames": 900,
+  "host": {
+   "screen": "game",
+   "card": " | Sol | Luna",
+   "rec": {
+    "step": [
+     8.5,
+     12.6
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 900
+   },
+   "drawn": true
+  },
+  "guest": {
+   "screen": "game",
+   "card": " | Sol | Luna",
+   "rec": {
+    "step": [
+     8.5,
+     10.1
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 900
+   },
+   "drawn": true
+  },
+  "sameCard": true
+ },
+ {
+  "lag": 150,
+  "frames": 900,
+  "host": {
+   "screen": "game",
+   "card": " | Sol | Luna",
+   "rec": {
+    "step": [
+     8.4,
+     11.1
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 900
+   },
+   "drawn": true
+  },
+  "guest": {
+   "screen": "game",
+   "card": " | Sol | Luna",
+   "rec": {
+    "step": [
+     8.5,
+     10.9
+    ],
+    "big": [
+     0,
+     0
+    ],
+    "firstBig": [
+     [],
+     []
+    ],
+    "frames": 900
+   },
+   "drawn": true
+  },
+  "sameCard": true
+ }
+]

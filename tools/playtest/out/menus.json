@@ -16,14 +16,24 @@
    "info": "btnLocal > btnDodge > btnRunner > btnHost > joinCode > BUTTON \"Join\" > btnHow > btnMute > BODY \"Sol & Luna\n      Tem\" > btnLocal"
   },
   {
-   "name": "how to play: Esc goes back",
-   "ok": false,
-   "info": "screen after Esc: how"
+   "name": "how to play: Back button visible without scrolling at 1280x800",
+   "ok": true,
+   "info": "{\"top\":709,\"bottom\":755,\"viewport\":800}"
   },
   {
-   "name": "how to play: Back button visible without scrolling at 1280x800",
-   "ok": false,
-   "info": "{\"top\":869,\"bottom\":915,\"viewport\":800}"
+   "name": "how to play: focus starts on the text, Tab reaches Back",
+   "ok": true,
+   "info": "DIV.how \"Sol←→ move · ↑ jump\n\" > BUTTON \"Back\" > BODY \"Sol & Luna\n      Tem\""
+  },
+  {
+   "name": "how to play: at 1280x600 the text scrolls and Back stays on screen",
+   "ok": true,
+   "info": "{\"bottom\":555,\"viewport\":600,\"scrolls\":true}"
+  },
+  {
+   "name": "how to play: Esc goes back, focus on How to play",
+   "ok": true,
+   "info": "screen after Esc: menu, focus btnHow"
   },
   {
    "name": "how to play: Back returns to title",
@@ -36,9 +46,14 @@
    "info": "{\"n\":32,\"locked\":31,\"focus\":\"lvl current\"}"
   },
   {
-   "name": "level select: Esc goes back",
-   "ok": false,
-   "info": "screen after Esc: levels"
+   "name": "level select: locked levels carry a lock mark and say so to screen readers, level 1 has none",
+   "ok": true,
+   "info": "{\"lock\":true,\"label\":\"2. Parting Ways, locked\",\"first\":false}"
+  },
+  {
+   "name": "level select: Esc goes back, focus on Play together",
+   "ok": true,
+   "info": "screen after Esc: menu, focus btnLocal"
   },
   {
    "name": "level select: locked level 5 does not start",
@@ -53,7 +68,7 @@
   {
    "name": "in play: Space/Enter do nothing to menus",
    "ok": true,
-   "info": "[0,41,\"game\",\"BODY\"]"
+   "info": "[0,40,\"game\",\"BODY\"]"
   },
   {
    "name": "Esc pauses, focus on Resume",
@@ -108,7 +123,7 @@
   {
    "name": "?unlock opens all 32",
    "ok": true,
-   "info": "{\"locked\":0,\"url\":\"http://localhost:3453/?unlock\"}"
+   "info": "{\"locked\":0,\"url\":\"http://localhost:3463/?unlock\"}"
   },
   {
    "name": "?unlock is not saved by itself (expected: progress only saves on a finish)",
@@ -118,7 +133,7 @@
   {
    "name": "results card after a real finish, focus on Next level, progress saved and level 2 unlocked",
    "ok": true,
-   "info": "{\"screen\":\"results\",\"focus\":\"resNext\",\"time\":\"0:42.1\",\"rank\":\"A\",\"saved\":{\"unlocked\":1,\"best\":{\"0\":{\"t\":42.15,\"gems\":8,\"rank\":\"A\"}}}}"
+   "info": "{\"screen\":\"results\",\"focus\":\"resNext\",\"time\":\"0:41.4\",\"rank\":\"A\",\"saved\":{\"unlocked\":1,\"best\":{\"0\":{\"t\":41.4,\"gems\":8,\"rank\":\"A\"}}}}"
   },
   {
    "name": "results: Esc does nothing (no way back by keyboard except Tab/Enter)",
@@ -138,7 +153,7 @@
   {
    "name": "level select shows level 1 done with its rank",
    "ok": true,
-   "info": "lvl done rank-A First Light — best 42.1s"
+   "info": "lvl done rank-A First Light — best 41.4s"
   },
   {
    "name": "death/restart level 1",

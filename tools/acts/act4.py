@@ -43,7 +43,7 @@ def high_noon():
     10. Luna crawls left (L5 stays off) and drops into the hub onto T, which came back down. Sol holds
        P4b (white) at the junction: T carries her up.
     11. Sol walks the west branch to his door, Luna the east branch to hers."""
-    L = Lv('High Noon', 65, 'Every arm holds a machine you have met. Each one opens the next: find the order.')
+    L = Lv('High Noon', 95, 'Every arm holds a machine you have met. Each one opens the next: find the order.')
     solid(L)
     # Floors sit 7 rows apart wherever someone jumps: top corridor 4, attic 8, mid ledge 13,
     # crawlway 15, hub and west floor 20, shore 21, gallery 27.
@@ -157,7 +157,7 @@ def shade_garden():
        leaves west through a sun channel, Luna east through a moon channel.
     7. Top. Luna walks through lever K8: S5 rises for good. Sol hops S5 and holds P9: L5 rises.
        Luna hops L5 to her door; Sol walks back to his."""
-    L = Lv('Shade Garden', 72, 'Your partner raises your stepping stones. The tunnels are too low to jump: wait for the stone.')
+    L = Lv('Shade Garden', 95, 'Your partner raises your stepping stones. The tunnels are too low to jump: wait for the stone.')
     solid(L)
     for f in (7, 14, 21, 28):
         L.clear(1, f - 6, 38, f - 1)
@@ -252,7 +252,7 @@ def the_vault():
     12. Luna runs the bottom band home and holds P_W: W carries Sol down.
     13. Luna climbs the start room into the vault through GX to her door. Sol runs the bottom band,
         climbs his tower and goes in through GY to his."""
-    L = Lv('The Vault', 95, 'Every corner opens one lock. Use each crate before you send it down to the vault.')
+    L = Lv('The Vault', 125, 'Every corner opens one lock. Use each crate before you send it down to the vault.')
     solid(L)
     # ---- bottom-left: the start (rows 15-26, floor 27), the west lift W in x 1-3
     L.clear(1, 15, 12, 26)

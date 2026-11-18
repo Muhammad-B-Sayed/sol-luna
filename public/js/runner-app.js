@@ -16,6 +16,7 @@ const WHY = {
   thorn: 'ran into thorns', shard: 'hit by a falling shard',
 };
 const RESULT_DELAY = 70;   // ticks of the final moment before the results card
+const REMOTE_CAP = 240, REMOTE_EASE = 6;   // the partner's visual correction (see main.js)
 
 export class RunnerMode {
   // ctx: { R, input, net, sfx, show(id), toast(msg), app, quit() }
@@ -51,6 +52,7 @@ export class RunnerMode {
     this.active = true;
     this.show(null);
     const h = $('#hint');
+    h.removeAttribute('style');   // co-op levels place the hint per room (main.js); the runner keeps the default
     h.textContent = this.online
       ? `Run right and stay ahead of the dusk. Last one standing wins. You are ${NAME[this.app.me]}.`
       : 'Run right and stay ahead of the dusk. Last one standing wins. Sol: arrows · Luna: WASD';
@@ -99,7 +101,14 @@ export class RunnerMode {
     this.prev = this.capture(this.S);
     stepRunner(this.L, this.S, inp);
     this.listen();
-    for (const v of this.off) { v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0; }
+    this.off.forEach((v, i) => {
+      // the partner's late-heard jumps are paid back at most REMOTE_EASE px per tick (see main.js)
+      if (i !== this.app.me) {
+        const m = Math.hypot(v.x, v.y), k = m < 0.05 ? 0 : Math.max(0.8, (m - REMOTE_EASE) / m);
+        v.x *= k; v.y *= k; return;
+      }
+      v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0;
+    });
   }
 
   onSnapshot(m) {
@@ -114,7 +123,7 @@ export class RunnerMode {
     before.p.forEach((v, i) => {
       const o = this.off[i];
       o.x += v.x - after.p[i].x; o.y += v.y - after.p[i].y;
-      if (Math.hypot(o.x, o.y) > 64) { o.x = 0; o.y = 0; }
+      if (Math.hypot(o.x, o.y) > (i === me ? 64 : REMOTE_CAP)) { o.x = 0; o.y = 0; }
       this.prev.p[i].x += after.p[i].x - v.x; this.prev.p[i].y += after.p[i].y - v.y;
     });
     this.prev.cam += after.cam - before.cam;
@@ -145,7 +154,8 @@ export class RunnerMode {
     }
     if (n === 8) this.acc = 0;
     const alpha = this.paused && !this.online ? 1 : Math.min(1, this.acc / DT);
-    this.RR.draw(this.L, this.S, this.view(alpha), now / 1000);
+    const v = this.drawn = this.view(alpha);   // what was drawn, for the browser checks
+    this.RR.draw(this.L, this.S, v, now / 1000);
     this.hud(now / 1000);
   }
 
@@ -255,7 +265,10 @@ export class RunnerMode {
     $('#rrSub').textContent = S.win === DRAW ? 'Both fell on the very same moment.' : `${NAME[S.win]} outlasted ${NAME[1 - S.win]}.`;
     for (const i of [SOL, LUNA]) {
       const k = i === SOL ? 'Sol' : 'Luna';
-      $(`#rr${k}Time`).textContent = fmtTime(survival(S, i));
+      // a winner still running is timed to the moment the match ended, not to when this
+      // client shows the card (which differs by a few predicted ticks between host and guest)
+      const secs = S.p[i].alive ? Math.max(0, S.tick - S.phaseT - COUNT_TICKS) / 60 : survival(S, i);
+      $(`#rr${k}Time`).textContent = fmtTime(secs);
       $(`#rr${k}Dist`).textContent = `${Math.floor(distance(L, S, i))} m`;
       $(`#rr${k}Why`).textContent = S.p[i].alive ? 'still running' : WHY[S.why[i]] || 'lost';
       $(`#rr${k}`).classList.toggle('won', S.win === i);

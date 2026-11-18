@@ -1,8 +1,9 @@
-// For every level: does the start hint (shown for the first 6 s, bottom centre) cover a player,
+// For every level: does the start hint (shown for the first 6 s) cover a player,
 // a door, a gem, a plate or a lever at the start? Measured at 1280x800 and 1920x1080.
 //   PORT=3455 node tools/playtest/hint-overlap.mjs   -> tools/playtest/out/hint-overlap.json
+//   SHOTS=dir also saves a screenshot of every level's start with the hint.
 import { writeFileSync } from 'node:fs';
-import { launch, startServer } from './cdp.mjs';
+import { launch, startServer, sleep } from './cdp.mjs';
 
 const PORT = +(process.env.PORT || 3455);
 const server = await startServer(PORT);
@@ -15,6 +16,8 @@ for (const [w, h] of [[1280, 800], [1920, 1080]]) {
     await P.eval(`(() => { if (window.__app.L) document.querySelector('#pQuit').click(); })()`); await P.frames(2);
     await P.click('#btnLocal'); await P.frames(2);
     await P.click(`#levelGrid .lvl:nth-child(${n})`); await P.frames(2);
+    await sleep(500);   // the hint slides 10 px into place over 0.4 s (a CSS transition, real time)
+    if (process.env.SHOTS) await P.shot(`${process.env.SHOTS}/hint-${w}-level-${String(n).padStart(2, '0')}.jpg`);
     const r = await P.eval(`(() => {
       const A = window.__app, L = A.L, S = A.S;
       const hint = document.querySelector('#hint').getBoundingClientRect();
@@ -38,5 +41,9 @@ for (const [w, h] of [[1280, 800], [1920, 1080]]) {
 }
 const big = out['1920x1080'];
 console.log('1920x1080 levels with a player under the hint:', Object.entries(big).filter(([, r]) => r.players.length).map(([n, r]) => n + ' ' + r.players.map(p => p.join(' ')).join('/')).join(', '));
+for (const [size, rs] of Object.entries(out)) {
+  const bad = Object.entries(rs).filter(([, r]) => r.players.length || r.doors.length || r.gems || r.plates || r.levers || r.crates);
+  console.log(`${size}: ${bad.length} of ${Object.keys(rs).length} levels have the hint over a player, door, gem, plate, lever or crate${bad.length ? ': ' + bad.map(([n]) => n).join(', ') : ''}`);
+}
 writeFileSync('tools/playtest/out/hint-overlap.json', JSON.stringify(out, null, 1));
 B.close(); server.stop(); process.exit(0);

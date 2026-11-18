@@ -46,7 +46,13 @@ button.ghost { background: transparent; }
 
 .how { text-align: left; font-size: 15px; line-height: 1.6; margin-bottom: 18px; }
 .how > div { margin: 4px 0; }
-.how b { display: inline-block; width: 52px; font-family: Cinzel, Georgia, serif; }
+.how > div > b { display: inline-block; width: 52px; font-family: Cinzel, Georgia, serif; }
+.how li b { font-family: Cinzel, Georgia, serif; color: var(--ink); }
+/* How to play: the text scrolls inside the card and Back stays in view at any height */
+#how .card { width: min(560px, 100%); display: flex; flex-direction: column; overflow: hidden; }
+#how .how { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-bottom: 14px; padding-right: 6px; border-radius: 8px; scrollbar-width: thin; scrollbar-color: rgba(214,196,255,0.35) transparent; }
+#how .how:focus-visible { outline: 1px solid var(--edge); outline-offset: 4px; }
+#how h2, #how [data-back] { flex: none; }
 .solc { color: var(--sun); } .lunac { color: var(--moon); }
 .how ul { padding-left: 18px; color: var(--muted); }
 kbd { display: inline-block; min-width: 24px; padding: 1px 6px; margin: 0 2px; border-radius: 6px; border: 1px solid var(--edge); background: rgba(255,255,255,0.08); font: 700 13px Nunito, sans-serif; text-align: center; color: var(--ink); }
@@ -62,6 +68,9 @@ kbd { display: inline-block; min-width: 24px; padding: 1px 6px; margin: 0 2px; b
 .lvl.current { box-shadow: 0 0 0 2px var(--accent); }
 .rank-A .rk, .rank.rank-A { color: #ffe08a; } .rank-B .rk, .rank.rank-B { color: #c7d6ff; } .rank-C .rk, .rank.rank-C { color: #d9a98c; }
 .lvl.locked .n::after { content: ''; }
+/* a small padlock on locked levels, so locked doesn't rely on dimming alone */
+.lvl .lock { position: absolute; top: 9px; right: 9px; width: 12px; height: 9px; border-radius: 2px; background: var(--muted); }
+.lvl .lock::before { content: ''; position: absolute; left: 2px; top: -6px; width: 8px; height: 8px; box-sizing: border-box; border: 2px solid var(--muted); border-bottom: 0; border-radius: 4px 4px 0 0; }
 
 .code { font: 800 46px Nunito, system-ui, sans-serif; letter-spacing: 0.25em; padding: 6px 0 6px 0.25em; margin: 0 0 6px; background: rgba(0,0,0,0.3); border-radius: 14px; border: 1px dashed var(--edge); user-select: all; }
 .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 6px; }

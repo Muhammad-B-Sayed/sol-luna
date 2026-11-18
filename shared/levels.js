@@ -2,7 +2,7 @@
 // Legend: see the top of tools/lvdsl.py.
 export const LEVELS = [
   {
-    name: "First Light", par: 45,
+    name: "First Light", par: 65,
     hint: "Arrows move Sol, WASD moves Luna. Your own pool is safe. A plate works while you stand on it. A lever stays put.",
     moves: [[0, -2], [0, -2]],
     map: [
@@ -39,7 +39,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Parting Ways", par: 45,
+    name: "Parting Ways", par: 50,
     hint: "Your plates and levers open the other tower. A lever turns on when you walk right through it, off when you walk left.",
     moves: [[0, -2], [0, -2], [0, -2], [0, -2], [0, -2], [0, -2]],
     inv: [5, 1],
@@ -78,8 +78,8 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Shade Well", par: 45,
-    hint: "Black pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.",
+    name: "Shade Well", par: 65,
+    hint: "Thorny green pools are shade: they kill you both. Every drop is one way, so look where your door is before you jump.",
     moves: [[0, -2], [0, -2], [0, -2], [0, -2]],
     map: [
       "########################################",
@@ -115,7 +115,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "The Lift", par: 45,
+    name: "The Lift", par: 65,
     hint: "You cannot drive the lift you stand on. Your partner's plate moves it.",
     moves: [[0, -7], [0, -7], [0, -6], [0, -2], [0, -2]],
     map: [
@@ -152,7 +152,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "The Long Way Round", par: 50,
+    name: "The Long Way Round", par: 70,
     hint: "Raised bridges cover a pool while their plate is held. Your pools mark your way round.",
     moves: [[0, -1], [0, -1], [0, -1], [0, -1], [0, -2], [0, -2]],
     map: [
@@ -189,7 +189,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Crate Cellar", par: 60,
+    name: "Crate Cellar", par: 90,
     hint: "Push the crate off ledges to bring it down. Stuck against a wall? Lean on it, then jump into its corner.",
     moves: [[0, -2], [0, -2], [0, -2], [0, -17]],
     map: [
@@ -226,7 +226,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Twin Towers", par: 52,
+    name: "Twin Towers", par: 70,
     hint: "Ferries cross the chasm. You can't drive the one you stand on. Don't fall: the chasm is full of shade.",
     moves: [[0, -2], [0, -2], [-3, 0], [3, 0], [0, -2], [0, -2]],
     inv: [4],
@@ -265,7 +265,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Dawn Gate", par: 60,
+    name: "Dawn Gate", par: 90,
     hint: "Everything you learned this chapter, once each.",
     moves: [[0, -2], [0, -1], [0, -2], [0, -7], [0, -2]],
     map: [
@@ -302,7 +302,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Counterweights", par: 55,
+    name: "Counterweights", par: 75,
     hint: "One colour moves two lifts: one goes up as the other comes down. A weight left on the far end of a sunk lift keeps it down.",
     moves: [[0, -6], [0, 0], [0, -2], [0, -2], [0, -2]],
     plats: [[15, 8, 4, 1, 0, -1, 1, 0], [26, 12, 3, 1, 0, -5, 1, 1], [10, 17, 3, 1, 0, -5, 1, 0], [26, 22, 3, 1, 0, -5, 0, 1]],
@@ -340,7 +340,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Stone Raft", par: 55,
+    name: "Stone Raft", par: 75,
     hint: "A crate dropped in a pool is a stepping stone, but it lands right where it falls. Ferries carry crates too.",
     moves: [[0, -2], [-6, 0], [0, -2], [0, -20], [0, -2], [0, -2]],
     map: [
@@ -377,7 +377,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Helper's Way Out", par: 50,
+    name: "Helper's Way Out", par: 75,
     hint: "Stand in a pit to hold a plate. Your partner has the lever that lifts its floor, and you with it.",
     moves: [[0, -2], [0, -6], [0, -2], [0, 0], [0, -2], [0, -2]],
     inv: [5, 1],
@@ -417,7 +417,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "The Drop", par: 90,
+    name: "The Drop", par: 110,
     hint: "A crate down a chute stays on its plate for good. Read the colours before you push.",
     moves: [[0, 4], [0, 4], [0, -2], [0, -2], [0, 0], [0, -21]],
     map: [
@@ -454,7 +454,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Switchback", par: 85,
+    name: "Switchback", par: 105,
     hint: "Walk right through a lever to switch it on, left to switch it off. Which way you go round decides how it ends.",
     moves: [[2, 0], [0, -2], [0, -2]],
     plats: [[31, 4, 1, 2, 0, -2, 0, 0], [22, 21, 4, 1, 4, 0, 4, 0], [14, 14, 4, 1, -4, 0, 3, 0], [22, 7, 4, 1, 4, 0, 5, 0], [36, 19, 1, 2, 0, -2, 0, 1]],
@@ -492,7 +492,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Carry the Weight", par: 85,
+    name: "Carry the Weight", par: 105,
     hint: "A crate cannot climb, and a lift needs someone on its plate. Take the crate all the way up.",
     moves: [[0, -7], [0, -2], [3, 0], [0, -7], [0, -2], [0, 3]],
     plats: [[28, 12, 1, 2, 0, 2, 0, 0]],
@@ -530,7 +530,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Clockwork", par: 120,
+    name: "Clockwork", par: 135,
     hint: "One of you works the levers, the other runs. Walk through a lever to flip it, jump over it to leave it alone.",
     moves: [[0, 20], [0, -2], [0, 20], [0, 0], [0, -2], [0, -2]],
     plats: [[26, 5, 1, 2, 0, -2, 1, 1], [20, 26, 1, 2, 0, -2, 2, 1], [31, 26, 1, 2, 0, -2, 0, 1]],
@@ -568,7 +568,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "High Noon", par: 65,
+    name: "High Noon", par: 95,
     hint: "Every arm holds a machine you have met. Each one opens the next: find the order.",
     moves: [[0, -2], [0, 0], [0, 0], [0, 0], [0, -2]],
     leverOn: [5],
@@ -607,7 +607,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Shade Garden", par: 72,
+    name: "Shade Garden", par: 95,
     hint: "Your partner raises your stepping stones. The tunnels are too low to jump: wait for the stone.",
     plats: [[18, 28, 3, 1, 0, -7, 5, 0], [18, 14, 3, 1, 0, -7, 2, 0], [1, 21, 3, 1, 0, -7, 3, 0], [36, 21, 3, 1, 0, -7, 3, 0], [5, 28, 2, 1, 0, -1, 0, 0], [12, 28, 2, 1, 0, -1, 2, 0], [24, 28, 2, 1, 0, -1, 5, 0], [31, 28, 2, 1, 0, -1, 1, 0], [9, 21, 2, 1, 0, -1, 4, 0], [29, 21, 2, 1, 0, -1, 5, 0], [7, 14, 2, 1, 0, -1, 0, 0], [26, 14, 2, 1, 0, -1, 1, 0], [8, 7, 2, 1, 0, -1, 0, 0], [32, 7, 2, 1, 0, -1, 4, 0]],
     map: [
@@ -644,7 +644,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Closing Time", par: 80,
+    name: "Closing Time", par: 90,
     hint: "Several controls open one door and shut another. Where two gates stand together, run the moment your partner moves.",
     plats: [[4, 26, 1, 2, 0, -2, 2, 0], [4, 19, 3, 1, -3, 0, 1, 0], [12, 26, 1, 2, 0, -2, 0, 0], [13, 26, 1, 2, 0, -6, 0, 1], [25, 26, 1, 2, 0, -2, 2, 0], [29, 19, 3, 1, -3, 0, 3, 0], [5, 9, 3, 1, -3, 0, 1, 0], [13, 15, 1, 2, 0, -2, 5, 1], [25, 15, 1, 2, 0, -2, 5, 0], [32, 9, 3, 1, -3, 0, 3, 0], [13, 7, 1, 2, 0, -2, 4, 1], [26, 5, 1, 2, 0, -2, 4, 0], [37, 7, 1, 2, 0, -2, 3, 0]],
     map: [
@@ -681,7 +681,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Crate Relay", par: 75,
+    name: "Crate Relay", par: 110,
     hint: "A crate cannot cross on its own legs. Send it over, then go round to meet it.",
     moves: [[11, 0], [0, -13], [0, 0], [0, -13], [0, 3], [0, 3]],
     plats: [[27, 15, 1, 2, -14, 0, 2, 0], [28, 7, 3, 1, 3, 0, 3, 0]],
@@ -719,19 +719,19 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Undertow", par: 90,
+    name: "Undertow", par: 110,
     hint: "Sun water is safe for Sol and moon water for Luna. Every gate you meet is opened by your partner, far away.",
     moves: [[0, -10], [0, 0], [0, 8]],
     plats: [[4, 10, 3, 1, -3, 0, 1, 0], [15, 4, 1, 2, 0, 2, 5, 0], [14, 8, 1, 2, 0, 2, 4, 0], [31, 2, 1, 2, 0, 2, 1, 0], [32, 8, 1, 2, 0, 2, 1, 0], [5, 18, 2, 1, -2, 0, 3, 0], [13, 16, 1, 2, 0, -2, 3, 0], [23, 16, 1, 2, 0, 2, 4, 0], [26, 13, 1, 2, 0, -2, 2, 0], [8, 26, 1, 2, 0, -2, 3, 0], [24, 21, 1, 2, 0, -2, 5, 0], [24, 26, 1, 2, 0, -2, 4, 0]],
     map: [
       "########################################",
-      "#.......########........################",
+      "#.......########........#########......#",
       "#.......########.......................#",
-      "#m......########.....s.5..........b..4.#",
-      "#.......###...........####MMMM#.########",
-      "#............................##.#......#",
-      "#...........MMM.##...........####...s..#",
-      "#.....#########.##....####\\..####......#",
+      "#m......########.....s.5.............4.#",
+      "#.......###...........####MMMM#.#..#####",
+      "#............................##.#..#...#",
+      "#...........MMM.##...........####b.#s..#",
+      "#.....#########.##....####\\..#######...#",
       "#.......................##.\\...........#",
       "#........6..........##..####\\......4...#",
       "#......###SSS#.##############SSS.####__#",
@@ -757,7 +757,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Pendulum", par: 95,
+    name: "Pendulum", par: 120,
     hint: "Hold a ferry's plate and it swings across; let go and it swings back. You cannot ride the ferry you are holding.",
     moves: [[-16, 0], [16, 0], [-16, 0]],
     plats: [[3, 21, 2, 1, -2, 0, 3, 0], [35, 21, 2, 1, 2, 0, 4, 0], [3, 14, 2, 1, -2, 0, 4, 0], [35, 14, 2, 1, 2, 0, 3, 0], [3, 7, 2, 1, -2, 0, 3, 0], [35, 7, 2, 1, 2, 0, 4, 0], [3, 4, 2, 1, -2, 0, 4, 0], [35, 4, 2, 1, 2, 0, 3, 0]],
@@ -795,15 +795,15 @@ export const LEVELS = [
     ],
   },
   {
-    name: "The Operator", par: 85,
+    name: "The Operator", par: 105,
     hint: "One of you works the deck, the other runs the course. Then swap: it will not go the same way twice.",
     plats: [[2, 5, 1, 2, 0, 2, 5, 0], [32, 5, 1, 2, 0, -2, 2, 0], [8, 28, 3, 1, 0, -1, 0, 0], [15, 14, 3, 1, 0, -1, 0, 1], [22, 27, 3, 1, 0, -17, 1, 0], [31, 25, 1, 2, 0, 2, 3, 0]],
     map: [
       "########################################",
-      "###..................#############.....#",
-      "###...m..............#############.....#",
-      "###..............s...###########.#...m.#",
-      "###..................###########.#.....#",
+      "###..................########..###.....#",
+      "###...m..............########..###.....#",
+      "###..............s...########..#.#...m.#",
+      "###..................########..#.#.....#",
       "#......................................#",
       "#B........b..!........@.3.....a........#",
       "##.#......#####\\..../###############...#",
@@ -832,7 +832,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Eclipse", par: 90,
+    name: "Eclipse", par: 120,
     hint: "Each wing mirrors the other, even the levers. What you do on your side changes theirs. The two yellow lifts balance each other.",
     leverOn: [1],
     plats: [[29, 26, 1, 2, 0, -2, 0, 0], [20, 19, 1, 2, 0, 2, 0, 0], [10, 26, 1, 2, 0, -2, 1, 1], [19, 19, 1, 2, 0, 2, 1, 1], [27, 11, 3, 1, 0, -1, 2, 0], [10, 11, 3, 1, 0, -1, 3, 0], [35, 28, 3, 1, 0, -14, 5, 0], [2, 28, 3, 1, 0, -14, 5, 1], [30, 5, 1, 2, 0, -2, 0, 0], [9, 5, 1, 2, 0, -2, 1, 0], [5, 17, 1, 2, 0, 2, 1, 1], [34, 17, 1, 2, 0, 2, 0, 0], [13, 8, 1, 2, 0, 2, 4, 0]],
@@ -870,7 +870,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Dusk Gate", par: 92,
+    name: "Dusk Gate", par: 120,
     hint: "The spiral winds in to the doors. One of you works the levers while the other runs; then swap.",
     leverOn: [0],
     plats: [[9, 26, 1, 2, 0, -2, 0, 1], [14, 28, 3, 1, 0, -1, 1, 0], [22, 28, 3, 1, 0, -1, 1, 1], [36, 28, 3, 1, 0, -16, 5, 0], [32, 10, 1, 2, 0, -2, 2, 0], [15, 4, 1, 2, 0, -2, 2, 0], [20, 7, 3, 1, 0, -1, 3, 0], [27, 7, 3, 1, 0, -1, 3, 1], [15, 20, 1, 2, 0, -2, 4, 0], [21, 20, 1, 2, 0, -2, 4, 1], [26, 15, 1, 2, 0, -2, 4, 0]],
@@ -908,7 +908,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Two Keys", par: 100,
+    name: "Two Keys", par: 130,
     hint: "The crates are your keys, and a crate never climbs. One of them has to be a step before it is a key.",
     plats: [[4, 28, 4, 1, 0, -7, 5, 0], [1, 22, 2, 1, 0, 6, 1, 0], [15, 19, 1, 2, 0, -2, 4, 0], [22, 19, 1, 2, 0, -2, 4, 1], [28, 21, 2, 1, 0, 7, 1, 0], [20, 12, 2, 1, 0, -3, 0, 0], [15, 5, 1, 2, 0, -2, 2, 0], [24, 5, 1, 2, 0, -2, 3, 0]],
     map: [
@@ -945,7 +945,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Tidelock", par: 115,
+    name: "Tidelock", par: 140,
     hint: "Purple and green make four codes; each code opens one crossing. Walk right through a lever to turn it on, left to turn it off, and jump over it to leave it.",
     plats: [[10, 21, 2, 1, 0, -7, 5, 0], [16, 28, 3, 1, 0, -11, 2, 0], [8, 19, 1, 2, 0, -2, 0, 0], [9, 19, 1, 2, 0, -2, 1, 0], [35, 12, 1, 2, 0, -2, 0, 0], [36, 12, 1, 2, 0, -2, 1, 1], [13, 26, 1, 2, 0, -2, 0, 1], [14, 26, 1, 2, 0, -2, 1, 1], [17, 8, 2, 1, 0, -1, 0, 1], [23, 8, 2, 1, 0, -1, 1, 0], [29, 21, 3, 1, 0, -1, 0, 1], [32, 21, 3, 1, 0, -1, 1, 1], [14, 15, 1, 2, 0, 2, 4, 0], [27, 15, 1, 2, 0, -2, 3, 0]],
     map: [
@@ -982,7 +982,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Leapfrog Spire", par: 90,
+    name: "Leapfrog Spire", par: 120,
     hint: "Each lift is worked from the other side. Same colour, same moment: when your partner presses, everything of that colour moves. The crate must reach the chute.",
     plats: [[13, 28, 3, 1, 0, -6, 0, 0], [13, 16, 3, 1, 0, -6, 0, 0], [10, 14, 1, 2, 0, -2, 0, 0], [3, 22, 3, 1, 0, -6, 1, 0], [3, 10, 3, 1, 0, -6, 1, 0], [8, 20, 1, 2, 0, -2, 1, 0], [33, 27, 4, 1, 0, -6, 2, 0], [33, 15, 4, 1, 0, -6, 2, 0], [27, 21, 4, 1, 0, -6, 3, 0], [27, 9, 4, 1, 0, -5, 3, 0], [17, 4, 3, 1, 0, 12, 4, 0], [21, 16, 3, 1, 0, 12, 4, 1], [10, 26, 1, 2, 0, -2, 5, 0], [28, 25, 1, 2, 0, -2, 5, 0], [10, 2, 1, 2, 0, 2, 5, 0]],
     map: [
@@ -1019,7 +1019,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "The Vault", par: 95,
+    name: "The Vault", par: 125,
     hint: "Every corner opens one lock. Use each crate before you send it down to the vault.",
     plats: [[1, 9, 3, 1, 0, 18, 3, 0], [13, 25, 1, 2, 0, -2, 5, 0], [36, 9, 3, 1, 0, 18, 3, 0], [7, 7, 1, 2, 0, -2, 0, 0], [13, 7, 1, 2, 0, -2, 5, 0], [19, 10, 2, 1, -2, 0, 0, 0], [19, 11, 2, 1, 2, 0, 1, 0], [19, 12, 2, 1, -2, 0, 2, 0], [27, 7, 1, 2, 0, -2, 4, 0], [22, 21, 1, 1, 1, 0, 3, 0], [14, 18, 1, 2, 0, -2, 4, 0], [25, 18, 1, 2, 0, -2, 5, 0]],
     map: [
@@ -1056,7 +1056,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Sunken Halls", par: 95,
+    name: "Sunken Halls", par: 140,
     hint: "Every drop is one way. Whoever goes down first needs a white plate held to come back up.",
     leverOn: [4],
     plats: [[7, 6, 2, 1, -2, 0, 0, 0], [13, 3, 1, 2, 0, -2, 2, 0], [24, 13, 3, 1, 0, -7, 3, 1], [30, 4, 1, 2, 0, 2, 1, 0], [33, 4, 1, 2, 0, 2, 2, 0], [4, 15, 8, 1, 0, -2, 4, 1], [18, 21, 3, 1, 0, -8, 3, 0], [29, 11, 1, 2, 0, -2, 4, 1], [30, 13, 3, 1, 3, 0, 0, 0], [7, 22, 2, 1, 2, 0, 2, 0], [17, 19, 1, 2, 0, 2, 2, 0], [31, 22, 2, 1, -2, 0, 0, 0], [34, 19, 1, 2, 0, -2, 2, 0], [10, 27, 1, 2, 0, -2, 2, 0], [18, 28, 5, 1, 0, -1, 5, 0], [34, 28, 3, 1, 0, -4, 3, 0]],
@@ -1094,7 +1094,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Twilight Spiral", par: 95,
+    name: "Twilight Spiral", par: 140,
     hint: "Your paths cross four times. At each crossing one of you holds the way for the other. In an airlock, run the moment your partner steps on.",
     plats: [[8, 8, 3, 1, 0, -1, 1, 0], [15, 5, 1, 2, 0, -2, 2, 0], [30, 7, 3, 1, 0, -1, 1, 0], [7, 28, 3, 1, 0, -1, 1, 0], [29, 28, 3, 1, 0, -1, 1, 0], [1, 28, 2, 1, 0, -7, 3, 0], [4, 21, 2, 1, 0, -7, 3, 0], [1, 14, 2, 1, 0, -7, 3, 0], [6, 19, 1, 2, 0, -2, 2, 0], [37, 28, 2, 1, 0, -7, 3, 0], [34, 21, 2, 1, 0, -7, 3, 0], [37, 14, 2, 1, 0, -7, 3, 0], [33, 19, 1, 2, 0, -2, 2, 0], [11, 21, 3, 1, 0, -10, 3, 1], [15, 11, 2, 1, 0, 6, 1, 0], [23, 9, 1, 2, 0, -2, 4, 0], [24, 9, 1, 2, 0, -4, 4, 1], [25, 9, 1, 2, 0, -2, 4, 0], [25, 11, 2, 1, 0, 5, 5, 0], [29, 21, 3, 1, 0, -10, 3, 1], [18, 15, 1, 2, 0, -2, 4, 0], [19, 15, 1, 2, 0, -4, 4, 1], [20, 15, 1, 2, 0, -2, 4, 0], [11, 21, 3, 1, 0, 1, 3, 0], [14, 22, 3, 1, 0, -1, 1, 0], [19, 19, 1, 2, 0, 2, 0, 0], [25, 22, 3, 1, 0, -1, 1, 0], [29, 21, 3, 1, 0, 1, 3, 0]],
     map: [
@@ -1131,7 +1131,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Sanctum Approach", par: 120,
+    name: "Sanctum Approach", par: 150,
     hint: "One lever below changes the room above. You may have to go back down and set it right.",
     plats: [[33, 15, 3, 1, 0, -8, 1, 0], [36, 28, 3, 1, 0, -13, 3, 0], [10, 5, 1, 2, 0, -2, 5, 1], [12, 5, 1, 2, 0, -2, 4, 0], [18, 13, 1, 2, 0, -2, 2, 0], [21, 16, 3, 1, 0, -1, 2, 0], [10, 20, 1, 2, 0, -2, 0, 0], [13, 22, 2, 1, -2, 0, 2, 0], [21, 23, 3, 1, 0, -1, 5, 0]],
     map: [
@@ -1168,7 +1168,7 @@ export const LEVELS = [
     ],
   },
   {
-    name: "Heart of Twilight", par: 100,
+    name: "Heart of Twilight", par: 130,
     hint: "The heart opens only when both crates sit in their sockets and both levers are set.",
     leverOn: [5],
     plats: [[9, 28, 3, 1, 0, -7, 0, 0], [1, 21, 3, 1, 0, -7, 1, 0], [5, 14, 3, 1, 0, -7, 0, 0], [28, 28, 3, 1, 0, -7, 1, 0], [36, 21, 3, 1, 0, -7, 0, 0], [32, 14, 3, 1, 0, -7, 2, 0], [14, 6, 3, 1, 9, 0, 4, 0], [5, 19, 1, 2, 0, -2, 3, 0], [34, 19, 1, 2, 0, -2, 2, 0], [13, 8, 1, 6, 0, 6, 2, 0], [14, 8, 1, 6, 0, 6, 3, 0], [15, 8, 1, 6, 0, 6, 4, 0], [16, 8, 1, 6, 0, 6, 5, 1], [16, 26, 1, 2, 0, -2, 3, 0], [23, 26, 1, 2, 0, -2, 2, 0]],

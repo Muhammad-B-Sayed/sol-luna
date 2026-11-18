@@ -15,6 +15,20 @@ const LIQ = {
   [T_SHADE]: { top: '#9dffb9', a: '#3a7d55', b: '#1d1530', glow: 'rgba(110,255,160,0.35)' },
 };
 
+// Shade pools kill both players. Dark hatching and small thorns mark them as a hazard, so their
+// green is not read as part of the green mechanism group (playtest, Nov 2026).
+export function shadeMarks(g, px0, px1, py) {
+  const h = POOL_DEPTH + 6;
+  g.save();
+  g.beginPath(); g.rect(px0, py + 5, px1 - px0, h); g.clip();
+  g.strokeStyle = 'rgba(8,4,16,0.75)'; g.lineWidth = 3;
+  for (let k = Math.floor((px0 - h) / 7) * 7; k < px1 + h; k += 7) { g.beginPath(); g.moveTo(k, py + 5 + h); g.lineTo(k + h, py + 5); g.stroke(); }
+  g.restore();
+  g.fillStyle = '#0b0714';
+  // hatching and thorns are anchored to the world, so a scrolling view does not make them crawl
+  for (let sx = Math.ceil((px0 - 4) / 8) * 8 + 4; sx < px1 - 2; sx += 8) { g.beginPath(); g.moveTo(sx - 3, py + 6); g.lineTo(sx, py - 1); g.lineTo(sx + 3, py + 6); g.closePath(); g.fill(); }
+}
+
 // deterministic hash for texture variety
 const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) ^ 0x5bf03635; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
@@ -313,6 +327,7 @@ export class Renderer {
           g.beginPath(); g.arc(bx, by, 1.4, 0, Math.PI * 2); g.fill();
         }
         g.globalAlpha = 1;
+        if (t === T_SHADE) shadeMarks(g, px0, px1, py);
         x = x1 + 1;
       }
     }
