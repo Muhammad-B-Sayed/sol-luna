@@ -1,7 +1,9 @@
-# Netcode of the Runner modes (and what changed in co-op)
+# Netcode: the Runner modes, co-op and Dodgeball
 
-Nov 2026, branch `runner-netcode`. This covers online play of the 2D Runner and Runner 3D:
-what went wrong, how it works now, the numbers before and after, and how to run the checks.
+Nov 2026. Sections 1 to 3 and 5 cover the 2D Runner and Runner 3D (branch `runner-netcode`):
+what went wrong, how it works now, the numbers before and after. Section 4 covers co-op and
+Dodgeball, which got the same input rules on branch `coop-dodge-inputs`, with their own numbers.
+Section 6 says how to run the checks.
 
 ## 1. The report
 
@@ -85,7 +87,7 @@ fixed delay with no jitter and no spikes, so the server's queue never ran dry.
   (`qm`). The client runs 3% slower above 3 ticks and 3% faster below 1, to keep a small cushion
   that jitter never empties.
 
-### The server (`server/index.js`, runner rooms only)
+### The server (`server/index.js`; co-op and Dodgeball rooms too since `coop-dodge-inputs`, section 4)
 
 - **Snapshots every tick** (60 Hz, about 700 bytes), with `d` (ticks each player's keys were
   held), `q` and `qm` (queue lengths).
@@ -119,20 +121,92 @@ closer to it than they were.
 
 ## 4. Co-op and Dodgeball
 
-**Co-op had the same bug.** `main.js` predicts the partner from their last keys, so a jump heard
-late walked them into a pool in the prediction: "Luna was lost…", the death sound, then the next
-snapshot undid it. A predicted arrival at the doors could show the win the same way. Fixed with
-`predictStep` in `main.js` (online only): the prediction never enters the death or the win
-phase by itself; a death the prediction runs into is undone for that tick, so the character
-keeps sinking into the pool until the server says. Measured with `KIND=coop` (section 5).
+### What was wrong
 
-**Dodgeball:** hits on the other player already wait for the server (`D.wait`, an impact flare).
-A hit on yourself is shown from your own prediction. It can only disagree with the server when
-the server applied your inputs on other ticks than you predicted. Dodge rooms keep the old
-input queue (hold 10 ticks, cut a queue over 12 to 4), so a cut after a spike can apply your
-jump earlier than you pressed it. Then your screen can show you hit and the server not. This is
-rare, and the code (`shared/dodge.js` and the dodge input queue) was left alone. The fix, if it
-shows up: give dodge rooms the runner input rules (hold and skip, no cut).
+Co-op and Dodgeball rooms kept the old input queue after the Runner fix: when a player's queue
+ran dry the server held their keys for 10 ticks and then let go of them, and it cut a queue
+longer than 12 down to 4. On a jittery link with spikes that happens all the time. Measured with
+the harness (numbers below):
+
+- **Co-op:** the recorded bot inputs win every level locally with no death. Over the network
+  model they won 1 level of 32. 13 levels had deaths on the server (33 in all). The server cut
+  5,688 inputs and let go of keys 54 times. 359 key presses landed on another tick than the
+  client meant and 157 were never applied. Your own player was corrected by up to 103 px.
+- **Dodgeball:** in 380 throws, 19 throws left the hand on another tick or at another angle than
+  the thrower's own screen showed, and once a player's own screen showed them hit and the server
+  then said they had dodged. Until now that case was only read in the code, never measured. 200
+  key presses landed off their tick (19 jumps, 70 throw buttons), 33 were dropped.
+
+Even without any jitter the old server shifted co-op inputs: it starts stepping before the
+first inputs arrive, so the first ones are applied about 14 ticks late. With a steady 40 ms and
+no spikes, 4 of 8 levels still had a death.
+
+### How it works now
+
+**The server** gives co-op and Dodgeball rooms the Runner rooms' rules (`Room.sharedInput`,
+`Room.advance`, `Room.inputsReady`):
+
+- **Wait first.** When a player's inputs are late, the whole room waits up to 24 ticks (400 ms),
+  then catches up as soon as they arrive. Every key is applied on the tick it was pressed.
+- **Hold and skip** past the wait, as in the Runner rooms, with `d` in the snapshot so the client
+  replays the same way. No queue is cut below 120.
+- **Snapshots** stay at every 2 ticks (co-op states are bigger than runner ones), with `d` and `qm`
+  added. After a catch-up only the newest one is sent.
+- **Pacing** as in `runner-sync.js`, with one change: the queue report `qm` counts the ticks the
+  room still owes. A room that has fallen behind real time steps the moment a late input arrives,
+  so the queue always shows that one input, and the clients never learned to run ahead. Then the
+  room ran in lockstep a few ticks late and had less of its 400 ms left for the next spike (83,000
+  waits per 32 levels, 18 holds). Counting the owed ticks brings it back on time: 6,000 waits,
+  no holds.
+- **An absent player is not waited for.** After about a second with no input (24 ticks of wait
+  and 30 of hold: a hidden tab, a lost connection) the keys are let go and the room stops
+  waiting for that player, so the partner's game is not held back. When they come back, their
+  queue is kept to 2 inputs for a second, so the backlog a stalled tab sends is dropped instead
+  of staying as a long delay. The normal network model never reaches this.
+
+What waiting means when the partner stands on a lift: the whole room waits, lifts, crates, gates
+and plates included. On the server the partner is still on the lift, at the same spot, when the
+late jump off it is applied. A plate held for the partner is held on the server until the tick
+they let go. Nobody's own screen pauses: each client keeps playing its prediction. Only the
+other player's view of the late one comes late, and it is corrected when the snapshot arrives.
+
+**Dodgeball keeps what the wind-up fix needs:** the server still measures each player's round
+trip and queue for `windupFor`, and still withholds the other player's aim (`dodgeViewFor`). Three
+changes keep the wind-up exact:
+
+- The queue drain (`dodgeQueue`) now drops only a standing queue: one that never fell below 2 in
+  the last second. Draining the cushion that jitter needs left that player's inputs late and the
+  room waiting for them (1,200 holds in a 40 s test). It also stops 20 ticks before the ready
+  freeze ends: a drain moves every input after it one tick earlier, and a client a round trip
+  ahead has already sent its first inputs of play.
+- The wind-up (`D.lag`) is set until 20 ticks before the freeze ends, not until its last tick. A
+  client a round trip ahead was already playing the point with the old value, so a throw in the
+  first moments of play wound up longer or shorter on the thrower's screen than on the server.
+- The queue depth for the wind-up is sampled once per `advance()`, so a catch-up after a wait
+  counts once, as what is left, and can't make the wind-up longer.
+
+**The client** (`main.js`, using `public/js/net-pace.js`): online co-op and Dodgeball run every
+missed tick after a stall (up to 8 a frame, 1 s of backlog) instead of dropping them, follow the
+server's pace report, and skip on replay the inputs the server's hold already covered. Three
+small hunks: the frame loop, `onSnapshot`, and a reset in `beginLevel`. Local play is unchanged.
+
+### The partner is still drawn from the prediction
+
+Co-op draws the partner in the present, from the prediction with their last known keys, eased
+back to the server's state. I left it that way. Drawing them from snapshots 150 ms in the past,
+as the Runners do, would detach them from the world, which is drawn in the present: the harness
+finds the partner standing on a moving lift, crate or the other player, or pushing a crate, on
+8.8% of frames, and that thing moves up to 31 px (95th percentile) and 72 px at most in 150 ms.
+The Runners fix that only for a rider (`ride` in `runner-sync.js`); co-op would need it for
+crates pushed, carried and stacked too. The prediction keeps the partner attached to what they
+touch, at the cost below.
+
+The cost of exact inputs for the partner's drawing: during a spike the server now applies the
+late player's real keys on their ticks, where the old server held their last keys, which is what
+the prediction assumes. So the other client learns more motion late. The drawing is a little
+more often off the server's path (21.7% of frames over 4 px, from 17.3%), while the jolts stayed
+the same or fell: the largest step beyond the server's own is 14.8 px per 1/60 s (14.4 before),
+and steps over 6 px fell from 2,191 to 1,681.
 
 ## 5. The numbers
 
@@ -176,10 +250,9 @@ backward step over 0.5 px (0.02 units) per 1/60 s, your own player never drawn b
 what the prediction itself did, nobody killed before the plan's end, and both clients agree
 with the server at the end.
 
-Co-op (`KIND=coop`, levels 1 and 2 with the recorded bot inputs, same network model): before,
-Luna's client showed a death and took it back once in level 2; after, nothing was taken back.
-The bots still die for real in co-op under spikes, because co-op rooms keep the old input queue
-(see section 4: the runner rules would fix it there too).
+Co-op on the `runner-netcode` branch (`KIND=coop`, levels 1 and 2): before, Luna's client
+showed a death and took it back once in level 2; after, nothing was taken back. The bots still
+died for real; that was fixed later (section 4 and the tables below).
 
 `tools/playtest/online-browser.mjs` (co-op, lockstep clock) fails its level-1 and level-10
 results checks on this machine with the old code too (17 checks pass on this branch, 15 on
@@ -192,15 +265,94 @@ matching results cards, the other player's largest pop 4.3 px (2D) and 0.21 unit
 backward steps, your own player never drawn backward, no own correction at all. An earlier run
 with the pages at only 11 to 13 fps (a loaded machine) passed too.
 
+### Co-op and Dodgeball (`coop-dodge-inputs`)
+
+Same harness and network model. "Before" is the 4be5032 server and client (the client modelled
+in `tools/net-coop.js`, `SCHEME=base`), with counters added to the server for the measurement.
+
+Co-op: all 32 levels, both players replaying the recorded bot inputs that win locally with no
+death. The inputs are played by world tick, so any input applied on another tick than the
+client meant shifts the plan.
+
+| Co-op, 32 levels | Before | After | Before, 10% CPU | After, 10% CPU |
+| --- | --- | --- | --- | --- |
+| levels won | 1 | 32 | 1 | 32 |
+| levels with a death on the server (deaths) | 13 (33) | 0 | 12 (32) | 0 |
+| keys let go / inputs cut by the server | 54 / 5,688 | 0 / 0 | 93 / 7,143 | 0 / 0 |
+| ticks a player's keys were held (guessed) | 7,015 | 0 | 8,251 | 0 |
+| key presses off their tick / never applied (of about 8,000 to 9,000) | 359 / 157 | 0 / 0 | 368 / 208 | 0 / 0 |
+| your player: largest correction (count over 0.5 px) | 103 px (1,139) | 22 px (85) | 40 px (1,323) | 34 px (93) |
+| partner: largest step beyond the server's (px per 1/60 s) | 14.4 | 14.8 | 24.7 | 35.4 |
+| partner: steps over 6 px / over 12 px | 2,191 / - | 1,681 / 7 | 2,090 / 20 | 1,685 / 5 |
+| partner: frames over 4 px off the server's path | 17.3% | 21.7% | 16.9% | 22.2% |
+| deaths or wins shown and taken back | 0 | 0 | 0 | 0 |
+| room waits for late inputs (longest) | - | 6,084 (22 ticks) | - | 6,115 (22 ticks) |
+
+After the fix, your own player's corrections come only from the shared world: a crate, lift or
+the partner moved by the partner's keys, which your client learns late. The one 35 px step of
+the partner under the CPU limit is a single frame; 5 steps were over 12 px in 32 levels.
+
+With a steady 40 ms and no jitter, spikes or stalls (levels 1, 2, 4, 9, 10, 15, 21, 22): before,
+7 won and 4 had a death, from the 14 ticks the old server steps before the first inputs arrive;
+after, all 8 won with no death. The room waits about 200 times at the start of each level
+(the first 3 s, while pacing brings the clients ahead of it), then not at all.
+
+Dodgeball: 12 runs of 90 s. Bots read their own screen: holding the ball they walk a little, aim
+for a random time (or tap) and release; a ball thrown at them gets a random reaction (a jump, a
+jump back, a run back, or nothing) 0 to 11 ticks after they first see it.
+
+| Dodgeball, 12 x 90 s | Before | After | Before, 10% CPU | After, 10% CPU |
+| --- | --- | --- | --- | --- |
+| throws (hits) | 380 (118) | 385 (104) | 379 (111) | 379 (109) |
+| your own screen showed you hit, the server said dodge | 1 | 0 | 0 | 0 |
+| your own screen showed you dodge, the server said hit | 0 | 0 | 0 | 0 |
+| your own throw left on another tick or angle than shown | 19 | 0 | 18 | 0 |
+| thrower's screen showed a miss, the server said hit | 5 | 0 | 2 | 0 |
+| key presses off their tick (jumps, throw buttons) / never applied, of about 2,500 | 200 (19, 70) / 33 | 0 / 0 | 224 (39, 76) / 50 | 0 / 0 |
+| keys let go / inputs cut | 34 / 2,342 | 0 / 0 | 45 / 1,950 | 0 / 0 |
+| ticks a player's keys were held | 13,497 | 4 | 12,342 | 0 |
+| inputs drained between points | 11,124 | 451 | 10,067 | 415 |
+| your player: largest correction | 38 px | 18 px | 33 px | 22 px |
+
+The remaining corrections are the drain between points (one tick of walking in the ready freeze).
+
+The dodge windows (`tools/dodge-latency.js`, the latest reaction that still escapes, back wall /
+spawn / near net / spawn to spawn; local play 267 / 233 / 83 / 200 ms):
+
+| one-way | wind-up | latest dodge | trials that end differently from local |
+| --- | --- | --- | --- |
+| 0 ms, steady | 1 tick | 267 / 233 / 83 / 200 ms | 0 of 177 |
+| 20 ms, steady | 4 | 267 / 233 / 83 / 200 ms | 0 of 177 |
+| 40 ms, steady | 6 | 267 / 233 / 83 / 200 ms | 0 of 177 |
+| 75 ms, steady | 11 | 267 / 233 / 83 / 200 ms | 0 of 177 |
+| 40 ms ±15 ms, spikes, before | 7 | 267 / 233 / 67 / 200 ms | 18 of 173 (4 trials timed out) |
+| 40 ms ±15 ms, spikes, after | 7 | 267 / 233 / 83 / 200 ms | 6 of 177 |
+
+The wind-up is the same as before at the same delay (1, 4, 6 ticks at 0, 20, 40 ms; jitter adds
+one). With jitter and spikes the 6 trials left are ones where a spike held back the snapshots on
+the defender's link, so the ball first showed late in its flight. No input rule can show a ball
+the screen hasn't heard of.
+
+`tools/check-dodge.js` (the sim, unchanged): a player standing still is hit unless they move
+within 5 ticks (at most 6 allowed), moving on the release tick or the next escapes from anywhere
+outside 237 px, and a jump at the release beats an aimed throw.
+
 ## 6. Running the checks
 
 ```bash
-node tools/check-netcode.js                   # 2D and 3D, seeds 1-3, 90 s each, pass or fail (~2 min)
+node tools/check-netcode.js                   # 2D and 3D (seeds 1-3, 90 s each), co-op levels 1, 4, 10,
+                                              # 22, Dodgeball seeds 1-3, pass or fail (~4 min)
+KIND=2d,3d node tools/check-netcode.js        # only the runners
 SEEDS=1,2,3,4,5 CONC=10 node tools/check-netcode.js
 CPU=10 node tools/check-netcode.js            # the server under a 10% CPU quota (systemd-run)
-KIND=coop SEEDS=1,2 node tools/check-netcode.js   # co-op (run node tools/playtest/record-bot.mjs 1,2 first)
+KIND=coop SEEDS=1,2 node tools/check-netcode.js   # co-op levels 1 and 2 (records missing bot inputs first)
 SCHEME=old SERVER_ROOT=/path/to/d52cb57 node tools/check-netcode.js   # the baseline (no pass or fail)
-JSON=out.json ... ; node tools/net-summary.js out.json   # the table above
+KIND=coop SEEDS=$(seq -s, 1 32) CONC=8 node tools/check-netcode.js   # co-op, all 32 levels (~6 min)
+KIND=dodge SEEDS=$(seq -s, 1 12) CONC=12 node tools/check-netcode.js  # Dodgeball, 12 runs of 90 s
+SCHEME=base SERVER_ROOT=/path/to/4be5032 KIND=coop ...   # co-op and dodge baseline (that server needs the
+                                              # counters and NET_TRACE added to measure; see section 5)
+node tools/dodge-latency.js --lat 40 --jit 15 --spike 8 --reps 3   # dodge windows with jitter and spikes
+JSON=out.json ... ; node tools/net-summary.js out.json   # the tables above
 V=1 ...                                       # print every pop and backward step with its context
 node tools/playtest/runner-lag.mjs            # real browsers over a laggy link, pass or fail
 ```
@@ -220,10 +372,12 @@ card check still holds.
 | --- | --- |
 | `public/js/runner-sync.js` | The client sync for both runners: prediction, playback of the other player, deaths only from the server, catch-up, pacing. No DOM. |
 | `public/js/runner-app.js`, `runner3d-app.js` | Online they call the sync each frame; `this.S` is the state it shows. |
-| `public/js/main.js` | `predictStep` (co-op prediction never kills or wins); the real frame time for online runners. |
+| `public/js/main.js` | `predictStep` (co-op prediction never kills or wins); the real frame time for online play; co-op and Dodgeball catch-up, pacing and replay skip. |
+| `public/js/net-pace.js` | Co-op and Dodgeball: pacing from `qm`, the replay skip, catch-up limits. No DOM. |
 | `shared/runner.js`, `shared/runner3d.js` | `predictedDeath` and one line in the step: a state with `pred` set never kills. |
-| `server/index.js` | Runner rooms: hold and skip, wait for late inputs, 60 Hz snapshots, `NET_LOG`, `TEST_SEED`, `LAG_JITTER`, `LAG_SPIKE`. |
-| `tools/check-netcode.js` | The harness and the permanent check. |
+| `server/index.js` | All rooms: wait for late inputs, hold and skip. Runner rooms: 60 Hz snapshots. Co-op and dodge rooms (`sharedInput`, `afterSteps`): `qm` with the owed ticks, absent players, dodge drain and wind-up timing. `NET_LOG`, `NET_TRACE`, `TEST_SEED`, `LAG_JITTER`, `LAG_SPIKE`. |
+| `tools/check-netcode.js` | The harness and the permanent check (runners, co-op, Dodgeball). |
+| `tools/net-coop.js` | The co-op and Dodgeball client of `main.js` for the harness, new and 4be5032 (`base`). |
 | `tools/net-bots.js` | Bot routes for two players on one course (cached in `tools/playtest/out/net-tracks/`). |
 | `tools/net-old-clients.js` | The pre-fix clients, for the baseline. |
 | `tools/net-summary.js` | Tables from the harness's JSON. |
