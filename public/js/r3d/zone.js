@@ -146,39 +146,3 @@ export function makeVignette(layer) {
   m.frustumCulled = false; m.renderOrder = 100; m.layers.set(layer);
   return m;
 }
-
-// Lead cap: a shimmering twilight veil across a run-up where the lead cap holds a player (the sim
-// stops forward walking there while that player is more than LEAD_MAX ahead of the dusk). One per
-// player; k (0..1) fades it in as the player nears it, held (0..1) brightens it while they push on it.
-export class LeadVeil {
-  constructor() {
-    this.mat = new THREE.ShaderMaterial({
-      uniforms: { uTime: U.uTime, uK: { value: 0 }, uHeld: { value: 0 }, uW: { value: 1 } },
-      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `uniform float uTime; uniform float uK; uniform float uHeld; uniform float uW; varying vec2 vUv;
-        void main() {
-          float x = vUv.x * uW;
-          float streak = 0.55 + 0.45 * sin(x * 9.0 + sin(vUv.y * 6.0 + uTime * 2.0) * 1.5 + uTime * 1.7);
-          float a = uK * pow(clamp(1.0 - vUv.y, 0.0, 1.0), 1.6) * streak * smoothstep(0.0, 0.25, x) * (1.0 - smoothstep(uW - 0.25, uW, x));
-          a *= 0.45 + uHeld * (0.35 + 0.25 * sin(uTime * 10.0));
-          a += uK * (1.0 - smoothstep(0.0, 0.06, vUv.y)) * (0.6 + uHeld);   // a bright line on the floor
-          vec3 c = mix(vec3(0.55, 0.42, 1.0), vec3(0.95, 0.85, 1.0), uHeld * 0.6) * 1.1;
-          gl_FragColor = vec4(c, clamp(a, 0.0, 1.0));   // additive blending multiplies by alpha itself
-          #include <tonemapping_fragment>
-          #include <colorspace_fragment>
-        }`,
-      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-    });
-    const g = new THREE.PlaneGeometry(1, 1.9).translate(0.5, 0.95, 0);
-    this.mesh = new THREE.Mesh(g, this.mat);
-    this.mesh.frustumCulled = false; this.mesh.renderOrder = 7; this.mesh.visible = false;
-  }
-  // x0..x1: the run-up's width, y its top, z the veil's sim z
-  set(x0, x1, y, z, k, held) {
-    this.mesh.visible = k > 0.01;
-    if (!this.mesh.visible) return;
-    this.mesh.position.set(x0, y, -z); this.mesh.scale.set(x1 - x0, 1, 1);
-    const u = this.mat.uniforms; u.uK.value = k; u.uHeld.value = held; u.uW.value = x1 - x0;
-  }
-  dispose() { this.mesh.geometry.dispose(); this.mat.dispose(); }
-}

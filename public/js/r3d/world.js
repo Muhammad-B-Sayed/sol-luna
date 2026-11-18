@@ -250,7 +250,7 @@ export class WorldDeco {
     this.archG = archGeometry(SIDE_X, 6.5);
     this.keyG = new THREE.CircleGeometry(0.55, 16);
     // instanced near deco
-    this.maxCells = 24;
+    this.maxCells = 40;   // two windows of about 165 units (players far apart in split screen)
     this.pillars = new THREE.InstancedMesh(this.pillarG, this.pillarMat, this.maxCells * 2);
     this.arches = new THREE.InstancedMesh(this.archG, this.archMat, this.maxCells);
     this.keys = new THREE.InstancedMesh(this.keyG, new THREE.MeshBasicMaterial({ color: 0xffffff }), this.maxCells * 2);
@@ -269,16 +269,18 @@ export class WorldDeco {
     this._c = new THREE.Color();
   }
 
-  // camZ0..camZ1: the sim z range to cover; yAt(z): course height near z
-  update(z0, z1, yAt, time) {
-    const c0 = Math.floor(z0 / CELL), c1 = Math.min(c0 + this.maxCells - 1, Math.ceil(z1 / CELL));
-    const key = c0 + ':' + c1;
+  // ranges: [[z0, z1], ...] the sim z ranges to cover (one per camera's player, merged when they
+  // overlap); yAt(z): course height near z
+  update(ranges, yAt, time) {
+    const cells = [];
+    for (const [z0, z1] of ranges) for (let ci = Math.floor(z0 / CELL); ci <= Math.ceil(z1 / CELL); ci++) if (cells[cells.length - 1] !== ci && cells.length < this.maxCells) cells.push(ci);
+    const key = ranges.map(([a, b]) => Math.floor(a / CELL) + ':' + Math.ceil(b / CELL)).join(',');
     if (key !== this.cellKey) {
       this.cellKey = key;
       const m = this._m, q = this._q, v = this._v, s = this._s;
       let np = 0, na = 0, nk = 0, nl = 0;
       this.lanterns = [];
-      for (let ci = c0; ci <= c1; ci++) {
+      for (const ci of cells) {
         const z = ci * CELL + 4, y = yAt(z), arch = ((ci % 3) + 3) % 3 === 0;
         for (const side of [-1, 1]) {
           v.set(side * SIDE_X, y + 2.2, -z); q.identity(); s.set(1, 1, 1);
@@ -308,10 +310,11 @@ export class WorldDeco {
       }
     }
     // distant silhouettes in 60-unit chunks
-    const s0 = Math.floor((z0 - 30) / 60), s1 = Math.ceil((z1 + 60) / 60);
     const want = new Set();
-    for (let ci = s0; ci <= s1; ci++) for (const side of [-1, 1]) {
-      const k = ci * 2 + (side > 0 ? 1 : 0); want.add(k);
+    for (const [z0, z1] of ranges) for (let ci = Math.floor((z0 - 30) / 60); ci <= Math.ceil((z1 + 60) / 60); ci++) for (const side of [-1, 1]) {
+      const k = ci * 2 + (side > 0 ? 1 : 0);
+      if (want.has(k)) continue;
+      want.add(k);
       if (!this.sil.has(k)) {
         const { g, wg } = silhouetteChunk(ci, side);
         const grp = new THREE.Group();

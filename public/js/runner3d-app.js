@@ -45,7 +45,6 @@ const TIPS = {
 };
 const TIP_AHEAD = 9;      // units: a section's tip shows when its start is this close ahead
 const TIP_TICKS = 240;    // how long a tip stays up
-const HELD_TIP = 'Too far ahead. The twilight holds you until the dusk comes closer.';
 
 export class Runner3DMode {
   // ctx: { input, net, sfx, show(id), toast(msg), app, quit() }
@@ -320,9 +319,6 @@ export class Runner3DMode {
       for (const i of mine) {
         const p = S.p[i], o = p.alive && p.gr && p.gref >= 0 ? S.o[p.gref] : null;
         if (o && o.st === 1 && o.t === 0) sfx.lever();
-        const held = this.isHeld(i);
-        if (held && !this.wasHeld?.[i]) sfx.click();
-        (this.wasHeld ||= [false, false])[i] = held;
       }
     }
     if (cur.phase === R3_OVER && h.phase !== R3_OVER) setTimeout(() => (S.win === DRAW ? sfx.door() : sfx.win()), 500);
@@ -335,7 +331,7 @@ export class Runner3DMode {
     const el = document.createElement('div');
     el.id = 'r3Hud'; el.hidden = true; el.setAttribute('aria-hidden', 'true');
     const pl = (k) => `<div class="r3-pl ${k}"><div class="r3-name"></div><div class="r3-dist"></div>`
-      + `<div class="r3-meter"><i></i><span></span></div><div class="r3-held">held by the twilight</div></div><div class="r3-edge ${k}"></div><div class="r3-tip ${k}"></div>`;
+      + `<div class="r3-meter"><i></i><span></span></div></div><div class="r3-edge ${k}"></div><div class="r3-tip ${k}"></div>`;
     el.innerHTML = `<div class="r3-split"></div><div class="r3-top"><b class="r3-time"></b><span class="r3-pace"></span><span class="r3-ping"></span></div>`
       + pl('sol') + pl('luna') + '<div class="r3-count"></div><div class="r3-banner"></div>';
     this.canvas.after(el);
@@ -346,7 +342,7 @@ export class Runner3DMode {
       pl: ['sol', 'luna'].map(k => ({
         box: q(`.r3-pl.${k}`), name: q(`.r3-pl.${k} .r3-name`), dist: q(`.r3-pl.${k} .r3-dist`),
         meter: q(`.r3-pl.${k} .r3-meter`), fill: q(`.r3-pl.${k} .r3-meter i`), gap: q(`.r3-pl.${k} .r3-meter span`), edge: q(`.r3-edge.${k}`),
-        tip: q(`.r3-tip.${k}`), held: q(`.r3-pl.${k} .r3-held`),
+        tip: q(`.r3-tip.${k}`),
       })),
     };
     this.hudCache = new Map();
@@ -384,9 +380,6 @@ export class Runner3DMode {
       const warn = p.alive && mine && S.phase === R3_PLAY ? Math.max(0, Math.min(1, (URGENT + 2 - gap) / (URGENT + 2 - CRITICAL / 2))) : 0;
       this.set(e.edge, 'opacity', warn.toFixed(2));
       this.set(e.edge, 'class', `r3-edge ${i ? 'luna' : 'sol'}${warn > 0.6 ? ' pulse' : ''}`);
-      // held by the lead cap: standing on a run-up more than LEAD_MAX ahead of the dusk
-      const held = this.isHeld(i);
-      this.set(e.held, 'opacity', held ? '1' : '0');
       // a one-line tip the first time each obstacle kind comes up
       const tip = mine && p.alive && S.phase === R3_PLAY ? this.tipFor(i) : null;
       this.set(e.tip, 'text', tip || '');
@@ -410,20 +403,13 @@ export class Runner3DMode {
     this.set(H.banner, 'opacity', over ? Math.min(1, S.phaseT / 20).toFixed(2) : '0');
   }
 
-  isHeld(i) {
-    const S = this.S, p = S.p[i], o = p.alive && p.gr && p.gref >= 0 ? this.L.objs[p.gref] : null;
-    return !!o && o.skin === 1 && p.z - S.zone > LEAD_MAX - 0.3 && S.phase === R3_PLAY;
-  }
-
-  // the tip player i should see now (or null): the next section's kind the first time it comes up,
-  // or the lead-cap note the first time the cap holds them
+  // the tip player i should see now (or null): the next section's kind the first time it comes up
   tipFor(i) {
     const S = this.S, p = S.p[i], seen = this.tipSeen[i], cur = this.tipShown[i];
     if (cur && S.tick < cur.until && S.tick >= cur.from) return cur.text;
     const sec = sectionAt(this.L, p.z + TIP_AHEAD);
     let text = null, key = null;
-    if (this.isHeld(i) && !seen.held) { key = 'held'; text = HELD_TIP; }
-    else if (sec && TIPS[sec.kind] && !seen[sec.kind] && sec.z0 > p.z - 2) { key = sec.kind; const t = TIPS[sec.kind]; text = Array.isArray(t) ? t[i] : t; }
+    if (sec && TIPS[sec.kind] && !seen[sec.kind] && sec.z0 > p.z - 2) { key = sec.kind; const t = TIPS[sec.kind]; text = Array.isArray(t) ? t[i] : t; }
     if (!key) return null;
     seen[key] = 1;
     this.tipShown[i] = { text, from: S.tick, until: S.tick + TIP_TICKS };

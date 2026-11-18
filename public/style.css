@@ -189,7 +189,6 @@ body:has(#chat:not([hidden])) .r3-pl.luna { right: 66px; }   /* clear of the roo
 #r3Hud.split .r3-tip.sol { left: 25%; } #r3Hud.split .r3-tip.luna { left: 75%; }
 #r3Hud.single .r3-tip { left: 50%; max-width: min(80%, 560px); } #r3Hud.single[data-me="0"] .r3-tip.luna, #r3Hud.single[data-me="1"] .r3-tip.sol { display: none; }
 .r3-tip.sol { border-color: rgba(255,210,122,0.45); } .r3-tip.luna { border-color: rgba(169,227,255,0.45); }
-.r3-held { font: 700 11px Nunito, system-ui, sans-serif; color: #d9c8ff; opacity: 0; transition: opacity 0.2s; text-transform: uppercase; letter-spacing: 0.06em; }
 body.touch.r3d[data-screen="game"] #r3Touch:not([hidden]) { display: flex; position: absolute; inset: auto 0 0 0; justify-content: space-between; align-items: flex-end; padding: 12px 18px calc(14px + env(safe-area-inset-bottom)); pointer-events: none; }
 .r3-stick { pointer-events: auto; position: relative; width: 132px; height: 132px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid var(--edge); touch-action: none; }
 .r3-stick i { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px; border-radius: 50%; background: rgba(255,255,255,0.22); }

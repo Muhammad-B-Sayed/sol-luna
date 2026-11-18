@@ -15,7 +15,7 @@ import { OutputPass } from '../../vendor/three/addons/postprocessing/OutputPass.
 import { U, PAL, col, GlowField, textures, LIQ3 } from './kit.js';
 import { Character } from './characters.js';
 import { makeSky, makeAbyss, makeMotes, makeMist, WorldDeco } from './world.js';
-import { DuskZone, makeVignette, BEND, LeadVeil } from './zone.js';
+import { DuskZone, makeVignette, BEND } from './zone.js';
 import { FX } from './fx.js';
 import { viewFor, disposeView, VIEWS } from './views.js';
 import * as R3 from '/shared/runner3d.js';
@@ -24,7 +24,15 @@ import { SimBoxes } from './boxes.js';
 export { VIEWS };
 
 const MAX_SPEED = R3.P3?.maxSpeed ?? 0.135;
-const ZONE_CLOSE = 12;   // the vignette starts growing when the wall is this close to a player
+const ZONE_CLOSE = 12;
+// Object views and side decoration are kept around each drawn camera's player: this far behind
+// and ahead (sim units; the fog ends at 125). Two players far apart get two windows.
+const VIEW_BACK = 30, VIEW_AHEAD = 125;
+// first object index that may reach z (objects are sorted by z0; L.zmx is the running max of z1)
+function firstFrom(L, z) {
+  if (R3.firstFrom && L.zmx) return R3.firstFrom(L, z);
+  let i = 0; while (i < L.objs.length && L.objs[i].z1 < z - 60) i++; return i;
+}   // the vignette starts growing when the wall is this close to a player
 const GLOW_C = [col(0xffa040), col(0x6ec0ff), col(0xfff0a0), col(0xd8f4ff)];   // character glows: outer Sol, Luna; inner Sol, Luna
 
 // Renders the scene into the composer's buffer once per viewport (split screen shares one bloom pass).
@@ -125,8 +133,6 @@ export class Runner3DRenderer {
     this.mist = [makeMist(0), makeMist(1)]; for (const m of this.mist) scene.add(m);
     this.deco = new WorldDeco(scene);
     this.zoneFx = new DuskZone(); scene.add(this.zoneFx.group);
-    this.veils = [new LeadVeil(), new LeadVeil()]; for (const v of this.veils) scene.add(v.mesh);
-    this.held = [0, 0];
     this.glow = new GlowField(700); scene.add(this.glow.mesh);
     this.fx = new FX(scene);
     this.objRoot = new THREE.Group(); scene.add(this.objRoot);
@@ -254,7 +260,7 @@ export class Runner3DRenderer {
   // course height near sim z (for side decoration and the zone)
   courseY(z) {
     const L = this.L; let best = null, bd = 1e9;
-    for (let i = Math.max(0, this.lo - 4); i < L.objs.length; i++) {
+    for (let i = firstFrom(L, z - 40); i < L.objs.length; i++) {
       const o = L.objs[i];
       if (o.z0 > z + 40) break;
       if (o.k !== 'floor') continue;
@@ -265,16 +271,16 @@ export class Runner3DRenderer {
     return this.lastCourseY ?? 0;
   }
 
-  streamViews(S, zMin, zMax, ctx) {
+  // ranges: sorted, non-overlapping [zMin, zMax] windows of sim z to keep views for
+  streamViews(S, ranges, ctx) {
     const L = this.L, objs = L.objs;
-    while (this.lo < objs.length && objs[this.lo].z1 < zMin && objs[this.lo].z0 < zMin - 80) this.lo++;
     const seen = new Set();
     this.occ = [];
     const poseFn = R3.objPose || R3.poseOf || R3.pose3 || null;
-    for (let i = this.lo; i < objs.length; i++) {
+    for (const [zMin, zMax] of ranges) for (let i = firstFrom(L, zMin); i < objs.length; i++) {
       const o = objs[i];
       if (o.z0 > zMax) break;
-      if (o.z1 < zMin) continue;
+      if (o.z1 < zMin || seen.has(i)) continue;
       seen.add(i);
       let v = this.views.get(i);
       if (!v) {
@@ -359,14 +365,18 @@ export class Runner3DRenderer {
     U.uZone.value = -view.zone;
     const land = this.observe(L, S, view);
 
-    const pz = Math.max(view.p[0].z, view.p[1].z);
-    const zMin = view.zone - 30, zMax = pz + 125;
+    // a window around each drawn camera's player (both in split screen), merged where they overlap
+    const ranges = [];
+    for (const i of split ? [0, 1] : [me]) ranges.push([view.p[i].z - VIEW_BACK, view.p[i].z + VIEW_AHEAD]);
+    ranges.sort((a, b) => a[0] - b[0]);
+    for (let k = ranges.length - 1; k > 0; k--) if (ranges[k][0] <= ranges[k - 1][1]) { ranges[k - 1][1] = Math.max(ranges[k - 1][1], ranges[k][1]); ranges.splice(k, 1); }
+    this.ranges = ranges;
     this.glow.begin();
     // fractional tick of this frame: the view's zone lags S.zone by (1 - alpha) ticks of zone travel
     const alpha = S.v > 1e-6 ? Math.max(0, Math.min(1, 1 - (S.zone - view.zone) / S.v)) : 1;
     const ctx = { time, dt, S, L, fx: this.fx, glow: this.glow, idx: 0, alpha, tick: S.tick - 1 + alpha };
     this.S = S; this.tick = ctx.tick; this.viewP = view.p;
-    this.streamViews(S, zMin, zMax, ctx);
+    this.streamViews(S, ranges, ctx);
     if (this.boxes) this.boxes.update(L, S, ctx.tick);
 
     // characters
@@ -407,18 +417,6 @@ export class Runner3DRenderer {
     // lanterns and keystones glow
     for (const l of this.deco.lanterns) this.glow.add(l.x, l.y, l.z, 1.5, l.c, 0.32 + 0.05 * Math.sin(time * 4 + l.z));
 
-    // lead cap: a veil across the run-up where the cap holds a player (see LEAD_MAX in the sim)
-    for (let i = 0; i < 2; i++) {
-      const p = S.p[i], q = view.p[i], lead = q.z - view.zone;
-      const o = p.alive && p.gr && p.gref >= 0 ? L.objs[p.gref] : null;
-      const on = o && o.skin === 1 && lead > R3.LEAD_MAX - 3;
-      const k = on ? Math.min(1, (lead - (R3.LEAD_MAX - 3)) / 2.5) : 0;
-      // held: at the cap and not moving forward
-      const h = on && lead > R3.LEAD_MAX - 0.2 && p.vz < 0.02 ? 1 : 0;
-      this.held[i] += (h - this.held[i]) * Math.min(1, realDt * 8);
-      this.veils[i].set(o ? o.x0 : 0, o ? o.x1 : 1, o ? o.y : 0, view.zone + R3.LEAD_MAX + 0.95, k, this.held[i]);
-    }
-
     // dusk zone
     U.uCreep.value = 4 + S.v * 40;
     const zy = this.courseY(view.zone + 2);
@@ -432,7 +430,7 @@ export class Runner3DRenderer {
     }
 
     // world deco
-    this.deco.update(view.zone - 30, pz + 135, (z) => this.courseY(z), time);
+    this.deco.update(ranges.map(([a, b]) => [a, b + 10]), (z) => this.courseY(z), time);
     this.glow.end();
     if (dt > 0) this.fx.update(dt);
 

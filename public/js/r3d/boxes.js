@@ -64,12 +64,11 @@ export class SimBoxes {
 
   update(L, S, tick) {
     this.n = 0;
-    const zA = Math.min(S.p[0].z, S.p[1].z) - 6, zB = Math.max(S.p[0].z, S.p[1].z) + 40;
+    // the shapes around each player (they can be far apart)
+    const near = (o) => S.p.some(p => o.z1 >= p.z - 6 && o.z0 <= p.z + 40);
     for (let i = S.lo; i < S.hi; i++) {
       const o = L.objs[i];
-      if (o.z0 > zB) break;
-      if (o.z1 < zA) continue;
-      this.obj(L, S, i, o, tick);
+      if (near(o)) this.obj(L, S, i, o, tick);
     }
     S.p.forEach((p, i) => { if (p.alive) this.box(p.x - HW, p.x + HW, p.y, p.y + PH, p.z - HW, p.z + HW, i ? C.luna : C.sol); });
     const g = this.lines.geometry;
