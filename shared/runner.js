@@ -431,8 +431,12 @@ function turnPlank(s, w) {
 function stepPlank(o, st, riders) {
   const c = cosOf(st.s);
   let tq = 0, tip = 0;
+  // A player standing in the safe middle holds the beam steady: the other player, further out,
+  // cannot tip or spin it under them (one player must never be able to throw the other off).
+  const held = riders.length > 1 && riders.some(p => Math.abs(p.x + p.w / 2 - o.px) <= o.safe);
   for (const p of riders) {
     const r = Math.max(-o.H, Math.min(o.H, p.x + p.w / 2 - o.px)), a = Math.abs(r);
+    if (held && a > o.safe) continue;
     if (a >= o.H - PLANK.tip) tip += r > 0 ? 1 : -1;
     const m = a <= o.safe ? PLANK.near * a : PLANK.near * o.safe + PLANK.far * (a - o.safe);
     tq += (r > 0 ? m : -m) * c;
@@ -451,6 +455,11 @@ function stepPlank(o, st, riders) {
   else if (st.f && as < PLANK.firmS && aw < PLANK.firmW) st.f = 0;
   if (!riders.length && as < PLANK.restS && aw < PLANK.restW) { st.s = 0; st.w = 0; st.f = 0; }
 }
+// Is the other player standing in this plank's safe middle? Then `p` landing on it or hopping
+// off it does not push it (see `held` in stepPlank).
+function plankHeld(S, o, k, p) {
+  return S.p.some(q => q !== p && q.alive && q.gr && oidObj(q.gref) === k && Math.abs(q.x + q.w / 2 - o.px) <= o.safe);
+}
 // After a player has moved: stand them on a plank if they came down onto its top face from
 // above (`s0` holds each plank's sine before it moved), or if they were riding it and did not
 // jump. A landing pushes the beam in proportion to the fall speed and the distance from the middle.
@@ -468,7 +477,7 @@ function plankLand(L, S, p, prevBot, rideK, pk, s0) {
   }
   if (!best) return;
   const k = pk[bn], o = L.objs[k], st = S.o[k];
-  if (k !== rideK) st.w += PLANK.land * p.vy * Math.max(-o.H, Math.min(o.H, p.x + p.w / 2 - o.px));
+  if (k !== rideK && !plankHeld(S, o, k, p)) st.w += PLANK.land * p.vy * Math.max(-o.H, Math.min(o.H, p.x + p.w / 2 - o.px));
   p.y = best.top - p.h; p.vy = 0; p.gr = true; p.coy = PHYS.coyote;
   p.gref = oid(k, Math.max(0, Math.min(o.n - 1, Math.floor((best.X - o.x) / SEG))));
 }
@@ -675,7 +684,7 @@ export function stepRunner(L, S, inputs) {
       if (!p.gr && p.vy >= 0) plankLand(L, S, p, prevBot, rideK, pk, s0);
       else if (rideK >= 0 && p.vy < 0) {   // jumped off a plank: the push tips it a little
         const o = L.objs[rideK];
-        S.o[rideK].w += PLANK.hop * Math.max(-o.H, Math.min(o.H, p.x + p.w / 2 - o.px));
+        if (!plankHeld(S, o, rideK, p)) S.o[rideK].w += PLANK.hop * Math.max(-o.H, Math.min(o.H, p.x + p.w / 2 - o.px));
       }
     }
     if (beyond && p.vx > vx0) p.vx = vx0;
