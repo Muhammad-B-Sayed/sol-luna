@@ -89,7 +89,7 @@ return to rest and can't be wedged, (4) both characters face equal difficulty.
 ## Checks
 
 ```bash
-node tools/check-runner.js                           # 50 seeds, course to 1700 tiles (about 7 min with 6 jobs)
+node tools/check-runner.js                           # 50 seeds, course to 1700 tiles (5 to 7 min with 6 jobs)
 JOBS=6 PARTS=4 node tools/check-runner.js            # the same, explicit
 SEEDS=11-20 node tools/check-runner.js               # a range of seeds (SEEDS=10 means 1-10)
 SEED=7 V=1 TILES=600 node tools/check-runner.js      # one seed, every chunk printed
@@ -136,7 +136,7 @@ lantern can be faster than running).
 ### Latest result (Nov 2026)
 
 ```
-Runner check: 50 seeds, 5652 chunks to 1700 tiles (full difficulty at 1100), top scroll speed 2.75 px/tick, 314 s in. 434 s.
+Runner check: 50 seeds, 5652 chunks to 1700 tiles (full difficulty at 1100), top scroll speed 2.75 px/tick, 314 s in. 308 s.
   whole course    100/100 runs (Sol and Luna, every seed) reached 1700 tiles; smallest lead over the left edge at a chunk start: 6.5 tiles (median of per-run minimums 17.5)
   single chunk    11304/11304 cleared alive from a 12-tile lead; 186 of them slower than the scroll (repaid by later chunks)
   second arrival  17832/17832 cleared
@@ -167,7 +167,7 @@ Runner check: 50 seeds, 5652 chunks to 1700 tiles (full difficulty at 1100), top
 PASS
 ```
 
-That run took 434 s with 6 jobs on a shared 16-core Linux machine.
+That run took 308 s with 6 jobs on a shared, busy 16-core Linux machine (434 s on a busier run).
 
 ### The 1700-tile failures, and why they were the bot
 
