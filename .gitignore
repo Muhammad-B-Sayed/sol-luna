@@ -3,3 +3,4 @@ node_modules
 tools/acts/.botcache/
 tools/acts/.last/
 __pycache__/
+tools/playtest/out/net-tracks/

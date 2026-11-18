@@ -147,22 +147,28 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
 
 ### Netcode
 
+Everything about online play of the runners (cause of the Nov 2026 "he died, then didn't" bug,
+the scheme, numbers, checks) is in `docs/netcode.md`. In short:
+
 - **Server** (`server/index.js`):
-  - Each room runs `step()` at 60 Hz using queued inputs per character.
-  - It broadcasts `{t:'s', ack:[seqSol,seqLuna], inp:[bitsSol,bitsLuna], st:<full state>}` every
-    2 ticks (30 Hz).
-  - If a player's input queue runs dry, their last input is held for 10 ticks, then released.
-  - A queue longer than 12 is trimmed.
-- **Client** (`main.js`):
-  - Predicts every tick with its own input and the last known remote input, and sends `{t:'i', s, b}`.
-  - On each snapshot it takes the server state, replays its own unacked inputs, and carries the
-    visual difference as a decaying offset (`app.off`), so there's no visible snap.
-  - The partner is predicted from their last known keys, so a jump heard one round trip late
-    leaves a 60-180 px error. Their offset is carried whole (up to 240 px) and paid back at most
-    6 px per tick; your own character keeps the tight 64 px / 0.8 decay. Same in the Runner
-    (`runner-app.js`). Measured Nov 17 with `tools/playtest/online-browser.mjs` and
-    `runner-online.mjs`: the drawn partner moves at most 13 px per frame at `LAG_MS=80` and 150
-    (was 108-133 px), and your own character's backward correction stays 0 px.
+  - Each room runs at 60 Hz using queued inputs per character.
+  - Co-op and dodge: it broadcasts `{t:'s', ack:[seqSol,seqLuna], inp:[bitsSol,bitsLuna], st}`
+    every 2 ticks (30 Hz). A dry queue holds the last input for 10 ticks, then lets go; a queue
+    longer than 12 is cut to 4.
+  - Runner rooms: snapshots every tick, with `d` (held ticks), `q` and `qm` (queue lengths). A dry
+    queue holds the last keys and counts the ticks; late inputs equal to the held keys are then
+    skipped, so every input keeps its tick. The room first waits up to 400 ms for late inputs.
+    `NET_LOG=1` prints holds, skips, late keys and CPU per match.
+- **Runner clients** (`public/js/runner-sync.js`): your own player is predicted; deaths and the
+  end of the match come only from the server (the prediction runs with `pred` set and never
+  kills); the other player is drawn from snapshots about 150 ms in the past, interpolated,
+  extended briefly when snapshots are late, and kept continuous. A stalled tab catches up.
+- **Co-op client** (`main.js`): predicts every tick with its own input and the last known
+  remote input, and sends `{t:'i', s, b}`. On each snapshot it takes the server state, replays
+  its own unacked inputs, and carries the visual difference as a decaying offset (`app.off`).
+  The partner's correction is carried whole (up to 240 px) and paid back at most 6 px per tick.
+  Online the prediction never enters the death or win phase by itself (`predictStep`): those
+  come from the server only.
   - It interpolates between ticks for high-refresh displays.
 - **Messages:**
 
@@ -175,7 +181,9 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
   restarts the level with the new roles). Fixed Nov 2026: with one player in the room, swap used
   to flip the character twice and do nothing, and it was ignored once a level had started.
 - **Testing aids:**
-  - `LAG_MS=80 npm start` adds artificial one-way latency on the server.
+  - `LAG_MS=80 npm start` adds artificial one-way latency on the server. `LAG_JITTER=15` and
+    `LAG_SPIKE=8` add jitter and spikes (in order, like TCP). `node tools/check-netcode.js` is
+    the network check for the runners (section 5 of `docs/netcode.md`).
   - `window.__app` is exposed in the browser for Playwright tests (harmless; keep or remove).
 
 ### Rendering

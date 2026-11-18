@@ -14,7 +14,7 @@ Rematch always starts a new course (a new seed).
 | File | What |
 | --- | --- |
 | `shared/runner.js` | Seeded course generator, obstacles, `stepRunner`. Runs in the browser and on the server. Reuses the player physics from `shared/sim.js`. |
-| `public/js/runner-app.js` | Local loop, online prediction and reconciliation, HUD, results and pause screens. |
+| `public/js/runner-app.js` | Local loop, HUD, results and pause screens. Online sync is `runner-sync.js` (`docs/netcode.md`). |
 | `public/js/runner-render.js` | Scrolling renderer: cached stone pages, parallax back wall, obstacles, the dusk edge. |
 | `tools/runner-bot.js` | Search bot over the real runner sim (macro actions, best-first). |
 | `tools/check-runner.js` | The fairness checker (below). |

@@ -1,5 +1,6 @@
 // Sol & Luna — Runner mode in the browser: local versus on one keyboard, and online rooms
-// with client prediction against the authoritative server (same scheme as co-op in main.js).
+// against the authoritative server. Online sync (your prediction, the other player drawn from
+// snapshots, deaths only from the server) is runner-sync.js; see docs/netcode.md.
 // main.js creates one RunnerMode and hands it the shared canvas, input, network and screens.
 import { TS, WORLD_W, WORLD_H, TICK_RATE, SOL, LUNA } from '/shared/sim.js';
 import {
@@ -7,6 +8,7 @@ import {
   RPH_COUNT, RPH_PLAY, RPH_OVER, COUNT_TICKS, DRAW,
 } from '/shared/runner.js';
 import { RunnerRenderer } from './runner-render.js';
+import { createSync, SIM2D } from './runner-sync.js';
 
 const DT = 1000 / TICK_RATE;
 const $ = (s) => document.querySelector(s);
@@ -16,7 +18,6 @@ const WHY = {
   thorn: 'ran into thorns', shard: 'hit by a falling shard',
 };
 const RESULT_DELAY = 70;   // ticks of the final moment before the results card
-const REMOTE_CAP = 240, REMOTE_EASE = 6;   // the partner's visual correction (see main.js)
 
 export class RunnerMode {
   // ctx: { R, input, net, sfx, show(id), toast(msg), app, quit() }
@@ -44,10 +45,10 @@ export class RunnerMode {
     this.L = buildRunner(seed);
     this.S = st ? cloneRunner(st) : createRunnerState(this.L);
     this.prev = this.capture(this.S);
-    this.off = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
     this.results = false; this.paused = false; this.acc = 0;
-    this.pending = []; this.seq = 0; this.remoteBits = 0;
     this.heard = null;
+    // online: the sync owns the prediction; this.S becomes the state it shows, each frame
+    this.sync = this.online ? createSync(SIM2D, { L: this.L, st: this.S, me: this.app.me, send: (m) => this.net.send(m), now: performance.now() }) : null;
     this.RR.reset(this.L);
     this.active = true;
     this.show(null);
@@ -89,56 +90,20 @@ export class RunnerMode {
     if (this.S.phase === RPH_OVER && this.S.phaseT >= RESULT_DELAY) this.showResults();
   }
 
-  tickOnline() {
-    if (this.results) return;
-    const bits = this.paused ? 0 : this.input.any();
-    this.seq++;
-    this.net.send({ t: 'i', s: this.seq, b: bits });
-    this.pending.push([this.seq, bits]);
-    if (this.pending.length > 240) this.pending.shift();
-    const inp = [0, 0];
-    inp[this.app.me] = bits; inp[1 - this.app.me] = this.remoteBits;
-    this.prev = this.capture(this.S);
-    stepRunner(this.L, this.S, inp);
-    this.listen();
-    this.off.forEach((v, i) => {
-      // the partner's late-heard jumps are paid back at most REMOTE_EASE px per tick (see main.js)
-      if (i !== this.app.me) {
-        const m = Math.hypot(v.x, v.y), k = m < 0.05 ? 0 : Math.max(0.8, (m - REMOTE_EASE) / m);
-        v.x *= k; v.y *= k; return;
-      }
-      v.x *= 0.8; v.y *= 0.8; if (Math.abs(v.x) < 0.05) v.x = 0; if (Math.abs(v.y) < 0.05) v.y = 0;
-    });
-  }
-
   onSnapshot(m) {
-    if (!this.active || !this.online || m.st.mode !== 'runner' || m.st.seed !== this.S.seed) return;
-    const before = this.capture(this.S);
-    const ns = m.st, me = this.app.me;
-    this.remoteBits = m.inp[1 - me] | 0;
-    this.pending = this.pending.filter(([s]) => s > (m.ack[me] | 0));
-    const inp = [0, 0];
-    for (const [, b] of this.pending) { inp[me] = b; inp[1 - me] = this.remoteBits; stepRunner(this.L, ns, inp); }
-    const after = this.capture(ns);
-    before.p.forEach((v, i) => {
-      const o = this.off[i];
-      o.x += v.x - after.p[i].x; o.y += v.y - after.p[i].y;
-      if (Math.hypot(o.x, o.y) > (i === me ? 64 : REMOTE_CAP)) { o.x = 0; o.y = 0; }
-      this.prev.p[i].x += after.p[i].x - v.x; this.prev.p[i].y += after.p[i].y - v.y;
-    });
-    this.prev.cam += after.cam - before.cam;
-    this.S = ns;
-    if (ns.phase === RPH_OVER && ns.phaseT >= RESULT_DELAY && !this.results) this.showResults();
+    if (!this.active || !this.online || !this.sync || this.results) return;
+    this.sync.onSnapshot(m, performance.now());
   }
 
   view(alpha) {
-    const S = this.S, P = this.prev, O = this.off;
+    if (this.online) return this.drawn;
+    const S = this.S, P = this.prev;
     return {
       cam: P.cam + (S.cam - P.cam) * alpha,
       p: S.p.map((p, i) => {
         const a = P.p[i];
         if (Math.abs(a.x - p.x) + Math.abs(a.y - p.y) > 40) return { x: p.x, y: p.y };
-        return { x: a.x + (p.x - a.x) * alpha + (this.online ? O[i].x : 0), y: a.y + (p.y - a.y) * alpha + (this.online ? O[i].y : 0) };
+        return { x: a.x + (p.x - a.x) * alpha, y: a.y + (p.y - a.y) * alpha };
       }),
     };
   }
@@ -146,14 +111,26 @@ export class RunnerMode {
   // fixed 60 Hz ticks and a frame; called by main.js instead of its own loop
   frame(dt, now) {
     if (!this.S) return;
+    if (this.online) {
+      // ticks, the other player's clock and what to draw all come from the sync
+      if (!this.results) this.sync.frame(dt, () => (this.paused ? 0 : this.input.any()), now);
+      const d = this.sync.draw();
+      this.S = d.S;
+      this.drawn = d.v;
+      this.listen();
+      if (this.S.phase === RPH_OVER && this.S.phaseT >= RESULT_DELAY && !this.results) this.showResults();
+      this.RR.draw(this.L, this.S, this.drawn, now / 1000);
+      this.hud(now / 1000);
+      return;
+    }
     this.acc += dt;
     let n = 0;
     while (this.acc >= DT && n < 8) {
       this.acc -= DT; n++;
-      if (this.online) this.tickOnline(); else this.tickLocal();
+      this.tickLocal();
     }
     if (n === 8) this.acc = 0;
-    const alpha = this.paused && !this.online ? 1 : Math.min(1, this.acc / DT);
+    const alpha = this.paused ? 1 : Math.min(1, this.acc / DT);
     const v = this.drawn = this.view(alpha);   // what was drawn, for the browser checks
     this.RR.draw(this.L, this.S, v, now / 1000);
     this.hud(now / 1000);
@@ -265,9 +242,10 @@ export class RunnerMode {
     $('#rrSub').textContent = S.win === DRAW ? 'Both fell on the very same moment.' : `${NAME[S.win]} outlasted ${NAME[1 - S.win]}.`;
     for (const i of [SOL, LUNA]) {
       const k = i === SOL ? 'Sol' : 'Luna';
-      // a winner still running is timed to the moment the match ended, not to when this
-      // client shows the card (which differs by a few predicted ticks between host and guest)
-      const secs = S.p[i].alive ? Math.max(0, S.tick - S.phaseT - COUNT_TICKS) / 60 : survival(S, i);
+      // a winner still running is timed to the server's end of the match (the last death),
+      // not to when this client shows the card, so both clients show the same time
+      const end = Math.max(S.dead[0], S.dead[1]);
+      const secs = S.p[i].alive ? Math.max(0, (end >= 0 ? end : S.tick - S.phaseT) - COUNT_TICKS) / 60 : survival(S, i);
       $(`#rr${k}Time`).textContent = fmtTime(secs);
       $(`#rr${k}Dist`).textContent = `${Math.floor(distance(L, S, i))} m`;
       $(`#rr${k}Why`).textContent = S.p[i].alive ? 'still running' : WHY[S.why[i]] || 'lost';

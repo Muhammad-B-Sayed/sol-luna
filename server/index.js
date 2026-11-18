@@ -65,10 +65,31 @@ function newCode() {
   }
 }
 
-// Optional artificial one-way latency for testing netcode: LAG_MS=80 npm start
-const LAG = +(process.env.LAG_MS || 0);
+// Optional artificial one-way latency for testing netcode: LAG_MS=80 npm start. LAG_JITTER=15
+// adds up to +-15 ms per message, and LAG_SPIKE=8 stalls a socket for 150-300 ms about every
+// 8 s (both directions). Messages stay in order, as over TCP (docs/netcode.md).
+const LAG = +(process.env.LAG_MS || 0), LAG_JITTER = +(process.env.LAG_JITTER || 0), LAG_SPIKE = +(process.env.LAG_SPIKE || 0);
 const raw = (ws, s) => { if (ws.readyState === 1) ws.send(s); };
-const out = LAG ? (ws, s) => setTimeout(() => raw(ws, s), LAG) : raw;
+function lagged(ws, dir, fn) {
+  const now = performance.now();
+  if (LAG_SPIKE) {
+    ws.spikeNext ??= now - Math.log(1 - Math.random()) * LAG_SPIKE * 1000;
+    if (now >= ws.spikeNext) { ws.spikeUntil = now + 150 + Math.random() * 150; ws.spikeNext = now - Math.log(1 - Math.random()) * LAG_SPIKE * 1000; }
+  }
+  let t = now + LAG + (Math.random() * 2 - 1) * LAG_JITTER;
+  if (ws.spikeUntil > now) t = Math.max(t, ws.spikeUntil + LAG);
+  const q = (ws.lagQ ||= [[], []])[dir];
+  t = Math.max(t, q.length ? q[q.length - 1][0] : 0);
+  q.push([t, fn]);
+  if (q.length === 1) {
+    const pump = () => {
+      while (q.length && q[0][0] <= performance.now() + 0.25) q.shift()[1]();
+      if (q.length) setTimeout(pump, Math.max(0, q[0][0] - performance.now()));
+    };
+    setTimeout(pump, Math.max(0, t - now));
+  }
+}
+const out = LAG ? (ws, s) => lagged(ws, 1, () => raw(ws, s)) : raw;
 
 function send(ws, msg) {
   out(ws, JSON.stringify(msg));
@@ -82,7 +103,7 @@ const WINDUP = process.env.DODGE_WINDUP !== 'off';
 function rttPing(ws) {
   const b = Buffer.alloc(8); b.writeDoubleLE(performance.now());
   const go = () => { if (ws.readyState === 1) ws.ping(b); };
-  LAG ? setTimeout(go, LAG) : go();   // the stamp is taken before the test lag
+  LAG ? lagged(ws, 1, go) : go();   // the stamp is taken before the test lag
 }
 function rttPong(ws, data) {
   if (!data || data.length !== 8) return;
@@ -94,6 +115,10 @@ function rttOf(ws) {
   return a.length ? a[a.length >> 1] : 0;
 }
 
+const RUN_HOLD = 30;     // runner: ticks the last keys are held while no input arrives (0.5 s)
+const RUN_QMAX = 120;    // runner: longest input queue kept
+const RUN_WAIT = 24;     // runner: ticks the room waits for a late player's inputs before it holds their keys (400 ms)
+
 class Room {
   constructor(code) {
     this.code = code;
@@ -101,11 +126,45 @@ class Room {
     this.level = -1;
     this.mode = 'coop';      // 'coop' (a level index) or a versus mode such as 'dodge'
     this.L = null; this.S = null; this.seed = 0;
-    this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
+    this.resetInputs();
     this.qDepth = [[], []];  // dodge: each player's input queue length over the last half second
     this.lastActive = Date.now();
   }
   get host() { return this.clients[0]; }
+  resetInputs() {
+    this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
+    this.debt = [0, 0]; this.held = [0, 0]; this.qlog = [[], []]; this.due = 0; this.waits = 0; this.waitMax = 0; this.waiting = false;
+    this.nst = [0, 1].map(() => ({ held: 0, skipped: 0, late: 0, released: 0, trimmed: 0 }));   // NET_LOG=1 prints these
+  }
+  netLog() {
+    if (!process.env.NET_LOG || !this.runner || !this.nst) return;
+    const u = process.cpuUsage(), secs = process.uptime();
+    console.log(`net cpu: the server used ${((u.user + u.system) / 1e4 / secs).toFixed(1)}% of one core over ${secs.toFixed(0)} s, ${rooms.size} rooms`);
+    console.log(`net ${this.code} ${this.mode} tick ${this.S?.tick}: waited for late inputs ${this.waits} times (longest ${this.waitMax} ticks); ` + this.nst.map((n, i) => `${['Sol', 'Luna'][i]} held ${n.held} skipped ${n.skipped} late ${n.late} released ${n.released} trimmed ${n.trimmed}`).join(' | '));
+  }
+  get runner() { return this.mode === 'runner' || this.mode === 'runner3d'; }
+  // Runner rooms (docs/netcode.md). Each client predicts its own player from its own inputs, one
+  // per tick, so the server must apply every input on the tick the client meant, or the client's
+  // own player gets corrected. When the queue runs dry (a late packet, a Wi-Fi spike, a stalled
+  // tab) the last keys are held, as before, and every held tick is counted. When the late
+  // inputs arrive, the ones equal to the held keys were already applied by the hold, so they are
+  // skipped: the player's path is exactly what the client predicted. Only keys that changed
+  // during the gap are applied late. After RUN_HOLD ticks without input the keys are let go.
+  // The smallest queue length of the last second goes to the client (qm), which runs slightly
+  // slower or faster to keep a small cushion here (public/js/runner-sync.js).
+  runnerInput(ch) {
+    const q = this.q[ch], h = this.qlog[ch];
+    h.push(q.length); if (h.length > 60) h.shift();
+    const n = this.nst[ch];
+    while (this.debt[ch] > 0 && q.length && q[0][1] === this.held[ch]) { this.ack[ch] = q.shift()[0]; this.debt[ch]--; n.skipped++; }
+    if (this.debt[ch] > 0 && q.length) { this.debt[ch] = 0; n.late++; }   // the keys changed during the gap: that input is late
+    if (q.length > RUN_QMAX) { n.trimmed += q.length - RUN_QMAX / 2; q.splice(0, q.length - RUN_QMAX / 2); }   // a client far ahead (should not happen)
+    if (q.length) {
+      const [s, b] = q.shift();
+      this.cur[ch] = b; this.ack[ch] = s; this.starve[ch] = 0;
+    } else if (++this.starve[ch] > RUN_HOLD) { if (this.cur[ch]) n.released++; this.cur[ch] = 0; }
+    else { if (!this.debt[ch]) this.held[ch] = this.cur[ch]; this.debt[ch]++; n.held++; }
+  }
   info() {
     return { code: this.code, level: this.level, mode: this.mode, players: this.clients.map(c => ({ char: c.char, name: c.name })) };
   }
@@ -120,25 +179,25 @@ class Room {
     this.level = level; this.mode = mode;
     if (mode === 'dodge') { this.L = COURT; this.S = createDodge((Math.random() * 2 ** 31) | 0); }   // seeded first serve
     else { this.L = BUILT[level]; this.S = createState(this.L); }
-    this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
+    this.resetInputs();
     this.broadcast(this.startMsg());
   }
   // versus Runner: a fresh seeded course every time (rematches included)
-  startRunner() {
+  startRunner(seed) {
     this.mode = 'runner'; this.level = -1;
-    this.seed = newSeed();
+    this.seed = seed || newSeed();
     this.L = buildRunner(this.seed);
     this.S = createRunnerState(this.L);
-    this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
+    this.resetInputs();
     this.broadcast(this.startMsg());
   }
   // versus Runner 3D: same scheme, its own sim
-  startRunner3d() {
+  startRunner3d(seed) {
     this.mode = 'runner3d'; this.level = -1;
-    this.seed = newSeed();
+    this.seed = seed || newSeed();
     this.L = buildRunner3d(this.seed);
     this.S = createRunner3dState(this.L);
-    this.q = [[], []]; this.cur = [0, 0]; this.ack = [0, 0]; this.starve = [0, 0];
+    this.resetInputs();
     this.broadcast(this.startMsg());
   }
   restartGame() { if (this.mode === 'runner') this.startRunner(); else if (this.mode === 'runner3d') this.startRunner3d(); else this.start(this.level, this.mode); }
@@ -161,9 +220,41 @@ class Room {
     if (q.length > 1 && (ph === DP_POINT || ph === DP_OVER || (ph === DP_READY && q[0][1] === this.cur[ch]))) this.ack[ch] = q.shift()[0];
     const h = this.qDepth[ch]; h.push(q.length); if (h.length > 30) h.shift();
   }
+  // n ticks of wall-clock time have passed. Co-op and dodge rooms step n times. Runner rooms
+  // wait up to RUN_WAIT ticks for a player whose inputs are late (a Wi-Fi spike, a stalled
+  // tab) instead of guessing their keys, then catch up as soon as the inputs arrive. Only past
+  // RUN_WAIT do they step with the held keys. So a key pressed during a spike is still applied
+  // on its tick and nobody dies of their own late packet; the price is that during the wait
+  // the other player sees them (and the world) pause for a moment.
+  advance(n) {
+    if (!this.S) return;
+    if (!this.runner) { for (let i = 0; i < n; i++) this.tick(); return; }
+    this.due = Math.min((this.due || 0) + n, RUN_WAIT + 60);   // at most a second behind
+    while (this.due > 0 && this.S) {
+      if (this.due <= RUN_WAIT && !this.inputsReady()) {
+        if (!this.waiting) { this.waiting = true; this.waits++; }
+        this.waitMax = Math.max(this.waitMax, this.due);
+        break;
+      }
+      this.waiting = false;
+      this.due--;
+      this.tick();
+    }
+  }
+  // both players have an input for the next tick (past the late ones a hold already covered)
+  inputsReady() {
+    for (let ch = 0; ch < 2; ch++) {
+      const q = this.q[ch];
+      let k = 0;
+      while (k < this.debt[ch] && k < q.length && q[k][1] === this.held[ch]) k++;
+      if (q.length <= k) return false;
+    }
+    return true;
+  }
   tick() {
     if (!this.S) return;
     for (let ch = 0; ch < 2; ch++) {
+      if (this.runner) { this.runnerInput(ch); continue; }
       const q = this.q[ch];
       if (q.length > 12) q.splice(0, q.length - 4); // client ran far ahead: catch up
       if (this.L.dodge) this.dodgeQueue(ch);
@@ -181,8 +272,16 @@ class Room {
       if (process.env.DODGE_LOG && this.S.d.t === 49) console.log(`dodge ${this.code}: rtt ${this.clients.map(c => Math.round(rttOf(c.ws))).join('/')} ms, queue ${this.qDepth.map(med).join('/')}, wind-up at Sol/Luna ${lag.join('/')}`);
       this.S.d.lag = lag;
     }
+    const wasOver = this.S.phase === 2;
     (this.mode === 'runner' ? stepRunner : this.mode === 'runner3d' ? stepRunner3d : this.L.dodge ? stepDodge : step)(this.L, this.S, this.cur);
-    if (this.S.tick % 2 === 0) {
+    if (this.runner && !wasOver && this.S.phase === 2) this.netLog();
+    if (this.runner) {
+      // runner snapshots are small (about 700 bytes): every tick, with the queue lengths
+      const qm = this.qlog.map(h => (h.length ? Math.min(...h) : 0));
+      // d: ticks held for each player whose inputs have not arrived yet (the client skips
+      // that many of its inputs equal to the held keys when it replays, as the server will)
+      this.broadcast({ t: 's', ack: this.ack, inp: this.cur, d: this.debt, q: this.q.map(q => q.length), qm, st: this.S });
+    } else if (this.S.tick % 2 === 0) {
       this.broadcast({ t: 's', ack: this.ack, inp: this.cur, st: this.S });
     }
   }
@@ -194,13 +293,16 @@ wss.on('connection', (ws) => {
   ws.room = null;
   ws.isAlive = true;
   ws.rttS = [];
-  ws.on('pong', (data) => { ws.isAlive = true; LAG ? setTimeout(() => rttPong(ws, data), LAG) : rttPong(ws, data); });
+  ws.on('pong', (data) => { ws.isAlive = true; LAG ? lagged(ws, 0, () => rttPong(ws, data)) : rttPong(ws, data); });
   rttPing(ws);
   ws.rttT = setInterval(() => rttPing(ws), 500);
 
-  ws.on('message', (data) => (LAG ? setTimeout(() => onMessage(ws, data), LAG) : onMessage(ws, data)));
+  ws.on('message', (data) => (LAG ? lagged(ws, 0, () => onMessage(ws, data)) : onMessage(ws, data)));
   ws.on('close', () => { clearInterval(ws.rttT); leave(ws); });
 });
+
+// TEST_SEED=1 lets a client pick the Runner course seed (tools/check-netcode.js plays planned bot routes)
+const testSeed = (m) => (process.env.TEST_SEED && m.seed > 0 ? m.seed >>> 0 : 0);
 
 function onMessage(ws, data) {
   {
@@ -260,12 +362,12 @@ function onMessage(ws, data) {
         }
         if (m.mode === 'runner') {
           if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
-          room.startRunner();
+          room.startRunner(testSeed(m));
           return;
         }
         if (m.mode === 'runner3d') {
           if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
-          room.startRunner3d();
+          room.startRunner3d(testSeed(m));
           return;
         }
         const lv = m.level | 0;
@@ -307,6 +409,7 @@ function onMessage(ws, data) {
 function leave(ws) {
   const r = ws.room;
   if (!r) return;
+  if (r.S && r.runner && r.S.phase !== 2) r.netLog();
   ws.room = null;
   r.clients = r.clients.filter(c => c.ws !== ws);
   if (!r.clients.length) { rooms.delete(r.code); return; }
@@ -322,10 +425,9 @@ setInterval(() => {
   const now = performance.now();
   acc += now - last; last = now;
   if (acc > 250) acc = 250;
-  while (acc >= DT) {
-    acc -= DT;
-    for (const r of rooms.values()) r.tick();
-  }
+  let n = 0;
+  while (acc >= DT) { acc -= DT; n++; }
+  if (n) for (const r of rooms.values()) r.advance(n);
 }, 4);
 
 // Heartbeats keep proxies from dropping idle sockets and clean up dead ones.

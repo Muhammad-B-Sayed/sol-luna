@@ -248,9 +248,14 @@ The renderer keeps object views and side decoration in a window around each draw
 player, 30 units behind to 125 ahead, merged where the two overlap. With the players 354 apart
 split screen keeps 97 views and single view 53.
 
-Online play uses the same scheme as the 2D runner. The client predicts with its own input and
-the last known remote input. On each snapshot it replays its unacknowledged inputs and carries
-the difference as a decaying visual offset. Two additions:
+Online sync was replaced in Nov 2026 (branch `runner-netcode`): both runners now use
+`public/js/runner-sync.js`, deaths come only from the server and the other player is drawn
+from snapshots. See `docs/netcode.md`. What follows describes the scheme before that; the
+`cover()` note and `window.__runner3d.corr` still apply.
+
+The old scheme: the client predicted with its own input and the last known remote input. On
+each snapshot it replayed its unacknowledged inputs and carried the difference as a decaying
+visual offset. Two additions:
 
 - When the drawn position is ahead of the corrected one and the player is running forward, the
   offset shrinks by at most 60% of their forward speed each tick. The player slows down for a

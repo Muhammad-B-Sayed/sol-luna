@@ -177,9 +177,19 @@ try {
   }
   await G.key('KeyD', 'keyUp');   // the guest stops; the host keeps going
   await sleep(300);
-  const pos = await Promise.all([H, G].map(P => P.eval(`(() => { const S = window.__runner.S; return { tick: S.tick, cam: S.cam, p: S.p.map(p => [Math.round(p.x), Math.round(p.y), p.alive]) } })()`)));
-  const dx = Math.max(...pos[0].p.map((q, i) => Math.abs(q[0] - pos[1].p[i][0]) + Math.abs(q[1] - pos[1].p[i][1])));
-  check('online: clients agree on positions (both players moved)', pos[0].p.every(q => q[0] > 280) && dx < 40 && Math.abs(pos[0].tick - pos[1].tick) < 40, JSON.stringify(pos));
+  // Each client draws the other player a little in the past, from the server's snapshots
+  // (docs/netcode.md), so the two screens differ while someone moves. Agreement means: both
+  // hold the same server state for a tick they both have, and the other player is drawn where
+  // the server had them at the tick being drawn.
+  const pos = await Promise.all([H, G].map(P => P.eval(`(() => { const r = window.__runner, s = r.sync, S = r.S, o = 1 - window.__app.me;
+    const d = s.last, sa = s.snapAt(d.T), at = sa.st.p[o];
+    return { tick: S.tick, p: S.p.map(p => [Math.round(p.x), Math.round(p.y), p.alive]), ticks: s.snaps.map(x => x.tick),
+      snaps: Object.fromEntries(s.snaps.map(x => [x.tick, x.st.p.map(p => [p.x, p.y])])),
+      drawnOff: Math.abs(d.v.p[o].x - s.remoteRaw(d.T).x) + Math.abs(d.v.p[o].y - s.remoteRaw(d.T).y), onSnap: Math.abs(sa.tick - d.T) < 0.01 ? Math.abs(d.v.p[o].x - at.x) + Math.abs(d.v.p[o].y - at.y) : 0 } })()`)));
+  const common = pos[0].ticks.filter(t => pos[1].ticks.includes(t)).pop();
+  const same = common !== undefined && JSON.stringify(pos[0].snaps[common]) === JSON.stringify(pos[1].snaps[common]);
+  check('online: clients agree on positions (both players moved)', pos[0].p.every(q => q[0] > 280) && same && pos.every(q => q.drawnOff < 6) && Math.abs(pos[0].tick - pos[1].tick) < 40,
+    JSON.stringify({ common, same, drawnOff: pos.map(q => +q.drawnOff.toFixed(2)), p: pos.map(q => q.p), ticks: pos.map(q => q.tick) }));
   await H.shot('runner-online-host');
   await G.shot('runner-online-guest');
   for (let k = 0; k < 80; k++) {
