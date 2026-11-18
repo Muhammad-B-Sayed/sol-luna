@@ -1,5 +1,5 @@
 // Sol & Luna — app shell: menus, local co-op loop, online prediction/reconciliation.
-import { buildLevel, createState, step, cloneState, PH_PLAY, PH_DEAD, PH_WON, SOL, LUNA, TICK_RATE, WORLD_W, WORLD_H, TS, rankFor } from '/shared/sim.js';
+import { buildLevel, createState, step, cloneState, PH_PLAY, PH_DEAD, PH_WON, SOL, LUNA, TICK_RATE, WORLD_W, WORLD_H, TS, PHYS, rankFor } from '/shared/sim.js';
 import { LEVELS } from '/shared/levels.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
@@ -131,6 +131,7 @@ function beginLevel(level, st) {
   if (app.L.dodge) { dodgeHearReset(app.S); R.dodgeFx = null; app.L.hint = dodgeHint(app.mode === 'online'); }
   app.prev = capture(app.S);
   app.off = zeroOff(app.S);
+  app.lift = app.S.p.map(() => 0); app.liftPrev = app.lift.slice();
   app.paused = false;
   app.results = false;
   app.pending = []; app.remoteBits = 0;
@@ -226,7 +227,9 @@ function tickLocal() {
   if (app.paused || app.results) return;
   const inp = input.local();
   app.prev = capture(app.S);
+  const pb = popBefore(app.S);
   stepAny(app.L, app.S, inp);
+  popAfter(app.S, pb);
   listen(app.S);
   if (app.S.phase === PH_WON && app.S.phaseT >= 45) showResults();
   if (app.S.d && app.S.d.phase === DP_OVER && app.S.d.t >= 40) showDodgeOver();
@@ -243,9 +246,27 @@ function tickOnline() {
   const inp = [0, 0];
   inp[app.me] = bits; inp[1 - app.me] = app.remoteBits;
   app.prev = capture(app.S);
+  const pb = popBefore(app.S);
   stepAny(app.L, app.S, inp);
+  popAfter(app.S, pb);
   listen(app.S);
   decayOff();
+}
+
+// Stepping up (out of a pool, onto a step) lifts a character up to 14 px on top of what their
+// speed explains, in one tick. The renderer draws that extra lift (app.lift, px down) and lets it
+// ease out over a few frames. Only the drawing moves; the simulation is untouched.
+function popBefore(S) { app.liftPrev = app.lift.slice(); return S.p.map(p => ({ y: p.y, vy: p.vy, j: p.jumpN, t: S.tries })); }
+function popAfter(S, before) {
+  const lift = app.lift;
+  S.p.forEach((p, i) => {
+    lift[i] *= 0.55; if (lift[i] < 0.1) lift[i] = 0;
+    const b = before[i];
+    if (!b || b.t !== S.tries || !p.alive) { lift[i] = 0; return; }
+    const vy = p.jumpN !== b.j ? -PHYS.jumpVel : b.vy;
+    const extra = (p.y - b.y) - Math.min(vy + PHYS.gravity, PHYS.maxFall);   // < 0: rose more than speed explains
+    if (extra < -5 && extra > -24) lift[i] = Math.min(20, lift[i] - extra);
+  });
 }
 
 // The partner is predicted from their last known keys, so a jump the client hears about late
@@ -311,8 +332,10 @@ function view(alpha) {
   if (!ok) return null;
   // don't interpolate across teleports (respawn)
   const tp = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) > 40;
+  // the step-up lift is interpolated between ticks like the position it belongs to
+  const lift = (v, i) => { const a = app.liftPrev?.[i] || 0, b = app.lift?.[i] || 0; v.y += a + (b - a) * alpha; return v; };
   return {
-    p: S.p.map((p, i) => tp(P.p[i], p) ? { x: p.x, y: p.y } : lerp(P.p[i], p, O?.p[i])),
+    p: S.p.map((p, i) => tp(P.p[i], p) ? { x: p.x, y: p.y } : lift(lerp(P.p[i], p, O?.p[i]), i)),
     b: S.b.map((b, i) => tp(P.b[i], b) ? { x: b.x, y: b.y } : lerp(P.b[i], b, O?.b[i])),
     pl: S.pl.map((q, i) => lerp(P.pl[i], q, O?.pl[i])),
     ball: S.d && P.ball ? (Math.abs(P.ball.x - S.d.ball.x) + Math.abs(P.ball.y - S.d.ball.y) > 70 ? { x: S.d.ball.x, y: S.d.ball.y } : lerp(P.ball, S.d.ball, O?.ball)) : null,
