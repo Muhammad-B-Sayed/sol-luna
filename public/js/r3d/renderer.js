@@ -32,6 +32,7 @@ class ViewportsPass extends Pass {
     const o = this.owner, pr = renderer.getPixelRatio();
     renderer.setRenderTarget(readBuffer);
     renderer.setClearColor(0x000000, 1);
+    renderer.clear();   // the whole buffer, including the gap between split viewports (bloom would pick it up)
     readBuffer.scissorTest = true;
     for (const vp of o.viewports) {
       readBuffer.viewport.set(vp.x * pr, vp.y * pr, vp.w * pr, vp.h * pr);
@@ -271,7 +272,7 @@ export class Runner3DRenderer {
   onDeath(L, S, i, q) {
     const why = S.why[i], x = q.x, y = q.y, z = -q.z, fx = this.fx;
     const info = { why };
-    if (why === 'spike') {
+    if (why === 'spike' || why === 'sweep' || why === 'gate') {
       fx.burst(x, y + 0.6, z, fx.cols.thorn, 50, 4.5, 0.9, 0.11, 6);
       fx.burst(x, y + 0.6, z, i ? fx.cols.moon : fx.cols.sun, 24, 3, 0.8, 0.08, 4);
     } else if (why === 'pool') {
@@ -283,6 +284,9 @@ export class Runner3DRenderer {
     } else if (why === 'zone') {
       fx.smoke(x, y, z, 24);
       for (let k = 0; k < 30; k++) fx.ember(x + (Math.random() - 0.5), y + Math.random() * 1.4, z + (Math.random() - 0.5));
+    } else if (why === 'blade' || why === 'orb' || why === 'shard') {
+      fx.burst(x, y + 0.7, z, i ? fx.cols.moon : fx.cols.sun, 46, 4.5, 0.9, 0.1, 5);
+      fx.dust(x, y, z, 14, i, 1.4);
     } else {
       fx.burst(x, y + 0.6, z, i ? fx.cols.moon : fx.cols.sun, 30, 2.5, 1.2, 0.1, -1);
     }

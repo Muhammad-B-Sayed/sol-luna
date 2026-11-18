@@ -150,24 +150,48 @@ export class Character {
     head.add(this.tuft);
   }
 
-  // Luna: a crescent halo framing the head, with a twinkling star at its tip, and a soft crest.
+  // Luna: a deep-blue hood open at the face, its soft point drooping back to a little star, a
+  // glowing crescent on the back of the hood (what the camera behind her sees) and a short cape.
   buildCrescent(head, M) {
-    const s = new THREE.Shape();
-    s.absarc(0, 0, 0.5, Math.PI * -0.15, Math.PI * 1.15, false);
-    s.absarc(0.0, 0.1, 0.42, Math.PI * 1.08, Math.PI * -0.08, true);
-    const g = new THREE.ExtrudeGeometry(s, { depth: 0.06, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.02, bevelSegments: 2, curveSegments: 24 });
-    grad(g, -0.1, 0.5, 0x4c8fe0, 0xdff4ff);
-    const cres = this.cres = new THREE.Mesh(g, M.ray);
-    cres.position.set(0, 0.0, 0.13); cres.rotation.z = 0.35; cres.rotation.x = -0.12;
-    head.add(cres);
-    // crest sweeping back over the top
-    const crestG = grad(new THREE.SphereGeometry(0.2, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(0.8, 0.9, 1.6), 0, 0.2, 0x8fc3ff, 0xe9f7ff);
-    const crest = new THREE.Mesh(crestG, M.skin); crest.position.set(0, 0.26, 0.08); crest.rotation.x = -0.35; head.add(crest);
-    // star at the crescent's upper tip
+    const P = this.P;
+    const hoodMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, side: THREE.DoubleSide,
+      emissive: 0x0a1c48, emissiveIntensity: 1 }), { rim: col(0x6fb8ff).multiplyScalar(0.6), dissolve: this.dis, key: 'hood' });
+    this.mats.hood = hoodMat;
+    const open = 1.7;   // opening at the face (-z), radians
+    const hoodG = new THREE.SphereGeometry(0.405, 24, 14, Math.PI * 1.5 + open / 2, Math.PI * 2 - open, 0, Math.PI * 0.68);
+    grad(hoodG, -0.2, 0.4, 0x1b2f6e, 0x3f6fd0);
+    const hood = new THREE.Mesh(hoodG, hoodMat); hood.position.set(0, 0.02, 0.02); head.add(hood);
+    // drooping point: a bent cone of three segments
+    const tip = this.tip = new THREE.Group(); tip.position.set(0, 0.3, 0.16); tip.rotation.x = 1.0; head.add(tip);
+    let parent = tip, r = 0.17;
+    this.tipSegs = [];
+    for (let k = 0; k < 3; k++) {
+      const len = 0.17;
+      const g = grad(new THREE.CylinderGeometry(r * 0.62, r, len, 10, 1).translate(0, len / 2, 0), 0, len, k ? 0x3f6fd0 : 0x2a4fa8, 0x5f8fe8);
+      const seg = new THREE.Mesh(g, hoodMat); parent.add(seg);
+      const joint = new THREE.Group(); joint.position.y = len; joint.rotation.x = 0.35; seg.add(joint);
+      this.tipSegs.push(joint);
+      parent = joint; r *= 0.62;
+    }
     const star = this.star = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), M.core);
-    star.scale.set(0.6, 1.2, 0.6);
-    star.position.set(Math.cos(Math.PI * 1.15) * 0.48, Math.sin(Math.PI * 1.15) * 0.48 + 0.0, 0.03);
-    cres.add(star);
+    star.position.y = 0.05; parent.add(star);
+    // crescent on the back of the hood, facing the camera behind her
+    const s = new THREE.Shape();
+    s.absarc(0, 0, 0.17, Math.PI * 0.3, Math.PI * 1.7, false);
+    s.absarc(0.075, 0.0, 0.135, Math.PI * 1.55, Math.PI * 0.45, true);
+    const cg = new THREE.ShapeGeometry(s, 16);
+    const cres = this.cres = new THREE.Mesh(cg, M.core);
+    cres.position.set(0, 0.06, 0.43); cres.rotation.z = -0.5; head.add(cres);
+    // cape from the shoulders, hanging down the back
+    const capeG = new THREE.PlaneGeometry(0.46, 0.52, 4, 6).translate(0, -0.26, 0);
+    const pos = capeG.attributes.position;
+    for (let k = 0; k < pos.count; k++) { const x = pos.getX(k), y = pos.getY(k); pos.setZ(k, 0.09 * Math.cos(x / 0.23 * 1.3) * (1 + y)); pos.setX(k, x * (1 - y * 0.55)); }
+    capeG.computeVertexNormals();
+    grad(capeG, -0.52, 0, 0x4f86e0, 0x1b2f6e);
+    const cape = this.cape = new THREE.Mesh(capeG, hoodMat);
+    cape.position.set(0, 0.74, 0.17);
+    this.body.add(cape);
+    void P;
   }
 
   // pose: { x,y,z (sim, feet), vx, vy, vz (sim units/tick), gr, alive, deadT (s since death or -1), why, win (bool),
@@ -240,9 +264,12 @@ export class Character {
       this.tuft.scale.set(1, 1 + 0.25 * Math.sin(time * 12), 1);
       this.tuft.rotation.x = 0.35 + this.lean * 1.5 + Math.sin(time * 7) * 0.08;
     } else {
-      this.cres.rotation.z = 0.35 + Math.sin(time * 1.3) * 0.05;
       const tw = 1 + 0.35 * Math.sin(time * 5.2);
       this.star.scale.set(0.6 * tw, 1.2 * tw, 0.6 * tw); this.star.rotation.y = time * 2;
+      // the hood point swings with motion; the cape lifts with speed and in the air
+      const flow = sp01 * 0.5 + this.air * 0.4;
+      this.tipSegs.forEach((j, k) => { j.rotation.x = 0.35 + flow * 0.25 + Math.sin(time * 6 - k * 0.8) * 0.07 * (0.3 + sp01); j.rotation.z = Math.sin(time * 2.1 + k) * 0.05 - this.roll * 0.6; });
+      this.cape.rotation.x = 0.12 + flow * 0.9 + Math.sin(time * 9) * 0.05 * sp01 - (pose.vy > 0 && !pose.gr ? 0 : this.air * 0.2);
     }
     // blink
     this.blinkT -= dt;
@@ -265,10 +292,21 @@ export class Character {
     if (dT >= 0) {
       const why = pose.why;
       let k;
-      if (why === 'spike') {
+      if (why === 'spike' || why === 'sweep' || why === 'gate') {
         k = Math.min(1, dT / 0.45);
         D.uDissolveCol.value.setHex(0xff8ae0).multiplyScalar(3);
         body.scale.multiplyScalar(1 + k * 0.25);
+        D.uDark.value = 0;
+      } else if (why === 'orb' || why === 'shard') {   // flattened, then shatters
+        k = Math.min(1, dT / 0.6);
+        D.uDissolveCol.value.copy(P.glow).multiplyScalar(3);
+        const f = Math.min(1, dT / 0.08);
+        body.scale.set(1 + f * 0.5, 1 - f * 0.7, 1 + f * 0.5);
+        D.uDark.value = 0;
+      } else if (why === 'blade') {   // knocked sideways, spinning
+        k = Math.min(1, dT / 0.55);
+        D.uDissolveCol.value.copy(P.glow).multiplyScalar(3);
+        body.rotation.z += dT * 9; root.position.y += Math.min(dT, 0.3) * 1.5;
         D.uDark.value = 0;
       } else if (why === 'pool') {
         k = Math.min(1, dT / 0.9);

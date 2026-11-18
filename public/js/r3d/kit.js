@@ -364,6 +364,7 @@ export class GlowField {
           vUv = position.xy + 0.5; vCol = aCol;
           vB = 1.0 - smoothstep(-0.5, 4.0, aOff.z - uZone);
           vec4 mv = viewMatrix * vec4(aOff.xyz, 1.0);
+          vB *= smoothstep(1.0, 4.5, -mv.z);   // fade glows that come right up to the camera
           mv.xy += position.xy * aOff.w;
           gl_Position = projectionMatrix * mv;
         }`,

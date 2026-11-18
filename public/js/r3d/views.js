@@ -362,20 +362,21 @@ VIEWS.sweeper = {
     const rot = new THREE.Group(); root.add(rot);
     const bar = o.bar ?? 0.55, R = o.R, arms = o.arms === 2 ? 2 : 1;
     const len = arms === 2 ? 2 * R : R, off = arms === 2 ? 0 : -R / 2;   // local -z = arm 0
-    const beamG = new THREE.BoxGeometry(0.26, 0.22, len).translate(0, bar * 0.55, off);
+    const beamG = new THREE.BoxGeometry(0.34, 0.3, len).translate(0, bar * 0.55, off);
     rot.add(new THREE.Mesh(beamG, materials().gold));
     // thorns along the beam, pointing out both sides and up
-    const n = Math.round(len / 0.32) * 3;
+    const n = Math.round(len / 0.26) * 3;
     const im = new THREE.InstancedMesh(_thornGeo, _thornMat, n);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3();
     let k = 0;
     for (let j = 0; j < n / 3; j++) {
       const z = off - len / 2 + (j + 0.5) * len / (n / 3);
+      void 0;
       if (Math.abs(z) < 0.5) continue;
       for (const a of [-1.35, 0, 1.35]) {
         const r = hash(idx * 5 + j, a + 3);
         e.set(0, 0, -a + (r - 0.5) * 0.3); q.setFromEuler(e);
-        p.set(0, bar * 0.55, z); s.set(0.07, 0.24 + r * 0.12, 0.07);
+        p.set(0, bar * 0.55, z); s.set(0.1, 0.34 + r * 0.16, 0.1);
         m.compose(p, q, s); im.setMatrixAt(k++, m);
       }
     }
@@ -421,7 +422,7 @@ VIEWS.pendulum = {
     const hubG = new THREE.SphereGeometry(0.16, 10, 8);
     const hub = new THREE.Mesh(hubG, materials().gold); hub.position.y = -o.R; piv.add(hub);
     // yoke: a stone lintel over the path with two legs on the floor edges
-    const span = Math.max(2.4, (o.x1 - o.x0) * 0.55);
+    const span = (o.x1 - o.x0) + 1.6;   // legs stand outside the whole swing
     const lintG = slabGeometry(span, 0.6, 0.5, { glow: 0.35 });
     const lint = new THREE.Mesh(lintG, materials().stone); lint.position.set(o.px, o.py + 0.45, -o.pz);
     root.add(lint);
