@@ -65,10 +65,31 @@ function newCode() {
   }
 }
 
-// Optional artificial one-way latency for testing netcode: LAG_MS=80 npm start
-const LAG = +(process.env.LAG_MS || 0);
+// Optional artificial one-way latency for testing netcode: LAG_MS=80 npm start. LAG_JITTER=15
+// adds up to +-15 ms per message, and LAG_SPIKE=8 stalls a socket for 150-300 ms about every
+// 8 s (both directions). Messages stay in order, as over TCP (docs/netcode.md).
+const LAG = +(process.env.LAG_MS || 0), LAG_JITTER = +(process.env.LAG_JITTER || 0), LAG_SPIKE = +(process.env.LAG_SPIKE || 0);
 const raw = (ws, s) => { if (ws.readyState === 1) ws.send(s); };
-const out = LAG ? (ws, s) => setTimeout(() => raw(ws, s), LAG) : raw;
+function lagged(ws, dir, fn) {
+  const now = performance.now();
+  if (LAG_SPIKE) {
+    ws.spikeNext ??= now - Math.log(1 - Math.random()) * LAG_SPIKE * 1000;
+    if (now >= ws.spikeNext) { ws.spikeUntil = now + 150 + Math.random() * 150; ws.spikeNext = now - Math.log(1 - Math.random()) * LAG_SPIKE * 1000; }
+  }
+  let t = now + LAG + (Math.random() * 2 - 1) * LAG_JITTER;
+  if (ws.spikeUntil > now) t = Math.max(t, ws.spikeUntil + LAG);
+  const q = (ws.lagQ ||= [[], []])[dir];
+  t = Math.max(t, q.length ? q[q.length - 1][0] : 0);
+  q.push([t, fn]);
+  if (q.length === 1) {
+    const pump = () => {
+      while (q.length && q[0][0] <= performance.now() + 0.25) q.shift()[1]();
+      if (q.length) setTimeout(pump, Math.max(0, q[0][0] - performance.now()));
+    };
+    setTimeout(pump, Math.max(0, t - now));
+  }
+}
+const out = LAG ? (ws, s) => lagged(ws, 1, () => raw(ws, s)) : raw;
 
 function send(ws, msg) {
   out(ws, JSON.stringify(msg));
@@ -82,7 +103,7 @@ const WINDUP = process.env.DODGE_WINDUP !== 'off';
 function rttPing(ws) {
   const b = Buffer.alloc(8); b.writeDoubleLE(performance.now());
   const go = () => { if (ws.readyState === 1) ws.ping(b); };
-  LAG ? setTimeout(go, LAG) : go();   // the stamp is taken before the test lag
+  LAG ? lagged(ws, 1, go) : go();   // the stamp is taken before the test lag
 }
 function rttPong(ws, data) {
   if (!data || data.length !== 8) return;
@@ -269,11 +290,11 @@ wss.on('connection', (ws) => {
   ws.room = null;
   ws.isAlive = true;
   ws.rttS = [];
-  ws.on('pong', (data) => { ws.isAlive = true; LAG ? setTimeout(() => rttPong(ws, data), LAG) : rttPong(ws, data); });
+  ws.on('pong', (data) => { ws.isAlive = true; LAG ? lagged(ws, 0, () => rttPong(ws, data)) : rttPong(ws, data); });
   rttPing(ws);
   ws.rttT = setInterval(() => rttPing(ws), 500);
 
-  ws.on('message', (data) => (LAG ? setTimeout(() => onMessage(ws, data), LAG) : onMessage(ws, data)));
+  ws.on('message', (data) => (LAG ? lagged(ws, 0, () => onMessage(ws, data)) : onMessage(ws, data)));
   ws.on('close', () => { clearInterval(ws.rttT); leave(ws); });
 });
 

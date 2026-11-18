@@ -182,7 +182,7 @@ try {
   // hold the same server state for a tick they both have, and the other player is drawn where
   // the server had them at the tick being drawn.
   const pos = await Promise.all([H, G].map(P => P.eval(`(() => { const r = window.__runner, s = r.sync, S = r.S, o = 1 - window.__app.me;
-    const d = s.draw(), sa = s.snapAt(d.T), at = sa.st.p[o];
+    const d = s.last, sa = s.snapAt(d.T), at = sa.st.p[o];
     return { tick: S.tick, p: S.p.map(p => [Math.round(p.x), Math.round(p.y), p.alive]), ticks: s.snaps.map(x => x.tick),
       snaps: Object.fromEntries(s.snaps.map(x => [x.tick, x.st.p.map(p => [p.x, p.y])])),
       drawnOff: Math.abs(d.v.p[o].x - s.remoteRaw(d.T).x) + Math.abs(d.v.p[o].y - s.remoteRaw(d.T).y), onSnap: Math.abs(sa.tick - d.T) < 0.01 ? Math.abs(d.v.p[o].x - at.x) + Math.abs(d.v.p[o].y - at.y) : 0 } })()`)));

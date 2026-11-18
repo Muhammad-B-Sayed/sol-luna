@@ -381,6 +381,8 @@ export class RunnerSync {
     const r2 = (o) => sim.dims.map(k => +o[k].toFixed(2));
     const dbg = this.debug && { ex: +(T - A.tick).toFixed(1), roff: +Math.hypot(...sim.dims.map(k => this.roff[k])).toFixed(2), ride: this.lastRide?.key ?? -1,
       T: +T.toFixed(2), newest: A.tick, theirs: r2(theirs), ro: r2(this.roff), sa: sa.tick };
-    return { S, v, T, alpha, results: false, me: raw, dbg };
+    // draw() moves the drawing's own state on (offsets, the end freeze): call it once per frame.
+    // Tools read the last result from this.last.
+    return (this.last = { S, v, T, alpha, results: false, me: raw, dbg });
   }
 }
