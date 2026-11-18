@@ -141,6 +141,7 @@ export function solve(L, S, who, opts) {
   ];
   let exp = 0;
   for (const t of tries.slice(0, opts.rungs || tries.length)) {
+    if (opts.rungBudget) t.budget = opts.rungBudget;
     let S0 = cloneRunner3d(S);
     const pre = t.pre || [];
     for (const b of pre) tick(L, S0, who, b, opts.other || null, opts.hook || null);

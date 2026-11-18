@@ -81,7 +81,7 @@ function restCheck(L, S, objs, removeAt, inputs, out) {
     if (!restAt.has(i) && offAt.has(i) && offAt.get(i) - last.get(i) < restBound(o)) { rec.off++; continue; }
     const r = restAt.has(i) ? restAt.get(i) - last.get(i) : Infinity;
     rec.n++; rec.max = Math.max(rec.max, r);
-    if (r > restBound(o)) rec.fail++;
+    if (r > restBound(o)) { rec.fail++; (out.fails ||= []).push({ obj: i, kind: o.k, ticks: r }); }
   }
 }
 
@@ -156,7 +156,7 @@ function checkSeed(seed) {
       if (k > 0) run.minLead = Math.min(run.minLead, lead);
       // first try to keep the lead (or rebuild it to BUF), then settle for any safe route
       const opt = { until: sectionGoal(L, k + 1), budget: BUDGET, o0: c.o0, o1: c.o1 };
-      let r = solve(L, S, who, { ...opt, deadline: byLead(L.secs[k + 1].sz, Math.min(BUF, lead)), rungs: 1, budget: BUDGET / 3 });
+      let r = solve(L, S, who, { ...opt, deadline: byLead(L.secs[k + 1].sz, Math.min(BUF, lead)), rungs: 4, rungBudget: BUDGET / 3 });
       if (!r.ok) r = solve(L, S, who, opt);
       if (r.ok) { S = r.S; plan.push(...r.plan); continue; }
       run.fails.push({ test: 'course', seed, k, kind: c.kind, z: +c.z0.toFixed(1), who, lead: +lead.toFixed(1) });
@@ -261,6 +261,9 @@ function checkSeed(seed) {
     }
   }
 
+  res.restFail = [...(res.rest.fails || []), ...(res.abuse.fails || [])].map(f => ({ test: 'rest', seed, ...f }));
+  delete res.rest.fails; delete res.abuse.fails;
+
   // 7. determinism: both course routes at once, plain, again, and through JSON every 250 ticks
   if (plans[0] && plans[1]) {
     const n = Math.min(plans[0].length, plans[1].length, QUICK ? 6000 : 20000);
@@ -281,12 +284,12 @@ function checkSeed(seed) {
 }
 
 function merge(all) {
-  const tot = { course: [], courseFail: [], seeds: all.length, secs: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, zEnd: 0, tMax: 0, det: [] };
+  const tot = { restFail: [], course: [], courseFail: [], seeds: all.length, secs: 0, first: 0, firstFail: [], second: 0, secondFail: [], parked: 0, parkedFail: [], lost: [], slack: [], kinds: {}, rest: {}, abuse: {}, speed: 0, zEnd: 0, tMax: 0, det: [] };
   for (const r of all) {
     tot.secs += r.secs; tot.first += r.first; tot.second += r.second; tot.parked += r.parked;
     tot.firstFail.push(...r.firstFail); tot.secondFail.push(...r.secondFail); tot.parkedFail.push(...r.parkedFail);
     tot.lost.push(...r.lost); tot.slack.push(...r.slack);
-    tot.course.push(...r.course); tot.courseFail.push(...r.courseFail);
+    tot.course.push(...r.course); tot.courseFail.push(...r.courseFail); tot.restFail.push(...r.restFail);
     tot.speed = Math.max(tot.speed, r.speed); tot.zEnd = Math.max(tot.zEnd, r.zEnd); tot.tMax = Math.max(tot.tMax, r.tMax);
     tot.det.push(r.det ? { seed: r.seed, ...r.det } : { seed: r.seed, n: 0, ok: null });
     for (const [k, v] of Object.entries(r.kinds)) {
@@ -325,7 +328,7 @@ function report(t, secs) {
   for (const key of ['rest', 'abuse']) for (const [k, v] of Object.entries(t[key])) {
     console.log(`  ${key === 'rest' ? 'rest after a run ' : 'rest after abuse '} ${k.padEnd(8)} ${v.n} objects, slowest ${v.max} ticks after the last touch, over bound: ${v.fail}${v.off ? `, ${v.off} left the window first` : ''}`);
   }
-  for (const f of [...t.courseFail, ...t.firstFail, ...t.secondFail, ...t.parkedFail, ...detBad].slice(0, 40)) console.log('  FAIL', JSON.stringify(f));
+  for (const f of [...t.courseFail, ...t.firstFail, ...t.secondFail, ...t.parkedFail, ...t.restFail, ...detBad].slice(0, 40)) console.log('  FAIL', JSON.stringify(f));
   console.log(ok ? '\nPASS' : '\nFAIL');
   return ok;
 }

@@ -822,8 +822,9 @@ function updateCrumble(S, o, i) {
   st.t++;
   if (st.st === 1 && st.t >= o.crack) { st.st = 2; st.t = 0; }
   else if (st.st === 2 && st.t >= CRUMBLE.gone) { st.st = 3; st.t = 0; }
+  // re-forms unless someone's centre is inside its space (standing beside it never blocks it)
   else if (st.st === 3 && st.t >= CRUMBLE.reform &&
-    !S.p.some(p => p.alive && p.x + HW > o.x0 && p.x - HW < o.x1 && p.z + HW > o.z0 && p.z - HW < o.z1 && p.y < o.y - 0.02 && p.y + P3.h > o.y - 0.5)) {
+    !S.p.some(p => p.alive && p.x > o.x0 && p.x < o.x1 && p.z > o.z0 && p.z < o.z1 && p.y < o.y - 0.02 && p.y + P3.h > o.y - 0.5)) {
     st.st = 0; st.t = 0;
   }
 }
