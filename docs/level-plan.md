@@ -88,59 +88,31 @@ or whether it is fair. Those are your job, and the planner will review each map 
 
 ## What makes a room good
 
-1. **First Light.** Built (pilot). A zigzag of four floors stacked seven rows apart, the west
-   part one row lower than the east, so every floor has two heights. Each floor ends in a
-   two-block stair of 3-tile climbs. Doors top right. Sol wades his channel to a plate so Luna
-   can pass a gate and set the lever that keeps it open; one floor up the roles swap. 4 beats.
+1. **Write the solution first.** One sentence per step: who goes where, what that changes,
+   what it opens for the other player. Then build terrain that makes each sentence true and
+   every shortcut false. Put that chain in the level function's docstring.
 2. **Each player changes what the other can do next.** "Both walk right" is not a puzzle.
    Good shapes: temporary help then permanent rescue, operator and runner, split and
    reunite, swap roles halfway, replace the helper with a crate, reuse a crate (step first,
    weight later), revisit a place that a lever has changed.
-3. **Shade Well.** Shape: a descent. Both start on the roof of a deep well in the middle of the
-   screen whose floor is a shade pool. A beam splits the well's mouth into two one-tile slots.
-   Doors are in the two bottom corners, Sol's on the left and Luna's on the right. Two upper
-   rooms, two lower rooms and the door rooms sit seven rows apart. Every drop is one way, and
-   each gate on one side is opened by a plate or lever on the other. 5 beats.
-4. **The Lift.** Shape: a lift shaft up the middle (x 17-22) with ribs on alternating sides,
-   seven rows apart. Three lifts take turns in the two halves of the shaft, each rising six to
-   eight rows. Introduces lifts and "riders can't drive": every lift's plate is somewhere else,
-   and each rider opens a gate for the partner from the rib above. Both start at the bottom.
-   Sol's door is on rib 2 on the east side, Luna's on rib 3 on the west, where her lever keeps
-   the last lift up. 6 beats.
-5. **The Long Way Round.** Shape: a ring of corridors around a solid core. The players start in
-   a split chamber at the foot of the core, each beside the other's door. The west exit is a
-   sun channel and the east exit a moon channel, so Sol goes round clockwise and Luna
-   counter-clockwise, up tall stairwell shafts. They cross on the roof and again at the bottom.
-   Introduces bridges that rise out of pools while their plate is held. 6 beats.
-6. **Crate Cellar.** Shape: a cascade of ledges seven rows apart, falling from top left to bottom
-   right, then a chimney lift back up to the doors in the top right. Introduces the crate: it
-   rides the cascade down when pushed off each ledge, and it is wider than a one-tile hole, so it
-   rolls over holes a player falls through. Sol drops into a sun-pool pocket to hold a gate for
-   Luna, and she frees him from the ledge below. The crate ends on a plate against the chimney
-   wall, where it holds the door gate open and is the step onto the lift. The hint teaches the
-   corner kick. 6 beats.
+3. **Design the helper's way out.** Whoever holds a plate must be freed by something the
+   other player does: a lever, a crate, a second route.
+4. **Give each floor a job, and make floors talk to each other.** The control and the thing
+   it moves should usually be on different floors, both visible.
+5. **Give the room a silhouette.** Each brief names a shape. Build that shape, with chunky
+   irregular stone: split-height floors, ramps, ledges, pockets, pillars, shafts. Level 1
+   is a zigzag of four floors. No other level may reuse that skeleton.
+6. **Vary where things start and end.** Doors at the top, in the middle, at the bottom, far
+   apart, side by side. Players starting together, apart, on different floors.
 7. **Gems pull players into corners.** Put them on detours and in pockets, never on the
    main path. A few should need a small trick.
-8. **Dawn Gate.** Chapter exam. Shape: an S from bottom left to the doors in the top right,
-   folded into four bands seven rows apart. The west half is one row higher than the east so the
-   crate steps down on its way east, and the top band holds two low galleries joined by one open
-   climb. Uses a pool route, a held plate made permanent by a lever, a bridge out of a moon
-   channel, a vault opened by a lever, a crate on a lift's plate (it holds the lift up and both
-   ride it) and one gate held open for each other from two floors, each once. 8 beats.
-9. **Counterweights.** Homage (see `06-40-coupled-platforms-before.jpg` and `07-00-...-after.jpg`).
-   Shape: twin shafts, west and east, with three low landing decks between them and a full-height
-   floor and top gallery. Each colour drives a pair of lifts in opposite directions: purple the
-   bottom pair, green the top pair and the bridge over the shade at the top. The players pump
-   each other upward; the plates past the east wing's sun channel make Sol the operator in the
-   middle. Then a crate pushed onto the top east lift presses a green pad there and holds the
-   pair down, which keeps Sol up and the bridge raised. 8 beats.
-10. **Stone Raft.** Shape: a deep shade lake across the middle with an island in it. The dock,
-    island and shelf are a low deck; the rooms above each shore and the long gallery underneath
-    have full headroom. Sol starts at the bottom of a 1-wide, 3-deep well at the west end of the
-    dock, so his first jump rises the full height; Luna starts in the room above. The west stretch
-    is crossed on a ferry that carries Sol and the crate. The east stretch can be crossed only on
-    the crate, pushed off the island's overhanging shelf so it lands in the middle. Then a gallery
-    gate, two lift rides and two door gates, each worked for the partner. 8 beats.
+8. **Ramp difficulty on purpose.** Longer chains, more role swaps, objects that must be
+   planned, routes that commit you, tighter movement. Raise one or two of these per level,
+   not all at once. Follow a thinking room with a moving room.
+9. **Be fair.** Dying restarts the whole level, so long rooms should keep deadly jumps few
+   and near the start, or give a safe floor under them. Avoid states that cannot be
+   recovered. Where one is unavoidable it must be obvious, not a trap.
+10. **Hints teach, they don't solve.** One or two short sentences.
 
 ## Rules of this engine (measured)
 

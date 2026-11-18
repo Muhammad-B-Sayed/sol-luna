@@ -131,7 +131,7 @@ the Node server from the `shared/` folder. The only dependency is `ws`.
     their index; crates are `100+i`; players are `200+i`.
   - If a platform would crush something, it reverts its move that tick ("blocked").
   - Initial position accounts for `inv` and for levers that start on.
-- **Mechanism groups** (0–5), each with a colour: purple, green, orange, white, pink, yellow.
+- **Mechanism groups** (0-5), each with a colour: purple, green, orange, white, pink, yellow.
   - A group is active if ANY plate in it is pressed OR ANY lever in it is on (OR logic).
   - Plates are pressed by any living player or crate whose bottom is on the floor and which
     overlaps the plate's inner area.
