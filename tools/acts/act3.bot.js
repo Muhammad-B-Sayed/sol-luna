@@ -122,10 +122,13 @@ SCRIPTS[25] = () => [
 // (23,27). The tide lift is x10-11, rows 21 -> 14; the start lift x16-18, rows 28 -> 17.
 const A0 = { keep: [0] }, B1 = { keep: [1] };
 // An operator phase that must also end up standing in the control room (not down the lift shaft).
-const inHub = (ph) => { const g = ph.goal; ph.goal = (S, p) => g(S, p) && bot(p) < 17.5 && cx(p) > 12 && cx(p) < 29; ph.sig += '|hub'; return ph; };
+// It must also stand clear of both lever tiles with every lever fully over, or a lever it leans on
+// can spring back after the phase ends.
+const clearOf = (p) => Math.abs(cx(p) - 21.5) > 0.95 && Math.abs(cx(p) - 24.5) > 0.95;
+const inHub = (ph) => { const g = ph.goal; ph.goal = (S, p) => g(S, p) && bot(p) < 17.5 && cx(p) > 12 && cx(p) < 29 && clearOf(p) && S.lv.every(v => v === 1 || v === -1); ph.sig += '|hub2'; return ph; };
 const opFlip = (O, x, on, o) => inHub(flip(O, x, 16, on, o));
 const ring = (R, O, latch, g) => [
-  goto(R, 9, 27), ...g.sw, goto(R, 3, 24, K), goto(R, 1, 21, K), goto(R, 6, 20, K), ...g.up,   // into the SW basin (S open), up its two steps
+  mv(R, 9.5), ...g.sw, goto(R, 3, 24, K), goto(R, 1, 21, K), goto(R, 6, 20, K), ...g.up,   // into the SW basin (S open), up its two steps
   opFlip(O, 21, true, A0), opFlip(O, 24, true, B1),   // W: both on
   goto(R, 10.5, 20, K),                               // through the W lock onto the tide lift
   ...g.hub, press(O, 23, 16, K), waitPlat(10, 21),    // the operator raises the tide
@@ -142,11 +145,11 @@ SCRIPTS[26] = () => [
   goto(SOL, 30, 27), waitPlat(16, 28, false),
   ring(SOL, LUNA, [flip(SOL, 22, 19, true), goto(SOL, 27, 22, K)], {
     sw: [grab(SOL, 11, 22, K)], up: [], top: [grab(SOL, 1, 2, K)], hub: [inHub(grab(LUNA, 19, 11, K))], nw: [], ne: [goto(SOL, 31, 13, K), grab(SOL, 33, 8, K)], se: [grab(SOL, 38, 15, K)] }),
-  goto(SOL, 17, 27), inHub(press(LUNA, 19, 16, K)), waitPlat(16, 28), goto(SOL, 20, 16, K),   // Luna lifts Sol up
-  mv(LUNA, 17.5), waitPlat(16, 28, false), goto(LUNA, 21, 27),                  // and drops down the shaft
+  mv(SOL, 17.5), inHub(press(LUNA, 19, 16, K)), waitPlat(16, 28), goto(SOL, 20, 16, K),   // Luna lifts Sol up
+  mv(LUNA, 17.5), waitPlat(16, 28, false),                  // and drops down the shaft
   ring(LUNA, SOL, [goto(LUNA, 27, 22, K), flip(LUNA, 22, 22, true)], {
-    sw: [], up: [grab(LUNA, 6, 15, K)], top: [], hub: [inHub(grab(SOL, 22, 11, K))], nw: [grab(LUNA, 8, 8, K)], ne: [grab(LUNA, 37, 6, K)], se: [] }),
-  grab(LUNA, 38, 24, K), goto(LUNA, 17, 27), inHub(press(SOL, 19, 16, K)), waitPlat(16, 28), goto(LUNA, 20, 16),
+    sw: [], up: [grab(LUNA, 6, 15, K)], top: [], hub: [inHub(grab(SOL, 22, 11, K))], nw: [grab(LUNA, 8, 8, K)], ne: [grab(LUNA, 37, 6, K), ...walk(LUNA, 35, 31, 6, K)], se: [] }),
+  grab(LUNA, 38, 24, K), mv(LUNA, 17.5), inHub(press(SOL, 19, 16, K)), waitPlat(16, 28), goto(LUNA, 20, 16),
   door(SOL), door(LUNA), win(),
 ];
 
