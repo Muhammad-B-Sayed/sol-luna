@@ -1,0 +1,40 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<!-- Renders a room with one of the shade-pool options for the owner to pick (playtest finding 6).
+     Copy to public/_shade/index.html, serve, open /_shade/index.html?level=3&v=A (0 = current,
+     A = black pool, B = group 1 turquoise, C = hatched shade with spikes), then delete the copy. -->
+<canvas id="c"></canvas>
+<script type="module">
+import { Renderer, GROUP_COLORS, LIQ } from '/js/render.js';
+import { LEVELS } from '/shared/levels.js';
+import { buildLevel, createState, step, TS, T_SHADE, COLS, ROWS, POOL_DEPTH } from '/shared/sim.js';
+const q = new URLSearchParams(location.search);
+const n = +q.get('level'), v = q.get('v') || '0';
+if (v === 'A') Object.assign(LIQ[T_SHADE], { top: '#8f86a8', a: '#1e1830', b: '#06040b', glow: 'rgba(40,30,70,0.25)' });   // black pool, smoky grey surface
+if (v === 'B') GROUP_COLORS[1] = '#3fe0d0';   // mechanism group 1 turquoise instead of green
+if (v === 'C') {
+  // keep the colours, give shade its own surface: dark hatching and small spikes along the top
+  const orig = Renderer.prototype.drawLiquids;
+  Renderer.prototype.drawLiquids = function (g, L, time) {
+    orig.call(this, g, L, time);
+    g.save();
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      if (L.tiles[y * COLS + x] !== T_SHADE) continue;
+      const X = x * TS, Y = y * TS;
+      g.save(); g.beginPath(); g.rect(X, Y + 5, TS, POOL_DEPTH + 6); g.clip();
+      g.strokeStyle = 'rgba(8,4,16,0.75)'; g.lineWidth = 3;
+      for (let k = -TS; k < TS * 2; k += 7) { g.beginPath(); g.moveTo(X + k, Y + 5 + POOL_DEPTH + 6); g.lineTo(X + k + POOL_DEPTH + 6, Y + 5); g.stroke(); }
+      g.restore();
+      g.fillStyle = '#0b0714';
+      for (let k = 0; k < 3; k++) { const sx = X + 4 + k * 8; g.beginPath(); g.moveTo(sx - 3, Y + 6); g.lineTo(sx, Y - 1); g.lineTo(sx + 3, Y + 6); g.closePath(); g.fill(); }
+    }
+    g.restore();
+  };
+}
+const L = buildLevel(LEVELS[n - 1], n - 1);
+const S = createState(L); for (let i = 0; i < 10; i++) step(L, S, [0, 0]);
+const cv = document.getElementById('c');
+const R = new Renderer(cv);
+R.resize(960, 720); R.setLevel(L);
+R.draw(L, S, null, 1.0);
+document.title = 'ready';
+</script>
