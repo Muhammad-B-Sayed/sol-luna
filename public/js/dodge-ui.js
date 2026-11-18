@@ -45,7 +45,9 @@ export function drawDodgeHud(g, S, { online = false, me = SOL, rtt = 0 } = {}) {
   // corners
   g.font = `500 13px ${FONT}`;
   g.textAlign = 'left'; g.fillStyle = 'rgba(240,230,255,0.75)';
-  g.fillText(`Dodgeball · first to ${DODGE.toWin}`, 14, 19);
+  // fix C: how long your throws wind up against the other player's lag (left corner: the right one sits under the chat button)
+  const wu = online && D.lag && D.lag[1 - me] > 0 ? ` · your throws wind up ${Math.round(D.lag[1 - me] * 1000 / 60)} ms` : '';
+  g.fillText(`Dodgeball · first to ${DODGE.toWin}${wu}`, 14, 19);
   if (online) {
     g.textAlign = 'right'; g.fillStyle = 'rgba(240,230,255,0.6)';
     g.fillText(`${me === SOL ? 'You are Sol' : 'You are Luna'} · ${Math.round(rtt)} ms`, WORLD_W - 14, 19);
@@ -96,12 +98,13 @@ function plaque(g, x, y, w, h, r) {
 // ---------------------------------------------------------------------------
 // sounds: compare counters against what was last heard; only forward changes make noise
 
-let H = null;
-const hearOf = (D) => ({ throwN: D.throwN, hitN: D.hitN, pickN: D.pickN, turnN: D.turnN, phase: D.phase, sec: -1 });
-export function dodgeHearReset(S) { H = S && S.d ? hearOf(S.d) : null; }
+let H = null, ME = -1;   // ME: the viewer online (only they hear their own wind-up), -1 local
+const hearOf = (D) => ({ throwN: D.throwN, hitN: D.hitN, pickN: D.pickN, turnN: D.turnN, phase: D.phase, sec: -1, wind: D.wind > 0 });
+export function dodgeHearReset(S, me = -1) { H = S && S.d ? hearOf(S.d) : null; ME = me; }
 export function dodgeListen(S, sfx) {
   const D = S.d;
   if (!H) H = hearOf(D);
+  if (D.wind > 0 && !H.wind && (ME < 0 || ME === D.holder)) sfx.charge(D.holder, D.wind / 60);
   if (D.throwN > H.throwN) sfx.throwBall(D.ball.by);
   if (D.hitN > H.hitN) sfx.hit();
   if (D.pickN > H.pickN) sfx.pickup(D.holder);

@@ -1,10 +1,12 @@
 # Dodgeball online latency study (work log)
 
-Goal: measure how much harder dodging is online, prototype two fixes
-(A: per-room ball speed from measured ping, B: server-side rewind), compare.
+Goal: measure how much harder dodging is online, prototype fixes
+(A: per-room ball speed from measured ping, B: server-side rewind, C: a wind-up before the
+launch), compare, ship one.
 
 Branches: `dodge-latency-study` (from `low-gravity`), `dodge-fix-a-ballspeed`, `dodge-fix-b-rewind`
-(both from the study branch). Nothing is merged.
+(both from the study branch), `dodge-fix-c-windup` (from `low-gravity`, which has the study).
+**Decision: fix C ships** (`dodge-fix-c-windup`). See "Fix C" and "Decision" below.
 
 ## Harness
 
@@ -320,6 +322,189 @@ like B, with no rewind, no hit-stop, no phantom hits and about A's code size. Th
 release-to-launch lag for whoever throws at a laggy player (up to the same 150 ms cap). It
 isn't built or measured here; the projection follows from the baseline's `late` column.
 
+## Fix C: a wind-up sized by the target's lag (`dodge-fix-c-windup`)
+
+The third option from the recommendation above, built and measured.
+
+- **The idea.** The defender sees a remote throw `late` ticks after it happens. So when a
+  player releases a throw at someone whose lag is L ticks, the ball stays in the thrower's hand
+  for L ticks (the wind-up), then flies at the normal 24 px/tick. The release reaches the
+  defender's screen during the wind-up, so the launch lands on their screen on time and they see
+  the whole flight, as in local play. No rewind, no ball drawn behind time, nothing in the
+  defender's view that isn't true.
+- **Sizing.** `windupFor(rtt, queue) = min(9, round(1.1 * rtt / 16.67 + queue))` ticks
+  (`shared/dodge.js`). The round trip is the server's protocol ping, the median of the last 8
+  (same measurement and 150 ms cap as A and B). `queue` is new: the median number of that
+  player's inputs waiting in the server's input queue. See "The input queue" below for why it
+  matters. The server stores it per target in `D.lag` and only changes it in the ready freeze
+  between points, so both sides step with the same value. Local play: always 0, game unchanged.
+- **Deterministic launch.** The release starts `D.wind`. From the next tick the thrower's keys
+  are ignored until the launch (they plant their feet to throw), and the aim is the one they
+  released with. So where and how the ball leaves is fixed by the state at the release, which
+  the defender's screen receives together with the release. The shot clock waits during a wind-up.
+- **Thrower's screen.** Prediction shows the wind-up the moment the key comes up: the thrower
+  leans back, the ball is drawn back over the shoulder with a ring closing in on it, the aim
+  arrow fills from the hand outward like a charge meter, and a short rising hum plays. Then the
+  ball flies. HUD (left corner): "your throws wind up 100 ms".
+- **Defender's screen.** The wind-up is not drawn there. They see the plain aim until the
+  launch, as a local player would. The harness measured how much of it they can see at all:
+  `def wu` below, at most 2 ticks of a frozen aim arrow before the launch (median 0 or 1).
+- **What the thrower still can't know.** The thrower sees the defender about one round trip
+  late, so a late dodge first looks like a hit on the thrower's screen. Without care that shows
+  as a hit, burst and score, then gets taken back (`--nowait` in the harness: 2-4 per 40 ms
+  row). So, as in B, the thrower's screen waits for the server's word on a ball that reaches
+  the other player (`D.wait`, prediction only): the ball stops in them under an impact flare
+  until the server's state says hit or dodge. Unlike B, the server decides hits at once (no
+  grace), so this pause is only the thrower's own lag: about half of B's.
+
+### The input queue (found with the filmstrips)
+
+The first browser filmstrips showed both B and C falling short in a real browser at 40 ms: the
+defender's first frame of the ball was already 4-5 ticks into its flight, where the harness said
+0-1. The server's input queue was the cause. A browser whose first frames are slow sends a burst
+of inputs, and the server, which takes one per tick, keeps that backlog for the rest of the
+match: 3-5 inputs (50-83 ms) per client in the filmstrip runs (`DODGE_LOG=1` prints it). That
+player sees everything the other does that much later, in every mode. The harness's clients
+share one clock, so it never saw this.
+
+Two changes, both in Dodgeball rooms only:
+- The wind-up counts the queue (above).
+- The server drains a standing queue while it costs nothing: during the pause after a hit and on
+  the winner screen, where inputs are ignored anyway, and in the ready freeze, where it drops
+  only an input equal to the keys already held (that hold gets one tick shorter; nobody can throw
+  yet). Afterwards the queue sits at 1. At 40 ms one-way the wind-up went from 8-9 ticks to 6.
+
+Co-op and Runner have the same backlog. I left them alone (shared code, another agent is in
+there); see HANDOFF "Open ideas".
+
+### Numbers (harness, same method as the study)
+
+```
+latency  spot            speed  seen  late  dodge r          latest    thr seen thr gap phantom  thr stop wind thr dly def wu
+local    back wall       24     35    0     r 1-33           550 ms    35       33      0/33     -        0    0       0/0   
+local    mid (spawn)     24     24    0     r 1-21           350 ms    24       21      0/21     -        0    0       0/0   
+local    near net        24     17    0     r 1-14           233 ms    17       14      0/14     -        0    0       0/0   
+local    spawn to spawn  24     13    0     r 1-10           167 ms    13       10      0/10     -        0    0       0/0   
+0 ms     back wall       24     35    0     r 1-33           550 ms    36       33      0/33     1        1    1       0/2   
+0 ms     mid (spawn)     24     24    0     r 1-21           350 ms    25       22      0/21     1        1    1       0/1   
+0 ms     near net        24     17    0     r 1-14           233 ms    17       14      0/14     1        1    1       0/1   
+0 ms     spawn to spawn  24     13    0     r 1-10           167 ms    14       11      0/10     1        1    1       0/1   
+20 ms    back wall       24     35    0     r 1-33           550 ms    39       36      2/33     3        4    4       1/1   
+20 ms    mid (spawn)     24     24    0     r 1-21           350 ms    28       24      0/21     4        4    4       0/1   
+20 ms    near net        24     17    0     r 1-14           233 ms    20       17      0/14     3        4    4       0/1   
+20 ms    spawn to spawn  24     13    0     r 1-10           167 ms    16       14      1/10     3        4    4       0/0   
+40 ms    back wall       24     35    0     r 1-33           550 ms    40       38      3/33     5        6    6       1/2   
+40 ms    mid (spawn)     24     24    0     r 1-21           350 ms    30       27      3/21     5        6    6       1/2   
+40 ms    near net        24     17    0     r 1-14           233 ms    22       20      3/14     6        6    6       0/1   
+40 ms    spawn to spawn  24     13    0     r 1-10           167 ms    19       16      2/10     5        6    6       1/1   
+75 ms    back wall       24     34    0     r 1-32           533 ms    45       42      7/32     10       9    9       0/0   
+75 ms    mid (spawn)     24     24    0     r 1-20           333 ms    34       31      5/20     9        9    9       0/0   
+75 ms    near net        24     16    1     r 1-13           217 ms    27       23      6/13     10       9    9       0/0   
+75 ms    spawn to spawn  24     11    1     r 1-10           167 ms    23       20      7/10     10       9    9       0/0   
+100 ms   back wall       24     31    4     r 1-30           500 ms    48       46      12/30    13       9    9       0/0   
+100 ms   mid (spawn)     24     20    4     r 1-17           283 ms    36       34      9/17     12       9    9       0/0   
+100 ms   near net        24     12    5     r 1-9            150 ms    31       27      9/9      13       9    9       0/0   
+100 ms   spawn to spawn  24     8     5     r 1-5            83 ms     27       22      5/5      14       9    9       0/0   
+150 ms   back wall       24     25    10    r 1-23           383 ms    54       52      17/23    19       9    9       0/0   
+150 ms   mid (spawn)     24     15    10    r 1-11           183 ms    43       40      11/11    18       9    9       0/0   
+150 ms   near net        24     7     10    r 1-4            67 ms     36       32      4/4      19       9    9       0/0   
+150 ms   spawn to spawn  24     4     9     r 1-1            17 ms     31       29      1/1      18       9    9       0/0   
+T100/D10 back wall       24     35    0     r 1-33           550 ms    48       46      11/33    13       2    2       1/1   
+T100/D10 mid (spawn)     24     24    0     r 1-21           350 ms    36       34      9/21     12       2    2       1/1   
+T100/D10 near net        24     17    0     r 1-14           233 ms    29       26      10/14    13       2    2       1/1   
+T100/D10 spawn to spawn  24     13    0     r 1-10           167 ms    26       22      10/10    13       2    2       1/1   
+T10/D100 back wall       24     32    4     r 1-29           483 ms    36       35      0/29     2        9    9       0/0   
+T10/D100 mid (spawn)     24     21    4     r 1-17           283 ms    26       23      0/17     1        9    9       0/0   
+T10/D100 near net        24     13    4     r 1-10           167 ms    19       14      0/10     2        9    9       0/0   
+T10/D100 spawn to spawn  24     9     4     r 1-6            100 ms    15       11      0/6      2        9    9       0/0
+```
+
+New columns: `wind` = the wind-up of the throw; `thr dly` = ticks from the thrower's key release
+to seeing the ball leave the hand; `def wu` = ticks the defender's screen held the (undrawn)
+wind-up before the launch, median / max. `phantom` here counts dodges that showed the ball stopped
+in the defender on the thrower's screen; `thr stop` is the pause before a hit shows there.
+
+**What the thrower pays** (`thr dly`, the same at every distance):
+
+| one-way | 0 ms | 20 ms | 40 ms | 75 ms | 100 ms | 150 ms |
+| --- | --- | --- | --- | --- | --- | --- |
+| release to launch | 1 tick, 17 ms | 4, 67 ms | 6, 100 ms | 9, 150 ms | 9, 150 ms | 9, 150 ms |
+| defender's lag (baseline `late`, + 1 queued input) | 1-2 | 4-5 | 5-7 | 9-10 | 12-14 | 19-20 |
+
+The wind-up is never longer than the lag it covers. In the browser filmstrips (queue drained to
+1) it was 6 ticks at 40 ms and 9 at 100 ms.
+
+### Filmstrips (real renderer, headless Chromium)
+
+`tools/dodge-filmstrip.cjs` puts two pages in one online room with bots inside the pages: the
+thrower taps a flat throw from their spawn, the defender stands at their back wall (a 24-tick
+flight) and either stands still or jumps a fixed number of ticks after the ball first shows in
+flight on their own screen (16 at 40 ms, 10 at 100 ms, so it dodges under both fixes). It copies
+every drawn frame. Each sheet is one row per 33 ms from the key release: thrower's screen left,
+defender's right, same wall-clock time. Labels: `wind k` ticks left, `live k` ticks of flight
+drawn on that screen, `stop` ball stopped in a player waiting for the server, `^` the
+defender is rising. B was captured on `dodge-fix-b-rewind` as built (no queue drain).
+
+| sheet | what a player sees |
+| --- | --- |
+| [c-40ms-hit](img/dodgeball/latency/c-40ms-hit.png) | Thrower: a 100 ms wind-up (lean, arrow filling, glow), a clean flight, then about 100 ms of impact flare in the target before the hit burst. Defender: the aim, then the ball 1-2 ticks out of the hand, the whole flight, the hit. |
+| [c-40ms-dodge](img/dodgeball/latency/c-40ms-dodge.png) | Thrower: wind-up, flight, the defender rises while the ball is still a few frames away, the ball flies past. No stop. Defender: same as local. |
+| [c-100ms-hit](img/dodgeball/latency/c-100ms-hit.png) | Thrower: 150 ms wind-up, flight, then about 230 ms stopped in the target before the hit. Defender: the ball first shows 6-7 ticks out (past the 150 ms cap), then flies on and hits. |
+| [c-100ms-dodge](img/dodgeball/latency/c-100ms-dodge.png) | Thrower: the ball stops in the defender for 3 frames (100 ms), then the defender pops up and the ball flies on. Defender: ball first seen 6 ticks out; clean dodge. |
+| [b-40ms-hit](img/dodgeball/latency/b-40ms-hit.png) | Thrower: launch at once, then about 200 ms stopped in the target before the hit. Defender: the delayed ball first shows 6 ticks out (the grace doesn't cover the browser's queue), stops in them for 3 frames, then the hit. |
+| [b-40ms-dodge](img/dodgeball/latency/b-40ms-dodge.png) | Thrower: the ball stops in the defender for 4 frames, then flies on. Defender: they dodge, and for 2 frames a hit burst flashes on them anyway before it is taken back. |
+| [b-100ms-hit](img/dodgeball/latency/b-100ms-hit.png) | Thrower: about 400 ms stopped in the target before the hit. Defender: ball first seen 8 ticks out, stops in them 4 frames, hit. |
+| [b-100ms-dodge](img/dodgeball/latency/b-100ms-dodge.png) | Thrower: the ball sits in the defender for about 370 ms and then appears dead on the floor: they never see it fly on. Defender: it stops in them, they rise, it flies past, then a hit burst flashes for 3 frames and is taken back. |
+
+## Comparison of all three
+
+Dodge window = `latest` (back wall / mid / near net / spawn to spawn). Local: 550 / 350 / 233 / 167.
+
+| | Baseline | Fix A (speed) | Fix B (rewind) | Fix C (wind-up) |
+| --- | --- | --- | --- | --- |
+| 20 ms one-way | 483 / 283 / 167 / 100 | 567 / 367 / 217 / 133 | 533 / 333 / 217 / 150 | 550 / 350 / 233 / 167 |
+| 40 ms | 467 / 267 / 133 / 83 | 633 / 383 / 233 / 150 | 533 / 350 / 217 / 150 | 550 / 350 / 233 / 167 |
+| 75 ms | 400 / 200 / 83 / 17 | 700 / 417 / 233 / 117 | 533 / 333 / 200 / 150 | 533 / 333 / 217 / 167 |
+| 100 ms | 333 / 150 / 33 / 0 | 717 / 400 / 200 / 100 | 483 / 300 / 167 / 100 | 500 / 283 / 150 / 83 |
+| 150 ms | 233 / 33 / 0 / 0 | 650 / 333 / 117 / 0 | 383 / 200 / 83 / 17 | 383 / 183 / 67 / 17 |
+| 10 vs 100: low-ping defends | 500 / 300 / 183 / 117 | 550 / 350 / 217 / 150 | 533 / 333 / 217 / 150 | 550 / 350 / 233 / 167 |
+| 10 vs 100: high-ping defends | 350 / 133 / 33 / 0 | 733 / 417 / 233 / 117 | 467 / 267 / 167 / 83 | 483 / 283 / 167 / 100 |
+| thrower: release to launch | 0 | 0 | 0 | 17-150 ms (= target's lag) |
+| thrower: pause before a hit shows, 20 / 40 / 100 ms | none (phantom hits instead) | none (phantoms) | 6-7 / 10-11 / 21-22 ticks | 3-4 / 5-6 / 12-14 ticks |
+| thrower: dodges that stop in the target first, 40 ms | (3/28 seen as hits) | (2-3 per row as hits) | 8/32, 9/21, 9/13, 8/9 | 3/33, 3/21, 3/14, 2/10 |
+| defender's screen | throws late and short | same, smaller | ball drawn behind time; own jump starts lifted; in the browser a false hit flash on some dodges | true picture, at most 1-2 ticks of frozen aim before a launch |
+| ball speed | 24 | 14-24 | 24 | 24 |
+| touches co-op code | no | no | yes (`onSnapshot` refactor) | no (two dodge-only lines in `main.js`) |
+
+## Decision
+
+**C ships.** The rule I was given: C wins if its dodge windows are within one tick of local up
+to the cap, the thrower's delay is at most the defender's lag, and its filmstrips show no
+artifact; otherwise B. C meets the first two cleanly: equal to local at 0, 20 and 40 ms, within
+one tick at 75 ms (just over the cap), and the wind-up is never longer than the lag. It does not
+meet the third to the letter: on the thrower's screen a hit still waits a moment for the server
+(about 100 ms at 40 ms one-way), and a very late dodge can stop in the target for a frame or
+three before flying on.
+
+I chose C anyway, and I think the rule's third test assumed something that can't be had. The
+thrower sees the defender's jump a round trip late under any scheme. No fix removes that pause
+on the thrower's screen; the only choice is between a short pause and a fake hit. B has the same
+artifacts, about twice as long (200 ms against 100 ms at 40 ms, 400 against 230 at 100 ms), plus
+two of its own that C doesn't have: the delayed ball, and a false hit flash on the defender's
+own screen in the browser. Applying the rule literally would ship the option that is worse on
+the very thing the rule checks. The owner's brief was "whatever is best and feels best". On that, C wins on every row of the table
+except the wind-up itself, which is the cost it is built around and which reads as part of the
+throw. It is also the smaller change: no rewind or history, and co-op's snapshot path is untouched.
+
+What C costs and where it stops:
+- The thrower waits up to 150 ms between release and launch against a laggy opponent. The
+  prediction shows the wind-up on the release frame, so the throw never feels dropped, but it is
+  slower than local. Against a 10 ms opponent it is 1-2 ticks.
+- Past the 150 ms cap (about 68 ms one-way) the defender loses the excess, like B: 4-5 ticks at
+  100 ms one-way. Raising `windMax` would extend the cover, at the thrower's expense.
+- Cheating: a client that delays protocol pongs makes the other player's throws at it wind up
+  longer (up to 150 ms of extra warning). Bounded by the cap, as in A and B.
+
 ## Work log
 
 - Branch created, code read.
@@ -340,4 +525,21 @@ isn't built or measured here; the projection follows from the baseline's `late` 
   "dead after a hit" without a live frame), and at 80 ms it fails every time. Fix A's online
   check also failed once at 80 ms in the same place while two browsers shared the CPU, then
   passed when run alone.
-
+- Fix C (branch `dodge-fix-c-windup` from `low-gravity`): wind-up in `shared/dodge.js`, server
+  pings and `D.lag` between points, harness columns `wind`, `thr dly`, `def wu`. First harness
+  run at 40 and 100 ms: windows at local up to the cap, but the thrower's screen showed phantom
+  hits on late dodges (the thrower sees the defender late under any fix). Added `D.wait` on the
+  thrower's screen (hits on the other player wait for the server) with an impact flare.
+- Filmstrip tool (`tools/dodge-filmstrip.cjs`). The first sheets showed both B and C short in
+  the browser by 3-5 ticks: the server's input queue. The wind-up now counts it, and Dodgeball
+  rooms drain a standing queue in the free phases (queue 3-5 down to 1; wind-up at 40 ms 8-9
+  down to 6). All eight sheets captured and read (table above).
+- Checks: `node tools/check-dodge.js` section 7 (wind-up), 52 checks pass. Full harness and
+  10/100 fairness run on C (tables above).
+- Input latch (`public/js/input.js`, own commit, `node tools/check-input.js`).
+- Browser checks on C: dodge local passes (5-4, rematch, co-op level after); online at
+  `LAG_MS=40` and `LAG_MS=80` pass (both winner screens, rematch, back to lobby, no console
+  errors, no backward steps of the drawn ball); co-op online 23/24 (`tools/playtest/online-browser.mjs`,
+  `PORT0=3488`, a port option since reverted because `low-gravity` gained `PORT` for the same thing; the failing "host Next level takes both clients to level 2" fails on
+  `low-gravity` too, which also fails both lag-80 checks that pass here); Runner 2D passes.
+- Decision written: C ships.

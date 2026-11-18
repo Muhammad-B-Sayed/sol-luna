@@ -5,7 +5,7 @@ import {
   TS, COLS, ROWS, WORLD_W, WORLD_H, POOL_DEPTH, T_SOLID, T_SLOPE_R, T_SLOPE_L, T_SUN, T_MOON, T_SHADE,
   tileAt, PH_DEAD, PH_WON, SOL, LUNA, PHYS,
 } from '/shared/sim.js';
-import { drawDodgeCourt, drawDodge } from './dodge-draw.js';
+import { drawDodgeCourt, drawDodge, dodgePose } from './dodge-draw.js';
 
 export const GROUP_COLORS = ['#b98cff', '#5fd39a', '#ff9f5a', '#e8eef7', '#ff6fb1', '#d7e84a'];
 
@@ -511,6 +511,7 @@ export class Renderer {
     let sx = 1, sy = 1;
     if (!p.gr) { const k = Math.max(-1, Math.min(1, -p.vy / 8)); sy = 1 + k * 0.12; sx = 1 - k * 0.08; }
     g.translate(x, yb);
+    if (S.d) g.rotate(dodgePose(this, S, i));   // Dodgeball: the wind-up lean (0 otherwise)
     g.scale(p.face * sx, sy);
     // soft glow
     g.globalCompositeOperation = 'lighter';

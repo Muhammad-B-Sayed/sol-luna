@@ -37,6 +37,9 @@
 //   thr stop  thrower (fix B): ticks the ball stays stopped in the defender on the thrower's
 //             screen before the hit shows (median over hits)
 //   speed     ball speed of the throw (px/tick; fix A changes it)
+//   wind      fix C: wind-up of the throw (ticks the ball stays in the hand after the release)
+//   thr dly   thrower: ticks from their key release to seeing the ball leave the hand
+//   def wu    defender (fix C): ticks their screen shows the throw winding up before the launch
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -50,6 +53,10 @@ const { COURT, createDodge, stepDodge, DP_PLAY, B_LIVE } = DG;
 // (ballView), move their own jump back in time (backdateTicks) and leave hits on the other
 // player to the server (d.wait). On other branches these are absent and nothing changes.
 const LAGCOMP = typeof DG.backdateTicks === 'function';
+// Fix C (dodge-fix-c-windup) has windupFor; its clients also leave hits on the other player to
+// the server (d.wait). --nowait models a client without that.
+const WINDUP = typeof DG.windupFor === 'function';
+const NOWAIT = process.argv.includes('--nowait');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i < 0 ? d : process.argv[i + 1]; };
@@ -76,7 +83,7 @@ const moveBits = (who, where) => (where === 'back' ? (who === SOL ? LEFT : RIGHT
 // A scripted player. decide(S, n) is called once per tick with the state the player sees.
 function bot(me, role, spot, react) {
   const [, tMove, dMove] = spot;
-  const st = { role, n: 0, fs: -1, fsT: 0, hitSeen: -1, rel: -1, jumpSeen: -1, sawHit: false, jump0: -1, stopSeen: -1, speed: 0 };
+  const st = { role, n: 0, fs: -1, fsT: 0, hitSeen: -1, rel: -1, jumpSeen: -1, sawHit: false, jump0: -1, stopSeen: -1, speed: 0, tapN: -1, wind: 0, wu: 0 };
   st.decide = (S) => {
     const n = st.n++, D = S.d, other = 1 - me;
     if (st.jump0 < 0) st.jump0 = S.p[other].jumpN;
@@ -86,14 +93,16 @@ function bot(me, role, spot, react) {
       if (st.rel >= 0 && !st.speed) st.speed = Math.hypot(D.ball.vx, D.ball.vy);
       if (st.rel >= 0 && st.jumpSeen < 0 && S.p[other].jumpN > st.jump0) st.jumpSeen = n;
       if (st.rel < 0 && D.throwN > 0) st.rel = n;     // first tick that sees its own ball in flight
+      if (D.windN && !st.wind && (D.wind > 0 || D.throwN > 0)) st.wind = D.windN;
       if (n < 100) return moveBits(me, tMove);
-      if (n >= 130 && D.phase === DP_PLAY && D.holder === me && D.throwN === 0 && !st.tapped) { st.tapped = true; return IN_ACT; }
+      if (n >= 130 && D.phase === DP_PLAY && D.holder === me && D.throwN === 0 && !st.tapped) { st.tapped = true; st.tapN = n; return IN_ACT; }
       return 0;
     }
     // defender
     const vis = DG.ballView ? DG.ballView(D, me) : { age: D.ball.t };   // what this screen draws
     const live = D.ball.st === B_LIVE && D.ball.by === other && vis.age >= 1;
     if (st.fs < 0 && live) { st.fs = n; st.fsT = vis.age; }
+    if (st.fs < 0 && D.wind > 0 && D.holder === other) st.wu++;
     if (st.fs >= 0 && D.hitN > 0 && st.hitSeen < 0) st.hitSeen = n;
     if (st.fs >= 0 && react > 0 && n >= st.fs + react - 1) return JUMP;
     return n < 100 ? moveBits(me, dMove) : 0;
@@ -131,6 +140,10 @@ function summarize(T, Dd, hit) {
     phantom: !hit && (T.sawHit || T.stopSeen >= 0),
     thrStop: hit && T.stopSeen >= 0 && T.hitSeen >= 0 ? T.hitSeen - T.stopSeen : null,
     speed: T.speed ? +T.speed.toFixed(2) : null,
+    wind: T.wind,
+    // tap at n, release seen by the sim at n+1, ball in flight from the state the bot reads at n+2
+    thrDelay: T.rel >= 0 && T.tapN >= 0 ? T.rel - T.tapN - 2 : null,
+    defWu: Dd.wu,
   };
 }
 
@@ -159,6 +172,7 @@ function onSnapshot(c, m) {   // public/js/main.js onSnapshot, state part only
   c.snap = JSON.parse(JSON.stringify(m.st.d));   // the server's word, before our own replay
   const ns = m.st;
   if (LAGCOMP) { ns.d.wait = 1 - c.me; c.base = cloneState(ns); }
+  else if (WINDUP && !NOWAIT) ns.d.wait = 1 - c.me;   // fix C: main.js onSnapshot, hits on the other player wait for the server
   c.remoteBits = m.inp[1 - c.me] | 0;
   const myAck = m.ack[c.me] | 0;
   c.pending = c.pending.filter(([s]) => s > myAck);
@@ -280,16 +294,19 @@ function report({ label, rows }) {
     const gap = med(latest.map(t => t.thrGap));
     const phantom = dodges.filter(t => t.phantom).length;
     const thrStop = med(ok.filter(t => t.hit).map(t => t.thrStop)), speed = med(ok.map(t => t.speed));
+    const wind = med(ok.map(t => t.wind)), thrDelay = med(ok.map(t => t.thrDelay));
+    const wus = ok.map(t => t.defWu).filter(x => x != null).sort((a, b) => a - b);
+    const defWu = wus.length ? `${wus[wus.length >> 1]}/${wus[wus.length - 1]}` : null;   // median / max
     const holes = rs.length ? Array.from({ length: maxR - rs[0] + 1 }, (_, i) => rs[0] + i).filter(r => !rs.includes(r)) : [];
     lines.push({ label, spot, seen, late, dodge: rs.length ? `r ${rs[0]}-${maxR}${holes.length ? ` (not ${holes.join(',')})` : ''}` : 'none', latestMs: rs.length ? MS(maxR) : 0,
-      thrSeen, thrGap: gap, phantom: `${phantom}/${dodges.length}`, thrStop, speed, failed: trials.length - ok.length });
+      thrSeen, thrGap: gap, phantom: `${phantom}/${dodges.length}`, thrStop, speed, wind, thrDelay, defWu, failed: trials.length - ok.length });
   }
   return lines;
 }
 
 function printTable(lines) {
-  const cols = [['label', 8], ['spot', 15], ['speed', 6], ['seen', 5], ['late', 5], ['dodge', 16], ['latestMs', 9], ['thrSeen', 8], ['thrGap', 7], ['phantom', 8], ['thrStop', 8]];
-  const head = { label: 'latency', spot: 'spot', speed: 'speed', seen: 'seen', late: 'late', dodge: 'dodge r', latestMs: 'latest', thrSeen: 'thr seen', thrGap: 'thr gap', phantom: 'phantom', thrStop: 'thr stop' };
+  const cols = [['label', 8], ['spot', 15], ['speed', 6], ['seen', 5], ['late', 5], ['dodge', 16], ['latestMs', 9], ['thrSeen', 8], ['thrGap', 7], ['phantom', 8], ['thrStop', 8], ['wind', 4], ['thrDelay', 7], ['defWu', 6]];
+  const head = { label: 'latency', spot: 'spot', speed: 'speed', seen: 'seen', late: 'late', dodge: 'dodge r', latestMs: 'latest', thrSeen: 'thr seen', thrGap: 'thr gap', phantom: 'phantom', thrStop: 'thr stop', wind: 'wind', thrDelay: 'thr dly', defWu: 'def wu' };
   const fmt = (o) => cols.map(([k, w]) => String(o[k] ?? '-').padEnd(w)).join(' ');
   console.log(fmt(head));
   for (const l of lines) console.log(fmt({ ...l, latestMs: l.latestMs + ' ms' }) + (l.failed ? `  (${l.failed} trials failed)` : ''));
