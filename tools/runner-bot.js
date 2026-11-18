@@ -5,8 +5,9 @@
 import { cloneRunner, stepRunner, STATEFUL, oidObj } from '../shared/runner.js';
 
 export const L_ = 1, R_ = 2, U_ = 4;
-// [bits, ticks]; ticks -1 = hold until standing. A timed step that ends in the air keeps
-// holding its bits until the player stands (or dies).
+// [bits, ticks]; ticks -1 = hold until standing. If the last step is timed and ends in the
+// air, its bits are held until the player stands (or dies). Earlier steps are never stretched,
+// so [[R|U, 1], [0, -1]] is a jump that lets go of right straight away.
 export const MACROS = [
   [[R_, 6]], [[R_, 16]], [[R_, 2]], [[0, 5]], [[0, 18]], [[L_, 5]],
   [[R_ | U_, 1], [R_, -1]],
@@ -96,9 +97,10 @@ export function search(L, S0, who, opts) {
         if (!p.alive || S.tick > deadline) res = -1;
         else if (done(S, p)) res = 1;
       };
-      for (const [bits, n] of m) {
+      for (let j = 0; j < m.length; j++) {
+        const [bits, n] = m[j];
         if (n > 0) for (let k = 0; k < n && !res; k++) one(bits);
-        if (n < 0 || !p.gr) for (let k = 0; k < 220 && !res; k++) { one(bits); if (p.gr) break; }
+        if (n < 0 || (!p.gr && j === m.length - 1)) for (let k = 0; k < 220 && !res; k++) { one(bits); if (p.gr) break; }
         if (res) break;
       }
       if (res === 1) return { ok: true, plan: unroll(node, runs), tick: S.tick, S, exp };
