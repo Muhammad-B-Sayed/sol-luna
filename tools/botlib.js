@@ -16,6 +16,8 @@
 //      door(who)              stand at your own door
 //      pushTo(who, i, x)      push crate i until it rests in column x
 //      seek(who, name, goal)  anything else: goal(S, p) is tested when p is standing
+//                             (a helper that builds goals from its arguments passes { args }: see seek)
+//      walk(who, x0, x1, y)   goto() every 2 cells along a floor, ending at x1 ({ step } changes it)
 //      waitPlat(x, y, moved)  both idle until the platform resting on cell (x, y) finishes moving
 //
 //    Every search builder takes a last options object:
@@ -321,7 +323,32 @@ export const waitPlat = (x, y, moved = true, max = 600) => {
 };
 // Generic: goal(S, p) is tested whenever the seeker is standing after a move.
 // o.h(S, p) may estimate the remaining ticks to speed the search up; o.key distinguishes cached results.
-export const seek = (who, name, goal, o = {}) => mk(who, name, ['seek', goal.toString(), o.key ?? ''], goal, o);
+//
+// Cache key rule. A cached search is found again by name + goal.toString() + o.key + o.args, together
+// with the exact state the phase starts from. goal.toString() is only the function's source text: it
+// cannot see the values a closure captured. So a helper that builds goals from its own arguments, like
+//   const board = (who, x0, f) => seek(who, `onto lift`, (S, p) => onLift(p, x0, f))
+// gives every call the same key unless something else tells them apart. Put those arguments in the
+// name, in o.key, or (simplest) in o.args:
+//   seek(who, 'onto lift', (S, p) => onLift(p, x0, f), { args: [x0, f] })
+// A goal function may carry them itself as goal.args. o.args and goal.args are added to the key only
+// when they are given, so every key that was already correct stays the same and its cache entry stays valid.
+export const seek = (who, name, goal, o = {}) => {
+  const args = o.args ?? goal.args;
+  const sig = ['seek', goal.toString(), o.key ?? ''];
+  if (args !== undefined) sig.push(args);
+  return mk(who, name, sig, goal, o);
+};
+
+// Walk along a floor in steps of `step` cells (default 2): a goto() for each stop, ending exactly at x1.
+// Use it where one long goto() would make the search wander (a long corridor, a band under a low roof).
+// Returns a list of phases; spread it into the script or leave it nested (run() flattens lists).
+export const walk = (who, x0, x1, y, o = {}) => {
+  const { step = 2, ...go } = o, d = x1 >= x0 ? Math.abs(step) : -Math.abs(step), out = [];
+  for (let x = x0; d > 0 ? x < x1 : x > x1; x += d) out.push(goto(who, x, y, go));
+  out.push(goto(who, x1, y, go));
+  return out;
+};
 
 // ---------------------------------------------------------------------------
 // Hand phase builders

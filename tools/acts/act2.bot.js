@@ -213,69 +213,75 @@ export const SCRIPTS = {
 
   // Pendulum
   21: () => [
-    grab(SOL, 14, 25), grab(LUNA, 25, 25), grab(LUNA, 38, 25),   // the low islands and a corner
-    press(LUNA, 31, 27),                             // white: Sol climbs the left wall
-    press(SOL, 8, 21),                               // pink: Luna climbs the right wall
-    grab(LUNA, 38, 19), goto(LUNA, 32, 21),
-    goto(SOL, 11, 21),                               // Sol onto the purple ferry
-    press(LUNA, 31, 21), waitPlat(10, 22),           // she holds purple: it swings him over
-    press(SOL, 34, 21),                              // he takes over on his own plate
-    goto(LUNA, 29, 21),                              // she steps onto the ferry
-    goto(SOL, 32, 21), waitPlat(10, 22, false),      // he lets go: it swings her back
-    press(LUNA, 5, 21),                              // white: Sol climbs the right wall
-    press(SOL, 31, 15),                              // pink: Luna climbs the left wall
-    goto(LUNA, 7, 15),
-    goto(SOL, 28, 15),                               // Sol onto the green ferry
-    press(LUNA, 8, 15), waitPlat(28, 16),            // green: it swings him left
-    press(SOL, 5, 15),                               // he takes over
-    goto(LUNA, 10, 15),
-    goto(SOL, 6, 15), waitPlat(28, 16, false),       // it swings her right
-    grab(SOL, 1, 13),
-    press(LUNA, 34, 15),                             // white: Sol climbs the left wall
-    press(SOL, 8, 9),                                // pink: Luna climbs the right wall
-    goto(LUNA, 32, 9),
-    goto(SOL, 11, 9),                                // Sol onto the orange ferry
-    press(LUNA, 31, 9), waitPlat(10, 10),            // orange: it swings him right
-    press(SOL, 34, 9),                               // he takes over
-    goto(LUNA, 29, 9),
-    goto(SOL, 32, 9), waitPlat(10, 10, false),       // it swings her left
-    grab(SOL, 38, 7),
-    press(LUNA, 5, 9),                               // white: Sol climbs to the top right
-    press(SOL, 31, 3),                               // pink: Luna climbs to the top left
-    grab(LUNA, 12, 5), grab(LUNA, 19, 4), door(LUNA),   // out along the broken bridge and back
-    grab(SOL, 27, 5), grab(SOL, 20, 4), door(SOL), win(),
+    grab(SOL, 14, 27), grab(SOL, 3, 27), grab(LUNA, 25, 27), grab(LUNA, 36, 27),   // the islands and the nooks
+    press(LUNA, 32, 27),                             // white: Sol climbs the left wall
+    press(SOL, 7, 20),                               // pink: Luna climbs the right wall
+    grab(LUNA, 36, 20), goto(LUNA, 33, 20),
+    // crossing 1, purple: Luna calls it over, it carries Sol right, then Sol sends her left
+    press(LUNA, 32, 20), waitPlat(27, 21),
+    goto(SOL, 11, 20),                               // Sol onto the ferry
+    goto(LUNA, 33, 20), waitPlat(27, 21, false),     // she lets go: it swings him over
+    goto(SOL, 33, 20), goto(LUNA, 28, 20),           // he steps off, she steps on
+    press(SOL, 34, 20), waitPlat(27, 21),            // he holds purple: it swings her left
+    goto(LUNA, 7, 20), goto(SOL, 33, 20),
+    grab(LUNA, 3, 20),
+    press(LUNA, 5, 20),                              // white: Sol climbs the right wall
+    goto(SOL, 33, 13), press(SOL, 32, 13),           // pink: Luna climbs the left wall
+    goto(LUNA, 6, 13), grab(SOL, 36, 13),
+    // crossing 2, green: Luna calls it over, it carries Sol left, then Sol sends her right
+    press(LUNA, 7, 13), waitPlat(11, 14),
+    goto(SOL, 28, 13),
+    goto(LUNA, 6, 13), waitPlat(11, 14, false),
+    goto(SOL, 6, 13), goto(LUNA, 11, 13),
+    press(SOL, 5, 13), waitPlat(11, 14),
+    goto(LUNA, 33, 13), goto(SOL, 6, 13),
+    grab(SOL, 3, 13),
+    press(LUNA, 34, 13),                             // white: Sol climbs the left wall
+    press(SOL, 7, 6),                                // pink: Luna climbs the right wall
+    goto(LUNA, 33, 6),
+    // crossing 3, orange: the same dance at the top
+    press(LUNA, 32, 6), waitPlat(27, 7),
+    goto(SOL, 11, 6),
+    goto(LUNA, 33, 6), waitPlat(27, 7, false),
+    goto(SOL, 33, 6), goto(LUNA, 28, 6),
+    press(SOL, 34, 6), waitPlat(27, 7),
+    goto(LUNA, 6, 6), goto(SOL, 33, 6),
+    press(LUNA, 5, 6),                               // white: Sol jumps up into his loft
+    press(SOL, 32, 3),                               // pink, inside his loft: Luna jumps up into hers
+    grab(LUNA, 7, 3), door(LUNA),
+    grab(SOL, 34, 3), door(SOL), win(),
   ],
 
   // The Operator
   22: () => [
     // round 1: Sol works the deck, Luna runs the course
-    flip(SOL, 7, 5),                                 // P on: B1 out over the shade
-    grab(SOL, 10, 2, { keep: true }),
-    grab(LUNA, 2, 13), goto(LUNA, 10, 26),           // Luna down A and over B1
-    grab(LUNA, 14, 20), goto(LUNA, 12, 8),           // up the ladder in B
-    grab(LUNA, 17, 19), goto(LUNA, 23, 26),          // through the moon pool, down C, onto the lift
-    flip(SOL, 16, 5), waitPlat(23, 27),              // G on: the lift takes her up
-    grab(LUNA, 29, 11),
-    flip(LUNA, 28, 27),                              // yellow: her alcove unlocks
-    press(LUNA, 30, 27),                             // PE: the deck's door opens
-    goto(SOL, 33, 4, { keep: true }),                // Sol out onto the landing
-    grab(SOL, 38, 18, { keep: true }),
-    flip(SOL, 35, 27),                               // the rescue lever: the end cell opens
-    goto(LUNA, 37, 26, { keep: true }),              // Luna out into the foot room
-    press(SOL, 38, 26),                              // PT: Sol holds the deck's door open
-    grab(LUNA, 33, 8, { keep: true }), goto(LUNA, 30, 4, { keep: true }),
-    press(LUNA, 25, 4),                              // PD: Luna holds it for him
-    goto(SOL, 29, 4, { keep: true }),
+    flip(SOL, 13, 6),                                // P on: B1 out over the shade
+    grab(SOL, 17, 3, { keep: true }),
+    grab(LUNA, 7, 20), goto(LUNA, 12, 26),           // Luna down the well and over B1
+    grab(LUNA, 12, 10), goto(LUNA, 14, 12),          // up the ladder in B
+    grab(LUNA, 18, 21), goto(LUNA, 23, 26),          // through the moon pool, down C, onto the lift
+    flip(SOL, 22, 6, true, { keep: [1] }), waitPlat(23, 27),   // G on: the lift takes her up
+    grab(LUNA, 29, 13),
+    flip(LUNA, 28, 26),                              // yellow: her alcove's gate sinks
+    press(LUNA, 30, 26),                             // PE: the deck's door opens
+    goto(SOL, 34, 6, { keep: true }),                // Sol out onto the gallery's landing
+    grab(SOL, 38, 16, { keep: true }),
+    flip(SOL, 34, 27),                               // the rescue lever: the end cell opens
+    goto(LUNA, 33, 27, { keep: true }),              // Luna out to the gallery's foot
+    press(SOL, 38, 27),                              // PT: Sol holds the deck's door open
+    grab(LUNA, 37, 3, { keep: true }), goto(LUNA, 30, 6, { keep: true }),
+    press(LUNA, 24, 6),                              // PD: Luna holds it for him
+    goto(SOL, 31, 6, { keep: true }),
     // round 2: Luna works the deck, Sol runs
-    grab(LUNA, 12, 2, { keep: true }),
-    grab(SOL, 2, 22),                                // Sol west along the deck (G and P go off) and down A
-    flip(LUNA, 7, 5),                                // P on: B1 out
-    goto(SOL, 10, 26), grab(SOL, 8, 18), goto(SOL, 12, 8),
-    within(flip(LUNA, 7, 5, false), 1, 2, 31, 5),    // P off: B2 out over the moon pool
-    grab(SOL, 20, 14), goto(SOL, 23, 26),            // over B2, down C, onto the lift
-    flip(LUNA, 16, 5), waitPlat(23, 27),             // G on: up he goes
-    grab(SOL, 30, 11), door(SOL),                    // he falls onto his shelf
-    door(LUNA), win(),
+    within(flip(SOL, 13, 6, false), 10, 1, 31, 6),   // Sol west along the deck: G and P go off
+    grab(SOL, 4, 13),                                // and down the well
+    within(flip(LUNA, 13, 6), 10, 1, 31, 6),         // P on: B1 out
+    goto(SOL, 12, 26), grab(SOL, 15, 19), goto(SOL, 14, 12),
+    within(flip(LUNA, 13, 6, false), 10, 1, 31, 6),  // P off: B2 out over the moon pool
+    grab(SOL, 20, 16), goto(SOL, 23, 26),            // over B2, down C, onto the lift
+    within(flip(LUNA, 22, 6), 10, 1, 31, 6), waitPlat(23, 27),   // G on: up he goes
+    grab(SOL, 30, 13), door(SOL),                    // he falls onto his shelf
+    grab(LUNA, 6, 2), door(LUNA), win(),             // she leaps the well mouth to her alcove
   ],
 
   // Clockwork
