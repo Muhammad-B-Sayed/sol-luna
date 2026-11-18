@@ -286,25 +286,37 @@ who does not.
 
 ### Final numbers
 
-`JOBS=8 node tools/check-runner3d.js` (50 seeds, z 1700), on branch `r3d-flow`: **PASS** in
-1553 s. The flow test is most of that time.
+`JOBS=8 node tools/check-runner3d.js` (50 seeds, z 1700), on branch `runner3d-slab`, in 10302 s
+(2 h 52 min) on a machine shared with other heavy jobs (load average 13 to 57). The new slab
+tests (edge and corner touches) are most of the added time; the earlier proof took 1553 s.
+
+The run had one failure, and it was the checker's bound, not the course: an ember half (seed 6,
+section 25) came back to rest 91 ticks after its last touch, over its bound of crack + 46 (81).
+The player who touched it last had walked off the other half into its hole, and a half re-forms
+only once nobody is inside its space (so it never snaps a falling player back up onto it). Falling
+through that space takes up to 17 ticks, which the bound left out. The bound is now crack + 63
+(`CRUMBLE.fall`), and `SEED=6 SECS=25` passes. Nothing the sim does changed, so every other
+number below stands as measured.
 
 | Test | Result |
 | --- | --- |
-| Whole course | 100/100 runs (Sol and Luna, every seed) reached z 1700, 317 s of play, past full difficulty (z 1100) and at top zone speed (6.9 u/s). Smallest lead at a section start 4.3 units, median of per-run minimums 14.1 |
-| Single section | 9678/9678 cleared alive from a 12-unit lead (4839 sections); 982 slower than the zone, repaid by later sections |
-| Second arrival | 10948/10948 cleared. Time lost against the deadline: median -24 ticks, so still early, 95% 6, worst 46 |
-| Parked partner | 7602/7602 cleared |
-| Back to rest | Chain slabs: 1928 after runs and abuse, slowest 99 ticks, bound 150. Ember slabs: 2731, slowest 83 ticks, bound crack + 46. None over |
-| Equal difficulty | Sol and Luna average clear times match to 0.01 s in every kind; the largest single-section gap is 49 ticks (eclipse, mirrored routes found differently by the bot) |
+| Whole course | 100/100 runs (Sol and Luna, every seed) reached z 1700, 317 s of play, past full difficulty (z 1100) and at top zone speed (6.9 u/s). Smallest lead at a section start 9.1 units, median of per-run minimums 13.8 |
+| Single section | 9648/9648 cleared alive from a 12-unit lead (4824 sections); 1052 slower than the zone, repaid by later sections |
+| Second arrival | 16930/16930 cleared. Time lost against the deadline: median -27 ticks (still early), 95% 34, worst 95 |
+| Second arrival, spinning slabs | 21918 arrivals (including the parked ones): median -26, 95% 37, worst 95. By what the partner did: crossed earlier, worst 95; random abuse, worst 87; parked, worst 35; touched an edge, a corner or the centre 40 or 100 ticks before, median -14, 95% 60, worst 91 (1.5 s) |
+| Parked partner | 9720/9720 cleared |
+| Edge touches | 5354/5354 spun 2.5 to 3.5 turns (2.93 to 3.00). Turn times 22, 26 and 38 ticks every time (counted from the tick the kick lands, one tick after the touch, so 23 in `tools/r3d-slab.js`). Level and still 102 to 108 ticks after the touch. 1272 of the touch targets were out of the bot's reach in its budget and skipped (mostly far and near corners: left far 312, left near 294, right near 156; then left mid 174, centre mid 146, right far 112, right mid 78) |
+| Exact rest | 10863/10863 spinning slabs coming to rest had angle and speed exactly 0 and were drawn at 0 or pi |
+| Back to rest | Spinning slabs: 9462 after runs and abuse, slowest 109 ticks, bound 150. Ember slabs: 2546, slowest 91 ticks, bound crack + 63 (see above) |
+| Equal difficulty | Sol and Luna average clear times match to 0.01 s in every kind; the largest single-section gaps are 49 ticks (eclipse) and 34 (pools), mirrored routes found differently by the bot |
 | Determinism | 50/50 seeds identical on replay, from a fresh course and through JSON every 250 ticks |
-| Flow | 41006/41006 tries cleared by the never-stop bot, 0 forced waits in any kind. Largest debt used: 15 ticks on curtains, 14 on gaps, steps and eclipse stones, 9 to 13 elsewhere. Thorn curtains, reactive runner: 6648/6648 cleared |
+| Flow | 40866/40866 tries cleared by the never-stop bot, 0 forced waits in any kind. Largest debt used: 15 ticks on curtains, 14 to 15 on gaps, stones and eclipse stones, 13 on spinning slabs, 9 to 13 elsewhere. Thorn curtains, reactive runner: 6432/6432 cleared |
 
-Average clear time per section at full speed ranges from 1.8 s (curtains, pendulums,
-sweepers) to 3.7 s (stepping stones).
+Average clear time per section at full speed ranges from 1.8 s (curtains) to 3.6 s (stepping
+stones); spinning slabs take 2.4 s.
 
-The course changed on this branch only in the thorn curtain and the mantle, so section counts
-moved a little from the earlier run (4861 sections then, 4839 now).
+`SEED=6 SECS=25 JOBS=1 node tools/check-runner3d.js` reruns one section of one seed (no
+whole-course or determinism run), for chasing a failure.
 
 ## 5. Determinism and netcode
 

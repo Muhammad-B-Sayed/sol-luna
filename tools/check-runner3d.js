@@ -61,6 +61,8 @@ const BUF = 12, BUF_MAX = 20;
 const DELTAS = [10, 25, 40, 60, 90, 130];
 const BUDGET = +(process.env.BUDGET || 1500);
 const V = !!process.env.V;
+// SECS=25,31 (with SEED): only those sections (no whole-course or determinism run), for chasing one failure
+const ONLY_SECS = process.env.SECS ? new Set(process.env.SECS.split(',').map(Number)) : null;
 const FLOW_ONLY = !!process.env.FLOW_ONLY, FLOW_KIND = FLOW_ONLY ? process.env.KIND || '' : '';
 const CLOCKED = { sweeper: 1, pendulum: 1, carousel: 1, gate: 1, orbs: 1 };
 const FLOW_STARTS = Array.from({ length: 12 }, (_, i) => i * 25);
@@ -169,7 +171,7 @@ function checkSeed(seed) {
   const flow = { kinds: {}, fails: [] };
   for (let k = 0; k < K; k++) {
     const c = secs[k], goal = sectionGoal(L, k + 1);
-    if (FLOW_KIND && c.kind !== FLOW_KIND) continue;
+    if ((FLOW_KIND && c.kind !== FLOW_KIND) || (ONLY_SECS && !ONLY_SECS.has(k))) continue;
     const fk = flow.kinds[c.kind] ||= { n: 0, fail: 0, waits: [], slow: 0 };
     const starts = CLOCKED[c.kind] ? FLOW_STARTS.map(d => T[k] - d).filter(t => snap.has(t)) : [T[k]];
     for (const who of [0, 1]) for (const t0 of starts) {
@@ -219,7 +221,7 @@ function checkSeed(seed) {
   // 1. the whole course, per character
   tag = 'course';
   const course = [], plans = [];
-  for (const who of [0, 1]) {
+  for (const who of ONLY_SECS ? [] : [0, 1]) {
     let S = createRunner3dState(L, { sandbox: true });
     park(S, 1 - who);
     const plan = [];
@@ -252,6 +254,7 @@ function checkSeed(seed) {
   };
 
   for (let k = 0; k < K; k++) {
+    if (ONLY_SECS && !ONLY_SECS.has(k)) continue;
     const c = secs[k], Tk = T[k], Tn = T[k + 1], goal = sectionGoal(L, k + 1);
     const kinfo = res.kinds[c.kind] ||= { n: 0, time: [0, 0], both: 0, maxDiff: 0, minSlack: Infinity, v: 0 };
     kinfo.n++; kinfo.v = Math.max(kinfo.v, speedAt(c.z1 - ZONE_START));
@@ -461,7 +464,7 @@ function report(t, secs) {
     return ok;
   }
   const detBad = t.det.filter(d => d.ok === false), detSkip = t.det.filter(d => d.ok === null);
-  const ok = !t.spinFail.length && !t.level.fail.length && !t.flow.fails.length && !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length && !detBad.length && !detSkip.length &&
+  const ok = !t.spinFail.length && !t.level.fail.length && !t.flow.fails.length && !t.courseFail.length && !t.firstFail.length && !t.secondFail.length && !t.parkedFail.length && !detBad.length && (ONLY_SECS || !detSkip.length) &&
     Object.values(t.rest).every(v => !v.fail) && Object.values(t.abuse).every(v => !v.fail);
   console.log(`\nRunner 3D check: ${t.seeds} seeds, ${t.secs} sections to z ${ZMAX} (full difficulty at 1100, top zone speed from 1600), top zone speed ${t.speed.toFixed(4)} u/tick, ${(t.tMax / 60).toFixed(0)} s in. ${secs.toFixed(0)} s.`);
   const leads = t.course.map(r => r.minLead);

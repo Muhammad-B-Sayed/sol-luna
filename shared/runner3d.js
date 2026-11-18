@@ -600,11 +600,13 @@ export const TILT = {
   T: 0.6, LOAD: 0.01, K: 0.045, C: 0.25, P: 4.5e-4, WF: 0.12, W0: 0.3, UC: 0.45, UE: 0.7,
   STAND: 0.5, SLIP: 0.12, SLIDE: 0.1, EA: 0.02, WA: 0.006,
 };
-export const CRUMBLE = { gone: 30, reform: 12 };
+export const CRUMBLE = { gone: 30, reform: 12, fall: Math.ceil(Math.sqrt(2 * (0.5 + P3.h) / P3.gravity)) };
 // longest time (ticks) a stateful object may take to come back to rest after its last touch
 export function restBound(o) {
   if (o.k === 'tilt') return 150;
-  if (o.k === 'crumble') return o.crack + CRUMBLE.gone + CRUMBLE.reform + 4;
+  // an ember half re-forms only once nobody is in its space: a player who walks into its hole
+  // takes up to 17 ticks to fall through that space (top - 0.02 down past top - 0.5 - P3.h)
+  if (o.k === 'crumble') return o.crack + CRUMBLE.gone + CRUMBLE.reform + 4 + CRUMBLE.fall;
   return 0;
 }
 export const REST_BOUND = { tilt: 150 };   // kept for older imports; use restBound(o)
