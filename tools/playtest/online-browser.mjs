@@ -199,9 +199,12 @@ if (process.env.ONLY !== 'lag') {
   // falls behind on a loaded machine; that is reported above), it is not run, and both go to
   // level 2 through the lobby instead, so the checks after it still test what they say.
   if ((await scr(H)) === 'results') {
+    const under = await H.eval(`(() => { const e = document.querySelector('#resNext'), b = e.getBoundingClientRect(), t = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return { hidden: e.hidden, top: t ? (t.id || t.className || t.tagName) : null, rect: [b.x, b.y, b.width, b.height].map(Math.round), screen: document.body.dataset.screen }; })()`);
+    console.log(`    Next level button: ${JSON.stringify(under)}`);
     await H.click('#resNext');
     await waitFor(G, `window.__app.inGame && window.__app.level === 1`);
-    check('results: host Next level takes both clients to level 2', (await G.eval('window.__app.level')) === 1 && (await H.eval('window.__app.level')) === 1);
+    check('results: host Next level takes both clients to level 2', (await G.eval('window.__app.level')) === 1 && (await H.eval('window.__app.level')) === 1,
+      JSON.stringify(await Promise.all([H, G].map(P => P.eval('[window.__app.level, window.__app.inGame, document.body.dataset.screen, window.__app.room?.players.length]')))));
   } else {
     console.log('skip results: host Next level takes both clients to level 2 · not run: level 1 did not reach the results card');
     out.checks.push({ name: 'results: host Next level takes both clients to level 2', ok: null, info: 'not run: no results card' });
