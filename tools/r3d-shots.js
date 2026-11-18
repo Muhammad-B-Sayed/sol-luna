@@ -35,6 +35,10 @@ const SHOTS = [
   ['pool', 'seed=7&kind=pool', 60],
   ['spikes', 'seed=7&kind=spikes', 60],
   ['low', 'seed=7&z=140&q=low', 150],
+  // deaths and the victory pose (set directly in the state; the renderer reacts to the change)
+  ['death-spike', 'seed=7&z=30', 14, `__r3d.step(60); __r3d.render(); const S = __r3d.S; S.p[0].alive = false; S.dead[0] = S.tick; S.why[0] = 'spike';`],
+  ['death-zone', 'seed=7&z=30&me=1', 30, `__r3d.step(60); __r3d.render(); const S = __r3d.S; S.p[1].alive = false; S.dead[1] = S.tick; S.why[1] = 'zone'; S.zone = S.p[1].z - 0.2;`],
+  ['victory', 'seed=7&z=30&cam=0.6,1.3,3.6', 40, `__r3d.step(60); const S = __r3d.S; S.phase = __r3d.R3.R3_OVER; S.win = 0; S.p[1].alive = false; S.dead[1] = S.tick; S.why[1] = 'fall';`],
   ['chars-front', 'seed=7&count=1&cam=0.9,1.1,3.4', 30],
   ['chars-run', 'seed=7&z=20&cam=2.6,1.0,1.2', 60],
   ['chars-luna', 'seed=7&count=1&me=1&cam=-0.9,1.1,3.4', 30],

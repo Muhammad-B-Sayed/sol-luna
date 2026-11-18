@@ -62,7 +62,9 @@ if (Q.has('kind')) {
   const kind = Q.get('kind');
   let found = null;
   for (let zz = 100; zz < 4000 && !found; zz += 100) { R3.ensureGenerated(L, zz); found = L.objs.find(o => o.k === kind); }
-  if (found) placeAt(Math.max(0, found.z0 - 7)); else console.warn('no object of kind', kind);
+  // start on the run-up of the section that holds it
+  const fi = L.objs.indexOf(found), sec = found && L.secs.find(s => fi >= s.o0 && fi < s.o1);
+  if (sec) placeAt(Math.max(0, sec.sz - 3)); else if (found) placeAt(Math.max(0, found.z0 - 7)); else console.warn('no object of kind', kind);
 } else if (Q.has('z')) placeAt(num('z', 0));
 
 // --- input: bots by default; pressing a player's keys hands that player to the keyboard
