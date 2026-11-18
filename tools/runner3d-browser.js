@@ -8,7 +8,7 @@
 // 2D debug view), GL_FLAGS (extra Chromium flags, e.g. "--use-angle=swiftshader --enable-unsafe-swiftshader"
 // where headless has no WebGL; here the default headless build has WebGL2 and those flags drop it
 // to about 12 fps), MAX_VIEW_BACK (units the drawn local player may move backwards, default 0.05).
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -25,6 +25,13 @@ const MAX_VIEW_BACK = +(process.env.MAX_VIEW_BACK || 0.05);
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+// a run killed with SIGKILL leaves its browser behind: sweep orphans of earlier runs (parent is init)
+try {
+  for (const line of execSync('ps -eo pid=,ppid=,args=', { encoding: 'utf8' }).split('\n')) {
+    const m = line.trim().match(/^(\d+)\s+1\s+(.*)$/);
+    if (m && m[2].includes(`--user-data-dir=${join(tmpdir(), 'sl-r3d-')}`)) { try { process.kill(+m[1], 'SIGKILL'); } catch {} }
+  }
+} catch {}
 const profile = mkdtempSync(join(tmpdir(), 'sl-r3d-'));
 const chrome = spawn(CHROME, [
   '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
@@ -35,6 +42,7 @@ const chrome = spawn(CHROME, [
 const cleanup = () => { try { chrome.kill('SIGKILL'); } catch {} try { rmSync(profile, { recursive: true, force: true }); } catch {} };
 process.on('exit', cleanup);
 process.on('SIGINT', () => process.exit(130));
+process.on('SIGTERM', () => process.exit(143));
 
 const wsUrl = await new Promise((res, rej) => {
   let buf = '';
@@ -52,7 +60,9 @@ ws.on('message', (d) => {
   if (m.method === 'Runtime.exceptionThrown') pageErrors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
 });
 const cmd = (method, params = {}, sessionId) => new Promise((res, rej) => {
-  const i = ++id; waiting.set(i, (m) => (m.error ? rej(new Error(method + ': ' + m.error.message)) : res(m.result)));
+  const i = ++id;
+  const t = setTimeout(() => { waiting.delete(i); rej(new Error(method + ': no reply in 20 s')); }, 20000);
+  waiting.set(i, (m) => { clearTimeout(t); m.error ? rej(new Error(method + ': ' + m.error.message)) : res(m.result); });
   ws.send(JSON.stringify({ id: i, method, params, sessionId }));
 });
 
@@ -82,15 +92,22 @@ async function page(url) {
     async click(sel) {
       const r = await P.eval(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2, dis: e.disabled } })()`);
       if (!r) throw new Error('no element ' + sel);
+      await cmd('Page.bringToFront', {}, sessionId);   // mouse input to a background tab can stall
       for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await cmd('Input.dispatchMouseEvent', { type, x: r.x, y: r.y, button: 'left', clickCount: 1 }, sessionId);
       return r;
     },
     async shot(name) {
-      const r = await cmd('Page.captureScreenshot', { format: 'png' }, sessionId);
+      let r;   // a background tab's capture sometimes fails in headless: bring it forward and retry
+      for (let k = 0; ; k++) {
+        try { await cmd('Page.bringToFront', {}, sessionId); r = await cmd('Page.captureScreenshot', { format: 'png' }, sessionId); break; }
+        catch (e) { if (k >= 3) throw e; await sleep(300); }
+      }
       writeFileSync(join(OUT, name + '.png'), Buffer.from(r.data, 'base64'));
       console.log('  screenshot', join(OUT, name + '.png'));
     },
-    async waitFor(expr, ms = 10000) { for (let t = 0; t < ms; t += 100) { if (await P.eval(expr).catch(() => false)) return true; await sleep(100); } return false; },
+    // hold keys until a sim condition holds (wall-clock holds drift when the machine is busy)
+    async holdUntil(codes, expr, ms = 8000) { for (const c of codes) await P.key(c, 'keyDown'); const ok = await P.waitFor(expr, ms, 30); for (const c of codes) await P.key(c, 'keyUp'); await sleep(60); return ok; },
+    async waitFor(expr, ms = 10000, step = 100) { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await P.eval(expr).catch(() => false)) return true; await sleep(step); } return false; },
     close: () => cmd('Target.closeTarget', { targetId }),
   };
   await P.send('Page.enable');
@@ -127,44 +144,51 @@ try {
     await A.waitFor('window.__runner3d.S.phase === 1', 5000);
     const s0 = await A.eval(ST);
     // Sol forward (arrow up) only
-    await A.hold(['ArrowUp'], 600);
+    const Z = (i) => `window.__runner3d.S.p[${i}].z`, X = (i) => `window.__runner3d.S.p[${i}].x`;
+    await A.holdUntil(['ArrowUp'], `${Z(0)} > ${s0.p[0].z + 3}`);
     const s1 = await A.eval(ST);
     check('local: ArrowUp moves Sol forward, not Luna', s1.p[0].z > s0.p[0].z + 2 && Math.abs(s1.p[1].z - s0.p[1].z) < 0.01, `Sol z ${s0.p[0].z}→${s1.p[0].z}, Luna z ${s0.p[1].z}→${s1.p[1].z}`);
-    await A.hold(['KeyW'], 600);
+    await A.holdUntil(['KeyW'], `${Z(1)} > ${s1.p[1].z + 3}`);
     const s2 = await A.eval(ST);
     check('local: W moves Luna forward, not Sol', s2.p[1].z > s1.p[1].z + 2 && Math.abs(s2.p[0].z - s1.p[0].z) < 0.3, `Luna z ${s1.p[1].z}→${s2.p[1].z}`);
-    await A.hold(['ArrowLeft', 'KeyD'], 300);
+    await A.holdUntil(['ArrowLeft', 'KeyD'], `${X(0)} < ${s2.p[0].x - 1} && ${X(1)} > ${s2.p[1].x + 1}`);
     const s3 = await A.eval(ST);
     check('local: ArrowLeft / D move Sol left and Luna right', s3.p[0].x < s2.p[0].x - 0.5 && s3.p[1].x > s2.p[1].x + 0.5, `Sol x ${s2.p[0].x}→${s3.p[0].x}, Luna x ${s2.p[1].x}→${s3.p[1].x}`);
-    await A.hold(['ArrowDown', 'KeyS'], 250);
+    await A.holdUntil(['ArrowDown', 'KeyS'], `${Z(0)} < ${s3.p[0].z - 0.6} && ${Z(1)} < ${s3.p[1].z - 0.6}`);
     const s3b = await A.eval(ST);
     check('local: ArrowDown / S move back', s3b.p[0].z < s3.p[0].z - 0.3 && s3b.p[1].z < s3.p[1].z - 0.3);
-    for (const [who, code] of [[0, 'ShiftRight'], [0, 'Slash'], [1, 'Space'], [1, 'ShiftLeft']]) {
-      await sleep(900);   // land first
+    await A.holdUntil(['ArrowUp', 'KeyW'], `${Z(0)} > 8 && ${Z(1)} > 8`);   // well ahead of the dusk for the jump checks
+    // each round taps its keys together; a Sol key must not make Luna jump and the other way round
+    for (const codes of [['ShiftRight', 'Space'], ['Slash', 'ShiftLeft'], ['Numpad0']]) {
+      await A.waitFor('window.__runner3d.S.p.every(p => p.gr)', 5000, 30);   // land first
       const a = await A.eval(ST);
-      await A.tap(code, 80);
+      for (const c of codes) await A.key(c, 'keyDown');
+      await sleep(80);
+      for (const c of codes) await A.key(c, 'keyUp');
       await sleep(150);
       const b = await A.eval(ST);
-      check(`local: ${code} makes ${who ? 'Luna' : 'Sol'} jump`, b.p[who].jumpN === a.p[who].jumpN + 1 && b.p[1 - who].jumpN === a.p[1 - who].jumpN && b.p[who].y > a.p[who].y, `jumps ${a.p[who].jumpN}→${b.p[who].jumpN}, y ${b.p[who].y}`);
+      for (const [who, code] of codes.map(c => [/Space|ShiftLeft/.test(c) ? 1 : 0, c])) {
+        const other = 1 - who, otherPressed = codes.some(c => (/Space|ShiftLeft/.test(c) ? 1 : 0) === other);
+        check(`local: ${code} makes ${who ? 'Luna' : 'Sol'} jump`, b.p[who].jumpN === a.p[who].jumpN + 1 && b.p[who].y > a.p[who].y
+          && (otherPressed || b.p[other].jumpN === a.p[other].jumpN), `jumps ${a.p[who].jumpN}→${b.p[who].jumpN}, y ${b.p[who].y}`);
+      }
     }
-    await A.key('KeyW', 'keyDown'); await A.key('ArrowUp', 'keyDown');
-    await sleep(350);
     await A.shot('local-split');
-    await A.key('KeyW', 'keyUp'); await A.key('ArrowUp', 'keyUp');
     // pause and resume
     await A.tap('Escape');
     await sleep(200);
     const pz = await A.eval(ST);
     await sleep(400);
     const pz2 = await A.eval(ST);
-    check('local: Esc pauses (sim frozen, pause card shown)', pz.screen === 'r3Pause' && pz2.tick === pz.tick);
+    check('local: Esc pauses (sim frozen, pause card shown)', pz.screen === 'r3Pause' && pz2.tick === pz.tick, `${pz.screen} ticks ${pz.tick}/${pz2.tick}`);
     await A.tap('Escape');
     await sleep(200);
-    check('local: Esc resumes', (await screen(A)) === 'game');
+    const rs = await screen(A);
+    check('local: Esc resumes', rs === 'game', rs);
     const s4 = await A.eval(ST);
     check('local: the dusk zone advances', s4.zone > s0.zone + 1, `zone ${s0.zone.toFixed(2)}→${s4.zone.toFixed(2)}`);
     // Sol runs ahead; Luna stands still and is caught
-    await A.hold(['ArrowUp'], 1200);
+    await A.holdUntil(['ArrowUp'], `${Z(0)} > ${Z(1)} + 4`);
     let gotOver = await A.waitFor('window.__runner3d.S.phase === 2', 40000);
     const s5 = await A.eval(ST);
     check('local: the player who stands still loses, the other wins', gotOver && s5.win === 0 && s5.p[0].alive && !s5.p[1].alive, JSON.stringify({ win: s5.win, alive: s5.p.map(p => p.alive) }));
@@ -230,16 +254,19 @@ try {
     await H.waitFor('window.__runner3d.S.phase === 1', 6000);
     await sleep(200);
     const a0 = await H.eval(ST);
-    // the host uses the arrows, the guest WASD; both run forward and jump
+    // the host uses the arrows, the guest WASD; both run forward, then jump with Space
+    const OZ = (i) => `window.__runner3d.S.p[${i}].z`;
     await H.key('ArrowUp', 'keyDown'); await G.key('KeyW', 'keyDown');
-    for (let k = 0; k < 3; k++) {
-      await sleep(350);
-      await H.tap('Space', 70); await G.tap('Space', 70);
-    }
-    await sleep(250);
+    await H.waitFor(`${OZ(hostMe)} > 6 && ${OZ(guestMe)} > 6`, 8000, 30);
     await H.shot('online-host'); await G.shot('online-guest');
     await H.key('ArrowUp', 'keyUp'); await G.key('KeyW', 'keyUp');
-    await sleep(800);   // both stand still: the clients must settle on the same state
+    for (let k = 0; k < 2; k++) {
+      await H.waitFor('window.__runner3d.S.p.every(p => p.gr)', 5000, 30);
+      await H.tap('Space', 70); await G.tap('Space', 70);
+      await sleep(300);
+    }
+    await H.waitFor('window.__runner3d.S.p.every(p => p.gr && Math.abs(p.vz) < 1e-9)', 5000, 30);
+    await sleep(500);   // both stand still: the clients must settle on the same state
     const o2 = await Promise.all([H, G].map(P => P.eval(ST)));
     const moved = [hostMe, guestMe].every(i => o2[0].p[i].z > a0.p[i].z + 2);
     const jumped = [hostMe, guestMe].every(i => o2[0].p[i].jumpN >= a0.p[i].jumpN + 2);
@@ -247,7 +274,7 @@ try {
     check('online: both players moved and jumped', moved && jumped, JSON.stringify(o2[0].p));
     check('online: both clients agree on positions and jumps', diff < 0.02 && o2[0].p.every((q, i) => q.jumpN === o2[1].p[i].jumpN) && Math.abs(o2[0].tick - o2[1].tick) < 40, `max diff ${diff.toFixed(4)}, ticks ${o2[0].tick}/${o2[1].tick}`);
     // the guest stands still; the host runs on until the guest is caught
-    await H.hold(['ArrowUp'], 1200);
+    await H.holdUntil(['ArrowUp'], `${OZ(hostMe)} > ${OZ(guestMe)} + 4`);   // a short lead keeps the host on the start floor
     await H.waitFor(`document.body.dataset.screen === 'r3Results'`, 40000);
     await G.waitFor(`document.body.dataset.screen === 'r3Results'`, 3000);
     const w = await Promise.all([H, G].map(P => P.eval(`[...document.querySelectorAll('#r3Title, #r3Sol, #r3Luna')].map(e => e.textContent.trim()).join(' | ')`)));

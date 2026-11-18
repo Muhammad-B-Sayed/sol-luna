@@ -160,7 +160,17 @@ export class Runner3DMode {
     this.prev = this.capture(this.S);
     stepRunner3d(this.L, this.S, inp);
     this.listen();
-    for (const v of this.off) for (const k of ['x', 'y', 'z']) { v[k] *= 0.8; if (Math.abs(v[k]) < 0.002) v[k] = 0; }
+    this.off.forEach((v, i) => {
+      for (const k of ['x', 'y', 'z']) {
+        let d = v[k] * 0.2;
+        // drawn ahead of the corrected state while running forward: pay the difference off
+        // slower than the run itself, so a late correction slows you instead of pulling you back
+        const vz = this.S.p[i].vz;
+        if (k === 'z' && d > 0 && vz > 0.02) d = Math.min(d, 0.6 * vz);
+        v[k] -= d;
+        if (Math.abs(v[k]) < 0.002) v[k] = 0;
+      }
+    });
   }
 
   onSnapshot(m) {
@@ -360,7 +370,9 @@ export class Runner3DMode {
     $('#r3Sub').textContent = S.win === DRAW ? 'Both fell on the very same moment.' : `${NAME[S.win]} outlasted ${NAME[1 - S.win]}.`;
     for (const i of [SOL, LUNA]) {
       const k = NAME[i];
-      $(`#r3${k}Time`).textContent = fmtTime(survival(S, i));
+      // a winner still running stops the clock when the match ends, so both clients show the same time
+      const end = Math.max(S.dead[0], S.dead[1]);
+      $(`#r3${k}Time`).textContent = fmtTime(S.p[i].alive && end >= 0 ? Math.max(0, end - COUNT_TICKS) / 60 : survival(S, i));
       $(`#r3${k}Dist`).textContent = `${Math.floor(distance(L, S, i))} m`;
       $(`#r3${k}Why`).textContent = S.p[i].alive ? 'still running' : WHY3[S.why[i]] || 'lost';
       $(`#r3${k}`).classList.toggle('won', S.win === i);
