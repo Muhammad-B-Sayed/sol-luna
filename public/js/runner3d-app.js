@@ -20,6 +20,8 @@ const RESULT_DELAY = 70;   // ticks of the final moment before the results card
 const TELEPORT = 2;        // units: don't interpolate across a jump this big
 const OFF_MAX = 3;         // units: drop a visual correction bigger than this
 const URGENT = 8, CRITICAL = 4;   // units between a player and the dusk
+// read once at load: joining a room rewrites the URL to /CODE and drops the query
+const DEBUG_VIEW = new URLSearchParams(location.search).has('r3ddebug');
 
 export class Runner3DMode {
   // ctx: { input, net, sfx, show(id), toast(msg), app, quit() }
@@ -107,7 +109,7 @@ export class Runner3DMode {
   // no WebGL) falls back to the debug view on a fresh canvas.
   loadRenderer() {
     if (this.rendP) return this.rendP;
-    const force = new URLSearchParams(location.search).has('r3ddebug');
+    const force = DEBUG_VIEW;
     this.rendP = (async () => {
       let R = null;
       if (!force) {
@@ -130,7 +132,7 @@ export class Runner3DMode {
 
   // warm the module cache before a match so the countdown isn't spent downloading three.js
   prefetch() {
-    if (this.pre || new URLSearchParams(location.search).has('r3ddebug')) return;
+    if (this.pre || DEBUG_VIEW) return;
     this.pre = import('/js/r3d/renderer.js').catch(() => {});
   }
 
