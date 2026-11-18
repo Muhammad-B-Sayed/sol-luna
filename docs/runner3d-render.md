@@ -14,4 +14,8 @@ Screenshots: `node tools/r3d-shots.js [names...]` writes `docs/img/runner3d/rend
   `--use-angle=swiftshader` makes it slower. The shot tool uses no GL flags by default (GL_FLAGS env to add).
 - A first shot run was SIGKILLed by the host (exit 137). Retry with a smaller run.
 
+- Views written for every current kind (ramp, tilt, crumble, eclipse, sweeper, pendulum, carousel, gate, orb). Eclipse uses camera layers: solid on its own player's camera, ghost on the other.
+- groundAt (blob shadows) is per kind: carousel stones from objPose, eclipse only for its player, crumble only while solid.
+- Default headless Chromium's GPU process runs `--use-angle=swiftshader-webgl` by itself. A 75-step shot run timed out at 400 s with no output: added progress logs, render every 3rd step.
+
 Next: get one shot rendering, fix errors, then views for tilt/ramp and the new kinds.

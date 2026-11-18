@@ -19,6 +19,8 @@ const W = +(process.env.W || 960), H = +(process.env.H || 540);
 const GL_FLAGS = (process.env.GL_FLAGS || '').split(' ').filter(Boolean);
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const T0 = Date.now();
+const log = (...a) => console.error(`[${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...a);
 
 // name, demo query, sim steps before the shot, optional page-side setup run before stepping
 const SHOTS = [
@@ -58,6 +60,7 @@ const cleanup = () => {
 process.on('exit', cleanup);
 process.on('SIGINT', () => process.exit(1));
 
+log('chrome started, pid', chrome.pid);
 const wsUrl = await new Promise((res, rej) => {
   let buf = '';
   chrome.stderr.on('data', (d) => { buf += d; const m = buf.match(/DevTools listening on (ws:\S+)/); if (m) res(m[1]); });
@@ -87,6 +90,7 @@ const ev = async (expr) => {
   return r.result.value;
 };
 await send('Page.enable'); await send('Runtime.enable');
+log('page ready');
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
 
 let failed = 0;
@@ -95,13 +99,16 @@ try {
     logs.length = 0;
     await send('Page.navigate', { url: `${BASE}/r3d-demo.html?hud=0&auto=0&${q}` });
     let ok = false;
-    for (let k = 0; k < 100; k++) { await sleep(150); if (await ev('!!window.__r3d').catch(() => false)) { ok = true; break; } }
+    for (let k = 0; k < 400; k++) { await sleep(150); if (await ev('!!(window.__r3d && __r3d.ready)').catch(() => false)) { ok = true; break; } }
     if (!ok) { console.log(name, 'demo did not load', logs.join(' | ')); failed++; continue; }
     await ev('__r3d.freeze(true)');
     if (setup) await ev(setup);
     // step the sim and render every frame so cameras, animation and particles settle like live play
     const t0 = Date.now();
-    for (let k = 0; k < steps; k += 10) await ev(`for (let j = 0; j < ${Math.min(10, steps - k)}; j++) { __r3d.step(1); __r3d.render(); }`);
+    // render every EVERY-th step (cameras ease by sim time, so they settle the same)
+    const EVERY = +(process.env.EVERY || 3);
+    log(name, 'loaded, stepping', steps);
+    for (let k = 0; k < steps; k += 12) await ev(`for (let j = 0; j < ${Math.min(12, steps - k)}; j++) { __r3d.step(1); if ((${k} + j) % ${EVERY} === 0) __r3d.render(); }`);
     const st = await ev('__r3d.render()');
     const ms = steps ? (Date.now() - t0) / steps : 0;
     await sleep(50);
