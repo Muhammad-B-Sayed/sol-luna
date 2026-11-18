@@ -14,7 +14,7 @@ import { UnrealBloomPass } from '../../vendor/three/addons/postprocessing/Unreal
 import { OutputPass } from '../../vendor/three/addons/postprocessing/OutputPass.js';
 import { U, PAL, col, GlowField, textures, LIQ3 } from './kit.js';
 import { Character } from './characters.js';
-import { makeSky, makeAbyss, makeMotes, WorldDeco } from './world.js';
+import { makeSky, makeAbyss, makeMotes, makeMist, WorldDeco } from './world.js';
 import { DuskZone, makeVignette, BEND } from './zone.js';
 import { FX } from './fx.js';
 import { viewFor, disposeView, VIEWS } from './views.js';
@@ -116,6 +116,7 @@ export class Runner3DRenderer {
     this.sky = makeSky(); scene.add(this.sky);
     this.abyss = makeAbyss(); scene.add(this.abyss);
     this.motes = makeMotes(); scene.add(this.motes);
+    this.mist = [makeMist(0), makeMist(1)]; for (const m of this.mist) scene.add(m);
     this.deco = new WorldDeco(scene);
     this.zoneFx = new DuskZone(); scene.add(this.zoneFx.group);
     this.glow = new GlowField(700); scene.add(this.glow.mesh);
@@ -393,6 +394,7 @@ export class Runner3DRenderer {
     const rg = this.rigs[vp.i], cam = rg.cam;
     this.sky.position.copy(cam.position);
     this.abyss.position.set(cam.position.x, this.lastCourseY - 34, cam.position.z - 150);
+    this.mist.forEach((m, k) => { m.position.set(cam.position.x, this.lastCourseY - 5 - k * 7, cam.position.z - 120); m.material.uniforms.uCam.value.copy(cam.position); });
     this.motes.material.uniforms.uCenter.value.set(cam.position.x, cam.position.y - 2, cam.position.z - 30);
     U.uPtScale.value = pxH / (2 * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2));
     this.renderer.render(this.scene, cam);

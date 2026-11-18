@@ -90,6 +90,32 @@ export function makeAbyss() {
   return m;
 }
 
+// Mist below the course: a slow-drifting cloud layer the course seems to float over. Follows the camera.
+export function makeMist(layer = 0) {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: U.uTime, uCam: { value: new THREE.Vector3() }, uLayer: { value: layer } },
+    vertexShader: `varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `varying vec3 vW; uniform float uTime; uniform vec3 uCam; uniform float uLayer;
+      float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+      float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
+      void main() {
+        vec2 p = vW.xz * (0.045 + uLayer * 0.02) + vec2(uTime * 0.012, uTime * (0.02 + uLayer * 0.01));
+        float n = vn(p) * 0.55 + vn(p * 2.3 + 7.0) * 0.3 + vn(p * 5.1 - 3.0) * 0.15;
+        float d = length(vW.xz - uCam.xz);
+        float a = smoothstep(0.35, 0.8, n) * (1.0 - smoothstep(60.0, 150.0, d)) * smoothstep(3.0, 14.0, d) * (0.42 - uLayer * 0.14);
+        vec3 c = mix(vec3(0.2, 0.12, 0.34), vec3(0.42, 0.28, 0.58), n);
+        gl_FragColor = vec4(c, a);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+    transparent: true, depthWrite: false, fog: false,
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(320, 320).rotateX(-Math.PI / 2), mat);
+  m.frustumCulled = false; m.renderOrder = 3 - layer;
+  return m;
+}
+
 // Drifting motes: static random points wrapped around the camera in a box, in the shader.
 export function makeMotes(n = 360) {
   const pos = new Float32Array(n * 3), c = new Float32Array(n * 3), s = new Float32Array(n);
@@ -200,6 +226,11 @@ function silhouetteChunk(ci, side) {
     }
   }
   const g = THREE.mergeGeometries(parts.map(p => (p.index ? p.toNonIndexed() : p)).map(p => { p.deleteAttribute('uv'); p.deleteAttribute('normal'); return p; }));
+  {
+    const pos = g.attributes.position, c = new Float32Array(pos.count * 3), lo = col(0x4a3870), hi = col(0x150e28), t = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) { t.copy(lo).lerp(hi, Math.max(0, Math.min(1, (pos.getY(i) + 26) / 55))); c[i * 3] = t.r; c[i * 3 + 1] = t.g; c[i * 3 + 2] = t.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+  }
   const wg = wins.length ? THREE.mergeGeometries(wins.map(p => { p.deleteAttribute('uv'); p.deleteAttribute('normal'); return p; })) : null;
   return { g, wg };
 }
@@ -211,8 +242,8 @@ export class WorldDeco {
     const M = materials();
     this.pillarMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, flatShading: true }), { key: 'pil' });
     this.archMat = patchWorld(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, flatShading: true, map: null }), { key: 'arc' });
-    this.silMat = new THREE.MeshBasicMaterial({ color: 0x1a1230, fog: true });
-    this.silMat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n float ff = 0.35 + smoothstep(fogNear, fogFar * 1.6, vFogDepth) * 0.5;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.16, 0.1, 0.25), ff);\n#endif'); };
+    this.silMat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: true });
+    this.silMat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <fog_fragment>', '#ifdef USE_FOG\n float ff = 0.2 + smoothstep(fogNear, fogFar * 1.6, vFogDepth) * 0.5;\n gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.16, 0.1, 0.25), ff);\n#endif'); };
     this.silMat.customProgramCacheKey = () => 'sil';
     this.winMats = [new THREE.MeshBasicMaterial({ color: col(0xffb860).multiplyScalar(1.6), fog: false }), new THREE.MeshBasicMaterial({ color: col(0x8fd0ff).multiplyScalar(1.4), fog: false })];
     this.pillarG = pillarGeometry();
