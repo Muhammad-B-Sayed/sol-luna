@@ -1,7 +1,7 @@
 // Sol & Luna — Dodgeball visuals: the court veil, the fireball / moonball, trails and effects.
 // Called from Renderer.draw() when the level is the dodgeball court. Plain canvas vector
 // drawing plus the renderer's particle list; about 60 path fills a frame, so it stays cheap.
-import { NET, DODGE, aimSlope, towardNet, sideOf, ownerOf, B_HELD, B_LIVE, B_DEAD, DP_PLAY, DP_POINT } from '/shared/dodge.js';
+import { NET, DODGE, COURT, aimSlope, towardNet, sideOf, ownerOf, B_HELD, B_LIVE, B_DEAD, DP_PLAY, DP_POINT } from '/shared/dodge.js';
 import { TS, SOL } from '/shared/sim.js';
 
 const TAU = Math.PI * 2;
@@ -36,6 +36,92 @@ export function drawDodgeCourt(R, g, S, time) {
     g.beginPath(); g.arc(x, y, 1.3, 0, TAU); g.fill();
   }
   g.globalCompositeOperation = 'source-over';
+  drawPillars(g, time);
+  for (const d of COURT.defl) drawMirror(g, d, time);
+}
+
+// The thick side walls of the narrowed court: an alcove with a pillar in each, warm on Sol's
+// side and cool on Luna's, so the wall reads as temple architecture rather than spare brick.
+function drawPillars(g, time) {
+  const w = COURT.wallL - TS;              // the band between the outer wall column and the court
+  if (w < 2 * TS) return;
+  for (const side of [0, 1]) {
+    const x0 = side ? COURT.wallR : TS, cx = x0 + w / 2, warm = side === 0;
+    const top = TS, bot = FLOOR_Y, pw = Math.min(46, w - 18);
+    // alcove: a recess with an arched head
+    g.fillStyle = 'rgba(12,8,24,0.42)';
+    g.beginPath();
+    g.moveTo(x0 + 6, bot); g.lineTo(x0 + 6, top + 70);
+    g.quadraticCurveTo(cx, top + 18, x0 + w - 6, top + 70);
+    g.lineTo(x0 + w - 6, bot); g.closePath(); g.fill();
+    // pillar shaft with flutes
+    const sx = cx - pw / 2, sy = top + 64, sh = bot - 26 - sy;
+    const gr = g.createLinearGradient(sx, 0, sx + pw, 0);
+    gr.addColorStop(0, warm ? '#5a4a6a' : '#4a4c72');
+    gr.addColorStop(0.45, warm ? '#9a86a8' : '#8f97c4');
+    gr.addColorStop(1, warm ? '#4b3d5c' : '#3e4166');
+    g.fillStyle = gr; g.fillRect(sx, sy, pw, sh);
+    g.strokeStyle = 'rgba(20,12,34,0.35)'; g.lineWidth = 1.5;
+    for (let k = 1; k < 5; k++) { const fx = sx + (pw * k) / 5; g.beginPath(); g.moveTo(fx, sy + 4); g.lineTo(fx, sy + sh - 4); g.stroke(); }
+    // capital and base
+    const cap = warm ? '#b9a27e' : '#a9b4d6';
+    g.fillStyle = cap; g.fillRect(sx - 7, sy - 12, pw + 14, 12); g.fillRect(sx - 4, sy - 18, pw + 8, 6);
+    g.fillRect(sx - 7, bot - 26, pw + 14, 12); g.fillRect(sx - 4, bot - 14, pw + 8, 14);
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(sx - 7, sy - 12, pw + 14, 2); g.fillRect(sx - 7, bot - 26, pw + 14, 2);
+    // a small emblem on the shaft, breathing slowly
+    const ey = sy + sh * 0.42, a = 0.35 + 0.15 * Math.sin(time * 1.6 + side * 2);
+    g.globalCompositeOperation = 'lighter';
+    g.fillStyle = warm ? `rgba(255,190,90,${a})` : `rgba(160,200,255,${a})`;
+    g.beginPath(); g.arc(cx, ey, 7, 0, TAU); g.fill();
+    if (!warm) { g.globalCompositeOperation = 'source-over'; g.fillStyle = 'rgba(62,65,102,0.9)'; g.beginPath(); g.arc(cx + 3.5, ey - 2, 6, 0, TAU); g.fill(); }
+    g.globalCompositeOperation = 'source-over';
+  }
+}
+
+// A mirror bracket on a back wall (shared/dodge.js deflectors): a bronze wedge whose lower,
+// slanted face is a polished mirror with a light running along it, and a sun (Sol's wall) or
+// moon (Luna's wall) inlay. Drawn exactly on the collision shape.
+function drawMirror(g, d, time) {
+  const sun = d.side === SOL, B = [d.xw, d.yB], A = [d.ax, d.ay], C = [d.xw, d.yC];
+  g.save();
+  // body
+  const gr = g.createLinearGradient(A[0], 0, d.xw, 0);
+  gr.addColorStop(0, '#d9a85c'); gr.addColorStop(0.55, '#9a6a34'); gr.addColorStop(1, '#5e3c20');
+  g.fillStyle = gr;
+  g.beginPath(); g.moveTo(...C); g.lineTo(...A); g.lineTo(...B); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(40,22,10,0.6)'; g.lineWidth = 2; g.stroke();
+  // top edge highlight
+  g.strokeStyle = 'rgba(255,230,180,0.45)'; g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(...C); g.lineTo(...A); g.stroke();
+  // the mirror face: a crystal strip along A-B, with a glint sliding along it
+  const mx = B[0] - A[0], my = B[1] - A[1], len = Math.hypot(mx, my), nx = d.faces[0].nx, ny = d.faces[0].ny;
+  g.fillStyle = sun ? 'rgba(255,236,190,0.9)' : 'rgba(214,232,255,0.9)';
+  g.beginPath();
+  g.moveTo(A[0] - nx * 0.5, A[1] - ny * 0.5); g.lineTo(B[0] - nx * 0.5, B[1] - ny * 0.5);
+  g.lineTo(B[0] - nx * 6, B[1] - ny * 6); g.lineTo(A[0] - nx * 6, A[1] - ny * 6); g.closePath(); g.fill();
+  g.globalCompositeOperation = 'lighter';
+  const f = (time * 0.35 + (sun ? 0 : 0.5)) % 1, gx = A[0] + mx * f, gy = A[1] + my * f;
+  const glint = g.createRadialGradient(gx, gy, 0, gx, gy, 18);
+  glint.addColorStop(0, 'rgba(255,255,255,0.75)'); glint.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = glint; g.beginPath(); g.arc(gx, gy, 18, 0, TAU); g.fill();
+  // a soft glow off the face into the court, so it reads as a surface to bank off
+  const ox = (A[0] + B[0]) / 2 + nx * 4, oy = (A[1] + B[1]) / 2 + ny * 4;
+  const glow = g.createRadialGradient(ox, oy, 2, ox, oy, len * 0.7);
+  glow.addColorStop(0, sun ? 'rgba(255,190,90,0.22)' : 'rgba(150,190,255,0.22)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = glow; g.beginPath(); g.arc(ox, oy, len * 0.7, 0, TAU); g.fill();
+  g.globalCompositeOperation = 'source-over';
+  // inlay: a sun or a moon in the middle of the wedge
+  const ix = (A[0] + B[0] + C[0]) / 3, iy = (A[1] + B[1] + C[1]) / 3;
+  g.fillStyle = 'rgba(40,22,10,0.55)'; g.beginPath(); g.arc(ix, iy, 9, 0, TAU); g.fill();
+  if (sun) {
+    g.fillStyle = '#ffd27a'; g.beginPath(); g.arc(ix, iy, 4.5, 0, TAU); g.fill();
+    g.strokeStyle = '#ffd27a'; g.lineWidth = 1.4;
+    for (let k = 0; k < 8; k++) { const a = (k * TAU) / 8; g.beginPath(); g.moveTo(ix + Math.cos(a) * 6, iy + Math.sin(a) * 6); g.lineTo(ix + Math.cos(a) * 8, iy + Math.sin(a) * 8); g.stroke(); }
+  } else {
+    g.fillStyle = '#cfe6ff'; g.beginPath(); g.arc(ix, iy, 6.5, 0, TAU); g.fill();
+    g.fillStyle = '#5e3c20'; g.beginPath(); g.arc(ix + 3, iy - 2, 5.5, 0, TAU); g.fill();
+  }
+  g.restore();
 }
 
 // ---------------------------------------------------------------------------
