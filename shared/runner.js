@@ -57,6 +57,7 @@ export const PLANK = {
   far: 0.005,       // torque per px from the middle beyond it (toward the ends it tips fast)
   kick: 0.36,       // turn rate a touch on the tip gives it: about three turns
   tip: 18,          // px at each end that count as the tip
+  lead: 0.09,       // kick speed taken off per unit of sine already leaning the way it spins
   hold: 0.15, holdDamp: 0.35,   // spring toward level and damping while it rocks (can't go over)
   spin: 0.06, spinDamp: 0.008,  // the same while it spins (enough speed to pass upright)
   land: 0.00015,    // turn rate per px from the middle per px/tick of a player landing on it
@@ -435,7 +436,12 @@ function stepPlank(o, st, riders) {
     const m = a <= o.safe ? PLANK.near * a : PLANK.near * o.safe + PLANK.far * (a - o.safe);
     tq += (r > 0 ? m : -m) * c;
   }
-  if (tip) st.w = tip > 0 ? PLANK.kick : -PLANK.kick;
+  if (tip) {
+    // a beam already leaning the way it will spin has that much less to turn: a little less speed
+    // keeps the touch at three turns and the same time to rest from any lean
+    const d = tip > 0 ? 1 : -1;
+    st.w = d * PLANK.kick * (1 - d * st.s * PLANK.lead);
+  }
   else if (st.w * st.w >= PLANK.spin * c * c) st.w = (st.w + tq - PLANK.spin * st.s * c) * (1 - PLANK.spinDamp);
   else st.w = (st.w + tq - PLANK.hold * st.s * c) * (1 - PLANK.holdDamp);
   st.s = turnPlank(st.s, st.w);

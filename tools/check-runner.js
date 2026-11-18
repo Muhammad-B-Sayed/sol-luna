@@ -109,7 +109,7 @@ function restCheck(L, S, c, removeAt, inputs, out) {
     if (!restAt.has(i) && offAt.has(i) && offAt.get(i) - last.get(i) < restBound(o)) { rec.off++; continue; }
     const r = restAt.has(i) ? restAt.get(i) - last.get(i) : Infinity;
     rec.n++; rec.max = Math.max(rec.max, r);
-    if (r > restBound(o)) rec.fail++;
+    if (r > restBound(o)) { rec.fail++; (rec.list ||= []).push({ seed: L.seed, x0: Math.floor(o.x / TS), kind: o.k, ticks: r }); }
   }
 }
 
@@ -391,6 +391,7 @@ function merge(all) {
     for (const key of ['rest', 'abuse']) for (const [k, v] of Object.entries(r[key])) {
       const t = tot[key][k] ||= { n: 0, max: 0, fail: 0, off: 0 };
       t.n += v.n; t.max = Math.max(t.max, v.max); t.fail += v.fail; t.off += v.off;
+      if (v.list) (t.list ||= []).push(...v.list);
     }
   }
   return tot;
@@ -419,6 +420,7 @@ function report(t, secs) {
   }
   for (const key of ['rest', 'abuse']) for (const [k, v] of Object.entries(t[key])) {
     console.log(`  ${key === 'rest' ? 'rest after a run' : 'rest after abuse'}  ${k.padEnd(6)} ${v.n} objects, slowest ${v.max} ticks after the last touch, over bound: ${v.fail}${v.off ? `, ${v.off} scrolled away first` : ''}`);
+    for (const f of (v.list || []).slice(0, 5)) console.log('  FAIL rest', JSON.stringify(f));
   }
   for (const f of [...t.courseFail, ...t.firstFail, ...t.secondFail, ...t.parkedFail, ...t.abusedFail, ...sp.fail].slice(0, 40)) console.log('  FAIL', JSON.stringify(f));
   console.log(ok ? '\nPASS' : '\nFAIL');
