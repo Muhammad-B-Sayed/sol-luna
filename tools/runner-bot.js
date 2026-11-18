@@ -6,9 +6,11 @@ import { cloneRunner, stepRunner, STATEFUL, oidObj } from '../shared/runner.js';
 import { PHYS } from '../shared/sim.js';
 
 export const L_ = 1, R_ = 2, U_ = 4;
-// [bits, ticks]; ticks -1 = hold until standing. If the last step is timed and ends in the
-// air, its bits are held until the player stands (or dies). Earlier steps are never stretched,
-// so [[R|U, 1], [0, -1]] is a jump that lets go of right straight away.
+const FIRM = -2;
+// [bits, ticks]; ticks -1 = hold until standing, FIRM = stand still until every chain plank in
+// range carries people again (at most 150 ticks; skipped when they all do). If the last step is
+// timed and ends in the air, its bits are held until the player stands (or dies). Earlier steps
+// are never stretched, so [[R|U, 1], [0, -1]] is a jump that lets go of right straight away.
 export const MACROS = [
   [[R_, 6]], [[R_, 16]], [[R_, 2]], [[0, 5]], [[0, 18]], [[L_, 5]],
   [[R_ | U_, 1], [R_, -1]],
@@ -28,6 +30,8 @@ export const MACROS = [
   [[L_, 4]],
   // ride an updraft up a cliff face, then let go so the landing is short
   [[R_, 45], [0, -1]], [[R_, 60], [0, -1]],
+  // wait for a spinning or tipping plank to settle
+  [[0, FIRM]],
 ];
 
 class Heap {
@@ -62,7 +66,7 @@ function objKey(L, S, o0, o1) {
     const st = S.o[i];
     if (!st) continue;
     const kind = L.objs[i].k;
-    k += kind === 'plank' ? '|' + Math.round(st.s * 20) : '|' + st.st;
+    k += kind === 'plank' ? '|' + Math.round(st.s * 20) + (st.f ? '~' + Math.round(st.w * 20) : '') : '|' + st.st;
   }
   return k;
 }
@@ -75,15 +79,18 @@ export function tick(L, S, who, bits, other) {
 }
 
 // opts: goal (px), deadline (tick, inclusive), other(tick) -> bits, budget (expansions),
-// o0/o1 (object index range that matters for state keys), until(S, p) custom goal test.
+// o0/o1 (object index range that matters for state keys), until(S, p) custom goal test,
+// toward (px): with `until`, search nearest to that x first instead of farthest right.
 export function search(L, S0, who, opts) {
-  const { goal, deadline = Infinity, other = null, budget = 3000, o0 = 0, o1 = 0, until = null } = opts;
+  const { goal, deadline = Infinity, other = null, budget = 3000, o0 = 0, o1 = 0, until = null, toward = null } = opts;
   const t0 = S0.tick;
   const done = until || ((S, p) => p.gr && p.x >= goal);
   // with a deadline, drop nodes that can't reach the goal in time even at full running speed
   // (not with a swing in range: riding one can carry a player faster than that)
   let vmax = PHYS.maxSpeed + 0.01;
-  for (let i = o0; i < o1; i++) if (L.objs[i].k === 'swing') vmax = Infinity;
+  const planks = [];
+  for (let i = o0; i < o1; i++) { if (L.objs[i].k === 'swing') vmax = Infinity; if (L.objs[i].k === 'plank') planks.push(i); }
+  const firm = (S) => planks.every(i => !S.o[i] || !S.o[i].f);
   const late = (S, p) => deadline < Infinity && !until && goal - p.x > (deadline - S.tick) * vmax;
   const heap = new Heap();
   const seen = new Set();
@@ -92,6 +99,7 @@ export function search(L, S0, who, opts) {
   while (heap.size && exp < budget) {
     const node = heap.pop(); exp++;
     for (const m of MACROS) {
+      if (m[0][1] === FIRM && firm(node.S)) continue;
       const S = cloneRunner(node.S);
       const p = S.p[who];
       const runs = [];
@@ -106,6 +114,7 @@ export function search(L, S0, who, opts) {
       for (let j = 0; j < m.length; j++) {
         const [bits, n] = m[j];
         if (n > 0) for (let k = 0; k < n && !res; k++) one(bits);
+        else if (n === FIRM) for (let k = 0; k < 150 && !res; k++) { one(bits); if (firm(S)) break; }
         if (n < 0 || (!p.gr && j === m.length - 1)) for (let k = 0; k < 220 && !res; k++) { one(bits); if (p.gr) break; }
         if (res) break;
       }
@@ -114,7 +123,7 @@ export function search(L, S0, who, opts) {
       const key = `${Math.round(p.x / 3)},${Math.round(p.y / 3)},${Math.round(p.vx)},${(S.tick - t0) >> 2}${objKey(L, S, o0, o1)}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      heap.push({ S, parent: node, runs, pr: p.x - 0.03 * (S.tick - t0) });
+      heap.push({ S, parent: node, runs, pr: (toward === null ? p.x : -Math.abs(p.x + p.w / 2 - toward)) - 0.03 * (S.tick - t0) });
     }
   }
   return { ok: false, exp };

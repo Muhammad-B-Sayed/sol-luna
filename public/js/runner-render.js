@@ -3,16 +3,18 @@
 // speed for depth. Liquids, obstacles, players and particles draw every frame.
 import { TS, ROWS, WORLD_W, WORLD_H, POOL_DEPTH, T_SOLID, T_SUN, T_SHADE, tileAt, SOL, LUNA } from '/shared/sim.js';
 import {
-  swingPos, RPH_COUNT, RPH_PLAY, RPH_OVER, SLAB_GONE, SLAB_REFORM, SHARD_REGROW,
+  swingPos, RPH_COUNT, RPH_PLAY, RPH_OVER, SLAB_GONE, SLAB_REFORM, SHARD_REGROW, PLANK,
 } from '/shared/runner.js';
 import { LIQ, hash, rrect, crescent, star, hexA, shadeMarks } from './render.js';
 
 const PAGE = 16;
+const MILE_REACH = 12;   // columns a milestone may move to find a floor with room above it
 
 export class RunnerRenderer {
   constructor(R) {
     this.R = R;           // the main Renderer: canvas, scale, particles, player drawing
     this.pages = new Map();
+    this.miles = new Map();
     this.sc = 0;
     this.prev = null;
     this.shake = 0;
@@ -21,6 +23,7 @@ export class RunnerRenderer {
   reset(L) {
     this.L = L;
     this.pages.clear();
+    this.miles.clear();
     this.R.particles = [];
     this.prev = null;
     this.shake = 0;
@@ -109,18 +112,6 @@ export class RunnerRenderer {
     const g = pg.getContext('2d');
     g.setTransform(sc, 0, 0, sc, -x0 * TS * sc, 0);
     const filled = (x, y) => tileAt(L, x, y) !== 0;
-    // milestones carved into the back wall every 50 tiles from the start
-    for (let x = x0; x < x0 + PAGE; x++) {
-      const m = x - 10;
-      if (m <= 0 || m % 50) continue;
-      let gy = 0; while (gy < ROWS && !filled(x, gy)) gy++;
-      const py = Math.min(gy, ROWS) * TS - 66;
-      g.fillStyle = 'rgba(20,14,34,0.55)'; rrect(g, x * TS - 20, py, 40, 54, 6); g.fill();
-      g.strokeStyle = 'rgba(214,196,255,0.3)'; g.lineWidth = 1.5; g.stroke();
-      g.fillStyle = 'rgba(240,230,255,0.55)'; g.font = '600 15px "Cinzel", Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(String(m), x * TS, py + 20);
-      g.font = '600 9px "Cinzel", Georgia, serif'; g.fillText('M', x * TS, py + 38);
-    }
     g.fillStyle = 'rgba(0,0,0,0.28)';
     for (let y = 0; y < ROWS; y++) for (let x = x0 - 1; x < x0 + PAGE; x++) {
       if (filled(x, y) && !filled(x + 1, y + 1)) g.fillRect(x * TS + 5, y * TS + 5, TS, TS);
@@ -182,6 +173,7 @@ export class RunnerRenderer {
       g.drawImage(pg, Math.round((n * PAGE * TS - cam + shx) * sc), Math.round(shy * sc));
     }
     g.setTransform(sc, 0, 0, sc, (-cam + shx) * sc, shy * sc);
+    this.drawMilestones(g, L, cam);
 
     const x0 = cam - 2 * TS, x1 = cam + WORLD_W + 2 * TS;
     for (let i = S.lo; i < S.hi; i++) {
@@ -210,6 +202,48 @@ export class RunnerRenderer {
       g.setTransform(sc, 0, 0, sc, 0, 0);
       g.fillStyle = `rgba(10,6,20,${0.3 * Math.min(1, S.phaseT / 40)})`;
       g.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
+  }
+
+  // Milestones every 50 tiles from the spawn column, carved into the back wall. Drawn each frame
+  // (not in the cached stone pages, whose edges used to cut them in half), on the floor near
+  // their distance: the nearest column, up to MILE_REACH away, whose ground has three clear rows
+  // above it under the whole plate (so never above a gallery ceiling, over a pit or into stone).
+  milestone(L, m) {
+    if (this.miles.has(m)) return this.miles.get(m);
+    const filled = (x, y) => tileAt(L, x, y) !== 0;
+    // the floor row of a column: the top of the stone that reaches the bottom of the world
+    const floor = (x) => { if (!filled(x, ROWS - 1)) return -1; let y = ROWS - 1; while (y > 0 && filled(x, y - 1)) y--; return y; };
+    const fits = (x) => {
+      const f = floor(x);
+      if (f < 4) return -1;
+      for (const cx of [x - 1, x, x + 1]) {
+        if (floor(cx) !== f) return -1;
+        for (let y = f - 4; y < f; y++) if (filled(cx, y)) return -1;
+      }
+      return f;
+    };
+    const x0 = m + 10;
+    let at = null;
+    for (let d = 0; d <= MILE_REACH && !at; d++) {
+      for (const x of d ? [x0 + d, x0 - d] : [x0]) { const f = fits(x); if (f >= 0) { at = { x: x * TS + TS / 2, y: f * TS }; break; } }
+    }
+    this.miles.set(m, at);
+    return at;
+  }
+
+  drawMilestones(g, L, cam) {
+    const m0 = Math.max(50, Math.ceil((cam / TS - 10 - MILE_REACH - 2) / 50) * 50);
+    for (let m = m0; (m + 10 - MILE_REACH - 2) * TS < cam + WORLD_W; m += 50) {
+      const at = this.milestone(L, m);
+      if (!at) continue;
+      const w = 46, h = 58, x = at.x - w / 2, y = at.y - h - 12;
+      g.fillStyle = 'rgba(16,10,30,0.72)'; rrect(g, x, y, w, h, 7); g.fill();
+      g.strokeStyle = 'rgba(214,196,255,0.45)'; g.lineWidth = 1.5; g.stroke();
+      g.strokeStyle = 'rgba(214,196,255,0.16)'; g.lineWidth = 1; rrect(g, x + 4, y + 4, w - 8, h - 8, 4); g.stroke();
+      g.fillStyle = 'rgba(244,236,255,0.86)'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = `600 ${m >= 1000 ? 14 : 17}px "Cinzel", Georgia, serif`; g.fillText(String(m), at.x, y + 23);
+      g.font = '600 9px "Cinzel", Georgia, serif'; g.fillStyle = 'rgba(214,196,255,0.7)'; g.fillText('M', at.x, y + 42);
     }
   }
 
@@ -417,40 +451,84 @@ export class RunnerRenderer {
     g.lineCap = 'butt';
   }
 
-  // chain plank: a beam hung at its middle that tilts toward the weight on it
+  // chain plank: a beam on an axle at its middle, hung from a chain. It turns freely: the angle is
+  // asin(s) (the beam looks the same upside down, so -90 to 90 degrees covers every pose), with
+  // after-images while it spins. The glowing inlay marks the safe middle zone (dim while the plank
+  // is loose and carries no one); the ember-tinted caps mark the tips.
   drawPlank(g, o, st, time) {
-    const s = st.s, half = o.w / 2;
-    const yl = o.y - half * s, yr = o.y + half * s;
-    const ring = { x: o.px, y: o.y - 22 };
-    this.chain(g, o.px, -6, ring.x, ring.y);
-    // yoke rods to the beam
-    const rod = (dx) => { const x = o.px + dx, y = o.y + dx * s; g.strokeStyle = '#c79a55'; g.lineWidth = 2; g.beginPath(); g.moveTo(ring.x, ring.y); g.lineTo(x, y); g.stroke(); };
-    rod(-18); rod(18);
-    g.fillStyle = '#e0b56a'; g.beginPath(); g.arc(ring.x, ring.y, 4, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#6b4f2a'; g.beginPath(); g.arc(ring.x, ring.y, 1.8, 0, Math.PI * 2); g.fill();
-    // beam
-    const poly = () => { g.beginPath(); g.moveTo(o.x, yl); g.lineTo(o.x + o.w, yr); g.lineTo(o.x + o.w, yr + o.h); g.lineTo(o.x, yl + o.h); g.closePath(); };
-    const grd = g.createLinearGradient(0, Math.min(yl, yr), 0, Math.max(yl, yr) + o.h);
-    grd.addColorStop(0, '#8d84ad'); grd.addColorStop(1, '#5d5480');
-    g.fillStyle = grd; poly(); g.fill();
-    g.strokeStyle = 'rgba(20,12,36,0.6)'; g.lineWidth = 1; g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,0.3)'; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(o.x + 1, yl + 1); g.lineTo(o.x + o.w - 1, yr + 1); g.stroke();
-    // bronze bands and rivets
-    for (let k = 0; k <= o.w; k += 48) {
-      const x = o.x + Math.min(o.w - 4, Math.max(0, k - 2)), y = o.y + (x + 2 - o.px) * s;
-      g.fillStyle = '#b08a4a'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 4, y + 4 * s); g.lineTo(x + 4, y + 4 * s + o.h); g.lineTo(x, y + o.h); g.closePath(); g.fill();
-    }
-    g.fillStyle = 'rgba(30,20,50,0.55)';
-    for (let k = 12; k < o.w; k += 24) { const x = o.x + k, y = o.y + (x - o.px) * s; g.beginPath(); g.arc(x, y + o.h / 2, 1.3, 0, Math.PI * 2); g.fill(); }
-    // tilt gauge glow on the hub
-    const tilt = Math.min(1, Math.abs(s) / o.smax);
-    if (tilt > 0.05) {
+    const th = Math.asin(Math.max(-1, Math.min(1, st.s))), w = st.w, sp = Math.abs(w);
+    const cx = o.px, cy = o.py, H = o.H, hh = o.h / 2;
+    // chain down to a hanger fork that holds the axle
+    this.chain(g, cx, -6, cx, cy - 20);
+    g.fillStyle = '#4b4266'; rrect(g, cx - 5, cy - 22, 10, 22, 3); g.fill();
+    g.fillStyle = '#c79a55'; g.fillRect(cx - 5, cy - 22, 10, 2);
+    // after-images, sweeping behind the beam while it turns fast
+    if (sp > 0.04) {
+      const k = Math.min(1, (sp - 0.04) / 0.2);
+      for (let j = 4; j >= 1; j--) {
+        g.globalAlpha = 0.22 * k * (1 - (j - 1) / 4);
+        this.beam(g, o, th - w * j * 0.3, null, time);
+      }
+      g.globalAlpha = 1;
+      // a faint arc traced by the tips
       g.globalCompositeOperation = 'lighter';
-      g.fillStyle = `rgba(255,210,140,${0.35 * tilt})`;
-      g.beginPath(); g.arc(ring.x, ring.y, 7, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = `rgba(255,190,120,${0.25 * k})`; g.lineWidth = 3; g.lineCap = 'round';
+      for (const side of [0, Math.PI]) { g.beginPath(); g.arc(cx, cy, H - 2, th + side - w * 1.4, th + side, w < 0); g.stroke(); }
+      g.lineCap = 'butt'; g.globalCompositeOperation = 'source-over';
+    }
+    this.beam(g, o, th, st, time);
+    // axle hub, glowing with the speed of the turn
+    if (sp > 0.02) {
+      g.globalCompositeOperation = 'lighter';
+      const halo = g.createRadialGradient(cx, cy, 1, cx, cy, 14);
+      halo.addColorStop(0, `rgba(255,210,140,${Math.min(0.7, sp * 2.2)})`); halo.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = halo; g.beginPath(); g.arc(cx, cy, 14, 0, Math.PI * 2); g.fill();
       g.globalCompositeOperation = 'source-over';
     }
+    g.fillStyle = '#e0b56a'; g.beginPath(); g.arc(cx, cy, 5, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#6b4f2a'; g.lineWidth = 1.2; g.stroke();
+    g.fillStyle = '#6b4f2a'; g.beginPath(); g.arc(cx, cy, 1.8, 0, Math.PI * 2); g.fill();
+  }
+
+  // the beam itself at angle th; st null draws a plain after-image
+  beam(g, o, th, st, time) {
+    const H = o.H, hh = o.h / 2, cs = Math.cos(th);
+    g.save(); g.translate(o.px, o.py); g.rotate(th);
+    // light comes from above: the face that is up is the bright one, whichever way round it is
+    const up = cs >= 0 ? -1 : 1;
+    const grd = g.createLinearGradient(0, up * hh, 0, -up * hh);
+    grd.addColorStop(0, '#9a90bb'); grd.addColorStop(1, '#554b78');
+    g.fillStyle = grd; rrect(g, -H, -hh, 2 * H, 2 * hh, 3); g.fill();
+    if (!st) { g.restore(); return; }
+    g.strokeStyle = 'rgba(20,12,36,0.6)'; g.lineWidth = 1; g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(-H + 2, up < 0 ? -hh + 1 : hh - 2.5, 2 * H - 4, 1.5);
+    // tips: ember-tinted bronze caps with a chevron pointing out
+    const tip = PLANK.tip;
+    for (const sd of [-1, 1]) {
+      const x0 = sd > 0 ? H - tip : -H;
+      const tg = g.createLinearGradient(sd * (H - tip), 0, sd * H, 0);
+      tg.addColorStop(0, 'rgba(176,138,74,0.9)'); tg.addColorStop(1, 'rgba(214,104,58,0.95)');
+      g.fillStyle = tg; rrect(g, x0, -hh, tip, 2 * hh, 3); g.fill();
+      g.strokeStyle = 'rgba(255,214,170,0.55)'; g.lineWidth = 1.3;
+      const cx = sd * (H - tip / 2);
+      g.beginPath(); g.moveTo(cx - sd * 3, -3.5); g.lineTo(cx + sd * 2, 0); g.lineTo(cx - sd * 3, 3.5); g.stroke();
+    }
+    // bronze bands where the safe zone ends, and rivets along the beam
+    g.fillStyle = '#b08a4a';
+    for (const x of [-o.safe, o.safe]) g.fillRect(x - 2, -hh, 4, 2 * hh);
+    g.fillStyle = 'rgba(30,20,50,0.55)';
+    for (let x = -H + 24; x < H - tip; x += 24) if (Math.abs(Math.abs(x) - o.safe) > 6) { g.beginPath(); g.arc(x, 0, 1.3, 0, Math.PI * 2); g.fill(); }
+    // the safe middle zone: a glowing inlay of runes, dim while the plank is loose
+    const firm = !st.f, pulse = 0.75 + 0.25 * Math.sin(time * 2.2 + o.px * 0.01);
+    g.globalCompositeOperation = 'lighter';
+    g.fillStyle = `rgba(140,230,210,${(firm ? 0.5 : 0.12) * pulse})`;
+    g.fillRect(-o.safe + 3, -1, 2 * o.safe - 6, 2);
+    g.strokeStyle = `rgba(170,240,225,${(firm ? 0.55 : 0.12) * pulse})`; g.lineWidth = 1;
+    for (let x = -o.safe + 10; x <= o.safe - 10; x += 10) {
+      g.beginPath(); g.moveTo(x - 2.5, -3.5); g.lineTo(x, -1); g.lineTo(x + 2.5, -3.5); g.moveTo(x - 2.5, 3.5); g.lineTo(x, 1); g.lineTo(x + 2.5, 3.5); g.stroke();
+    }
+    g.globalCompositeOperation = 'source-over';
+    g.restore();
   }
 
   // swinging lantern: a platform on a long chain with a lamp beneath it

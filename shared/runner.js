@@ -48,7 +48,25 @@ export const diffAt = (tx) => Math.max(0, Math.min(1, tx / MAX_DIFF_AT));
 // Obstacle timings (ticks)
 export const SLAB_GONE = 40, SLAB_REFORM = 20;
 export const SHARD_G = 0.45, SHARD_GONE = 150, SHARD_REGROW = 40;
-export const PLANK = { load: 0.0035, spring: 0.006, damp: 0.14 };
+// Chain plank: a beam that turns freely on an axle at its middle (see stepPlank). Angles are in
+// radians, times in ticks. The state is the sine of its angle (s, with the cosine kept >= 0: the
+// beam is the same shape upside down, so a half turn is level too), its turn rate (w), and f = 1
+// while it is loose (too steep or too fast to carry anyone, until it is nearly level again).
+export const PLANK = {
+  near: 0.0004,     // torque per px from the middle, inside the safe middle zone
+  far: 0.005,       // torque per px from the middle beyond it (toward the ends it tips fast)
+  kick: 0.36,       // turn rate a touch on the tip gives it: about three turns
+  tip: 18,          // px at each end that count as the tip
+  lead: 0.09,       // kick speed taken off per unit of sine already leaning the way it spins
+  hold: 0.15, holdDamp: 0.35,   // spring toward level and damping while it rocks (can't go over)
+  spin: 0.06, spinDamp: 0.008,  // the same while it spins (enough speed to pass upright)
+  land: 0.00015,    // turn rate per px from the middle per px/tick of a player landing on it
+  hop: 0.0003,      // turn rate per px from the middle when a player jumps off it
+  stand: 0.3,       // sine of the steepest angle that still carries anyone
+  standW: 0.1,      // faster than this it carries no one
+  firmS: 0.08, firmW: 0.05,     // once loose, it carries people again only this close to level and this slow
+  restS: 0.005, restW: 0.002,   // snap to exactly level when this close and this slow, unloaded
+};
 export const VENT = { drag: 0.88, lift: 0.85 };   // rises at about 4.3 px/tick
 
 // Widest gap (whole tiles) the sim clears, by rise of the landing in tiles (tools/calibrate.js).
@@ -154,21 +172,25 @@ const FEAT = {
     g.ground(g.ri(2, 4));
     g.ground(w, first === T_SUN ? T_MOON : T_SUN);
   },
-  // Chain plank: a beam hung from a chain at its middle. It tilts toward the weight on it and
-  // springs back to level with damping. The jumps on and off are short enough for any tilt.
+  // Chain plank: a beam on an axle at its middle, hung from a chain. Weight near the middle only
+  // rocks it; toward an end it tips and throws you off; a touch on the tip spins it right over.
+  // The run-up is longer so a second arrival can wait for it to settle. The first plank's middle
+  // is where a full-speed jump from the ledge's edge comes down (about 150 px out, 160 onto a
+  // plank a tile lower), so the natural jump lands in the safe zone; the near tip is reached only
+  // by jumping well before the edge. The jumps between planks and off are sized from the safe zone.
   plank(g, d, intro) {
     const count = !intro && d > 0.55 && g.rand() < 0.4 ? 2 : 1;
     const drop = !intro && d > 0.4 && g.rand() < 0.5 ? 1 : 0;    // plank a tile below the ledge
-    const smax = lerp(0.24, 0.34, intro ? 0 : d);
-    let gap = intro ? 1 : g.ri(1, 2);
+    const safe = intro ? 36 : Math.round(lerp(34, 30, d));
+    g.ground(intro ? 1 : count > 1 ? 4 : 2);   // room to wait: two planks can both be set spinning
     const top = (g.h + drop) * TS;
     for (let k = 0; k < count; k++) {
-      const len = intro ? 6 : g.ri(6, 8);
+      const len = intro ? 6 : count > 1 ? 6 : g.ri(6, 8);
+      const gap = k ? 1 : Math.round((150 + 10 * drop - 12 * len) / 24);
       g.pit(gap);
       const x = g.x * TS, w = len * TS;
-      g.obj({ k: 'plank', x, y: top, w, h: 12, px: x + w / 2, smax, n: w / SEG, ax0: x, ax1: x + w });
+      g.obj({ k: 'plank', x, y: top, w, h: 12, px: x + w / 2, py: top + 6, H: w / 2, safe, n: w / SEG, ax0: x, ax1: x + w });
       g.pit(len);
-      gap = g.ri(1, 2);
     }
     g.pit(intro ? 1 : g.ri(1, d > 0.5 ? 2 : 1));
     const r = intro || d < 0.3 ? 0 : g.ri(-1, 1);
@@ -322,7 +344,7 @@ export const newSeed = () => (Math.random() * 0x7fffffff) >>> 0 || 1;
 export const STATEFUL = { plank: 1, slab: 1, shard: 1 };
 
 function initObj(o) {
-  if (o.k === 'plank') return { s: 0, w: 0 };
+  if (o.k === 'plank') return { s: 0, w: 0, f: 0 };
   if (o.k === 'slab') return { st: 0, t: 0 };
   if (o.k === 'shard') return { st: 0, t: 0, dy: 0, vy: 0 };
   return null;
@@ -370,10 +392,89 @@ export function swingPos(o, tick) {
   const sn = th - th * t2 / 6, cs = 1 - t2 / 2 + t2 * t2 / 24;
   return { x: o.ax + o.R * sn - o.w / 2, y: o.ay + o.R * cs, th };
 }
-export const plankSegY = (o, s, j) => o.y + (o.x + (j + 0.5) * SEG - o.px) * s;
-export const plankEndY = (o, s, side) => o.y + (side > 0 ? o.w / 2 : -o.w / 2) * s;
 
-// The solids player `who` collides with (eclipse stones are per element).
+// Chain plank geometry. The beam's centre line runs through the axle (o.px, o.py) at an angle
+// whose sine is s and whose cosine is c >= 0; the beam is o.h thick. Only its top face is solid,
+// and only while the plank is near level and slow (plankFirm): it is never a wall or a ceiling,
+// and a player beside or under it passes through it.
+const cosOf = (s) => Math.sqrt(Math.max(0, 1 - s * s));
+export const plankFirm = (st) => !st.f;
+// height of the top face's line at world x (used only while c >= 0.95)
+export const plankTopAt = (o, s, x) => o.py + ((x - o.px) * s - o.h / 2) / cosOf(s);
+// the top face above collision segment j (a rider's gref names the segment under their feet)
+export const plankSegY = (o, s, j) => plankTopAt(o, s, o.x + (j + 0.5) * SEG);
+// The highest point of the top face under a box's feet, or null if the feet are not over it.
+function plankUnder(o, s, x, w) {
+  const e = o.H * cosOf(s);
+  const a = Math.max(x, o.px - e), b = Math.min(x + w, o.px + e);
+  if (b - a <= EPS) return null;
+  const X = s > 0 ? a : b;           // s > 0: the right end is lower, so the left foot is highest
+  return { top: plankTopAt(o, s, X), X };
+}
+// Turn the beam by w radians: a rotation with polynomial sine and cosine (|w| < 0.5, error under
+// 1e-7), renormalised, and folded back to c >= 0. Plain arithmetic and sqrt, so every machine
+// computes the same bits.
+function turnPlank(s, w) {
+  const c = cosOf(s), w2 = w * w;
+  const sw = w * (1 - w2 / 6 * (1 - w2 / 20)), cw = 1 - w2 / 2 * (1 - w2 / 12);
+  let s2 = s * cw + c * sw;
+  const c2 = c * cw - s * sw, n = Math.sqrt(s2 * s2 + c2 * c2);
+  s2 /= n;
+  if (s2 > 1) s2 = 1; else if (s2 < -1) s2 = -1;
+  return c2 < 0 ? -s2 : s2;
+}
+// One tick of a plank with these riders on it. Each rider pushes with a torque that grows with
+// their distance from the middle, gently inside the safe zone and over ten times as hard beyond.
+// A rider on the tip sets it spinning at PLANK.kick. With too little speed to pass upright it is
+// held toward level by a stiff, well damped spring (it rocks and settles); with more it spins
+// under a weak pull toward level and light damping, slowing turn by turn until it is caught.
+function stepPlank(o, st, riders) {
+  const c = cosOf(st.s);
+  let tq = 0, tip = 0;
+  for (const p of riders) {
+    const r = Math.max(-o.H, Math.min(o.H, p.x + p.w / 2 - o.px)), a = Math.abs(r);
+    if (a >= o.H - PLANK.tip) tip += r > 0 ? 1 : -1;
+    const m = a <= o.safe ? PLANK.near * a : PLANK.near * o.safe + PLANK.far * (a - o.safe);
+    tq += (r > 0 ? m : -m) * c;
+  }
+  if (tip) {
+    // a beam already leaning the way it will spin has that much less to turn: a little less speed
+    // keeps the touch at three turns and the same time to rest from any lean
+    const d = tip > 0 ? 1 : -1;
+    st.w = d * PLANK.kick * (1 - d * st.s * PLANK.lead);
+  }
+  else if (st.w * st.w >= PLANK.spin * c * c) st.w = (st.w + tq - PLANK.spin * st.s * c) * (1 - PLANK.spinDamp);
+  else st.w = (st.w + tq - PLANK.hold * st.s * c) * (1 - PLANK.holdDamp);
+  st.s = turnPlank(st.s, st.w);
+  const as = Math.abs(st.s), aw = Math.abs(st.w);
+  if (as > PLANK.stand || aw > PLANK.standW) st.f = 1;
+  else if (st.f && as < PLANK.firmS && aw < PLANK.firmW) st.f = 0;
+  if (!riders.length && as < PLANK.restS && aw < PLANK.restW) { st.s = 0; st.w = 0; st.f = 0; }
+}
+// After a player has moved: stand them on a plank if they came down onto its top face from
+// above (`s0` holds each plank's sine before it moved), or if they were riding it and did not
+// jump. A landing pushes the beam in proportion to the fall speed and the distance from the middle.
+function plankLand(L, S, p, prevBot, rideK, pk, s0) {
+  let best = null, bn = -1;
+  const bot = p.y + p.h;
+  for (let n = 0; n < pk.length; n++) {
+    const k = pk[n], o = L.objs[k], st = S.o[k];
+    if (!plankFirm(st)) continue;
+    const q = plankUnder(o, st.s, p.x, p.w);
+    if (!q) continue;
+    if (k === rideK) { if (bot < q.top - PHYS.snap || bot > q.top + 10) continue; }
+    else if (!(prevBot <= plankTopAt(o, s0[n], q.X) + 0.5 && bot >= q.top)) continue;
+    if (!best || q.top < best.top) { best = q; bn = n; }
+  }
+  if (!best) return;
+  const k = pk[bn], o = L.objs[k], st = S.o[k];
+  if (k !== rideK) st.w += PLANK.land * p.vy * Math.max(-o.H, Math.min(o.H, p.x + p.w / 2 - o.px));
+  p.y = best.top - p.h; p.vy = 0; p.gr = true; p.coy = PHYS.coyote;
+  p.gref = oid(k, Math.max(0, Math.min(o.n - 1, Math.floor((best.X - o.x) / SEG))));
+}
+
+// The solids player `who` collides with (eclipse stones are per element). Planks are not solids:
+// they are handled on their own (plankUnder, plankLand).
 function solidsFor(L, S, who) {
   const out = [];
   for (let i = S.lo; i < S.hi; i++) {
@@ -388,11 +489,6 @@ function solidsFor(L, S, who) {
       case 'swing': {
         const q = swingPos(o, S.tick);
         out.push({ o: { x: q.x, y: q.y }, id: oid(i), w: o.w, h: o.h, box: false });
-        break;
-      }
-      case 'plank': {
-        const s = S.o[i].s;
-        for (let j = 0; j < o.n; j++) out.push({ o: { x: o.x + j * SEG, y: plankSegY(o, s, j) }, id: oid(i, j), w: SEG, h: o.h, box: false });
         break;
       }
     }
@@ -419,14 +515,6 @@ function worldsFor(L, S) {
         a.push(e); b.push(e);
         break;
       }
-      case 'plank': {
-        const s = S.o[i].s;
-        for (let j = 0; j < o.n; j++) {
-          const e = { o: { x: o.x + j * SEG, y: plankSegY(o, s, j) }, id: oid(i, j), w: SEG, h: o.h, box: false };
-          a.push(e); b.push(e);
-        }
-        break;
-      }
     }
   }
   return [{ L, S, solids: a, ents: S.p, pinned: false }, { L, S, solids: b, ents: S.p, pinned: false }];
@@ -440,7 +528,6 @@ function solidById(L, S, who, id) {
     case 'stone': return o.el === who && !j ? { o: { x: o.x, y: o.y } } : null;
     case 'slab': return S.o[i].st <= 1 && !j ? { o: { x: o.x, y: o.y } } : null;
     case 'swing': { if (j) return null; const q = swingPos(o, S.tick); return { o: { x: q.x, y: q.y } }; }
-    case 'plank': return j < o.n ? { o: { x: o.x + j * SEG, y: plankSegY(o, S.o[i].s, j) } } : null;
   }
   return null;
 }
@@ -470,15 +557,8 @@ function updateObjects(L, S) {
   const live = S.p.filter(p => p.alive);
   for (let i = S.lo; i < S.hi; i++) {
     const o = L.objs[i], st = S.o[i];
-    if (o.k === 'plank') {
-      let tq = 0;
-      for (const p of live) if (p.gr && oidObj(p.gref) === i) tq += Math.max(-1, Math.min(1, (p.x + p.w / 2 - o.px) / (o.w / 2)));
-      st.w = st.w * (1 - PLANK.damp) + tq * PLANK.load - st.s * PLANK.spring;
-      st.s += st.w;
-      if (st.s > o.smax) { st.s = o.smax; if (st.w > 0) st.w = 0; }
-      else if (st.s < -o.smax) { st.s = -o.smax; if (st.w < 0) st.w = 0; }
-      if (!tq && Math.abs(st.s) < 2e-4 && Math.abs(st.w) < 1e-4) { st.s = 0; st.w = 0; }
-    } else if (o.k === 'slab') {
+    if (o.k === 'plank') stepPlank(o, st, live.filter(p => p.gr && oidObj(p.gref) === i));
+    else if (o.k === 'slab') {
       if (st.st === 0) {
         if (live.some(p => p.gr && p.gref === oid(i))) { st.st = 1; st.t = 0; }
       } else {
@@ -531,6 +611,8 @@ export function stepRunner(L, S, inputs) {
   // remember where the part each player stands on is, before anything moves
   const ride = S.p.map((p, i) => {
     if (!p.alive || !p.gr || p.gref < OID0) return null;
+    const k = oidObj(p.gref);
+    if (k >= S.lo && k < S.hi && L.objs[k].k === 'plank') return { plank: k };
     const s = solidById(L, S, i, p.gref);
     return s && { x: s.o.x, y: s.o.y };
   });
@@ -544,12 +626,24 @@ export function stepRunner(L, S, inputs) {
     S.cam += S.v;
   }
   activate(L, S);
+  // the planks near the screen and their angles before they move
+  const pk = [], s0 = [];
+  for (let k = S.lo; k < S.hi; k++) if (L.objs[k].k === 'plank') { pk.push(k); s0.push(S.o[k].s); }
   updateObjects(L, S);
   const W = worldsFor(L, S);
   for (let i = 0; i < 2; i++) {
     const p = S.p[i];
     if (!p.alive) continue;
-    if (ride[i]) {
+    if (ride[i] && ride[i].plank !== undefined) {
+      // a plank rider moves with its top face, or drops off once it is too steep or too fast
+      const o = L.objs[ride[i].plank], st = S.o[ride[i].plank];
+      const q = plankFirm(st) ? plankUnder(o, st.s, p.x, p.w) : null;
+      if (!q) { p.gr = false; p.gref = -1; }
+      else {
+        const dy = q.top - (p.y + p.h);
+        if (dy > 0) p.y += dy; else if (dy < 0) moveY(W[i], p, dy, -999);
+      }
+    } else if (ride[i]) {
       const ns = findSolid(W[i], p.gref);
       if (!ns) { p.gr = false; p.gref = -1; }      // crumbled away under them
       else {
@@ -575,7 +669,15 @@ export function stepRunner(L, S, inputs) {
     let bits = counting ? 0 : inputs[i] | 0;
     const beyond = p.x + p.w > S.cam + WORLD_W - 4, vx0 = Math.max(0, p.vx);
     if (beyond && p.gr) bits &= ~IN_RIGHT;
+    const prevBot = p.y + p.h, rideK = ride[i] && p.gr ? ride[i].plank ?? -1 : -1;
     stepPlayer(W[i], p, bits);
+    if (pk.length && p.alive) {
+      if (!p.gr && p.vy >= 0) plankLand(L, S, p, prevBot, rideK, pk, s0);
+      else if (rideK >= 0 && p.vy < 0) {   // jumped off a plank: the push tips it a little
+        const o = L.objs[rideK];
+        S.o[rideK].w += PLANK.hop * Math.max(-o.H, Math.min(o.H, p.x + p.w / 2 - o.px));
+      }
+    }
     if (beyond && p.vx > vx0) p.vx = vx0;
     const far = S.cam + WORLD_W + AHEAD;
     if (p.x + p.w > far) { moveEnt(W[i], p, far - (p.x + p.w), 0, -999); if (p.vx > 0) p.vx = 0; }
@@ -610,7 +712,7 @@ export const chunkAt = (L, px) => {
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (L.chunks[m].x0 <= tx) lo = m; else hi = m - 1; }
   return L.chunks[lo];
 };
-export { SEG, oid, oidObj, OID0, solidsFor };
+export { SEG, oid, oidObj, OID0, solidsFor, stepPlank, turnPlank };
 
 // ---------------------------------------------------------------------------
 // Client prediction (public/js/runner-sync.js, docs/netcode.md). A state with S.pred set never

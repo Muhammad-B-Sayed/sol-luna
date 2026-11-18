@@ -542,14 +542,26 @@ node tools/check-runner.js                  # fairness proof, 50 seeds to 1700 t
 JOBS=6 PARTS=4 node tools/check-runner.js   # explicit worker threads and work units per seed
 SEEDS=11-20 TILES=600 node tools/check-runner.js   # a quicker subset
 PORT=3217 node server/index.js & PORT=3217 OUT=docs/img/runner node tools/runner-browser.js
+PORT=3550 node tools/playtest/runner-plank-shots.mjs   # plank and milestone screenshots
 ```
 
-- Keep `stepRunner` free of `Math.sin`/`cos` (prediction must match the server). Swings use a
-  polynomial.
+- Keep `stepRunner` free of `Math.sin`/`cos` (prediction must match the server). Swings and the
+  plank's turn use polynomials.
 - `sim.js` changes for it are additive: `tileAt` checks `L.tileFn`, and five internals are exported.
 - The checker runs seeds in parallel worker threads (`JOBS`, default CPU count minus one, at most 8)
   and splits each seed's chunk tests into `PARTS` units (default 3). The 50-seed, 1700-tile proof
-  is clean (586 s on 6 jobs on a heavily loaded machine, Nov 2026).
+  is clean (674 s on 6 jobs on a loaded machine, Nov 2026, with the new plank tests).
+- Chain plank (Nov 2026, after play: its tip-over was far too slow). It is now a beam that turns
+  freely on an axle at its middle: the middle rocks and holds you, past the safe zone it tips you
+  off, and a touch on the last 18 px of either end spins it three turns (0.35 s, 0.46 s, 0.72 s)
+  and leaves it exactly level about 1.75 s after the touch. Only its top face is solid, and only
+  near level, so it is never a wall. State per plank is `{ s, w, f }` (sine of the angle, turn
+  rate, loose flag); the turn is a polynomial rotation, no trig. Rules, constants and timings:
+  `docs/runner.md`, "The chain plank". The checker parks the other player in the safe zone and
+  has them land on each tip and hop in the middle ahead of the tested one.
+- Distance milestones are drawn every frame on the nearest floor with room above
+  (`drawMilestones` in `runner-render.js`). In the cached stone pages they were cut in half at
+  page edges and could sit over a pit or above a gallery ceiling.
 - Scroll speed (Nov 2026): `SPEED` in `shared/runner.js` starts at 1.35 px/tick and reaches 1.67
   at 100 tiles (about 30 s), then climbs slowly to meet the old curve at 350 tiles (1.95); the
   rest is unchanged. The old opening (1.0 rising to 1.45 at 120 tiles) felt like waiting. The
