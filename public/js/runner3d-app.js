@@ -68,6 +68,7 @@ export class Runner3DMode {
     this.hudEl.classList.toggle('split', !this.online);
     this.hudEl.classList.toggle('single', this.online);
     this.hudEl.dataset.me = this.online ? String(this.app.me) : '';
+    this.touchEl.hidden = !this.online;   // touch drives your own character online, like the other modes
     this.show(null);
     this.fit();
     this.loadRenderer();
@@ -350,6 +351,7 @@ export class Runner3DMode {
     el.id = 'r3Touch'; el.setAttribute('aria-hidden', 'true');
     el.innerHTML = '<div class="r3-stick"><i></i></div><button class="r3-jump" type="button">▲</button>';
     document.querySelector('#stage').append(el);
+    this.touchEl = el;
     const stick = el.querySelector('.r3-stick'), knob = stick.querySelector('i'), jump = el.querySelector('.r3-jump');
     let pid = null;
     const move = (e) => {
