@@ -46,6 +46,7 @@ const PORT0 = +arg('port', 3441);
 const OUT = arg('out', null);
 const ONLY_LOCAL = process.argv.includes('--local');
 const REPS = +arg('reps', 1);
+const TRACE = arg('trace', null);   // 'spot index,r': one online trial with a defender timeline
 const LEFT = 1, RIGHT = 2, JUMP = 4, DT = 1000 / 60;
 const MS = (t) => Math.round(t * DT);
 
@@ -62,7 +63,7 @@ const moveBits = (who, where) => (where === 'back' ? (who === SOL ? LEFT : RIGHT
 // A scripted player. decide(S, n) is called once per tick with the state the player sees.
 function bot(me, role, spot, react) {
   const [, tMove, dMove] = spot;
-  const st = { n: 0, fs: -1, fsT: 0, hitSeen: -1, rel: -1, jumpSeen: -1, sawHit: false, jump0: -1 };
+  const st = { role, n: 0, fs: -1, fsT: 0, hitSeen: -1, rel: -1, jumpSeen: -1, sawHit: false, jump0: -1 };
   st.decide = (S) => {
     const n = st.n++, D = S.d, other = 1 - me;
     if (st.jump0 < 0) st.jump0 = S.p[other].jumpN;
@@ -135,6 +136,7 @@ function client(port) {
 }
 
 function onSnapshot(c, m) {   // public/js/main.js onSnapshot, state part only
+  c.snap = JSON.parse(JSON.stringify(m.st.d));   // the server's word, before our own replay
   const ns = m.st;
   c.remoteBits = m.inp[1 - c.me] | 0;
   const myAck = m.ack[c.me] | 0;
@@ -142,7 +144,9 @@ function onSnapshot(c, m) {   // public/js/main.js onSnapshot, state part only
   const inp = [0, 0];
   for (const [, b] of c.pending) { inp[c.me] = b; inp[1 - c.me] = c.remoteBits; stepDodge(COURT, ns, inp); }
   c.S = ns;
-  c.snap = m.st.d; c.lastSnap = m.st.tick;
+  c.lastSnap = m.st.tick;
+  if (TRACE && c.bot && c.bot.role === 'D' && m.st.d.throwN > 0 && (c.tr = (c.tr || 0) + 1) < 40)
+    console.log(`D n=${c.bot.n} srvTick=${m.st.tick} ack=${myAck} seq=${c.seq} pend=${c.pending.length} srvBall.t=${m.st.d.ball.t} st=${m.st.d.ball.st} srvY=${m.st.p[c.me].y.toFixed(1)} srvJumpN=${m.st.p[c.me].jumpN} predBall.t=${ns.d.ball.t} predY=${ns.p[c.me].y.toFixed(1)} fs=${c.bot.fs} hitN=${m.st.d.hitN}`);
 }
 
 function tickClient(c) {      // public/js/main.js tickOnline
@@ -254,7 +258,13 @@ function printTable(lines) {
   for (const l of lines) console.log(fmt({ ...l, latestMs: l.latestMs + ' ms' }) + (l.failed ? `  (${l.failed} trials failed)` : ''));
 }
 
-const all = [];
+const all = [], raws = [];
+if (TRACE) {
+  const [si, r] = TRACE.split(',').map(Number);
+  const srv = await runServer(PORT0, LATS[0]);
+  const res = await onlineTrial(PORT0, SPOTS[si], r);
+  console.log(JSON.stringify(res)); srv.kill(); process.exit(0);
+}
 // local first: it also sets how far each spot's online sweep needs to go
 const local = await measure('local', async (spot, r) => localTrial(spot, r, SOL), Object.fromEntries(SPOTS.map(s => [s[0], 45])));
 const localLines = report(local);
@@ -268,12 +278,12 @@ if (!ONLY_LOCAL) {
     try {
       const res = await measure(`${lag} ms`, (spot, r) => onlineTrial(port, spot, r), maxR);
       const lines = report(res);
-      all.push(...lines);
-      if (OUT) fs.writeFileSync(OUT, JSON.stringify({ lines: all, raw: res }, null, 1));
+      all.push(...lines); raws.push(res);
+      if (OUT) fs.writeFileSync(OUT, JSON.stringify({ lines: all, raws }, null, 1));
       console.error(`done ${lag} ms`);
     } finally { srv.kill(); }
   }
 }
 printTable(all);
-if (OUT) fs.writeFileSync(OUT, JSON.stringify({ lines: all }, null, 1));
+if (OUT) fs.writeFileSync(OUT, JSON.stringify({ lines: all, raws }, null, 1));
 process.exit(0);
