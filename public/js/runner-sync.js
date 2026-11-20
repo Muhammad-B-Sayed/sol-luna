@@ -19,6 +19,8 @@
 //    tilting slab, a carousel stone) is drawn on that part where it is now.
 //  - After a stall (a tab hiccup) the missed ticks are run, a few per frame, instead of being
 //    dropped, so your inputs keep their place in the server's queue.
+//  - A paused room (net-pause.js): no ticks and no inputs, and the other player's playback clock
+//    stands still for as long as the server does, then goes on from where it stopped (holdClock).
 import * as R2 from '../../shared/runner.js';
 import * as R3 from '../../shared/runner3d.js';
 
@@ -91,7 +93,7 @@ export class RunnerSync {
     sim.cover(L, st);
     this.auth = st;                     // the newest server state (never stepped)
     this.snaps = [{ tick: st.tick, t: now, st }];
-    this.arr = [];                      // [arrival ms, arrival - tick * DT] for the playback clock
+    this.arr = [];                      // [arrival ms, arrival - tick * DT, tick] for the playback clock
     this.P = this.predictFrom(st);
     this.pending = []; this.seq = 0; this.remoteBits = 0; this.qm = null;
     this.acc = 0; this.alpha = 1;
@@ -103,6 +105,7 @@ export class RunnerSync {
     this.lastR = null;                  // { T } the other player's playback tick last frame
     this.lastRide = null;               // { key, v } the moving part they stood on last frame, and its offset
     this.overAt = -1; this.frozen = null;
+    this.haltAt = null; this.shifted = 0;   // a pause: when the playback clock stopped, and the server's frozen ms already allowed for
     this.stats = { corr: [], held: 0, released: 0, extrap: 0, delay: 0 };
   }
 
@@ -124,7 +127,11 @@ export class RunnerSync {
   // -------------------------------------------------------------------------
   // ticks
 
-  frame(dt, readBits, now) {
+  // pz: the room's pause (net-pause.js), or null. Paused or counting down, your own ticks stop.
+  frame(dt, readBits, now, pz = null) {
+    const held = pz ? this.holdClock(now, pz) : false;
+    this.frameDt = dt;
+    if (pz && !pz.running(now)) { if (!held) { this.clock(now, dt); this.ease(dt); } return 0; }
     // pacing: the server reports the smallest length of your input queue over the last second
     // (qm). Keep it between 1 and 3 ticks by running 3% slower or faster: enough cushion that
     // jitter never starves it, and no more delay than that.
@@ -133,9 +140,7 @@ export class RunnerSync {
     let n = 0;
     while (this.acc >= DT && n < MAX_TICKS_PER_FRAME) { this.acc -= DT; n++; this.tick(readBits()); }
     this.alpha = Math.min(1, this.acc / DT);
-    this.frameDt = dt;
-    this.clock(now, dt);
-    this.ease(dt);
+    if (!held) { this.clock(now, dt); this.ease(dt); }
     return n;
   }
 
@@ -151,6 +156,23 @@ export class RunnerSync {
     this.sim.step(this.L, this.P, inp);
     this.predR.set(this.P.tick, this.pos(this.P.p[o]));
     this.decay();
+  }
+
+  // A pause. The other player's playback clock stops when this client stops, and starts again
+  // when the server has stood still that long (frozen, from the countdown message): the
+  // snapshots after the freeze come that much later than the ones before it, so the arrival
+  // clock of those before it moves on by as much. Playback goes on from where it stopped, and
+  // the frozen time is not a gap to race across. Your own ticks start on their own time
+  // (net-pause.js), which can be a little earlier or later. Returns true while it stands still.
+  holdClock(now, pz) {
+    if (this.haltAt === null) { if (pz.running(now)) return false; this.haltAt = now; }
+    if (pz.st === 'paused') return true;
+    const ds = pz.frozen - this.shifted;
+    if (now < this.haltAt + ds) return true;
+    const dl = now - this.haltAt;
+    for (const a of this.arr) if (a[2] <= pz.tick) { a[0] += dl; a[1] += ds; }
+    this.shifted = pz.frozen; this.haltAt = null;
+    return false;
   }
 
   decay() {
@@ -190,7 +212,7 @@ export class RunnerSync {
     this.auth = st;
     this.snaps.push({ tick: st.tick, t: now, st });
     if (this.snaps.length > KEEP) this.snaps.shift();
-    this.arr.push([now, now - st.tick * DT]);
+    this.arr.push([now, now - st.tick * DT, st.tick]);
     while (this.arr.length && this.arr[0][0] < now - CLOCK_WIN) this.arr.shift();
     // the server ended the match: keep running your prediction until the end is shown here
     // (the server's players stand still from now on; replaying would only pull yours back)

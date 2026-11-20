@@ -45,8 +45,11 @@ export class CoopClient {
     this.corr = [];                 // own-player corrections at each snapshot (px)
     this.intended = new Map();      // seq -> [tick the prediction applied it to, bits, dodge phase]
   }
-  frame(dt, readBits) {
+  // pz: the room's pause (public/js/net-pause.js), or null. main.js: a paused room runs no ticks
+  // and owes none.
+  frame(dt, readBits, now, pz = null) {
     let n = 0;
+    if (pz && !pz.running(now)) return 0;
     if (this.scheme === 'base') {
       if (dt > 250) dt = DT;
       this.acc += dt;

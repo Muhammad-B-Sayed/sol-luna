@@ -227,6 +227,27 @@ if (process.env.ONLY !== 'lag') {
   const gotIt = await waitFor(G, `document.querySelector('#chatLog').textContent.includes('wasd dddd')`, 2000);
   check('chat mid-level: Enter opens chat, typed WASD moves nobody, Enter sends and hands keys back', open[0] && open[1] === 'chatInput' && Math.abs(after[0] - before) < 0.01 && gotIt && after[1] !== 'chatInput', `${JSON.stringify(open)} x ${before}->${after[0]} focus after send ${after[1]}`);
   await H.shot(`${IMG}/chat-mid-level-host.jpg`); await G.shot(`${IMG}/chat-mid-level-guest.jpg`);
+  // pause: Esc on the host pauses the room for both; the guest's card says who paused; the
+  // ticks stop on both; the guest resumes, both count down, both run again
+  const PZ = `(() => { const c = document.querySelector('#resumeCount'); return { screen: document.body.dataset.screen, tick: window.__app.S.tick,
+    note: document.querySelector('#pauseOnline').hidden ? '' : document.querySelector('#pauseOnline').textContent, count: c.hidden ? '' : c.textContent } })()`;
+  const hostName = (await H.eval('window.__app.me')) ? 'Luna' : 'Sol';
+  await H.key('Escape', 'keyDown'); await H.key('Escape', 'keyUp');
+  await sleep(500);
+  const z1 = await Promise.all([H, G].map(P => P.eval(PZ)));
+  check('pause online: Esc on one page shows the pause card on both, and the other page says who paused', z1.every(z => z.screen === 'pause') && z1[1].note === `${hostName} paused the game.` && /^You paused/.test(z1[0].note), JSON.stringify(z1));
+  await sleep(1200);
+  const z2 = await Promise.all([H, G].map(P => P.eval(PZ)));
+  check('pause online: the ticks stop on both', z2.every((z, i) => z.tick === z1[i].tick), z2.map((z, i) => `${z1[i].tick}→${z.tick}`).join(', '));
+  await G.click('#pResume');
+  await sleep(250);
+  const z3 = await Promise.all([H, G].map(P => P.eval(PZ)));
+  await G.shot(`${IMG}/pause-online-countdown-guest.jpg`);
+  check('pause online: Resume on the other page shows the countdown on both, still frozen', z3.every((z, i) => z.screen === 'game' && /^[123]/.test(z.count) && z.tick === z1[i].tick), JSON.stringify(z3));
+  const counted = await Promise.all([H, G].map(P => waitFor(P, `document.querySelector('#resumeCount').hidden`, 4000)));
+  await sleep(500);
+  const z4 = await Promise.all([H, G].map(P => P.eval(PZ)));
+  check('pause online: after the countdown both run again', counted.every(Boolean) && z4.every((z, i) => z.tick > z1[i].tick + 10), z4.map((z, i) => `${z1[i].tick}→${z.tick}`).join(', '));
   // mid-level swap from the pause menu
   await G.key('Escape', 'keyDown'); await G.key('Escape', 'keyUp');
   await sleep(200);

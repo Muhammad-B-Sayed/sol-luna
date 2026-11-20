@@ -88,6 +88,7 @@ public/js/runner-app.js, runner-render.js  Runner loop, prediction, HUD and scro
 public/js/input.js   Keyboard/gamepad/touch → input bits (1=left, 2=right, 4=jump, 8=action). local()/any() latch a
                      tap or release that falls between two reads (tools/check-input.js).
 public/js/net.js     WebSocket client wrapper.
+public/js/net-pause.js  The online pause, client side (all online modes). No DOM.
 public/js/audio.js   Procedural WebAudio SFX (no audio files).
 render.yaml          Render Blueprint (alternative way to deploy).
 ```
@@ -182,12 +183,18 @@ input rules that co-op and Dodgeball got after it, the numbers, the checks) is i
   Online the prediction never enters the death or win phase by itself (`predictStep`): those
   come from the server only.
   - It interpolates between ticks for high-refresh displays.
+- **Pause** (all online modes, `docs/netcode.md` section 7): the room pauses for both players.
+  Either player pauses with Esc or P and either resumes; the other screen says who paused. The
+  server steps nothing while paused and owes nothing for it. A resume counts down 3, 2, 1 for
+  2 s on both screens. Inputs in flight stay queued and are applied on their own ticks after it,
+  so a match with pauses equals the one without. None on the results card or in the Runners'
+  3-2-1. `node tools/check-pause.js` checks it. Local play pauses as before.
 - **Messages:**
 
   | Direction | Messages |
   | --- | --- |
-  | Client → server | `create`, `join{code}`, `swap{char?}`, `start{level}` or `start{mode}` (`'dodge'`, `'runner'`), `restart`, `menu`, `leave`, `ping` (either player may send any of them) |
-  | Server → client | `room`, `start{level, mode, st}` (runner: `start{mode, seed, st}`), `s`, `menu`, `peer-left`, `err`, `pong` |
+  | Client → server | `create`, `join{code}`, `swap{char?}`, `start{level}` or `start{mode}` (`'dodge'`, `'runner'`, `'runner3d'`), `restart`, `menu`, `pause{on}`, `chat{text}`, `leave`, `ping` (either player may send any of them) |
+  | Server → client | `room`, `start{level, mode, st}` (runner: `start{mode, seed, st}`), `s`, `pause{st, by, ms?, frozen?, tick}`, `chat`, `menu`, `peer-left`, `err`, `pong` |
 - **Characters:** the host starts as Sol and a guest gets the free character. Either player can
   click a character in the lobby, press "Swap characters", or swap from the pause menu (that
   restarts the level with the new roles). Fixed Nov 2026: with one player in the room, swap used
@@ -331,6 +338,7 @@ node tools/check-solo.js 1,2,3           # solo search to 400k states (1.5M on c
 HELP=none node tools/check-levels.js 4   # the same search, with gem counts; TRACE=1 prints a path
 node tools/calibrate.js                  # movement envelope
 node tools/check-dodge.js                # Dodgeball rules, ~5 s
+node tools/check-pause.js                # the online pause in all four modes, ~1.5 min
 node tools/check-runner.js               # Runner fairness proof, 50 seeds to 1700 tiles, ~5 min on 6 jobs
 ```
 

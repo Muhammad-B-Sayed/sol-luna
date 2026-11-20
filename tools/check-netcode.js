@@ -51,6 +51,7 @@ import { CoopClient } from './net-coop.js';
 import { LEVELS } from '../shared/levels.js';
 import { buildLevel, IN_LEFT, IN_RIGHT, IN_UP, IN_ACT, SOL } from '../shared/sim.js';
 import { COURT, DODGE, DP_PLAY, DP_OVER, B_LIVE, B_DEAD, B_REST, sideOf } from '../shared/dodge.js';
+import { RoomPause } from '../public/js/net-pause.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const env = process.env;
@@ -59,7 +60,7 @@ const SEEDS = (env.SEEDS || '1,2,3').split(',').map(Number);
 const COOP_LEVELS = (env.SEEDS || '1,4,10,22').split(',').map(Number);   // co-op: level numbers
 const SCHEME = env.SCHEME || 'new';
 const SECS = +(env.SECS || 90);
-const NET = {
+export const NET = {
   base: +(env.BASE ?? 40), jit: +(env.JIT ?? 15),
   spike: +(env.SPIKE ?? 8), spikeMin: +(env.SPIKE_MIN ?? 150), spikeMax: +(env.SPIKE_MAX ?? 300),
   stall: +(env.STALL ?? 20), stallMin: +(env.STALL_MIN ?? 80), stallMax: +(env.STALL_MAX ?? 250),
@@ -73,7 +74,7 @@ const V = !!env.V;
 const PH_DEAD_ = 1;   // co-op death phase (shared/sim.js PH_DEAD)
 
 // thresholds (2D in px, 3D in units; 1 unit = 24 px)
-const TH = {
+export const TH = {
   '2d': { off: 4, back: 0.5, pop: 6, corrBack: 0.5, fwd: 'x', mode: 'runner', unit: 'px' },
   '3d': { off: 0.15, back: 0.02, pop: 0.25, corrBack: 0.02, fwd: 'z', mode: 'runner3d', unit: 'u' },
 };
@@ -83,7 +84,7 @@ const SIM = {
 };
 
 // seeded random numbers, so a run can be repeated
-function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+export function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const expo = (r, mean) => -Math.log(1 - r()) * mean;
 const uni = (r, a, b) => a + (b - a) * r();
 
@@ -101,7 +102,7 @@ function pipe() {
   return (t, fn) => { q.push([t, fn]); if (!timer) timer = setTimeout(pump, Math.max(0, t - performance.now())); };
 }
 
-function link(r, cfg) {
+export function link(r, cfg) {
   const L = { last: [0, 0], stallUntil: 0, spikes: 0, nextSpike: cfg.spike ? performance.now() + expo(r, cfg.spike * 1000) : Infinity, pipes: [pipe(), pipe()] };
   // dir 0 = client to server, 1 = server to client
   L.send = (dir, fn) => {
@@ -118,11 +119,11 @@ function link(r, cfg) {
 // ---------------------------------------------------------------------------
 // server
 
-function startServer(port) {
+export function startServer(port, extraEnv = {}) {
   const args = ['server/index.js'];
   const cmd = CPU ? 'systemd-run' : process.execPath;
   const argv = CPU ? ['--user', '--scope', '-q', '-p', `CPUQuota=${CPU}%`, '-p', 'CPUWeight=10000', process.execPath, ...args] : args;
-  const p = spawn(cmd, argv, { cwd: env.SERVER_ROOT || ROOT, env: { ...env, PORT: String(port), LAG_MS: env.SERVER_LAG || '0', TEST_SEED: '1', NET_LOG: '1', NET_TRACE: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  const p = spawn(cmd, argv, { cwd: env.SERVER_ROOT || ROOT, env: { ...env, PORT: String(port), LAG_MS: env.SERVER_LAG || '0', TEST_SEED: '1', NET_LOG: '1', NET_TRACE: '1', ...extraEnv }, stdio: ['ignore', 'pipe', 'inherit'] });
   return new Promise((resolve, reject) => {
     let buf = '';
     p.stdout.on('data', (d) => {
@@ -137,7 +138,7 @@ function startServer(port) {
 // ---------------------------------------------------------------------------
 // one client: socket over the modelled link, a 60 Hz frame loop, the sync code, a meter
 
-const serverLog = [];   // the server's NET_LOG lines (input holds, skips, late keys per match)
+export const serverLog = [];   // the server's NET_LOG lines (input holds, skips, late keys per match)
 // NET_TRACE: every key change the server applied, by room code: "round ch seq" -> the tick it was applied to
 const traces = new Map();
 function addTrace(ln) {
@@ -175,24 +176,26 @@ function inputTicks(c, code) {
   return out;
 }
 let Sync = null;   // public/js/runner-sync.js, loaded for SCHEME=new
-async function loadSync() {
+export async function loadSync() {
   if (SCHEME === 'old' || Sync) return;
   Sync = await import('../public/js/runner-sync.js');
 }
 
-function makeClient(kind, port, seed, idx, track, meter) {
+// cfg: the link model (NET by default); tools/check-pause.js passes a clean one
+export function makeClient(kind, port, seed, idx, track, meter, cfg = NET) {
   const r = rng(seed * 7919 + idx * 104729 + 13);
-  const ln = link(r, NET);
+  const ln = link(r, cfg);
   const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { autoPong: false });
-  const c = { kind, ws, ln, me: -1, sync: null, inbox: [], stallUntil: 0, stalls: 0, handlers: {}, closed: false, meter, track };
-  c.nextStall = NET.stall ? performance.now() + expo(r, NET.stall * 1000) : Infinity;
+  const c = { kind, ws, ln, me: -1, sync: null, inbox: [], stallUntil: 0, stalls: 0, handlers: {}, closed: false, meter, track, pz: new RoomPause() };
+  c.nextStall = cfg.stall ? performance.now() + expo(r, cfg.stall * 1000) : Infinity;
   c.send = (m) => { const s = JSON.stringify(m); ln.send(0, () => { if (ws.readyState === 1) ws.send(s); }); };
   const deliver = (fn) => ln.send(1, () => { if (performance.now() < c.stallUntil) c.inbox.push(fn); else fn(); });
   ws.on('ping', (d) => deliver(() => { if (ws.readyState === 1) ws.pong(d); }));
   ws.on('message', (data) => deliver(() => {
     const m = JSON.parse(data);
     if (m.t === 'room') c.me = m.you;
-    if (m.t === 'start') c.begin(m);
+    if (m.t === 'pause') c.pz.onMsg(m, performance.now());
+    if (m.t === 'start') { c.pz.reset(); c.begin(m); }
     else if (m.t === 's' && c.sync) {
       meter.snap(m, performance.now());
       if (c.rounds.length) c.rounds[c.rounds.length - 1][2] = m.ack[c.me] | 0;
@@ -201,6 +204,7 @@ function makeClient(kind, port, seed, idx, track, meter) {
     (c.handlers[m.t] || []).forEach(f => f(m));
   }));
   c.on = (t, f) => (c.handlers[t] ||= []).push(f);
+  c.askPause = (on) => { const m = c.pz.ask(on, c.me); if (m) c.send(m); };   // Esc or P (or Resume) in a browser
   c.open = new Promise((res) => ws.on('open', res));
   c.rounds = [];   // [server input round, intended ticks, last ack] per start (co-op and Dodgeball)
   c.begin = (m) => {
@@ -217,7 +221,7 @@ function makeClient(kind, port, seed, idx, track, meter) {
     if (SCHEME === 'old') c.sync = new (kind === '2d' ? Old2D : Old3D)(L, m.st, c.me, c.send);
     else { c.sync = Sync.createSync(kind === '2d' ? Sync.SIM2D : Sync.SIM3D, { L, st: m.st, me: c.me, send: c.send, now: performance.now() }); c.sync.debug = V; }
     meter.begin(c.me);
-    c.loop();
+    if (!c.looping) { c.looping = true; c.loop(); }   // a second start (a rematch) keeps the one frame loop
   };
   // vsync frames at 60 Hz; a stall stops frames and holds messages
   c.loop = () => {
@@ -226,14 +230,14 @@ function makeClient(kind, port, seed, idx, track, meter) {
     const go = () => {
       if (c.closed) return;
       let now = performance.now();
-      if (now >= c.nextStall) { c.stallUntil = now + uni(r, NET.stallMin, NET.stallMax); c.nextStall = now + expo(r, NET.stall * 1000); c.stalls++; }
+      if (now >= c.nextStall) { c.stallUntil = now + uni(r, cfg.stallMin, cfg.stallMax); c.nextStall = now + expo(r, cfg.stall * 1000); c.stalls++; }
       if (now < c.stallUntil) { setTimeout(go, c.stallUntil - now); return; }
       while (c.inbox.length) c.inbox.shift()();
       now = performance.now();
       const dt = now - last; last = now;
       const bot = typeof c.track === 'function';   // Dodgeball: a bot that reads the screen, once per tick
       const readBits = bot ? () => c.track(c) : () => c.track[c.sync.predTick()] ?? 0;
-      const n = c.sync.frame(dt, readBits, now);
+      const n = c.sync.frame(dt, readBits, now, c.pz);
       meter.frame(c.sync.draw(now), n, now, bot ? 0 : readBits());
       const next = t0 + Math.ceil((performance.now() - t0 + 0.5) / DT) * DT;
       setTimeout(go, Math.max(0, next - performance.now()));
@@ -251,7 +255,7 @@ function vec(kind, p) { return kind === '2d' ? [p.x, p.y] : [p.x, p.y, p.z]; }
 const sub = (a, b) => a.map((v, i) => v - b[i]);
 const len = (a) => Math.hypot(...a);
 
-function makeMeter(kind) {
+export function makeMeter(kind) {
   const th = TH[kind], fi = kind === '2d' ? 0 : 2;
   const M = {
     kind, me: -1, path: new Map(), srv: null, frames: 0, ticks: 0, snaps: 0, firstSnap: null, lastSnapT: 0, maxGap: 0,
@@ -625,7 +629,7 @@ async function match(kind, seed, port) {
 
 // ---------------------------------------------------------------------------
 
-function line(r) {
+export function line(r) {
   const inl = (i) => `server waited ${i.waits}x (longest ${i.waitMax} ticks), held ${i.held}, skipped ${i.skipped}, late ${i.late}, released ${i.released}, trimmed ${i.trimmed}, drained ${i.drained}, dropped ${i.dropped}`;
   const tk = (t) => `key changes ${t.changes}, off their tick ${t.moved} (jumps ${t.jumpsMoved}, throws ${t.actsMoved}), dropped ${t.dropped}`;
   if (r.kind === 'coop') return `coop level ${r.seed} [${r.scheme}]: server ${r.server.won ? 'won' : 'NOT won'}, ${r.server.deaths} deaths (tick ${r.server.tick}); ${inl(r.server.input)}\n` +
@@ -641,7 +645,7 @@ function line(r) {
 }
 
 // pass or fail (SCHEME=new)
-function verdict(r) {
+export function verdict(r) {
   if (r.kind === 'coop') {
     // co-op: the bots win as they do locally, no death, no input released, trimmed, dropped or
     // applied off its tick, nothing shown and taken back
@@ -683,45 +687,48 @@ function verdict(r) {
   return bad;
 }
 
-await loadSync();
-// event-loop lag of this process (a blocked harness would look like network trouble)
-const loopLag = { max: 0, over50: 0 };
-{ let t = performance.now(); setInterval(() => { const n = performance.now(), d = n - t - 5; t = n; if (d > loopLag.max) loopLag.max = d; if (d > 50) { loopLag.over50++; if (env.LAGLOG) console.log(`loop lag ${Math.round(d)} ms at ${Math.round(n)}`); } }, 5).unref(); }
-const srv = await startServer(PORT);
-const tStart = performance.now();
-const results = [];
-const jobs = [];
-for (const kind of KINDS) for (const seed of kind === 'coop' ? COOP_LEVELS : SEEDS) jobs.push([kind, seed]);
-// co-op plays the recorded bot inputs: record the missing ones first
-{
-  const miss = [...new Set(jobs.filter(([k, n]) => k === 'coop' && !fs.existsSync(path.join(ROOT, `tools/playtest/inputs/level-${n}.json`))).map(([, n]) => n))];
-  if (miss.length) { console.log(`recording bot inputs for levels ${miss.join(',')}`); execFileSync(process.execPath, ['tools/playtest/record-bot.mjs', miss.join(',')], { cwd: ROOT, stdio: 'ignore' }); }
-}
-// plan first (cached), so planning never stalls a running match
-for (const [kind, seed] of jobs) if (kind !== 'coop' && kind !== 'dodge') pairTracks(kind, seed, 180 + SECS * 60, { log: V ? console.log : () => {} });
-console.log(`check-netcode: scheme ${SCHEME}, one-way ${NET.base}±${NET.jit} ms, spikes every ~${NET.spike} s of ${NET.spikeMin}-${NET.spikeMax} ms, client stalls every ~${NET.stall} s of ${NET.stallMin}-${NET.stallMax} ms${CPU ? `, server CPU quota ${CPU}%` : ''}, ${SECS} s matches`);
-let next = 0, fails = 0;
-await Promise.all(Array.from({ length: Math.min(CONC, jobs.length) }, async () => {
-  while (next < jobs.length) {
-    const [kind, seed] = jobs[next++];
-    const r = await match(kind, seed, PORT);
-    results.push(r);
-    console.log(line(r));
-    if (SCHEME !== 'old') {
-      const bad = verdict(r);
-      if (bad.length) { fails++; console.log(`FAIL ${bad.join('; ')}`); } else console.log('ok');
-    }
+// run as a script (tools/check-pause.js imports the harness)
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await loadSync();
+  // event-loop lag of this process (a blocked harness would look like network trouble)
+  const loopLag = { max: 0, over50: 0 };
+  { let t = performance.now(); setInterval(() => { const n = performance.now(), d = n - t - 5; t = n; if (d > loopLag.max) loopLag.max = d; if (d > 50) { loopLag.over50++; if (env.LAGLOG) console.log(`loop lag ${Math.round(d)} ms at ${Math.round(n)}`); } }, 5).unref(); }
+  const srv = await startServer(PORT);
+  const tStart = performance.now();
+  const results = [];
+  const jobs = [];
+  for (const kind of KINDS) for (const seed of kind === 'coop' ? COOP_LEVELS : SEEDS) jobs.push([kind, seed]);
+  // co-op plays the recorded bot inputs: record the missing ones first
+  {
+    const miss = [...new Set(jobs.filter(([k, n]) => k === 'coop' && !fs.existsSync(path.join(ROOT, `tools/playtest/inputs/level-${n}.json`))).map(([, n]) => n))];
+    if (miss.length) { console.log(`recording bot inputs for levels ${miss.join(',')}`); execFileSync(process.execPath, ['tools/playtest/record-bot.mjs', miss.join(',')], { cwd: ROOT, stdio: 'ignore' }); }
   }
-}));
-// the server process's CPU time (it runs one room per match, CONC at a time)
-try {
-  const f = fs.readFileSync(`/proc/${srv.pid}/stat`, 'utf8').split(') ')[1].split(' ');
-  const cpu = (+f[11] + +f[12]) / 100, wall = (performance.now() - tStart) / 1000;
-  console.log(`server CPU: ${cpu.toFixed(1)} s in ${wall.toFixed(0)} s (${(100 * cpu / wall).toFixed(1)}% of one core) for ${jobs.length} matches, ${Math.min(CONC, jobs.length)} at a time`);
-} catch {}
-srv.kill();
-if (V || env.NETLOG) for (const l of serverLog) console.log(l);
-console.log(`harness event loop: longest delay ${Math.round(loopLag.max)} ms, ${loopLag.over50} over 50 ms`);
-if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify(results, null, 1));
-if (SCHEME !== 'old') console.log(fails ? `${fails} of ${jobs.length} matches FAILED` : `All ${jobs.length} matches passed.`);
-process.exit(SCHEME !== 'old' && fails ? 1 : 0);
+  // plan first (cached), so planning never stalls a running match
+  for (const [kind, seed] of jobs) if (kind !== 'coop' && kind !== 'dodge') pairTracks(kind, seed, 180 + SECS * 60, { log: V ? console.log : () => {} });
+  console.log(`check-netcode: scheme ${SCHEME}, one-way ${NET.base}±${NET.jit} ms, spikes every ~${NET.spike} s of ${NET.spikeMin}-${NET.spikeMax} ms, client stalls every ~${NET.stall} s of ${NET.stallMin}-${NET.stallMax} ms${CPU ? `, server CPU quota ${CPU}%` : ''}, ${SECS} s matches`);
+  let next = 0, fails = 0;
+  await Promise.all(Array.from({ length: Math.min(CONC, jobs.length) }, async () => {
+    while (next < jobs.length) {
+      const [kind, seed] = jobs[next++];
+      const r = await match(kind, seed, PORT);
+      results.push(r);
+      console.log(line(r));
+      if (SCHEME !== 'old') {
+        const bad = verdict(r);
+        if (bad.length) { fails++; console.log(`FAIL ${bad.join('; ')}`); } else console.log('ok');
+      }
+    }
+  }));
+  // the server process's CPU time (it runs one room per match, CONC at a time)
+  try {
+    const f = fs.readFileSync(`/proc/${srv.pid}/stat`, 'utf8').split(') ')[1].split(' ');
+    const cpu = (+f[11] + +f[12]) / 100, wall = (performance.now() - tStart) / 1000;
+    console.log(`server CPU: ${cpu.toFixed(1)} s in ${wall.toFixed(0)} s (${(100 * cpu / wall).toFixed(1)}% of one core) for ${jobs.length} matches, ${Math.min(CONC, jobs.length)} at a time`);
+  } catch {}
+  srv.kill();
+  if (V || env.NETLOG) for (const l of serverLog) console.log(l);
+  console.log(`harness event loop: longest delay ${Math.round(loopLag.max)} ms, ${loopLag.over50} over 50 ms`);
+  if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify(results, null, 1));
+  if (SCHEME !== 'old') console.log(fails ? `${fails} of ${jobs.length} matches FAILED` : `All ${jobs.length} matches passed.`);
+  process.exit(SCHEME !== 'old' && fails ? 1 : 0);
+}
