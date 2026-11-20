@@ -232,6 +232,31 @@ async function online() {
     if (!ownFrames || leak) throw new Error('online: the aim arrow is not hidden from the other player (or not shown to its owner)');
     await sleep(2500);
   }
+  // pause: Esc on A pauses the room for both, B's card says who paused, the ticks stop on both;
+  // B resumes, both count down 3, 2, 1, and both run again
+  {
+    const pz = (p) => p.evaluate(() => { const c = document.querySelector('#resumeCount'); return { screen: document.body.dataset.screen, tick: window.__app.S.tick,
+      note: document.querySelector('#pauseOnline').hidden ? '' : document.querySelector('#pauseOnline').textContent, count: c.hidden ? '' : c.textContent }; });
+    const aName = (await A.evaluate(() => window.__app.me)) ? 'Luna' : 'Sol';
+    await A.keyboard.press('Escape'); await sleep(500);
+    const z1 = [await pz(A), await pz(B)];
+    log(`online: pause from A: screens ${z1.map(z => z.screen).join('/')}, B's card says "${z1[1].note}", A's "${z1[0].note}"`);
+    if (!z1.every(z => z.screen === 'pause') || z1[1].note !== `${aName} paused the game.`) throw new Error('online: the pause card is not shown on both, or the other player is not told who paused');
+    await sleep(1200);
+    const z2 = [await pz(A), await pz(B)];
+    log(`online: ticks while paused: A ${z1[0].tick}->${z2[0].tick}, B ${z1[1].tick}->${z2[1].tick}`);
+    if (z2.some((z, i) => z.tick !== z1[i].tick)) throw new Error('online: the game kept running while paused');
+    await B.click('#pResume'); await sleep(250);
+    const z3 = [await pz(A), await pz(B)];
+    await A.screenshot({ path: `${out}/online-resume-countdown.png` });
+    log(`online: resume from B: countdown ${z3.map(z => JSON.stringify(z.count)).join(' / ')}, ticks ${z3.map(z => z.tick).join('/')}`);
+    if (!z3.every((z, i) => z.screen === 'game' && /^[123]/.test(z.count) && z.tick === z1[i].tick)) throw new Error('online: no countdown on both after the resume, or the game ran during it');
+    await A.waitForFunction(() => document.querySelector('#resumeCount').hidden, null, { timeout: 4000 }); await B.waitForFunction(() => document.querySelector('#resumeCount').hidden, null, { timeout: 4000 });
+    await sleep(500);
+    const z4 = [await pz(A), await pz(B)];
+    log(`online: after the countdown: A ${z1[0].tick}->${z4[0].tick}, B ${z1[1].tick}->${z4[1].tick}`);
+    if (!z4.every((z, i) => z.tick > z1[i].tick + 10)) throw new Error('online: the game did not run again after the countdown');
+  }
   // play out the match: the holder taps
   await playOut(() => D(A), async (d) => {
     if (d.phase === 1 && d.holder >= 0) { await tapAct(pageOf(d.holder), d.holder, 'KeyS'); await sleep(80); }   // either key set works online

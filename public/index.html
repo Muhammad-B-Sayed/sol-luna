@@ -53,7 +53,7 @@
         <div><b class="solc">Sol</b><kbd>←</kbd><kbd>→</kbd> move · <kbd>↑</kbd> jump</div>
         <div><b class="lunac">Luna</b><kbd>A</kbd><kbd>D</kbd> move · <kbd>W</kbd> jump</div>
         <div><kbd>Esc</kbd> pause · <kbd>R</kbd> restart</div>
-        <p>Online, either set of keys controls your own character. Gamepads work too. In an online room, click Sol or Luna to play as them, or swap from the pause menu. Press <kbd>Enter</kbd> or the chat button at the top right to talk to your partner.</p>
+        <p>Online, either set of keys controls your own character. Gamepads work too. In an online room, <kbd>Esc</kbd> pauses the game for both of you and either of you can resume it. Click Sol or Luna to play as them, or swap from the pause menu. Press <kbd>Enter</kbd> or the chat button at the top right to talk to your partner.</p>
         <ul>
           <li>Every level needs both of you. What one of you does opens the way for the other.</li>
           <li><span class="sw sun"></span> Sun pools are safe for Sol and deadly for Luna.</li>
@@ -108,10 +108,13 @@
     </div>
   </section>
 
+  <!-- online: the countdown after either player resumes a paused room (main.js pauseFrame) -->
+  <div id="resumeCount" hidden aria-live="assertive"><b></b><span></span></div>
+
   <section class="screen" id="pause">
     <div class="card">
       <h2>Paused</h2>
-      <p id="pauseOnline" class="muted" hidden>The world keeps moving online. Your character stands still while this menu is open.</p>
+      <p id="pauseOnline" class="muted" hidden>The game is paused for both players.</p>
       <div class="stack">
         <button id="pResume" class="primary">Resume</button>
         <button id="pRestart">Restart level</button>
@@ -156,7 +159,7 @@
   <section class="screen" id="runnerPause">
     <div class="card">
       <h2>Paused</h2>
-      <p id="rpOnline" class="muted" hidden>The world keeps scrolling online. Your character stands still while this menu is open.</p>
+      <p id="rpOnline" class="muted" hidden>The game is paused for both players.</p>
       <div class="stack">
         <button id="rpResume" class="primary">Resume</button>
         <button id="rpRestart">New course</button>
@@ -185,7 +188,7 @@
   <section class="screen" id="r3Pause">
     <div class="card">
       <h2>Paused</h2>
-      <p id="r3pOnline" class="muted" hidden>The dusk keeps coming online. Your character stands still while this menu is open.</p>
+      <p id="r3pOnline" class="muted" hidden>The game is paused for both players.</p>
       <div class="stack">
         <button id="r3pResume" class="primary">Resume</button>
         <button id="r3pRestart">New course</button>

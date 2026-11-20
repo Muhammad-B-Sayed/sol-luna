@@ -113,7 +113,9 @@ export class RunnerMode {
     if (!this.S) return;
     if (this.online) {
       // ticks, the other player's clock and what to draw all come from the sync
-      if (!this.results) this.sync.frame(dt, () => (this.paused ? 0 : this.input.any()), now);
+      // a paused room (net-pause.js) runs no ticks and sends no inputs
+      this.paused = !this.pz.running(now);
+      if (!this.results) this.sync.frame(dt, () => this.input.any(), now, this.pz);
       const d = this.sync.draw();
       this.S = d.S;
       this.drawn = d.v;
@@ -258,15 +260,25 @@ export class RunnerMode {
 
   pause(on) {
     if (!this.active || this.results) return;
+    if (this.online) {
+      // the room's pause, for both players (main.js pauseFrame shows it); none in the 3-2-1 before the start
+      if (on && this.S.phase === RPH_COUNT) return;
+      this.askPause(on);
+      return;
+    }
     this.paused = on;
-    if (on) {
-      $('#rpOnline').hidden = !this.online;
-      $('#rpRestart').textContent = this.online ? 'New course (restarts for both)' : 'New course';
-      $('#rpRoom').hidden = !this.online;
-      this.show('runnerPause');
-      $('#rpResume').focus();
-    } else this.show(null);
+    if (on) this.openPause();
+    else this.show(null);
   }
+
+  openPause() {
+    $('#rpOnline').hidden = !this.online;
+    $('#rpRestart').textContent = this.online ? 'New course (restarts for both)' : 'New course';
+    $('#rpRoom').hidden = !this.online;
+    this.show('runnerPause');
+    $('#rpResume').focus();
+  }
+  get pauseSpec() { return { screen: 'runnerPause', note: '#rpOnline', open: () => this.openPause() }; }
 
   rematch() {
     this.sfx.ui();
@@ -293,7 +305,7 @@ export class RunnerMode {
     $('#rpQuit').onclick = () => { this.stop(); this.quit(); };
     window.addEventListener('keydown', (e) => {
       if (!this.active || (e.target.closest && e.target.closest('input, textarea'))) return;
-      if (e.code === 'Escape' || e.code === 'KeyP') { if (!this.results) { this.pause(!this.paused); e.preventDefault(); } }
+      if (e.code === 'Escape' || e.code === 'KeyP') { if (!this.results) { this.pause(this.online ? !this.pz.paused() : !this.paused); e.preventDefault(); } }
       else if (e.code === 'KeyR' && !this.results && !this.paused) this.rematch();
     });
   }

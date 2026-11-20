@@ -122,6 +122,7 @@ const RUN_WAIT = 24;     // ticks the room waits for a late player's inputs befo
 const BACK_TICKS = 60;   // co-op and dodge: after an absence, ticks during which a long queue is cut to BACK_KEEP
 const BACK_KEEP = 2;
 const DRAIN_STOP = 35;   // dodge: no queue drain and no new wind-up in the last 35 ticks (583 ms) of the ready freeze
+const RESUME_MS = 2000;  // pause: from a resume request to the first tick again (public/js/net-pause.js)
 
 class Room {
   constructor(code) {
@@ -143,6 +144,7 @@ class Room {
     // the last tick, ticks stepped and the step of the last snapshot sent, key changes applied
     this.back = [0, 0]; this.qPre = [0, 0]; this.steps = 0; this.sentAt = -2; this.lastB = [-1, -1];
     this.round = (this.round || 0) + 1; this.logged = false;
+    this.pz = null; this.frozenMs = 0;   // the pause (pauseReq): a new match is not paused
   }
   netLog() {
     if (!process.env.NET_LOG || !this.nst) return;
@@ -219,9 +221,9 @@ class Room {
     const s = JSON.stringify(msg);
     for (const c of this.clients) out(c.ws, s);
   }
-  start(level, mode = 'coop') {
+  start(level, mode = 'coop', seed = 0) {
     this.level = level; this.mode = mode;
-    if (mode === 'dodge') { this.L = COURT; this.S = createDodge((Math.random() * 2 ** 31) | 0); }   // seeded first serve
+    if (mode === 'dodge') { this.L = COURT; this.S = createDodge(seed || (Math.random() * 2 ** 31) | 0); }   // seeded first serve (TEST_SEED: the client's)
     else { this.L = BUILT[level]; this.S = createState(this.L); }
     this.resetInputs();
     this.broadcast(this.startMsg());
@@ -250,7 +252,7 @@ class Room {
     return this.mode === 'runner' ? { t: 'start', mode: 'runner', seed: this.seed, st: this.S } : { t: 'start', level: this.level, mode: this.mode, st: this.S };
   }
   stop() {
-    this.level = -1; this.L = null; this.S = null;
+    this.level = -1; this.L = null; this.S = null; this.pz = null;
     this.broadcast({ t: 'menu' });
   }
   // Dodgeball. A browser that starts a few ticks ahead of the server (a slow first frame sends a
@@ -277,6 +279,15 @@ class Room {
   // screen keeps going on its prediction).
   advance(n) {
     if (!this.S) return;
+    if (this.pz) {
+      // paused, or counting down to the resume: nothing steps and nothing is owed for this time
+      // (due keeps only what was owed before the freeze), so the room does not catch up after it
+      const pz = this.pz;
+      if (!pz.goAt || performance.now() < pz.goAt) return;
+      this.frozenMs += pz.goAt - pz.since;
+      this.pz = null;
+      if (process.env.NET_LOG) console.log(`net ${this.code} resume at tick ${this.S.tick} after ${Math.round(pz.goAt - pz.since)} ms frozen`);
+    }
     this.due = Math.min((this.due || 0) + n, RUN_WAIT + 60);   // at most a second behind
     let stepped = 0;
     while (this.due > 0 && this.S) {
@@ -316,6 +327,44 @@ class Room {
       if (q.length <= k) return false;
     }
     return true;
+  }
+  // The pause (docs/netcode.md, "Pause"). Either player may pause and either may resume. Paused,
+  // the room steps nothing: no ticks, no snapshots, no starve or hold counters, no time owed.
+  // Inputs keep arriving (each client is a round trip ahead, and the other player keeps playing
+  // until they hear of the pause); they stay queued and are applied after the resume on the
+  // ticks they were meant for, so the match is the same as without the pause. A resume waits
+  // RESUME_MS, counted down on both screens. Pausing again in the countdown cancels it.
+  over() {
+    const S = this.S;
+    return this.runner ? S.phase === 2 : this.L.dodge ? S.d.phase === DP_OVER : S.phase === PH_WON;
+  }
+  pauseReq(c, on) {
+    if (!this.S || this.over()) { send(c.ws, { t: 'pause', st: 'run' }); return; }   // no match, or its end: no pause
+    const now = performance.now(), S = this.S;
+    if (on) {
+      if (this.pz && !this.pz.goAt) { send(c.ws, { t: 'pause', st: 'paused', by: this.pz.by, tick: S.tick }); return; }   // already paused
+      if (!this.pz) this.pz = { since: now };   // a pause in the countdown keeps the freeze it cancels
+      this.pz.by = c.char; this.pz.goAt = 0;
+      this.broadcast({ t: 'pause', st: 'paused', by: c.char, tick: S.tick });
+      if (process.env.NET_LOG) console.log(`net ${this.code} pause by ${['Sol', 'Luna'][c.char]} at tick ${S.tick}`);
+      return;
+    }
+    if (!this.pz || this.pz.goAt) return;   // not paused, or already counting down
+    const pz = this.pz;
+    pz.goAt = now + RESUME_MS; pz.by = c.char;
+    const frozen = Math.round(this.frozenMs + pz.goAt - pz.since);
+    for (const k of this.clients) send(k.ws, { t: 'pause', st: 'count', by: c.char, ms: this.startIn(k), frozen, tick: S.tick });
+  }
+  // When a client should start its own ticks again, counted from the arrival of the countdown
+  // message: so that its next input reaches the room when about 2 of its inputs are still queued
+  // there, as in play. RESUME_MS less its round trip, plus the inputs it has queued here beyond
+  // those 2 (the other player kept playing until they heard of the pause, so they have more).
+  startIn(k) {
+    const ch = k.char, q = this.q[ch];
+    let skip = 0;   // inputs the hold already covered
+    while (skip < this.debt[ch] && skip < q.length && q[skip][1] === this.held[ch]) skip++;
+    const ms = RESUME_MS + (q.length - skip - 2) * (1000 / 60) - rttOf(k.ws);
+    return Math.round(Math.max(RESUME_MS - 500, Math.min(RESUME_MS + 1000, ms)));
   }
   tick() {
     if (!this.S) return;
@@ -362,7 +411,8 @@ wss.on('connection', (ws) => {
   ws.on('close', () => { clearInterval(ws.rttT); leave(ws); });
 });
 
-// TEST_SEED=1 lets a client pick the Runner course seed (tools/check-netcode.js plays planned bot routes)
+// TEST_SEED=1 lets a client pick the Runner course seed and the Dodgeball first serve (tools/check-netcode.js
+// and tools/check-pause.js play planned bot routes and fixed input tracks)
 const testSeed = (m) => (process.env.TEST_SEED && m.seed > 0 ? m.seed >>> 0 : 0);
 
 function onMessage(ws, data) {
@@ -375,10 +425,17 @@ function onMessage(ws, data) {
         if (!room || !room.S) return;
         const me = room.clients.find(c => c.ws === ws);
         if (!me) return;
+        if (room.pz && room.q[me.char].length >= RUN_QMAX) return;   // paused: a client that kept sending (it should not) is not stored
         room.q[me.char].push([m.s | 0, m.b & 31]);   // bit 16 is Runner 3D's "back"; other sims ignore it
         return;
       }
       case 'ping': send(ws, { t: 'pong', c: m.c }); return;
+      case 'pause': {
+        if (!room) return;
+        const me = room.clients.find(c => c.ws === ws);
+        if (me) room.pauseReq(me, !!m.on);
+        return;
+      }
       case 'create': {
         if (room) leave(ws);
         const code = newCode();
@@ -418,7 +475,7 @@ function onMessage(ws, data) {
         if (!room) return;
         if (m.mode === 'dodge') {
           if (room.clients.length < 2) { send(ws, { t: 'err', msg: 'Waiting for a second player.' }); return; }
-          room.start(-1, 'dodge');
+          room.start(-1, 'dodge', testSeed(m));
           return;
         }
         if (m.mode === 'runner') {
@@ -475,6 +532,7 @@ function leave(ws) {
   r.clients = r.clients.filter(c => c.ws !== ws);
   if (!r.clients.length) { rooms.delete(r.code); return; }
   if (r.S) { r.level = -1; r.L = null; r.S = null; }
+  r.pz = null;   // a pause ends with the match: the one left is back in the room
   r.broadcast({ t: 'peer-left' });
   r.broadcastRoom();
 }

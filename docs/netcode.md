@@ -3,7 +3,7 @@
 Nov 2026. Sections 1 to 3 and 5 cover the 2D Runner and Runner 3D (branch `runner-netcode`):
 what went wrong, how it works now, the numbers before and after. Section 4 covers co-op and
 Dodgeball, which got the same input rules on branch `coop-dodge-inputs`, with their own numbers.
-Section 6 says how to run the checks.
+Section 6 says how to run the checks. Section 7 covers the online pause (branch `online-pause`).
 
 ## 1. The report
 
@@ -395,6 +395,7 @@ node tools/dodge-latency.js --lat 40 --jit 15 --spike 8 --reps 3   # dodge windo
 JSON=out.json ... ; node tools/net-summary.js out.json   # the tables above
 V=1 ...                                       # print every pop and backward step with its context
 node tools/playtest/runner-lag.mjs            # real browsers over a laggy link, pass or fail
+node tools/check-pause.js                     # the online pause in all four modes (~1.5 min)
 ```
 
 On a busy machine, run the harness with a high CPU weight, or the machine's load shows up as
@@ -406,19 +407,105 @@ driver falls behind real time (it prints its real frame rate), the pages' clocks
 against the real-time server, and its step numbers say nothing about the netcode. Its results
 card check still holds.
 
-## 7. Files
+## 7. Pause
+
+The report (Nov 2026): "it doesn't actually pause the game, and it should be that if any one of
+the players pauses, it pauses for both. I tried it on the 3D runner." Pause was only a local
+overlay online. The server kept stepping, so the dusk caught the player who paused.
+
+Now a pause belongs to the room, the same in all four online modes. Either player pauses (Esc or
+P) and either resumes (Resume, Esc or P). Both screens show the pause card, and the player who
+did not pause reads who did ("Luna paused the game."). Pausing again in the countdown cancels
+it. There is no limit on pauses, and a hidden tab does not pause.
+
+**The message.** One type, both ways. Client to server: `{t:'pause', on}`. Server to both
+clients: `{t:'pause', st:'paused', by, tick}` and `{t:'pause', st:'count', by, ms, frozen, tick}`.
+A request after the end of the match gets `{t:'pause', st:'run'}` back: refused.
+
+**The room** (`server/index.js`, `pauseReq`). `pz` is null or `{ by, since, goAt }`, and
+`frozenMs` adds up the frozen time of the match. While `pz` is set, `advance()` returns at once:
+no ticks, no snapshots, no time owed, no starve or hold counters. So the dusk and the Dodgeball
+clocks stand still with the sim. Time owed from before the freeze stays owed. A resume sets
+`goAt` 2 s ahead (`RESUME_MS`), and the first tick comes when it passes. A new match, the lobby,
+a swap and a player leaving all clear `pz`, so a room never stays frozen for the one left.
+While paused, the room keeps at most 120 inputs per player, and sends only the pause messages
+and its pings.
+
+**Inputs in flight.** Nothing is dropped and nothing is made up. Each client runs about a
+round trip ahead of the server. The player who pauses stops on the key: no more ticks and no
+more inputs, so nothing moves on their screen after it. The other player keeps playing until
+the pause message arrives, about one round trip later. The room keeps all those inputs queued
+and applies them after the resume, on the ticks they were meant for. So a match with pauses is,
+tick for tick, the match without them, and neither client's own player is corrected. The one
+visible effect: the other player's last moves before the pause reach the pauser's screen after
+the resume.
+
+**The countdown.** The countdown message carries `ms` per client: when that client starts its
+own ticks, counted from the message's arrival. It is `RESUME_MS` less the client's round trip,
+plus the inputs it has queued beyond 2 (the player who kept playing has more). So both clients'
+inputs reach the room just as it starts again, with the usual cushion of about 2, and the room
+neither waits nor carries a backlog. Each screen counts 3, 2, 1 over its own `ms` (about 2 s),
+with "Luna resumed" on the other one.
+
+**The other player in the Runners.** `runner-sync.js` draws the other player about 150 ms in the
+past, on a clock built from snapshot arrivals. That clock stops when the client stops, and starts
+again after exactly the server's frozen time (`frozen`, less what earlier pauses already
+counted). The arrival times of the snapshots from before the freeze move on by the same amount
+(`holdClock`). So playback goes on from where it stopped. Without that, the first snapshot after
+a pause looked 5 s late, and the playback jumped about 300 px ahead to catch up.
+
+**Held keys.** A paused client reads no input. The first read after the countdown takes the
+keys held then, so a key held through the pause works without a new press. The latch in
+`input.js` drops taps older than 250 ms, so nothing pressed early in the pause replays.
+
+**When there is no pause:** on the results card (the server refuses once the match is over), and
+in the Runners' 3-2-1 before the start (the client does not ask, so two countdowns never show at
+once). Dodgeball's ready freeze between points can be paused. Local play is unchanged.
+
+**Checks.** `node tools/check-pause.js` runs all four modes over the real server. One run (Nov 19,
+2026, load 5), 60 of 60:
+
+- Each pause reached both clients with who asked. No snapshot came for 5.2 s (3.2 s paused, 2 s
+  of countdown). The next tick was the paused tick plus one, 2,016 to 2,051 ms after the
+  countdown message arrived.
+- Ticks from just before a pause to 3 s after it matched the wall clock with the frozen time
+  taken out, within 3.1 ticks. The first second after a resume had 57 to 59 ticks.
+- A match with two pauses equalled the same input track played straight through the sim with
+  no pause and no network, at every snapshot either client got: 2,520 snapshots in each Runner,
+  1,076 in Dodgeball, 934 in co-op.
+- Runners over the jittery network with two pauses: no false death, nothing taken back. The other
+  player's largest pop was 4.5 px in 2D and 0.19 units in 3D (limits 6 and 0.25). Their playback
+  ran at most 1.10 ticks per 1/60 s around the pauses, the same as elsewhere (its clock's +10%).
+- A player who left while paused: the other got peer-left, a new player joined, and the new match
+  ran at 60 ticks a second, in every mode.
+
+The harness line's "off the path" share counts every frame of a pause. A pause that catches the
+other player a little off the path (an extension past late snapshots) holds that picture still
+for the whole pause, so the share can read 18% instead of 5%. Nothing moves on screen, and the
+offset eases out after the resume as usual. `check-pause.js` prints the share around the pauses
+apart from the rest.
+
+`tools/runner3d-browser.js`, `tools/runner-browser.js`, `tools/playtest/online-browser.mjs` and
+`tools/check-dodge-browser.cjs` (online) pause with Esc on one page and resume from the other.
+They check the card and who paused, the frozen ticks on both pages, the countdown on both, and
+play after it. The Runner checks also hold a key through the pause and check it moves the
+player after it.
+
+## 8. Files
 
 | File | What |
 | --- | --- |
-| `public/js/runner-sync.js` | The client sync for both runners: prediction, playback of the other player, deaths only from the server, catch-up, pacing. No DOM. |
+| `public/js/runner-sync.js` | The client sync for both runners: prediction, playback of the other player, deaths only from the server, catch-up, pacing, the playback clock across a pause. No DOM. |
 | `public/js/runner-app.js`, `runner3d-app.js` | Online they call the sync each frame; `this.S` is the state it shows. |
 | `public/js/main.js` | `predictStep` (co-op prediction never kills or wins); the real frame time for online play; co-op and Dodgeball catch-up, pacing and replay skip. |
 | `public/js/net-pace.js` | Co-op and Dodgeball: pacing from `qm`, the replay skip, catch-up limits. No DOM. |
 | `shared/runner.js`, `shared/runner3d.js` | `predictedDeath` and one line in the step: a state with `pred` set never kills. |
-| `server/index.js` | All rooms: wait for late inputs, hold and skip. Runner rooms: 60 Hz snapshots. Co-op and dodge rooms (`sharedInput`, `afterSteps`): `qm` with the owed ticks, absent players, dodge drain and wind-up timing. `NET_LOG`, `NET_TRACE`, `TEST_SEED`, `LAG_JITTER`, `LAG_SPIKE`. |
-| `tools/check-netcode.js` | The harness and the permanent check (runners, co-op, Dodgeball). |
+| `server/index.js` | All rooms: wait for late inputs, hold and skip, the pause (`pauseReq`, `startIn`). Runner rooms: 60 Hz snapshots. Co-op and dodge rooms (`sharedInput`, `afterSteps`): `qm` with the owed ticks, absent players, dodge drain and wind-up timing. `NET_LOG`, `NET_TRACE`, `TEST_SEED`, `LAG_JITTER`, `LAG_SPIKE`. |
+| `tools/check-netcode.js` | The harness and the permanent check (runners, co-op, Dodgeball). `tools/check-pause.js` imports its clients and meters. |
 | `tools/net-coop.js` | The co-op and Dodgeball client of `main.js` for the harness, new and 4be5032 (`base`). |
 | `tools/net-bots.js` | Bot routes for two players on one course (cached in `tools/playtest/out/net-tracks/`). |
 | `tools/net-old-clients.js` | The pre-fix clients, for the baseline. |
 | `tools/net-summary.js` | Tables from the harness's JSON. |
 | `tools/playtest/runner-lag.mjs` | The real-browser check. |
+| `public/js/net-pause.js` | The client side of the pause, used by every online mode and the harness. No DOM. |
+| `tools/check-pause.js` | The pause check: freeze, countdown, no catch-up, determinism, jitter, a player leaving. |

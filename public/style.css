@@ -91,6 +91,11 @@ kbd { display: inline-block; min-width: 24px; padding: 1px 6px; margin: 0 2px; b
 #hint.on { opacity: 1; transform: translate(-50%, 0); }
 body:not([data-screen="game"]) #hint { opacity: 0; }
 
+/* online: the countdown after a resume (main.js pauseFrame), over every mode's canvas and HUD */
+#resumeCount { position: absolute; inset: 0; z-index: 15; display: grid; place-content: center; justify-items: center; gap: 6px; pointer-events: none; background: rgba(12,8,22,0.25); }
+#resumeCount[hidden] { display: none; }
+#resumeCount b { font: 700 112px Cinzel, Georgia, serif; line-height: 1; background: linear-gradient(90deg, #ffd27a, #fff 50%, #a9e3ff); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 3px 0 rgba(18,12,30,0.8)); }
+#resumeCount span { font: 600 18px Nunito, system-ui, sans-serif; color: #f4ecff; text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
 #toast { position: absolute; top: 16px; left: 50%; transform: translate(-50%, -20px); background: rgba(30,20,52,0.95); border: 1px solid var(--edge); padding: 10px 18px; border-radius: 12px; opacity: 0; transition: 0.25s; pointer-events: none; max-width: 90vw; text-align: center; }
 #toast.on { opacity: 1; transform: translate(-50%, 0); }
 

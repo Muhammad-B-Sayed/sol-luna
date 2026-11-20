@@ -11,6 +11,7 @@ import { drawDodgeHud, dodgeListen, dodgeHearReset, dodgeHint } from './dodge-ui
 import { RunnerMode } from './runner-app.js';
 import { Runner3DMode } from './runner3d-app.js';
 import { paceRate, unapplied, MAX_TICKS_PER_FRAME, MAX_BACKLOG } from './net-pace.js';
+import { RoomPause } from './net-pause.js';
 
 const BUILT = LEVELS.map((raw, i) => buildLevel(raw, i));
 // A level is a co-op index or a versus mode name; each kind brings its own create and step.
@@ -58,6 +59,11 @@ const cv = $('#game');
 const R = new Renderer(cv);
 const input = new Input();
 const net = new Net();
+// Online, a pause is the room's (server/index.js pauseReq): either player pauses or resumes it
+// for both. Every online mode ticks only while pz.running(), and pauseFrame() shows the card
+// and the resume countdown.
+const pz = new RoomPause();
+const askPause = (on) => { const m = pz.ask(on, app.me); if (m) net.send(m); };
 let runner = null;   // versus Runner mode (runner-app.js); created once app exists
 let runner3d = null; // versus Runner 3D mode (runner3d-app.js)
 
@@ -73,8 +79,8 @@ const app = {
   seq: 0, pending: [], remoteBits: 0, inGame: false,
   heard: null,
 };
-runner = new RunnerMode({ R, input, net, sfx, app, show: (id) => show(id), toast: (m) => toast(m), quit: () => { attract = null; if (app.mode === 'online') quitToMenu(); else { app.mode = 'menu'; show('menu'); } } });
-runner3d = new Runner3DMode({ input, net, sfx, app, show: (id) => show(id), toast: (m) => toast(m), quit: () => { attract = null; if (app.mode === 'online') quitToMenu(); else { app.mode = 'menu'; show('menu'); } } });
+runner = new RunnerMode({ R, input, net, sfx, app, pz, askPause, show: (id) => show(id), toast: (m) => toast(m), quit: () => { attract = null; if (app.mode === 'online') quitToMenu(); else { app.mode = 'menu'; show('menu'); } } });
+runner3d = new Runner3DMode({ input, net, sfx, app, pz, askPause, show: (id) => show(id), toast: (m) => toast(m), quit: () => { attract = null; if (app.mode === 'online') quitToMenu(); else { app.mode = 'menu'; show('menu'); } } });
 
 function fit() {
   const wrap = $('#stage');
@@ -253,8 +259,7 @@ function tickLocal() {
 
 function tickOnline() {
   if (!app.inGame || app.results) return;
-  const overlay = app.paused;
-  const bits = overlay ? 0 : input.any();
+  const bits = input.any();
   app.seq++;
   net.send({ t: 'i', s: app.seq, b: bits });
   app.pending.push([app.seq, bits]);
@@ -367,14 +372,18 @@ function frame(now) {
   const raw = dt;   // online play catches up after a stall instead of dropping ticks (runner-sync.js, net-pace.js)
   if (dt > 250) dt = DT;
   frames++; fpsT += dt; if (fpsT > 1000) { fps = Math.round(frames * 1000 / fpsT); frames = 0; fpsT = 0; }
-  if (runner.active) { runner.frame(runner.online ? raw : dt, now); return; }
-  if (runner3d.active) { runner3d.frame(runner3d.online ? raw : dt, now); return; }
+  if (runner.active) { if (runner.online) pauseFrame(now, runner.pauseSpec); runner.frame(runner.online ? raw : dt, now); return; }
+  if (runner3d.active) { if (runner3d.online) pauseFrame(now, runner3d.pauseSpec); runner3d.frame(runner3d.online ? raw : dt, now); return; }
   const playing = app.L && (app.mode === 'local' || (app.mode === 'online' && app.inGame));
   if (playing && app.mode === 'online') {
     // every missed tick runs (up to 8 a frame, 1 s of backlog), so the inputs keep their place
-    // in the server's queue, and the pace follows the server's queue report
-    acc = Math.min(acc + raw * paceRate(app.qm), MAX_BACKLOG);
-    for (let n = 0; acc >= DT && n < MAX_TICKS_PER_FRAME; n++) { acc -= DT; tickOnline(); }
+    // in the server's queue, and the pace follows the server's queue report. A paused room
+    // runs nothing and owes nothing.
+    pauseFrame(now, COOP_PAUSE);
+    if (pz.running(now)) {
+      acc = Math.min(acc + raw * paceRate(app.qm), MAX_BACKLOG);
+      for (let n = 0; acc >= DT && n < MAX_TICKS_PER_FRAME; n++) { acc -= DT; tickOnline(); }
+    }
   } else if (playing) {
     acc += dt;
     let n = 0;
@@ -505,22 +514,53 @@ function showDodgeOver() {
 
 function pause(on) {
   if (!app.L || app.results) return;
+  if (app.mode === 'online') { askPause(on); return; }   // the room's pause; pauseFrame shows it
   app.paused = on;
-  if (on) {
-    $('#pauseOnline').hidden = app.mode !== 'online';
-    $('#pRestart').hidden = false;
-    $('#pLevels').hidden = false;
-    const dodge = !!app.L.dodge;
-    $('#pRestart').textContent = dodge ? 'Restart match' : 'Restart level';
-    $('#pLevels').textContent = dodge ? 'Back to lobby' : 'Level select';
-    if (dodge && app.mode === 'local') $('#pLevels').hidden = true;
-    $('#pSwap').hidden = app.mode !== 'online';
-    show('pause');
-    $('#pResume').focus();
-  } else show(null);
+  if (on) openPause();
+  else show(null);
 }
+function openPause() {
+  $('#pauseOnline').hidden = app.mode !== 'online';
+  $('#pRestart').hidden = false;
+  $('#pLevels').hidden = false;
+  const dodge = !!app.L.dodge;
+  $('#pRestart').textContent = dodge ? 'Restart match' : 'Restart level';
+  $('#pLevels').textContent = dodge ? 'Back to lobby' : 'Level select';
+  if (dodge && app.mode === 'local') $('#pLevels').hidden = true;
+  $('#pSwap').hidden = app.mode !== 'online';
+  show('pause');
+  $('#pResume').focus();
+}
+const COOP_PAUSE = { screen: 'pause', note: '#pauseOnline', open: openPause };
+
+// Online: the pause card and the resume countdown follow the room's pause state (net-pause.js),
+// on both screens. spec: the active mode's pause card { screen, note (its line for who paused), open() }.
+let pzKey = '';
+function pauseFrame(now, spec) {
+  const v = pz.view(now), key = `${v.st} ${v.by} ${v.n} ${spec.screen}`;
+  if (key === pzKey) return;
+  pzKey = key;
+  const on = document.body.dataset.screen === spec.screen;
+  if (v.st === 'paused') {
+    const note = $(spec.note);
+    note.textContent = v.by === app.me ? 'You paused the game for both of you.' : `${charName(v.by)} paused the game.`;
+    note.hidden = false;
+    if (!on) spec.open();
+  } else if (on) {
+    show(null);
+    if (document.activeElement?.tagName === 'BUTTON') document.activeElement.blur();   // Enter and Space are game keys again
+  }
+  const cnt = $('#resumeCount');
+  cnt.hidden = v.st !== 'count';
+  if (v.st === 'count') {
+    cnt.querySelector('b').textContent = String(v.n);
+    cnt.querySelector('span').textContent = v.by === app.me ? 'Get ready' : `${charName(v.by)} resumed. Get ready`;
+  }
+}
+function pauseReset() { pz.reset(); pzKey = ''; $('#resumeCount').hidden = true; }
 
 function quitToMenu() {
+  pauseReset();
   runner.stop();
   runner3d.stop();
   if (app.mode === 'online') { net.send({ t: 'leave' }); net.close(); }
@@ -541,7 +581,9 @@ net.on('room', (m) => {
   history.replaceState(null, '', '/' + m.code);
   if (!app.inGame) renderLobby();
 });
+net.on('pause', (m) => pz.onMsg(m, performance.now()));
 net.on('start', (m) => {
+  pauseReset();
   if (m.mode === 'runner') { runner.onStart(m); return; }
   if (m.mode === 'runner3d') { runner3d.onStart(m); return; }
   app.inGame = true;
@@ -550,12 +592,14 @@ net.on('start', (m) => {
 });
 net.on('s', onSnapshot);
 net.on('menu', () => {
+  pauseReset();
   app.inGame = false; app.L = null; attract = null;
   renderLobby();
 });
 net.on('peer-left', () => {
   toast('Your partner left the room.');
   chatLine('sys', '', 'Your partner left.');
+  pauseReset();
   app.inGame = false; app.L = null; attract = null;
   renderLobby();
 });
@@ -694,7 +738,7 @@ $('#btnMute').textContent = sfx.muted ? 'Sound: off' : 'Sound: on';
 $('#lobbySwap').onclick = () => { sfx.ui(); net.send({ t: 'swap' }); };
 $('#slotSol').parentElement.onclick = () => { if (app.me !== SOL) { sfx.ui(); net.send({ t: 'swap', char: SOL }); } };
 $('#slotLuna').parentElement.onclick = () => { if (app.me !== LUNA) { sfx.ui(); net.send({ t: 'swap', char: LUNA }); } };
-$('#pSwap').onclick = () => { sfx.ui(); net.send({ t: 'swap' }); pause(false); };
+$('#pSwap').onclick = () => { sfx.ui(); net.send({ t: 'swap' }); };   // the restart that follows ends the pause
 $('#lobbyPick').onclick = () => { sfx.ui(); openLevels(); };
 $('#lobbyLeave').onclick = () => { sfx.ui(); quitToMenu(); };
 $('#lobbyCopy').onclick = async () => {
@@ -704,7 +748,7 @@ $('#lobbyCopy').onclick = async () => {
 
 $('#pResume').onclick = () => pause(false);
 $('#pRestart').onclick = () => {
-  if (app.mode === 'online') { net.send({ t: 'restart' }); pause(false); }
+  if (app.mode === 'online') net.send({ t: 'restart' });   // the room restarts unpaused
   else { beginLevel(app.level); }
 };
 $('#pLevels').onclick = () => {
@@ -734,7 +778,7 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault(); chatOpen(true); return;
   }
   if (e.code === 'Escape' || e.code === 'KeyP') {
-    if (app.L && !app.results) { pause(!app.paused); e.preventDefault(); }
+    if (app.L && !app.results) { pause(app.mode === 'online' ? !pz.paused() : !app.paused); e.preventDefault(); }
   }
   if (e.code === 'KeyR' && app.L && !app.results && document.activeElement?.tagName !== 'INPUT') {
     if (app.mode === 'local') beginLevel(app.level);

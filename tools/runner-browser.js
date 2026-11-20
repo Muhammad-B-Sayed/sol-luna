@@ -192,6 +192,34 @@ try {
     JSON.stringify({ common, same, drawnOff: pos.map(q => +q.drawnOff.toFixed(2)), p: pos.map(q => q.p), ticks: pos.map(q => q.tick) }));
   await H.shot('runner-online-host');
   await G.shot('runner-online-guest');
+  // pause: the guest presses Esc, both pages show the pause card and the host's says who paused;
+  // the ticks stop on both; the host resumes with Esc, both count down, both run again, and the
+  // host's arrow, held all along, moves the host without a new press
+  const PZ = `(() => { const r = window.__runner, c = document.querySelector('#resumeCount'); return { screen: document.body.dataset.screen,
+    note: document.querySelector('#rpOnline').hidden ? '' : document.querySelector('#rpOnline').textContent, own: r.sync.P.tick, srv: r.sync.auth.tick,
+    count: c.hidden ? '' : c.textContent, x: r.S.p[window.__app.me].x } })()`;
+  const guestName = s1[1].me ? 'Luna' : 'Sol';
+  await G.key('Escape', 'keyDown'); await G.key('Escape', 'keyUp');
+  await sleep(500);
+  const q1 = await Promise.all([H, G].map(P => P.eval(PZ)));
+  check('online pause: Esc on one page shows the pause card on both', q1.every(q => q.screen === 'runnerPause'), q1.map(q => q.screen).join(', '));
+  check('online pause: the other page says who paused', q1[0].note === `${guestName} paused the game.` && /^You paused/.test(q1[1].note), JSON.stringify(q1.map(q => q.note)));
+  await sleep(1500);
+  const q2 = await Promise.all([H, G].map(P => P.eval(PZ)));
+  check('online pause: the ticks stop on both', q2.every((q, k) => q.own === q1[k].own && q.srv === q1[k].srv) && q2[0].srv === q2[1].srv,
+    q2.map((q, k) => `${k ? 'guest' : 'host'} own ${q1[k].own}→${q.own} server ${q1[k].srv}→${q.srv}`).join('; '));
+  await H.key('Escape', 'keyDown'); await H.key('Escape', 'keyUp');
+  await sleep(250);
+  const q3 = await Promise.all([H, G].map(P => P.eval(PZ)));
+  check('online pause: Esc on the other page starts the countdown on both, still frozen', q3.every((q, k) => q.screen === 'game' && /^[123]/.test(q.count) && q.srv === q1[k].srv),
+    JSON.stringify(q3.map(q => [q.screen, q.count, q.srv])));
+  for (let k = 0; k < 40; k++) { await sleep(100); if ((await Promise.all([H, G].map(P => P.eval(`document.querySelector('#resumeCount').hidden`)))).every(Boolean)) break; }
+  const xr = await H.eval(PZ);
+  await sleep(500);
+  const q4 = await Promise.all([H, G].map(P => P.eval(PZ)));
+  check('online pause: after the countdown both run again', q4.every((q, k) => q.own > q1[k].own + 10 && q.srv > q1[k].srv + 10),
+    q4.map((q, k) => `${k ? 'guest' : 'host'} own ${q1[k].own}→${q.own} server ${q1[k].srv}→${q.srv}`).join('; '));
+  check('online pause: a key held through the pause works after it without a new press', q4[0].x > xr.x + 20, `host x ${xr.x.toFixed(1)}→${q4[0].x.toFixed(1)}`);
   for (let k = 0; k < 80; k++) {
     await sleep(500);
     await H.key('ArrowUp', 'keyDown'); await sleep(60); await H.key('ArrowUp', 'keyUp');
